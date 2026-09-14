@@ -75,14 +75,28 @@ AMBASSADOR_ROLES = {
 }
 
 
+def _normalize_jar_send_id(value: str) -> str:
+    """Return the canonical public jar send id regardless of Monobank format.
+
+    Monobank client-info currently returns values such as ``jar/5S531LWQuc``
+    while the public URL ends with just ``5S531LWQuc``.  Keeping the comparison
+    canonical prevents false "jar not found" errors when the provider includes
+    the ``jar/`` prefix.
+    """
+    raw = str(value or "").strip().rstrip("/")
+    if not raw:
+        return ""
+    return raw.split("/")[-1].strip()
+
+
 def _jar_send_id(jar_url: str) -> str:
-    return (jar_url or "").rstrip("/").split("/")[-1].strip()
+    return _normalize_jar_send_id(jar_url)
 
 
 def _api_get(path: str, token: str) -> Any:
     req = Request(
         f"{MONOBANK_API}{path}",
-        headers={"X-Token": token, "User-Agent": "AMPasadors/1.10.4"},
+        headers={"X-Token": token, "User-Agent": "AMPasadors/1.10.4.1"},
         method="GET",
     )
     try:
@@ -207,7 +221,7 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
     try:
         client = await asyncio.to_thread(_api_get, "/personal/client-info", token)
         jars = client.get("jars") or [] if isinstance(client, dict) else []
-        jar = next((item for item in jars if str(item.get("sendId") or "") == send_id), None)
+        jar = next((item for item in jars if _normalize_jar_send_id(item.get("sendId")) == send_id), None)
         if not jar:
             raise RuntimeError("Налаштовану банку не знайдено серед банок власника MONOBANK_TOKEN.")
         jar_id = str(jar.get("id") or "").strip()
