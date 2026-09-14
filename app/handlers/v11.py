@@ -170,7 +170,7 @@ async def my_qr(message: Message, db: Database, state: FSMContext) -> None:
     if legacy_caption:
         await message.answer(
             "🔄 Назву оновлено: тепер цей розділ називається <b>«🎫 Мій QR-бейдж»</b>.",
-            reply_markup=main_menu(user_role),
+            reply_markup=main_menu(user_role, user.staff_permissions_json),
         )
     b = InlineKeyboardBuilder()
     b.button(text="🎫 Згенерувати бейдж", callback_data="qr_badge:generate")
@@ -196,7 +196,7 @@ async def qr_badge_back(call: CallbackQuery, db: Database) -> None:
         if not user:
             await call.answer("Профіль не активований", show_alert=True); return
         role = user.role
-    await call.message.answer("🏠 Головне меню", reply_markup=main_menu(role))
+    await call.message.answer("🏠 Головне меню", reply_markup=main_menu(role, user.staff_permissions_json))
     await call.answer()
 
 

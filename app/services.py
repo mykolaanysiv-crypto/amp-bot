@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .registration_ux import mark_first_activity
+
 import asyncio
 import hashlib
 
@@ -208,6 +210,8 @@ async def add_xp(
     # change lifetime XP or level.
     user.wallet_xp = max(0, int(user.wallet_xp or 0) + amount)
     await session.flush()
+    if amount >= 0 and category in {"event", "quest", "task", "activity", "survey", "team_quest", "idea_approved"}:
+        await mark_first_activity(session, user.id, tx.created_at or datetime.utcnow())
     after = before + amount
     after_level = get_level(after)[0]
     await evaluate_automatic_badges(session, user)

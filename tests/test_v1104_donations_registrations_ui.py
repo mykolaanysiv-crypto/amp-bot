@@ -8,9 +8,9 @@ def text(rel: str) -> str:
 
 
 def test_v1104_version_and_css_cache():
-    assert text("VERSION.txt").strip() == "1.10.4"
-    assert text("VERSION_CHECK.txt").strip() == "1.10.4"
-    assert "/static/admin.css?v=1.10.4" in text("app/web/templates/base.html")
+    assert text("VERSION.txt").strip() == "1.11.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.11.0"
+    assert "/static/admin.css?v=1.11.0" in text("app/web/templates/base.html")
 
 
 def test_donation_models_permissions_and_sidebar_exist():
@@ -171,4 +171,4 @@ def test_login_assets_use_current_release_cache_version():
         src = text(path)
         assert "?v=1.7.3" not in src
         assert "?v=1.8.0" not in src
-        assert "?v=1.10.4" in src
+        assert "?v=1.11.0" in src

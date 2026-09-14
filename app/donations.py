@@ -96,21 +96,24 @@ def _jar_send_id(jar_url: str) -> str:
 def _api_get(path: str, token: str) -> Any:
     req = Request(
         f"{MONOBANK_API}{path}",
-        headers={"X-Token": token, "User-Agent": "AMPasadors/1.10.4.1"},
+        headers={"X-Token": token, "User-Agent": "AMPasadors/1.11.0"},
         method="GET",
     )
     try:
         with urlopen(req, timeout=15) as response:  # noqa: S310 - fixed Monobank host
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
-        detail = ""
-        try:
-            detail = exc.read().decode("utf-8", "replace")[:300]
-        except Exception:
-            pass
-        raise RuntimeError(f"Monobank API: HTTP {exc.code}{': ' + detail if detail else ''}") from exc
-    except (URLError, TimeoutError) as exc:
-        raise RuntimeError(f"Monobank API недоступний: {exc}") from exc
+        # Never persist or display provider response bodies: they may contain
+        # account metadata. Keep operational errors useful but data-minimized.
+        if exc.code in {401, 403}:
+            message = "Monobank API відхилив доступ. Перевірте MONOBANK_TOKEN у захищених змінних середовища."
+        elif exc.code == 429:
+            message = "Monobank API тимчасово обмежив частоту запитів. Повторіть синхронізацію пізніше."
+        else:
+            message = f"Monobank API тимчасово повернув HTTP {exc.code}."
+        raise RuntimeError(message) from exc
+    except (URLError, TimeoutError):
+        raise RuntimeError("Monobank API тимчасово недоступний. Повторіть синхронізацію пізніше.")
 
 
 async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
@@ -228,7 +231,10 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
         if not jar_id:
             raise RuntimeError("Monobank не повернув ідентифікатор банки.")
 
-        state.jar_account_id = jar_id
+        # The provider's internal jar account id is needed only for this API
+        # request and is deliberately not persisted. The public send id is enough
+        # for diagnostics without retaining an extra provider identifier.
+        state.jar_account_id = None
         state.send_id = send_id
         state.title = str(jar.get("title") or "Підтримка АМП")[:180]
         state.balance_kop = int(jar.get("balance") or 0)
@@ -291,6 +297,8 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
         state.updated_at = datetime.utcnow()
         return {"ok": True, "imported": imported, "linked": linked, "awarded": awarded, "error": None}
     except Exception as exc:
-        state.last_error = str(exc)[:1000]
+        # All expected API errors above are already sanitized. Do not include
+        # repr(exc), request headers, tokens or provider response payloads.
+        state.last_error = (str(exc) or "Помилка синхронізації Monobank.")[:500]
         state.updated_at = datetime.utcnow()
         return {"ok": False, "imported": 0, "linked": 0, "awarded": {}, "error": state.last_error}

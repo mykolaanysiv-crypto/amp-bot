@@ -114,7 +114,8 @@
 </section>
 
 <section class="card event-feedback-analytics">
-  <div class="section-title"><div><h2>⭐ Зворотний зв’язок та вплив</h2><p class="muted">Показники результату після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} відповідей</span></div>
+  <div class="section-title"><div><h2>⭐ Зворотний зв’язок та вплив</h2><p class="muted">Показники результату після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} / {{ feedback_stats.invited }} · {{ feedback_stats.response_rate }}%</span></div>
+  <p class="muted"><b>Конверсія відгуків:</b> {{ feedback_stats.responses }} завершено з {{ feedback_stats.invited }} запрошених — <b>{{ feedback_stats.response_rate }}%</b>.</p>
   <div class="kpis five feedback-kpis">
     <div class="kpi"><span>Середня оцінка</span><strong>{{ feedback_stats.avg_rating }}</strong></div>
     <div class="kpi"><span>Було корисно</span><strong>{{ feedback_stats.useful }}%</strong></div>

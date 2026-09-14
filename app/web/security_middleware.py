@@ -197,6 +197,11 @@ class SecurityHeadersMiddleware:
                     (b"referrer-policy", b"same-origin"),
                     (b"permissions-policy", b"camera=(self), microphone=(), geolocation=()"),
                 ])
+                if str(scope.get("path") or "").startswith("/admin"):
+                    # Admin pages may contain personal, financial or operational
+                    # data and must not be stored in browser/shared proxy caches.
+                    headers.append((b"cache-control", b"no-store, private"))
+                    headers.append((b"pragma", b"no-cache"))
                 if self.hsts:
                     headers.append((b"strict-transport-security", b"max-age=31536000; includeSubDomains"))
                 message["headers"] = headers

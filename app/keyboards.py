@@ -40,16 +40,20 @@ MAIN_MENU_TEXTS = {
 }
 
 
-def main_menu(role: str) -> ReplyKeyboardMarkup:
-    """Compact participant-first keyboard introduced in v1.10.0."""
+def main_menu(role: str, permissions_raw: str | None = None) -> ReplyKeyboardMarkup:
+    """v1.11.0 participant-first layout in the requested left-to-right order.
+
+    The admin entry is shown not only for legacy staff roles, but also for a
+    profile that has an explicit granular staff permission set.
+    """
     rows = [
-        [KeyboardButton(text="🏠 Головна"), KeyboardButton(text="🚀 Долучитися")],
-        [KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="💙 Підтримати")],
-        [KeyboardButton(text="🆘 Звернення"), KeyboardButton(text="👤 Мій профіль")],
-        [KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="🎫 QR-бейдж")],
+        [KeyboardButton(text="🏠 Головна"), KeyboardButton(text="👤 Мій профіль")],
+        [KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="🌍 Можливості")],
+        [KeyboardButton(text="🎫 QR-бейдж"), KeyboardButton(text="🤝 Запросити друга")],
+        [KeyboardButton(text="💙 Підтримати"), KeyboardButton(text="🆘 Звернення")],
         [KeyboardButton(text="☰ Ще")],
     ]
-    if role in ADMIN_ROLES:
+    if role in ADMIN_ROLES or bool(effective_permissions(role, permissions_raw)):
         rows.append([KeyboardButton(text="🛠 Адмін-панель")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 

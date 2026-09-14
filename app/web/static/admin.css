@@ -3142,3 +3142,8 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
   .donation-day-row{grid-template-columns:48px minmax(0,1fr) 100px;gap:7px}
   .donation-day-row b{font-size:10px}
 }
+
+/* v1.11.0 — Operations Dashboard */
+.kpis.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){.kpis.three{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:480px){.kpis.three{grid-template-columns:1fr!important}}

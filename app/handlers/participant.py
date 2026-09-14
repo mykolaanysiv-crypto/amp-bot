@@ -5,7 +5,7 @@ from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, or_, select
 
@@ -19,6 +19,8 @@ from ..models import (
     ActivityType,
     Badge,
     Event,
+    EventFeedback,
+    EventRegistration,
     Idea,
     Opportunity,
     OpportunityInterest,
@@ -46,6 +48,8 @@ from ..ui_labels import activity_category_label, activity_status_label, idea_sta
 from ..states import ActivityApplicationState, IdeaState, RequestState, StreakFreezeState
 from ..opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_user, set_user_interests, user_interests
 from ..runtime_config import get_runtime_int
+from ..registration_ux import get_registration_journey
+from ..time_utils import event_local_now
 
 router = Router(name="participant")
 
@@ -62,11 +66,21 @@ async def _active_user(message_or_cb, db: Database):
 @router.message(F.text.in_({"🏠 Головна", "🏠 Огляд"}))
 async def overview(message: Message, db: Database) -> None:
     """Participant home: a concise, useful snapshot of what matters today."""
-    now = datetime.now()
+    now = event_local_now()
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.ACTIVE.value:
-            await message.answer("Профіль ще не активований. Натисніть /start")
+            journey = await get_registration_journey(session, message.from_user.id)
+            if journey and journey.current_step not in {"submitted", "approved", "first_activity"}:
+                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="▶️ Продовжити реєстрацію", callback_data="reg:resume")]])
+                await message.answer(
+                    "🎯 <b>Наступний крок</b>\n\nТвоя реєстрація ще не завершена. Продовж із місця, де зупинився/зупинилася.",
+                    reply_markup=kb,
+                )
+            elif user and user.status == UserStatus.PENDING.value:
+                await message.answer("⏳ Реєстрацію надіслано. Профіль очікує підтвердження команди АМП.")
+            else:
+                await message.answer("Профіль ще не активований. Натисніть /start")
             return
         xp = await xp_total(session, user.id)
         sxp = await season_xp(session, user.id)
@@ -76,6 +90,24 @@ async def overview(message: Message, db: Database) -> None:
         level_name, next_threshold = get_level(xp)
         next_event = await session.scalar(
             select(Event).where(Event.status == "open", Event.starts_at >= now).order_by(Event.starts_at.asc()).limit(1)
+        )
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        today_event = await session.scalar(
+            select(Event)
+            .join(EventRegistration, EventRegistration.event_id == Event.id)
+            .where(
+                EventRegistration.user_id == user.id,
+                EventRegistration.status.in_(["registered", "reserved", "checked_in", "attended"]),
+                Event.starts_at >= day_start, Event.starts_at < day_end,
+                Event.status.in_(["open", "postponed", "completed"]),
+            )
+            .order_by(Event.starts_at.asc()).limit(1)
+        )
+        pending_feedback = await session.scalar(
+            select(EventFeedback)
+            .where(EventFeedback.user_id == user.id, EventFeedback.status.in_(["pending", "in_progress"]))
+            .order_by(EventFeedback.prompted_at.asc().nullsfirst(), EventFeedback.id.asc()).limit(1)
         )
         next_quest = await session.scalar(
             select(Quest)
@@ -89,9 +121,26 @@ async def overview(message: Message, db: Database) -> None:
             )
             .order_by(Quest.ends_at.asc()).limit(1)
         )
-        case_updates = int(await session.scalar(
-            select(func.count(RequestCase.id)).where(RequestCase.user_id == user.id, RequestCase.status == "need_info")
-        ) or 0)
+        # A request message stays "new" until the participant opens that case.
+        # This is more precise than treating every need_info case as unread.
+        open_cases = list((await session.scalars(
+            select(RequestCase).where(
+                RequestCase.user_id == user.id,
+                RequestCase.status != "case_closed",
+            ).order_by(RequestCase.updated_at.desc()).limit(30)
+        )).all())
+        case_updates = 0
+        for case in open_cases:
+            seen_after = case.participant_last_viewed_at or case.created_at
+            unread_admin = await session.scalar(
+                select(func.count(RequestMessage.id)).where(
+                    RequestMessage.case_id == case.id,
+                    RequestMessage.sender_type == "admin",
+                    RequestMessage.created_at > seen_after,
+                )
+            )
+            if int(unread_admin or 0) > 0:
+                case_updates += 1
         new_matches = int(await session.scalar(
             select(func.count(OpportunityMatch.id)).where(
                 OpportunityMatch.user_id == user.id,
@@ -99,6 +148,12 @@ async def overview(message: Message, db: Database) -> None:
                 OpportunityMatch.matched_at >= now - timedelta(days=7),
             )
         ) or 0)
+        goal_rows = await goals_for_user(session, user, now=now)
+        near_goal = max(
+            (row for row in goal_rows if 70 <= float(row.get("percent") or 0) < 100),
+            key=lambda row: float(row.get("percent") or 0),
+            default=None,
+        )
         await session.commit()
 
     first_name = participant_first_name(user)
@@ -154,10 +209,22 @@ async def overview(message: Message, db: Database) -> None:
         lines.append("🆘 У зверненнях немає нових дій")
     if not new_matches:
         lines.append("🌍 Нових персональних можливостей за 7 днів немає")
-    lines.append("\n⚡ <b>Швидкі дії</b>")
-    lines.append("🤝 Запросити друга · 🆘 Звернення — прямо в головному меню нижче.")
-    lines.append("Обери, що хочеш зробити 👇")
-    await message.answer("\n".join(lines), reply_markup=main_menu(user.role))
+
+    lines.extend(["", "🎯 <b>Наступний крок</b>"])
+    if pending_feedback:
+        lines.append("⭐ Заверши короткий відгук після події — залишилося кілька натискань. Відкрий останнє повідомлення про відгук.")
+    elif today_event:
+        lines.append(f"📅 Сьогодні твоя подія: <b>{escape(today_event.title)}</b> о {today_event.starts_at.strftime('%H:%M')}. Перевір деталі у «Долучитися». ")
+    elif case_updates:
+        lines.append("🆘 Команда АМП очікує твоєї відповіді у зверненні. Відкрий «Звернення».")
+    elif near_goal:
+        goal = near_goal["goal"]
+        lines.append(f"🏁 Ти вже виконав(ла) <b>{near_goal['percent']:.0f}%</b> цілі «{escape(goal.title)}». Ще трохи — і готово.")
+    elif next_event:
+        lines.append(f"📅 Подивись найближчу подію «{escape(next_event.title)}» та долучайся, якщо вона тобі підходить.")
+    else:
+        lines.append("🌍 Переглянь актуальні можливості або обери активність у «Долучитися».")
+    await message.answer("\n".join(lines), reply_markup=main_menu(user.role, user.staff_permissions_json))
 
 
 @router.message(F.text == "🚀 Долучитися")
@@ -815,6 +882,8 @@ async def request_view(call: CallbackQuery, db: Database) -> None:
         )).all())[::-1]
         number = case.case_number or f"AMP-{case.created_at.year}-{case.id:04d}"
         deadline = case.response_deadline.strftime("%d.%m.%Y %H:%M") if case.response_deadline else "не встановлено"
+        case.participant_last_viewed_at = datetime.utcnow()
+        await session.commit()
         parts = [
             f"🆘 <b>{number}</b>",
             f"<b>{escape(case.title)}</b>",

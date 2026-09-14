@@ -223,15 +223,19 @@ async def event_detail(request: Request, event_id: int):
             "confirmed": sum(1 for reg, _ in registrations if reg.status == "attended"),
             "no_show": sum(1 for reg, _ in registrations if reg.status == "no_show"),
         }
-        feedback_rows = list((await session.scalars(
-            select(EventFeedback).where(EventFeedback.event_id == event.id, EventFeedback.status == "completed")
+        all_feedback_rows = list((await session.scalars(
+            select(EventFeedback).where(EventFeedback.event_id == event.id)
         )).all())
+        feedback_rows = [row for row in all_feedback_rows if row.status == "completed"]
+        feedback_invited = sum(1 for row in all_feedback_rows if row.prompted_at is not None)
         def pct(field):
             values=[getattr(row,field) for row in feedback_rows if getattr(row,field) is not None]
             return round(sum(1 for value in values if value) * 100 / len(values)) if values else 0
         ratings=[int(row.rating) for row in feedback_rows if row.rating is not None]
         feedback_stats = {
             "responses": len(feedback_rows),
+            "invited": feedback_invited,
+            "response_rate": round(len(feedback_rows) * 100 / feedback_invited, 1) if feedback_invited else 0.0,
             "avg_rating": round(sum(ratings)/len(ratings), 1) if ratings else 0,
             "useful": pct("useful"),
             "new_knowledge": pct("new_knowledge"),

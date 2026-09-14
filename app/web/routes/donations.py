@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.donations import award_donation_badges, sync_monobank_donations
 from app.models import DonationJarState, DonationReport, DonationTransaction, SupportPageView, User, UserStatus
 from app.web.app import (
-    ctx, db, delete_image, guard_permission, log_audit, notify_telegram,
+    ctx, db, delete_image, guard_permission, is_superadmin, log_audit, notify_telegram,
     save_document, settings, templates,
 )
 
@@ -100,6 +100,7 @@ async def _page_context(request: Request, *, notice: str = ""):
             jar_progress=progress,
             money=_money,
             notice=notice,
+            show_sensitive_donation_data=is_superadmin(request),
         )
 
 

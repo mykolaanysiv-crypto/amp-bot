@@ -62,6 +62,7 @@ class Database:
                     "CREATE INDEX IF NOT EXISTS ix_xp_transactions_season_id ON xp_transactions(season_id)",
                     "CREATE INDEX IF NOT EXISTS ix_users_last_activity_at ON users(last_activity_at)",
                     "CREATE UNIQUE INDEX IF NOT EXISTS ux_request_cases_case_number ON request_cases(case_number)",
+                    "CREATE INDEX IF NOT EXISTS ix_request_cases_participant_last_viewed_at ON request_cases(participant_last_viewed_at)",
                     "CREATE INDEX IF NOT EXISTS ix_broadcast_recipients_next_retry_at ON broadcast_recipients(next_retry_at)",
                     "CREATE INDEX IF NOT EXISTS ix_scheduled_jobs_locked_until ON scheduled_jobs(locked_until)",
                     "CREATE INDEX IF NOT EXISTS ix_notification_deliveries_next_retry_at ON notification_deliveries(next_retry_at)",
@@ -263,6 +264,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             ("image_path", "VARCHAR(500)"),
             ("case_number", "VARCHAR(32)"),
             ("response_deadline", "TIMESTAMP"),
+            ("participant_last_viewed_at", "TIMESTAMP"),
         ],
         "volunteer_tasks": [
             ("max_participants", "INTEGER DEFAULT 1"),

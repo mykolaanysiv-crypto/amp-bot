@@ -6,10 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v1821_version_and_css_cache_buster():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.0"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.4" in base
+    assert "/static/admin.css?v=1.11.0" in base
 
 
 def test_calendar_has_day_week_month_and_all_requested_sources():
@@ -40,7 +40,7 @@ def test_waitlist_schema_and_two_hour_reservation_flow_exist():
     cols = {c.name for c in EventRegistration.__table__.columns}
     for name in {"waitlisted_at", "waitlist_promoted_at", "reservation_expires_at", "no_show_at"}:
         assert name in cols
-    assert len(Base.metadata.tables) == 52
+    assert len(Base.metadata.tables) == 53
     services = (ROOT / "app/services.py").read_text(encoding="utf-8")
     handlers = (ROOT / "app/handlers/events.py").read_text(encoding="utf-8")
     keyboards = (ROOT / "app/keyboards.py").read_text(encoding="utf-8")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 import os
@@ -136,8 +136,8 @@ def _normalize_database_url(raw: str, root: Path) -> str:
 
 @dataclass(slots=True)
 class Settings:
-    bot_token: str
-    database_url: str
+    bot_token: str = field(repr=False)
+    database_url: str = field(repr=False)
     data_dir: str
     media_storage: str
     superadmin_ids: set[int]
@@ -148,15 +148,15 @@ class Settings:
     web_host: str
     web_port: int
     web_admin_username: str
-    web_admin_password: str
-    web_staff_accounts: dict[str, dict[str, str]]
-    web_session_secret: str
+    web_admin_password: str = field(repr=False)
+    web_staff_accounts: dict[str, dict[str, str]] = field(repr=False)
+    web_session_secret: str = field(repr=False)
     cookie_secure: bool
     season_name: str
     season_start: date
     season_end: date
     donation_jar_url: str = "https://send.monobank.ua/jar/5S531LWQuc"
-    monobank_token: str = ""
+    monobank_token: str = field(default="", repr=False)
 
 
 def get_settings(require_bot_token: bool = True) -> Settings:

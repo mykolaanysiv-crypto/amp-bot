@@ -1,3 +1,19 @@
+# v1.11.0 — 🚀 Registration UX, Feedback 2.0 & Operations Dashboard
+
+- Registration UX: progress indicator, persistent resume/restart, inline-button answers, canonical settlement autocomplete and human-readable validation messages.
+- Незавершена registration draft зберігається зашифрованою; operational funnel зберігає timestamps `start / consent / profile / submit / approved / first activity`.
+- Feedback 2.0: micro-feedback в одному Telegram-потоці, одноразове reminder-повідомлення через Notification Center, per-event conversion та global response rate.
+- Telegram Home отримав Next Best Action: незавершена реєстрація, pending feedback, подія сьогодні, нова відповідь у зверненні, майже виконана ціль або наступна подія. Старий блок `⚡ Швидкі дії` видалено.
+- Головне меню Telegram зафіксовано у порядку `Головна / Мій профіль`, `Долучитися / Можливості`, `QR-бейдж / Запросити друга`, `Підтримати / Звернення`, `Ще`; `Адмін-панель` — окремим нижнім рядком за правами.
+- Operations Dashboard: today events/attendance/no-show, upcoming check-ins, pending registrations, failed notifications, SLA requests, feedback response rate, registration funnel та data-quality issues.
+- Для звернень додано `participant_last_viewed_at`, щоб Home визначав справді непрочитані відповіді команди.
+- Security: secret config fields приховані з repr; Monobank errors не містять provider body/token; internal jar account id не персиститься; `/admin` відповіді отримують `Cache-Control: no-store, private`; чутливі donor fields у web бачить лише superadmin.
+- Збережено v1.10.4.1 normalization для Monobank `sendId` (`jar/<id>` / `<id>` / URL).
+- Додано `registration_journeys`; схема БД — **53 таблиці**.
+- Додано `cryptography` для Fernet encryption registration checkpoints.
+
+---
+
 ## v1.10.4.1 — Monobank Jar Sync Hotfix
 
 - Виправлено зіставлення `sendId`: Monobank API повертає `jar/<id>`, тоді як публічне посилання містить `<id>`.

@@ -7,6 +7,41 @@
   {% if season %}<span class="pill">📈 {{ season.name }}</span>{% endif %}
 </div>
 
+<section class="card" id="operations-today">
+  <div class="section-title"><div><h2>🗓 Сьогодні</h2><p class="muted">Операційна картина простору на поточний день.</p></div><span class="tag">{{ operations.today_events }} подій</span></div>
+  <div class="kpis four">
+    <div class="kpi"><span>Події сьогодні</span><strong>{{ operations.today_events }}</strong></div>
+    <div class="kpi"><span>Відмічено / підтверджено</span><strong>{{ operations.today_attended }}</strong></div>
+    <div class="kpi"><span>Не прийшли</span><strong>{{ operations.today_no_show }}</strong></div>
+    <div class="kpi"><span>Відмітка відкриється ≤24 год</span><strong>{{ operations.upcoming_checkins }}</strong></div>
+  </div>
+  {% if today_events %}<div class="upcoming-list">{% for e in today_events %}<div class="upcoming-item"><div class="upcoming-date">{{e.starts_at.strftime('%H:%M')}}</div><div><h3>{{e.title}}</h3><p>{{e.location or 'Локацію не зазначено'}} · {{ lifecycle_status_label(e.status) }}</p></div><a class="soft-button" href="/admin/events/{{e.id}}">Відкрити</a></div>{% endfor %}</div>{% else %}<p class="muted">Подій на сьогодні немає.</p>{% endif %}
+</section>
+
+<section class="card" id="operations">
+  <div class="section-title"><div><h2>🚦 Операційний стан</h2><p class="muted">Ключові сигнали, які допомагають команді не пропустити важливе.</p></div></div>
+  <div class="kpis four">
+    <div class="kpi"><span>Реєстрації очікують</span><strong>{{ operations.pending_registrations }}</strong><small><a href="/admin/registrations">відкрити чергу →</a></small></div>
+    <div class="kpi"><span>Невдалі повідомлення</span><strong>{{ operations.failed_notifications }}</strong><small>Telegram-центр</small></div>
+    <div class="kpi"><span>SLA прострочено</span><strong>{{ operations.sla_overdue }}</strong><small>ще {{ operations.sla_due_soon }} спливають ≤24 год</small></div>
+    <div class="kpi"><span>Проблеми якості даних</span><strong>{{ operations.data_quality_issues }}</strong><small><a href="#data-quality">перевірити →</a></small></div>
+  </div>
+</section>
+
+<div class="grid2 dashboard-duo">
+<section class="card">
+  <div class="section-title"><div><h2>📝 Воронка реєстрації</h2><p class="muted">Від першого запуску до першої підтвердженої активності.</p></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Етап</th><th>Кількість</th><th>До попереднього</th><th>Від старту</th></tr></thead><tbody>
+  {% for step in registration_funnel %}<tr><td><b>{{step.label}}</b></td><td>{{step.count}}</td><td>{{step.step_rate}}%</td><td>{{step.total_rate}}%</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<section class="card">
+  <div class="section-title"><div><h2>⭐ Конверсія відгуків</h2><p class="muted">За останні 30 днів: запрошення → завершений мікровідгук.</p></div><span class="tag">{{ feedback_conversion.rate }}%</span></div>
+  <div class="kpis three"><div class="kpi"><span>Запрошено</span><strong>{{ feedback_conversion.invited }}</strong></div><div class="kpi"><span>Завершено</span><strong>{{ feedback_conversion.completed }}</strong></div><div class="kpi"><span>Відгукнулися</span><strong>{{ feedback_conversion.rate }}%</strong></div></div>
+  {% if feedback_by_event %}<div class="table-wrap"><table><thead><tr><th>Подія</th><th>Відповіді</th><th>Конверсія</th></tr></thead><tbody>{% for row in feedback_by_event %}<tr><td><a href="/admin/events/{{row.id}}">{{row.title}}</a></td><td>{{row.completed}} / {{row.invited}}</td><td><b>{{row.rate}}%</b></td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</section>
+</div>
+
 <div class="kpis">
   <div class="kpi"><span>Активні учасники</span><strong>{{ stats.users }}</strong></div>
   <div class="kpi"><span>АМПасадори й координатори</span><strong>{{ stats.ambassadors }}</strong></div>

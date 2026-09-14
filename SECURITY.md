@@ -69,3 +69,14 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - У PostgreSQL такі файли зберігаються як `MediaAsset(category="consents")`; публічний `/media/{id}` не віддає їх неавторизованим користувачам.
 - У локальному режимі consent-файли зберігаються в `AMP_DATA_DIR/private/consents`, поза публічним `/uploads`.
 - Зміна/відкликання згоди не стирає історію статусів: вона фіксується в `consent_history` разом із датою, версією та автором зміни.
+
+
+## v1.11.0 — registration checkpoints, Monobank і admin cache
+
+- Незавершена реєстрація може містити персональні дані. Її draft зберігається у `registration_journeys.draft_ciphertext` у зашифрованому вигляді; plaintext questionnaire-поля у таблицю не дублюються.
+- Ключ шифрування checkpoint-чернетки похідний від `WEB_SESSION_SECRET`. Не публікуйте і не логайте цей секрет; зміна секрету робить старі незавершені чернетки нерозшифровуваними, але не пошкоджує вже створені профілі.
+- `MONOBANK_TOKEN` зберігайте лише у Heroku Config Vars / захищеному `.env`; він не має потрапляти у Git, audit payload, UI або повідомлення про помилки.
+- Monobank integration не повертає response body провайдера в user-facing/internal error text та не зберігає внутрішній jar account id після sync.
+- На `/admin` застосовується `Cache-Control: no-store, private` і `Pragma: no-cache`, щоб чутливі сторінки не кешувалися браузером/proxy.
+- Ім’я/опис платника, receipt/comment та інші donor-sensitive поля в web маскуються для всіх ролей, крім `superadmin`; операційні суми, дати та AMP-ID залишаються доступними відповідно до прав.
+- Registration funnel і feedback conversion зберігають/показують агреговані operational metrics, а не окремий новий профіль чутливих категорій.

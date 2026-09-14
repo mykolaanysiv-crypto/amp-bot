@@ -27,15 +27,15 @@
 </section>
 
 <section class="card" id="transactions">
-  <div class="section-title"><div><h2>💳 Транзакції</h2><p class="muted">Показується інформація, яку фактично повертає Monobank. Якщо ім’я відправника не передано банком, система його не вигадує. Для автоматичного зв’язування учасник має додати <b>АМП-код</b> у коментар до переказу.</p></div><span class="count-badge">{{ transactions|length }}</span></div>
+  <div class="section-title"><div><h2>💳 Транзакції</h2><p class="muted">Показуються лише дані, потрібні для фінансового обліку. Ім’я відправника, коментар і реквізити квитанції доступні тільки суперадміністратору. Для автоматичного зв’язування учасник може додати <b>АМП-код</b> у коментар до переказу.</p></div><span class="count-badge">{{ transactions|length }}</span></div>
   <div class="table-wrap"><table><thead><tr><th>Дата</th><th>Від кого / опис</th><th>Коментар</th><th>Сума</th><th>Учасник АМП</th><th>Дія</th></tr></thead><tbody>
   {% for tx in transactions %}<tr>
     <td>{{ tx.occurred_at.strftime('%d.%m.%Y %H:%M') }}</td>
-    <td><b>{{ tx.counter_name or tx.description or 'Не передано Monobank' }}</b>{% if tx.receipt_id %}<br><small>Квитанція: {{ tx.receipt_id }}</small>{% endif %}</td>
-    <td>{{ tx.comment or '—' }}</td>
+    <td>{% if show_sensitive_donation_data %}<b>{{ tx.counter_name or tx.description or 'Не передано Monobank' }}</b>{% if tx.receipt_id %}<br><small>Квитанція: {{ tx.receipt_id }}</small>{% endif %}{% else %}<b>🔐 Приховано</b><br><small>Доступно суперадміністратору</small>{% endif %}</td>
+    <td>{% if show_sensitive_donation_data %}{{ tx.comment or '—' }}{% else %}<span class="muted">🔐 Приховано</span>{% endif %}</td>
     <td><b class="{{ 'money-positive' if tx.amount_kop>0 else 'money-negative' }}">{{ money(tx.amount_kop) }}</b></td>
     <td>{% if tx.linked_user_id %}<a href="/admin/users/{{tx.linked_user_id}}">АМП-{{ '%04d'|format(tx.linked_user_id) }}</a>{% else %}<span class="muted">Не пов’язано</span>{% endif %}</td>
-    <td><form class="donation-link-form" method="post" action="/admin/donations/transactions/{{tx.id}}/link"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><select name="user_id"><option value="">— не пов’язувати —</option>{% for u in active_users %}<option value="{{u.id}}" {% if tx.linked_user_id==u.id %}selected{% endif %}>АМП-{{'%04d'|format(u.id)}} · {{u.full_name}}</option>{% endfor %}</select><button class="soft-button compact-action" type="submit">💾 Зберегти</button></form></td>
+    <td><form class="donation-link-form" method="post" action="/admin/donations/transactions/{{tx.id}}/link"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><select name="user_id"><option value="">— не пов’язувати —</option>{% for u in active_users %}<option value="{{u.id}}" {% if tx.linked_user_id==u.id %}selected{% endif %}>АМП-{{'%04d'|format(u.id)}}{% if show_sensitive_donation_data %} · {{u.full_name}}{% endif %}</option>{% endfor %}</select><button class="soft-button compact-action" type="submit">💾 Зберегти</button></form></td>
   </tr>{% else %}<tr><td colspan="6" class="muted">Транзакцій ще немає. Натисніть «Оновити дані» після налаштування токена Monobank.</td></tr>{% endfor %}
   </tbody></table></div>
 </section>

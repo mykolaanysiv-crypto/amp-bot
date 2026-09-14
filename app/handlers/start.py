@@ -16,8 +16,8 @@ from sqlalchemy import select
 from ..config import Settings
 from ..db import Database
 from ..keyboards import event_detail_keyboard, main_menu, registration_phone_keyboard
-from ..models import ConsentHistory, Event, EventRegistration, User, UserRole, UserStatus
-from ..profile_data import MEDIA_CONSENT_VERSION, PRIVACY_NOTICE_VERSION, dump_vulnerabilities, parse_vulnerability_numbers, privacy_notice_text, vulnerability_prompt
+from ..models import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
+from ..profile_data import MEDIA_CONSENT_VERSION, PRIVACY_NOTICE_VERSION, VULNERABILITY_OPTIONS, dump_vulnerabilities, parse_vulnerability_numbers, privacy_notice_text, vulnerability_prompt
 from ..services import (
     age_on,
     checkin_for_event,
@@ -34,7 +34,11 @@ from ..services import (
 from ..states import AdminEventScannerState, RegistrationState, RestorationState
 from ..ui_labels import lifecycle_status_label
 from ..reliability import queue_telegram_delivery
-from ..settlements import canonicalize_settlement_text, resolve_canonical_settlement
+from ..settlements import canonicalize_settlement_text, resolve_canonical_settlement, settlement_key
+from ..registration_ux import (
+    decrypt_draft, get_registration_journey, mark_registration_submitted,
+    registration_progress, restart_registration_journey, save_registration_checkpoint,
+)
 
 router = Router(name="start")
 
@@ -45,6 +49,130 @@ ROLE_LABELS = {
     UserRole.ADMIN.value: "Адміністратор",
     UserRole.SUPERADMIN.value: "Суперадміністратор",
 }
+
+
+REGISTRATION_STATE_BY_STEP = {
+    "privacy_notice": RegistrationState.privacy_notice,
+    "last_name": RegistrationState.last_name,
+    "first_name": RegistrationState.first_name,
+    "phone": RegistrationState.phone,
+    "email": RegistrationState.email,
+    "settlement": RegistrationState.settlement,
+    "birth_date": RegistrationState.birth_date,
+    "gender": RegistrationState.gender,
+    "vulnerabilities": RegistrationState.vulnerabilities,
+    "vulnerability_other": RegistrationState.vulnerability_other,
+    "media_consent": RegistrationState.media_consent,
+}
+
+
+def _privacy_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Продовжити", callback_data="reg:privacy:1")],
+        [InlineKeyboardButton(text="✖️ Не продовжувати", callback_data="reg:privacy:2")],
+    ])
+
+
+def _gender_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👩 Жіноча", callback_data="reg:gender:female"), InlineKeyboardButton(text="👨 Чоловіча", callback_data="reg:gender:male")],
+        [InlineKeyboardButton(text="🧑 Інша / самовизначення", callback_data="reg:gender:other")],
+        [InlineKeyboardButton(text="🙈 Не бажаю зазначати", callback_data="reg:gender:prefer_not_say")],
+    ])
+
+
+def _vulnerability_keyboard(selected: list[str] | None = None) -> InlineKeyboardMarkup:
+    selected_set = set(selected or [])
+    rows = []
+    for number, code, label_text in VULNERABILITY_OPTIONS:
+        mark = "✅" if code in selected_set else "▫️"
+        short = label_text if len(label_text) <= 38 else label_text[:35].rstrip() + "…"
+        rows.append([InlineKeyboardButton(text=f"{mark} {number}. {short}", callback_data=f"reg:vuln:{number}")])
+    rows.append([InlineKeyboardButton(text="🙈 Не бажаю зазначати", callback_data="reg:vuln:private")])
+    rows.append([InlineKeyboardButton(text="➡️ Готово", callback_data="reg:vuln:done")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _media_consent_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✅ Так", callback_data="reg:media:1"),
+        InlineKeyboardButton(text="❌ Ні", callback_data="reg:media:0"),
+    ]])
+
+
+def _resume_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="▶️ Продовжити реєстрацію", callback_data="reg:resume")],
+        [InlineKeyboardButton(text="🔄 Почати спочатку", callback_data="reg:restart")],
+    ])
+
+
+async def _settlement_keyboard(session, query: str = "") -> InlineKeyboardMarkup:
+    stmt = select(SettlementReference).where(SettlementReference.active == True)  # noqa: E712
+    rows = list((await session.scalars(stmt.order_by(SettlementReference.sort_order.asc(), SettlementReference.canonical_name.asc()))).all())
+    q = settlement_key(query)
+    if q:
+        ranked = []
+        for row in rows:
+            key = settlement_key(row.canonical_name)
+            if key.startswith(q): score = 0
+            elif q in key: score = 1
+            else: continue
+            ranked.append((score, row.sort_order, row.canonical_name, row))
+        rows = [x[-1] for x in sorted(ranked)[:6]]
+    else:
+        rows = rows[:6]
+    buttons = [[InlineKeyboardButton(text=f"📍 {row.canonical_name}", callback_data=f"reg:settlement:{row.id}")] for row in rows]
+    if not q:
+        buttons.append([InlineKeyboardButton(text="✍️ Інший населений пункт", callback_data="reg:settlement:other")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+async def _checkpoint(state: FSMContext, db: Database, settings: Settings, tg_id: int, step: str, *, mark_consent: bool = False, mark_profile: bool = False) -> None:
+    data = await state.get_data()
+    async with db.session_factory() as session:
+        await save_registration_checkpoint(
+            session, tg_id=tg_id, step=step, data=data, secret=settings.web_session_secret,
+            start_payload=str(data.get("start_payload") or ""), mark_consent=mark_consent, mark_profile=mark_profile,
+        )
+        await session.commit()
+
+
+async def _send_registration_prompt(message: Message, step: str, db: Database) -> None:
+    progress = registration_progress(step)
+    if step == "privacy_notice":
+        await message.answer(f"{progress}\n\n{privacy_notice_text()}", reply_markup=_privacy_keyboard())
+    elif step == "last_name":
+        await message.answer(f"{progress}\n\n👤 Напишіть ваше <b>прізвище</b>.\nНаприклад: <b>Прохоренко</b>.")
+    elif step == "first_name":
+        await message.answer(f"{progress}\n\n👤 Тепер напишіть <b>ім’я</b>.\nНаприклад: <b>Микола</b>.")
+    elif step == "phone":
+        await message.answer(f"{progress}\n\n📱 <b>Номер телефону</b>\nНадішліть контакт кнопкою нижче або введіть номер вручну, наприклад <code>+380671234567</code>.", reply_markup=registration_phone_keyboard())
+    elif step == "email":
+        await message.answer(f"{progress}\n\n✉️ <b>Електронна пошта</b>\nВведіть адресу, наприклад <code>name@example.com</code>.", reply_markup=ReplyKeyboardRemove())
+    elif step == "settlement":
+        async with db.session_factory() as session:
+            kb = await _settlement_keyboard(session)
+        await message.answer(f"{progress}\n\n📍 <b>Населений пункт</b>\nОберіть зі списку або почніть вводити назву — бот запропонує збіги.", reply_markup=kb)
+    elif step == "birth_date":
+        await message.answer(f"{progress}\n\n🎂 <b>Дата народження</b>\nВкажіть у форматі <b>ДД.ММ.РРРР</b>, наприклад <b>17.04.2010</b>.")
+    elif step == "gender":
+        await message.answer(f"{progress}\n\n⚧ <b>Стать</b>\nОберіть один варіант. Дані використовуються лише для агрегованої статистики.", reply_markup=_gender_keyboard())
+    elif step == "vulnerabilities":
+        await message.answer(
+            f"{progress}\n\n🧩 <b>Соціальний статус / категорії вразливості</b>\n\n"
+            "Можна обрати кілька варіантів кнопками. Дані використовуються лише для агрегованої аналітики. "
+            "Якщо не хочете повідомляти — оберіть «Не бажаю зазначати».\n\n"
+            "Позначте потрібні варіанти та натисніть <b>«Готово»</b>.",
+            reply_markup=_vulnerability_keyboard(),
+        )
+    elif step == "vulnerability_other":
+        await message.answer(f"{registration_progress('vulnerabilities')}\n\n✍️ Коротко уточніть назву категорії, яку обрали як «Інша».")
+    elif step == "media_consent":
+        await message.answer(
+            f"{progress}\n\n📷 <b>Фото- та відеозйомка</b>\nЧи погоджуєтесь на фото/відеозйомку під час заходів АМП та використання цих матеріалів у комунікаціях АМП?",
+            reply_markup=_media_consent_keyboard(),
+        )
 
 
 def _valid_person_name(value: str) -> bool:
@@ -118,7 +246,7 @@ async def _show_access(message: Message, user: User, db: Database | None = None)
         return
     await message.answer(
         f"🚀 Вітаємо в АМП XP!\nРоль: <b>{ROLE_LABELS.get(user.role, user.role)}</b>",
-        reply_markup=main_menu(user.role),
+        reply_markup=main_menu(user.role, user.staff_permissions_json),
     )
 
 
@@ -212,15 +340,30 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
             return
 
         if not user:
+            # v1.11.0: registration checkpoints survive /menu, /start and dyno restarts.
+            journey = await get_registration_journey(session, message.from_user.id)
+            resumable = bool(journey and journey.current_step in REGISTRATION_STATE_BY_STEP)
+            if resumable:
+                await state.clear()
+                if payload and not journey.start_payload:
+                    journey.start_payload = payload[:180]
+                    journey.updated_at = datetime.utcnow()
+                    await session.commit()
+                await message.answer(
+                    "👋 <b>Реєстрацію ще не завершено.</b>\n\n"
+                    f"{registration_progress(journey.current_step)}\n"
+                    "Можна продовжити з місця, де ви зупинилися, або почати анкету спочатку.",
+                    reply_markup=_resume_keyboard(),
+                )
+                return
             await state.clear()
+            journey = await restart_registration_journey(session, message.from_user.id, start_payload=payload)
+            await session.commit()
             await state.set_state(RegistrationState.privacy_notice)
             if payload:
                 await state.update_data(start_payload=payload)
-            await message.answer(
-                "👋 Вітаємо в <b>АМПасадори / АМП XP</b>!\n\n"
-                "Перед анкетою коротко пояснюємо, які дані збираються і для чого.\n\n"
-                + privacy_notice_text()
-            )
+            await message.answer("👋 Вітаємо в <b>АМПасадори / АМП XP</b>!")
+            await _send_registration_prompt(message, "privacy_notice", db)
             return
 
         await ensure_user_tokens(session, user)
@@ -392,184 +535,368 @@ async def menu(message: Message, db: Database) -> None:
         await _show_access(message, user, db)
 
 
+@router.callback_query(F.data == "reg:resume")
+async def registration_resume(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    async with db.session_factory() as session:
+        row = await get_registration_journey(session, call.from_user.id)
+        if not row or row.current_step not in REGISTRATION_STATE_BY_STEP:
+            await call.answer("Немає незавершеної анкети", show_alert=True)
+            return
+        data = decrypt_draft(settings.web_session_secret, row.draft_ciphertext)
+        if row.start_payload and not data.get("start_payload"):
+            data["start_payload"] = row.start_payload
+    await state.clear()
+    await state.set_data(data)
+    await state.set_state(REGISTRATION_STATE_BY_STEP[row.current_step])
+    await call.message.answer("▶️ Продовжуємо реєстрацію.")
+    await _send_registration_prompt(call.message, row.current_step, db)
+    await call.answer()
+
+
+@router.callback_query(F.data == "reg:restart")
+async def registration_restart(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    async with db.session_factory() as session:
+        existing = await get_registration_journey(session, call.from_user.id)
+        payload = existing.start_payload if existing else ""
+        await restart_registration_journey(session, call.from_user.id, start_payload=payload)
+        await session.commit()
+    await state.clear()
+    if payload:
+        await state.update_data(start_payload=payload)
+    await state.set_state(RegistrationState.privacy_notice)
+    await call.message.answer("🔄 Починаємо анкету спочатку.")
+    await _send_registration_prompt(call.message, "privacy_notice", db)
+    await call.answer()
+
+
+async def _accept_privacy(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
+    await state.update_data(privacy_notice_version=PRIVACY_NOTICE_VERSION, privacy_acknowledged_at=datetime.utcnow().isoformat())
+    await _checkpoint(state, db, settings, message.from_user.id, "last_name", mark_consent=True)
+    await state.set_state(RegistrationState.last_name)
+    await _send_registration_prompt(message, "last_name", db)
+
+
+@router.callback_query(F.data.startswith("reg:privacy:"))
+async def reg_privacy_callback(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    choice = call.data.rsplit(":", 1)[-1]
+    if choice == "2":
+        async with db.session_factory() as session:
+            row = await get_registration_journey(session, call.from_user.id)
+            if row:
+                row.current_step = "declined"
+                row.draft_ciphertext = ""
+                row.updated_at = datetime.utcnow()
+                await session.commit()
+        await state.clear()
+        await call.message.answer("Реєстрацію не продовжено. Ви можете повернутися пізніше командою /start.")
+        await call.answer()
+        return
+    msg = call.message.model_copy(update={"from_user": call.from_user})
+    await _accept_privacy(msg, state, db, settings)
+    try: await call.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+    await call.answer()
+
+
 @router.message(RegistrationState.privacy_notice)
-async def reg_privacy_notice(message: Message, state: FSMContext) -> None:
-    raw = (message.text or "").strip()
-    if raw == "2":
+async def reg_privacy_notice(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
+    raw = (message.text or "").strip().lower()
+    if raw in {"2", "ні", "no"}:
+        async with db.session_factory() as session:
+            row = await get_registration_journey(session, message.from_user.id)
+            if row:
+                row.current_step = "declined"; row.draft_ciphertext = ""; row.updated_at = datetime.utcnow()
+                await session.commit()
         await state.clear()
         await message.answer("Реєстрацію не продовжено. Ви можете повернутися пізніше командою /start.")
         return
-    if raw != "1":
-        await message.answer("Оберіть <b>1 — продовжити</b> або <b>2 — не продовжувати</b>.\n\n" + privacy_notice_text())
+    if raw not in {"1", "так", "yes"}:
+        await message.answer("Оберіть кнопку <b>«Продовжити»</b> або <b>«Не продовжувати»</b>.", reply_markup=_privacy_keyboard())
         return
-    await state.update_data(
-        privacy_notice_version=PRIVACY_NOTICE_VERSION,
-        privacy_acknowledged_at=datetime.utcnow().isoformat(),
-    )
-    await state.set_state(RegistrationState.last_name)
-    await message.answer(
-        "✅ Дякуємо. Реєстраційна анкета заповнюється послідовно, і <b>всі її пункти є обов’язковими</b>.\n"
-        "Прізвище та ім’я потрібно писати <b>з великої літери</b>.\n\n"
-        "👤 Напишіть ваше <b>прізвище</b>."
-    )
+    await _accept_privacy(message, state, db, settings)
 
 
 @router.message(RegistrationState.last_name)
-async def reg_last_name(message: Message, state: FSMContext) -> None:
+async def reg_last_name(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     value = (message.text or "").strip()
-    if len(value) < 2:
-        await message.answer("Вкажіть, будь ласка, прізвище.")
-        return
     if not _valid_person_name(value):
-        await message.answer("❌ Введіть <b>прізвище з великої літери</b> (наприклад: Прохоренко). Спробуйте ще раз.")
+        await message.answer("❌ Не вдалося розпізнати прізвище. Напишіть щонайменше 2 літери, з великої літери, без цифр. Наприклад: <b>Прохоренко</b>.")
         return
     await state.update_data(last_name=value)
+    await _checkpoint(state, db, settings, message.from_user.id, "first_name")
     await state.set_state(RegistrationState.first_name)
-    await message.answer("👤 Тепер напишіть <b>ім’я з великої літери</b>.")
+    await _send_registration_prompt(message, "first_name", db)
 
 
 @router.message(RegistrationState.first_name)
-async def reg_first_name(message: Message, state: FSMContext) -> None:
+async def reg_first_name(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     value = (message.text or "").strip()
-    if len(value) < 2:
-        await message.answer("Вкажіть, будь ласка, ім’я.")
-        return
     if not _valid_person_name(value):
-        await message.answer("❌ Введіть <b>ім’я з великої літери</b> (наприклад: Микола). Спробуйте ще раз.")
+        await message.answer("❌ Не вдалося розпізнати ім’я. Напишіть щонайменше 2 літери, з великої літери, без цифр. Наприклад: <b>Микола</b>.")
         return
     await state.update_data(first_name=value)
+    await _checkpoint(state, db, settings, message.from_user.id, "phone")
     await state.set_state(RegistrationState.phone)
-    await message.answer("📱 <b>Номер телефону — обов’язкове поле.</b> Надішліть контакт кнопкою нижче або введіть номер вручну, наприклад: <code>+380671234567</code>.", reply_markup=registration_phone_keyboard())
+    await _send_registration_prompt(message, "phone", db)
+
+
+async def _accept_phone(message: Message, state: FSMContext, db: Database, settings: Settings, phone: str) -> None:
+    await state.update_data(phone=phone)
+    await _checkpoint(state, db, settings, message.from_user.id, "email")
+    await state.set_state(RegistrationState.email)
+    await _send_registration_prompt(message, "email", db)
 
 
 @router.message(RegistrationState.phone, F.contact)
-async def reg_phone_contact(message: Message, state: FSMContext) -> None:
+async def reg_phone_contact(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
+    if message.contact.user_id and message.contact.user_id != message.from_user.id:
+        await message.answer("❌ Надішліть, будь ласка, <b>власний</b> контакт або введіть свій номер вручну.")
+        return
     phone = _normalize_phone(message.contact.phone_number)
     if not phone:
-        await message.answer("❌ Не вдалося прочитати номер. Введіть його вручну, наприклад: <code>+380671234567</code>.")
+        await message.answer("❌ Не вдалося прочитати номер. Введіть його вручну, наприклад <code>+380671234567</code>.")
         return
-    await state.update_data(phone=phone)
-    await state.set_state(RegistrationState.email)
-    await message.answer("✉️ <b>Електронна пошта — обов’язкове поле.</b> Вкажіть email, наприклад: <code>name@example.com</code>.", reply_markup=ReplyKeyboardRemove())
+    await _accept_phone(message, state, db, settings, phone)
 
 
 @router.message(RegistrationState.phone)
-async def reg_phone_text(message: Message, state: FSMContext) -> None:
-    raw = (message.text or "").strip()
-    phone = _normalize_phone(raw)
+async def reg_phone_text(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
+    phone = _normalize_phone((message.text or "").strip())
     if not phone:
-        await message.answer("❌ Введіть коректний <b>номер телефону</b> (10–15 цифр), наприклад: <code>+380671234567</code>.")
+        await message.answer("❌ Номер має містити 10–15 цифр. Можна використовувати +, пробіли, дужки й дефіси. Приклад: <code>+380671234567</code>.")
         return
-    await state.update_data(phone=phone)
-    await state.set_state(RegistrationState.email)
-    await message.answer("✉️ <b>Електронна пошта — обов’язкове поле.</b> Вкажіть email, наприклад: <code>name@example.com</code>.", reply_markup=ReplyKeyboardRemove())
+    await _accept_phone(message, state, db, settings, phone)
 
 
 @router.message(RegistrationState.email)
-async def reg_email(message: Message, state: FSMContext) -> None:
+async def reg_email(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     raw = (message.text or "").strip()
     if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", raw):
-        await message.answer("❌ Електронна пошта є обов’язковою. Введіть коректну адресу, наприклад: <b>name@example.com</b>.")
+        await message.answer("❌ Це не схоже на email. Перевірте, чи є <b>@</b> і домен після крапки. Наприклад: <b>name@example.com</b>.")
         return
-    email = raw.lower()
-    await state.update_data(email=email)
+    await state.update_data(email=raw.lower())
+    await _checkpoint(state, db, settings, message.from_user.id, "settlement")
     await state.set_state(RegistrationState.settlement)
-    await message.answer("📍 <b>Населений пункт — обов’язкове поле.</b> З якого ви населеного пункту?")
+    await _send_registration_prompt(message, "settlement", db)
+
+
+async def _accept_settlement(message: Message, state: FSMContext, db: Database, settings: Settings, settlement: str) -> None:
+    async with db.session_factory() as session:
+        canonical = await resolve_canonical_settlement(session, settlement)
+        await session.commit()
+    if not canonical:
+        await message.answer("❌ Не вдалося визначити населений пункт. Спробуйте ввести назву ще раз.")
+        return
+    await state.update_data(settlement=canonical)
+    await _checkpoint(state, db, settings, message.from_user.id, "birth_date")
+    await state.set_state(RegistrationState.birth_date)
+    await _send_registration_prompt(message, "birth_date", db)
+
+
+@router.callback_query(F.data.startswith("reg:settlement:"))
+async def reg_settlement_callback(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    value = call.data.rsplit(":", 1)[-1]
+    if value == "other":
+        await call.message.answer(f"{registration_progress('settlement')}\n\n✍️ Почніть вводити назву населеного пункту. Я покажу найближчі збіги.")
+        await call.answer(); return
+    try: row_id = int(value)
+    except ValueError:
+        await call.answer("Некоректний вибір", show_alert=True); return
+    async with db.session_factory() as session:
+        row = await session.get(SettlementReference, row_id)
+    if not row or not row.active:
+        await call.answer("Цього варіанта вже немає у довіднику", show_alert=True); return
+    msg = call.message.model_copy(update={"from_user": call.from_user})
+    await _accept_settlement(msg, state, db, settings, row.canonical_name)
+    try: await call.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+    await call.answer()
 
 
 @router.message(RegistrationState.settlement)
-async def reg_settlement(message: Message, state: FSMContext) -> None:
-    settlement = canonicalize_settlement_text(message.text) or ""
-    if len(settlement) < 2:
-        await message.answer("❌ Вкажіть населений пункт. Це обов’язкове поле реєстрації.")
+async def reg_settlement(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
+    raw = (message.text or "").strip()
+    if len(raw) < 2:
+        await message.answer("❌ Введіть щонайменше 2 літери назви населеного пункту.")
         return
-    await state.update_data(settlement=settlement)
-    await state.set_state(RegistrationState.birth_date)
-    await message.answer("🎂 <b>Дата народження — обов’язкове поле.</b> Вкажіть її у форматі <b>ДД.ММ.РРРР</b>.\nЦе потрібно для вікових правил участі та автоматичного привітання з днем народження.")
+    async with db.session_factory() as session:
+        rows = list((await session.scalars(select(SettlementReference).where(SettlementReference.active == True))).all())  # noqa: E712
+        key = settlement_key(raw)
+        exact = next((r for r in rows if settlement_key(r.canonical_name) == key), None)
+        kb = await _settlement_keyboard(session, raw)
+        candidates = sum(len(x) for x in kb.inline_keyboard)
+    if exact:
+        await _accept_settlement(message, state, db, settings, exact.canonical_name)
+        return
+    # Autocomplete instead of silently creating a typo as a new canonical place.
+    if candidates:
+        await message.answer("🔎 Знайшов схожі населені пункти. Оберіть потрібний. Якщо вашого немає — введіть повну назву ще раз.", reply_markup=kb)
+        return
+    # Unknown full values remain allowed, preserving legitimate locations outside the community.
+    await _accept_settlement(message, state, db, settings, canonicalize_settlement_text(raw) or raw)
 
 
 @router.message(RegistrationState.birth_date)
-async def reg_birth_date(message: Message, state: FSMContext) -> None:
+async def reg_birth_date(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     try:
         birth_date = datetime.strptime((message.text or "").strip(), "%d.%m.%Y").date()
     except ValueError:
-        await message.answer("❌ Дата народження обов’язкова. Введіть коректну дату у форматі <b>ДД.ММ.РРРР</b>, наприклад: <b>17.04.2010</b>.")
+        await message.answer("❌ Не вдалося прочитати дату. Використайте формат <b>ДД.ММ.РРРР</b>, наприклад <b>17.04.2010</b>.")
         return
-    if birth_date > datetime.now().date():
-        await message.answer("Дата народження не може бути в майбутньому.")
+    today = datetime.now().date()
+    if birth_date > today:
+        await message.answer("❌ Дата народження не може бути в майбутньому. Перевірте день, місяць і рік.")
         return
     if age_on(birth_date) > 120:
-        await message.answer("Перевірте, будь ласка, рік народження.")
+        await message.answer("❌ Рік виглядає некоректно. Перевірте дату та спробуйте ще раз.")
         return
     await state.update_data(birth_date=birth_date.isoformat())
+    await _checkpoint(state, db, settings, message.from_user.id, "gender")
     await state.set_state(RegistrationState.gender)
-    await message.answer(
-        "⚧ <b>Вкажіть стать</b> — це обов’язковий крок для внутрішньої статистики та звітності:\n\n"
-        "1 — Жіноча\n"
-        "2 — Чоловіча\n"
-        "3 — Інша / самовизначення\n"
-        "4 — Не бажаю зазначати\n\n"
-        "Надішліть номер варіанта."
-    )
+    await _send_registration_prompt(message, "gender", db)
+
+
+async def _accept_gender(message: Message, state: FSMContext, db: Database, settings: Settings, value: str) -> None:
+    await state.update_data(gender=value)
+    await _checkpoint(state, db, settings, message.from_user.id, "vulnerabilities")
+    await state.set_state(RegistrationState.vulnerabilities)
+    await _send_registration_prompt(message, "vulnerabilities", db)
+
+
+@router.callback_query(F.data.startswith("reg:gender:"))
+async def reg_gender_callback(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    value = call.data.rsplit(":", 1)[-1]
+    if value not in {"female", "male", "other", "prefer_not_say"}:
+        await call.answer("Некоректний вибір", show_alert=True); return
+    msg = call.message.model_copy(update={"from_user": call.from_user})
+    await _accept_gender(msg, state, db, settings, value)
+    try: await call.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+    await call.answer()
 
 
 @router.message(RegistrationState.gender)
-async def reg_gender(message: Message, state: FSMContext) -> None:
+async def reg_gender(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     mapping = {"1": "female", "2": "male", "3": "other", "4": "prefer_not_say"}
     value = mapping.get((message.text or "").strip())
     if not value:
-        await message.answer("Оберіть один варіант: <b>1, 2, 3 або 4</b>.")
+        await message.answer("Оберіть один із варіантів кнопками нижче.", reply_markup=_gender_keyboard())
         return
-    await state.update_data(gender=value)
-    await state.set_state(RegistrationState.vulnerabilities)
-    await message.answer(vulnerability_prompt())
+    await _accept_gender(message, state, db, settings, value)
+
+
+@router.callback_query(F.data.startswith("reg:vuln:"))
+async def reg_vulnerabilities_callback(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings) -> None:
+    action = call.data.rsplit(":", 1)[-1]
+    data = await state.get_data()
+    selected = list(data.get("vulnerability_codes") or [])
+    by_number = {str(number): code for number, code, _ in VULNERABILITY_OPTIONS}
+    if action == "private":
+        selected = []
+        await state.update_data(vulnerability_codes=selected, vulnerability_other="")
+        msg = call.message.model_copy(update={"from_user": call.from_user})
+        await _checkpoint(state, db, settings, call.from_user.id, "media_consent", mark_profile=True)
+        await state.set_state(RegistrationState.media_consent)
+        try: await call.message.edit_reply_markup(reply_markup=None)
+        except Exception: pass
+        await _send_registration_prompt(msg, "media_consent", db)
+        await call.answer("Збережено без зазначення категорії")
+        return
+    if action == "done":
+        if not selected:
+            await call.answer("Оберіть хоча б один варіант або «Не бажаю зазначати».", show_alert=True)
+            return
+        needs_other = "other" in selected
+        msg = call.message.model_copy(update={"from_user": call.from_user})
+        try: await call.message.edit_reply_markup(reply_markup=None)
+        except Exception: pass
+        if needs_other:
+            await _checkpoint(state, db, settings, call.from_user.id, "vulnerability_other")
+            await state.set_state(RegistrationState.vulnerability_other)
+            await _send_registration_prompt(msg, "vulnerability_other", db)
+        else:
+            await state.update_data(vulnerability_other="")
+            await _checkpoint(state, db, settings, call.from_user.id, "media_consent", mark_profile=True)
+            await state.set_state(RegistrationState.media_consent)
+            await _send_registration_prompt(msg, "media_consent", db)
+        await call.answer("Збережено")
+        return
+    code = by_number.get(action)
+    if not code:
+        await call.answer("Некоректний варіант", show_alert=True); return
+    # «Не відношусь…» is exclusive; any other selection removes it.
+    if code == "no_category":
+        selected = [code]
+    else:
+        selected = [item for item in selected if item != "no_category"]
+        if code in selected:
+            selected.remove(code)
+        else:
+            selected.append(code)
+    await state.update_data(vulnerability_codes=selected)
+    await _checkpoint(state, db, settings, call.from_user.id, "vulnerabilities")
+    try: await call.message.edit_reply_markup(reply_markup=_vulnerability_keyboard(selected))
+    except Exception: pass
+    await call.answer("Позначено" if code in selected else "Знято")
 
 
 @router.message(RegistrationState.vulnerabilities)
-async def reg_vulnerabilities(message: Message, state: FSMContext) -> None:
+async def reg_vulnerabilities(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     try:
         codes, needs_other = parse_vulnerability_numbers(message.text or "")
     except ValueError as exc:
-        await message.answer(f"❌ {exc}\n\n{vulnerability_prompt()}")
+        await message.answer(f"❌ Не вдалося зберегти відповідь: {exc}.\n\n{vulnerability_prompt()}")
         return
     await state.update_data(vulnerability_codes=codes)
     if needs_other:
+        await _checkpoint(state, db, settings, message.from_user.id, "vulnerability_other")
         await state.set_state(RegistrationState.vulnerability_other)
-        await message.answer("✍️ Ви обрали «Інша категорія». <b>Обов’язково</b> коротко уточніть її назву.")
+        await _send_registration_prompt(message, "vulnerability_other", db)
         return
     await state.update_data(vulnerability_other="")
+    await _checkpoint(state, db, settings, message.from_user.id, "media_consent", mark_profile=True)
     await state.set_state(RegistrationState.media_consent)
-    await message.answer(
-        "📷 <b>Згода на фото- та відеозйомку</b>\n\n"
-        "Чи погоджуєтесь ви на фото- та відеозйомку під час заходів АМП та використання цих матеріалів у комунікаціях АМП?\n\n"
-        "1 — Так\n2 — Ні"
-    )
+    await _send_registration_prompt(message, "media_consent", db)
 
 
 @router.message(RegistrationState.vulnerability_other)
-async def reg_vulnerability_other(message: Message, state: FSMContext) -> None:
+async def reg_vulnerability_other(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
     raw = (message.text or "").strip()
     if len(raw) < 2 or raw.lower() == "пропустити":
-        await message.answer("❌ Уточнення для «Інша категорія» є обов’язковим. Введіть коротку назву категорії.")
+        await message.answer("❌ Для варіанта «Інша категорія» потрібно коротке уточнення — щонайменше 2 символи.")
         return
-    other = raw[:180]
-    await state.update_data(vulnerability_other=other)
+    await state.update_data(vulnerability_other=raw[:180])
+    await _checkpoint(state, db, settings, message.from_user.id, "media_consent", mark_profile=True)
     await state.set_state(RegistrationState.media_consent)
-    await message.answer(
-        "📷 <b>Згода на фото- та відеозйомку</b>\n\n"
-        "Чи погоджуєтесь ви на фото- та відеозйомку під час заходів АМП та використання цих матеріалів у комунікаціях АМП?\n\n"
-        "1 — Так\n2 — Ні"
-    )
+    await _send_registration_prompt(message, "media_consent", db)
+
+
+async def _accept_media_consent(message: Message, state: FSMContext, db: Database, settings: Settings, bot: Bot, value: bool) -> None:
+    await state.update_data(media_consent=value)
+    await _checkpoint(state, db, settings, message.from_user.id, "media_consent")
+    await _complete_registration(message, state, db, settings, bot)
+
+
+@router.callback_query(F.data.startswith("reg:media:"))
+async def reg_media_consent_callback(call: CallbackQuery, state: FSMContext, db: Database, settings: Settings, bot: Bot) -> None:
+    value = call.data.rsplit(":", 1)[-1]
+    if value not in {"0", "1"}:
+        await call.answer("Некоректний вибір", show_alert=True); return
+    msg = call.message.model_copy(update={"from_user": call.from_user})
+    await _accept_media_consent(msg, state, db, settings, bot, value == "1")
+    try: await call.message.edit_reply_markup(reply_markup=None)
+    except Exception: pass
+    await call.answer()
 
 
 @router.message(RegistrationState.media_consent)
 async def reg_media_consent(message: Message, state: FSMContext, db: Database, settings: Settings, bot: Bot) -> None:
-    raw = (message.text or "").strip()
-    if raw not in {"1", "2"}:
-        await message.answer("Оберіть: <b>1 — Так</b> або <b>2 — Ні</b>.")
+    raw = (message.text or "").strip().lower()
+    mapping = {"1": True, "так": True, "yes": True, "2": False, "0": False, "ні": False, "no": False}
+    if raw not in mapping:
+        await message.answer("Оберіть <b>«Так»</b> або <b>«Ні»</b> кнопками нижче.", reply_markup=_media_consent_keyboard())
         return
-    await state.update_data(media_consent=(raw == "1"))
-    await _complete_registration(message, state, db, settings, bot)
+    await _accept_media_consent(message, state, db, settings, bot, mapping[raw])
 
 
 async def _complete_registration(message: Message, state: FSMContext, db: Database, settings: Settings, bot: Bot) -> None:
@@ -634,6 +961,7 @@ async def _complete_registration(message: Message, state: FSMContext, db: Databa
             ))
         await ensure_user_tokens(session, user)
         await create_referral_for_user(session, user, referral_code)
+        await mark_registration_submitted(session, message.from_user.id, user.id)
         await session.commit()
 
     await state.clear()

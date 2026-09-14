@@ -11,6 +11,7 @@ from app.profile_data import split_display_name
 from app.season_history import user_season_history
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.settlements import resolve_canonical_settlement
+from app.registration_ux import mark_registration_approved
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -459,6 +460,7 @@ async def user_activate_from_web(request: Request, user_id: int, return_to: str 
                 user.registration_review_status = "approved"
                 user.registration_reviewed_at = datetime.utcnow()
                 user.registration_reviewed_by = request.session.get("admin_name", "web")
+                await mark_registration_approved(session, user.id)
                 await session.commit()
             return RedirectResponse("/admin/registrations" if return_to == "registrations" else f"/admin/users/{user_id}", 303)
         actor = request.session.get("admin_name", "web")
@@ -471,6 +473,7 @@ async def user_activate_from_web(request: Request, user_id: int, return_to: str 
             user.registration_rejection_reason = None
             await add_active_users_to_default_team(session)
             await reward_referral_if_ready(session, user, settings)
+            await mark_registration_approved(session, user.id)
             notify_tg = user.tg_id
             await log_audit(session, "web_user_registration_approved", actor_label=actor, entity_type="user", entity_id=user.id, details=f"{previous}->active")
         else:
@@ -574,6 +577,7 @@ async def user_status_request_approve(request: Request,user_id:int,request_id:in
                 user.registration_reviewed_at = datetime.utcnow()
                 user.registration_reviewed_by = item.reviewed_by_label
                 user.registration_rejection_reason = None
+            await mark_registration_approved(session, user.id)
             await add_active_users_to_default_team(session)
             if not was_active: await reward_referral_if_ready(session,user,settings)
         await log_audit(session,"web_user_status_approve",actor_label=item.reviewed_by_label,entity_type="user",entity_id=user.id,details=f"{item.previous_status}->{item.requested_status}; requested by {item.requested_by_label}")

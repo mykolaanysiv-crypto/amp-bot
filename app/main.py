@@ -18,7 +18,7 @@ from .db import Database
 from .engagement import process_goal_rewards
 from .leagues import refresh_all_streaks
 from .handlers import admin, donations, events, feedback, participant, quests, start, surveys, v11
-from .models import User, Event, EventFeedback, EventRegistration, QuestParticipation, VolunteerTaskParticipation, ActivityApplication, SurveyResponse, Idea, SystemSetting, UserStatus, Season
+from .models import User, Event, EventFeedback, EventRegistration, Notification, QuestParticipation, VolunteerTaskParticipation, ActivityApplication, SurveyResponse, Idea, SystemSetting, UserStatus, Season
 from .keyboards import MAIN_MENU_TEXTS
 from .services import bootstrap_defaults, get_user_by_tg, process_birthdays, process_expired_bans, log_audit, revoke_referral_reward_if_inactive
 from .reliability import job_lock, process_due_telegram_deliveries, queue_telegram_delivery, queue_notification
@@ -233,6 +233,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                     now = datetime.utcnow()
                     async with db.session_factory() as session:
                         feedback_delay_minutes = await get_runtime_int(session, "events.feedback_delay_minutes")
+                        feedback_reminder_hours = await get_runtime_int(session, "events.feedback_reminder_hours")
                         marker = await session.get(SystemSetting, "event_feedback_feature_started_at")
                         if not marker:
                             session.add(SystemSetting(key="event_feedback_feature_started_at", value=now.isoformat(), updated_at=now))
@@ -277,6 +278,57 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                                     recipient_user_id=user.id,
                                     entity_type="event_feedback_rating", entity_id=fb.id,
                                     dedupe_key=f"event_feedback:prompt:{event.id}:{user.id}",
+                                )
+
+                            # Feedback 2.0: one reminder only. Dedupe guarantees that a
+                            # restart or a second scheduler process cannot send it twice.
+                            reminder_before = now - timedelta(hours=feedback_reminder_hours)
+                            reminder_rows = (await session.execute(
+                                select(EventFeedback, Event, User)
+                                .join(Event, Event.id == EventFeedback.event_id)
+                                .join(User, User.id == EventFeedback.user_id)
+                                .where(
+                                    EventFeedback.status.in_(["pending", "in_progress"]),
+                                    EventFeedback.prompted_at.is_not(None),
+                                    EventFeedback.prompted_at <= reminder_before,
+                                    User.status == UserStatus.ACTIVE.value,
+                                )
+                                .order_by(EventFeedback.prompted_at.asc())
+                            )).all()
+                            for fb, event, user in reminder_rows:
+                                initial_delivery = await session.scalar(select(Notification).where(
+                                    Notification.dedupe_key == f"event_feedback:prompt:{event.id}:{user.id}"
+                                ))
+                                # If the first prompt is still queued/retrying, let the
+                                # durable outbox finish that delivery instead of creating
+                                # a second user-facing message.
+                                if not initial_delivery or initial_delivery.status != "sent":
+                                    continue
+                                if fb.rating is None:
+                                    entity_type, question = "event_feedback_rating", "Обери оцінку від 1 до 5."
+                                elif fb.useful is None:
+                                    entity_type, question = "event_feedback_useful", "Було корисно?"
+                                elif fb.new_knowledge is None:
+                                    entity_type, question = "event_feedback_knowledge", "Дізнався/дізналася щось нове?"
+                                elif fb.felt_safe is None:
+                                    entity_type, question = "event_feedback_safe", "Почувався/почувалася безпечно?"
+                                elif fb.would_return is None:
+                                    entity_type, question = "event_feedback_return", "Хочеш прийти на події АМП ще?"
+                                else:
+                                    fb.status = "completed"
+                                    fb.completed_at = fb.completed_at or now
+                                    fb.updated_at = now
+                                    continue
+                                await queue_notification(
+                                    session, user.tg_id,
+                                    f"🔔 <b>Коротке нагадування про відгук</b>\n\n"
+                                    f"Про подію «{event.title}» залишилося кілька натискань. {question}",
+                                    source="event_feedback_reminder",
+                                    notification_type="event",
+                                    title=f"Нагадування про відгук: {event.title}",
+                                    recipient_user_id=user.id,
+                                    entity_type=entity_type, entity_id=fb.id,
+                                    dedupe_key=f"event_feedback:reminder:{fb.id}",
                                 )
                             await session.commit()
         except asyncio.CancelledError:

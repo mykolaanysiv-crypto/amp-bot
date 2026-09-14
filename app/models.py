@@ -116,6 +116,33 @@ class User(Base):
     badges: Mapped[list["UserBadge"]] = relationship(back_populates="user", foreign_keys="UserBadge.user_id")
 
 
+class RegistrationJourney(Base):
+    """Persistent registration checkpoint + privacy-preserving funnel metrics.
+
+    The questionnaire draft is encrypted by the application before it is stored
+    in ``draft_ciphertext``. Funnel timestamps contain no answers and are safe to
+    aggregate for conversion reporting.
+    """
+    __tablename__ = "registration_journeys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    current_step: Mapped[str] = mapped_column(String(48), default="privacy_notice", index=True)
+    draft_ciphertext: Mapped[str] = mapped_column(Text, default="")
+    start_payload: Mapped[str] = mapped_column(String(180), default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    profile_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    first_activity_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    restarted_count: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    user: Mapped[User | None] = relationship(foreign_keys=[user_id])
+
+
 class BanRecord(Base):
     __tablename__ = "ban_records"
 
@@ -456,6 +483,7 @@ class RequestCase(Base):
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    participant_last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 

@@ -54,7 +54,7 @@ def test_version_broadcast_has_distributed_startup_lock():
 
 
 def test_v1824_version():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.0"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.4" in base
+    assert "/static/admin.css?v=1.11.0" in base
