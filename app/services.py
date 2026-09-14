@@ -586,13 +586,13 @@ async def admin_scan_event_participant(
     """
     event = await session.get(Event, event_id)
     if not event or event.cancelled_at or event.status in {"draft", "cancelled", "completed"}:
-        return {"ok": False, "code": "event_unavailable", "message": "Check-in для цієї події недоступний."}
+        return {"ok": False, "code": "event_unavailable", "message": "Відмітка для цієї події недоступна."}
 
     access = await event_checkin_window(session, event)
     if access["state"] != "open":
         return {
             "ok": False, "code": str(access["state"]),
-            "message": "Check-in ще не відкрито." if access["state"] == "too_early" else "Вікно check-in/attendance уже закрито. Для винятку використайте ручне підтвердження з обов’язковою причиною.",
+            "message": "Відмітку ще не відкрито." if access["state"] == "too_early" else "Вікно відмітки та підтвердження участі вже закрито. Для винятку використайте ручне підтвердження з обов’язковою причиною.",
             "event": event, "window": access,
         }
 
@@ -805,8 +805,20 @@ async def evaluate_automatic_badges(session: AsyncSession, user: User) -> list[B
         exists = await session.scalar(select(UserBadge).where(UserBadge.user_id == user.id, UserBadge.badge_id == badge.id))
         if exists:
             continue
-        value = await _metric_value(session, user, badge.criteria_type)
-        if value >= badge.criteria_value:
+        if badge.criteria_type in {"donation_first", "donation_single", "donation_total_over"}:
+            # Donation badges have slightly different semantics from ordinary >= metrics:
+            # first/single use the largest qualifying donation, while cumulative badges
+            # are intentionally strict "more than" thresholds.
+            from .donations import donation_totals_for_user
+            donation_total, donation_largest, donation_count = await donation_totals_for_user(session, user.id)
+            if badge.criteria_type in {"donation_first", "donation_single"}:
+                qualifies = donation_count > 0 and donation_largest >= int(badge.criteria_value)
+            else:
+                qualifies = donation_total > int(badge.criteria_value)
+        else:
+            value = await _metric_value(session, user, badge.criteria_type)
+            qualifies = value >= badge.criteria_value
+        if qualifies:
             session.add(UserBadge(user_id=user.id, badge_id=badge.id, awarded_by=None))
             awarded.append(badge)
     if awarded:
@@ -953,12 +965,14 @@ async def bootstrap_defaults(db, settings: Settings) -> None:
     async with _bootstrap_lock:
         async with db.session_factory() as session:
             from .settlements import ensure_settlement_directory
+            from .donations import ensure_donation_badges
             await ensure_runtime_defaults(session)
             await ensure_settlement_directory(session)
             await ensure_superadmins(session, settings.superadmin_ids)
             await ensure_web_staff_accounts(session, settings)
             await ensure_default_season(session, settings)
             await seed_badges(session)
+            await ensure_donation_badges(session)
             await seed_activity_types(session)
             await seed_streak_restore_reward(session)
             await seed_default_space_rewards(session)

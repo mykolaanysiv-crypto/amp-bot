@@ -18,7 +18,7 @@ PERMISSION_GROUPS: "OrderedDict[str, tuple[tuple[str, str], ...]]" = OrderedDict
     )),
     ("Події", (
         ("events.create", "Створення"),
-        ("events.edit", "Редагування / attendance / scanner"),
+        ("events.edit", "Редагування / відвідування / сканер"),
         ("events.delete", "Видалення / скасування"),
     )),
     ("Активності", (
@@ -37,9 +37,10 @@ PERMISSION_GROUPS: "OrderedDict[str, tuple[tuple[str, str], ...]]" = OrderedDict
     ("Дані та комунікація", (
         ("analytics.view", "Аналітика"),
         ("reports.basic_export", "Базові звіти / експорт"),
-        ("reports.sensitive_export", "Sensitive export"),
+        ("reports.sensitive_export", "Захищений розширений експорт"),
         ("broadcast.send", "Розсилки"),
         ("notifications.manage", "Центр сповіщень"),
+        ("donations.manage", "Донати та фінансова прозорість"),
     )),
     ("Контроль та система", (
         ("moderation.manage", "Модерація"),
@@ -66,7 +67,7 @@ ROLE_DEFAULTS = {
         "events.create", "events.edit", "events.delete",
         "quests.manage", "volunteer.manage", "activities.manage", "opportunities.manage", "surveys.manage",
         "ideas.manage", "cases.manage", "xp.award", "gamification.manage",
-        "analytics.view", "reports.basic_export", "notifications.manage", "system.health",
+        "analytics.view", "reports.basic_export", "notifications.manage", "donations.manage", "system.health",
     }),
     UserRole.SUPERADMIN.value: ALL_PERMISSIONS,
 }
@@ -128,6 +129,8 @@ def required_web_permission(path: str, method: str) -> str | None:
         return "broadcast.send"
     if path.startswith("/admin/notifications"):
         return "notifications.manage"
+    if path.startswith("/admin/donations"):
+        return "donations.manage"
     if path.startswith("/admin/settings"):
         return "settings.manage"
     if path.startswith("/admin/audit"):
@@ -142,6 +145,9 @@ def required_web_permission(path: str, method: str) -> str | None:
         return "reports.sensitive_export"
     if path == "/admin/export":
         return "reports.basic_export"
+
+    if path.startswith("/admin/registrations"):
+        return "participants.approve"
 
     if path.startswith("/admin/users"):
         if path.endswith("/xp") and method == "POST":

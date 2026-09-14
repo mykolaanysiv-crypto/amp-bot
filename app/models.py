@@ -105,6 +105,10 @@ class User(Base):
     permanent_deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     opportunity_interests_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     staff_permissions_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registration_review_status: Mapped[str] = mapped_column(String(24), default="approved", index=True)
+    registration_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    registration_reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    registration_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     xp_transactions: Mapped[list["XPTransaction"]] = relationship(back_populates="user", foreign_keys="XPTransaction.user_id")
     registrations: Mapped[list["EventRegistration"]] = relationship(back_populates="user", foreign_keys="EventRegistration.user_id")
@@ -568,6 +572,7 @@ class Opportunity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     target_settlements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class OpportunityMatch(Base):
@@ -602,6 +607,62 @@ class OpportunityInterest(Base):
 
     opportunity: Mapped[Opportunity] = relationship()
     user: Mapped[User] = relationship()
+
+
+class DonationJarState(Base):
+    __tablename__ = "donation_jar_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    jar_account_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    send_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    balance_kop: Mapped[int] = mapped_column(BigInteger, default=0)
+    goal_kop: Mapped[int] = mapped_column(BigInteger, default=0)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DonationTransaction(Base):
+    __tablename__ = "donation_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider_transaction_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    amount_kop: Mapped[int] = mapped_column(BigInteger, default=0, index=True)
+    currency_code: Mapped[int] = mapped_column(Integer, default=980)
+    description: Mapped[str] = mapped_column(Text, default="")
+    comment: Mapped[str] = mapped_column(Text, default="")
+    counter_name: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    receipt_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    linked_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    linked_user: Mapped[User | None] = relationship(foreign_keys=[linked_user_id])
+
+
+class DonationReport(Base):
+    __tablename__ = "donation_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(220))
+    description: Mapped[str] = mapped_column(Text, default="")
+    amount_spent_kop: Mapped[int] = mapped_column(BigInteger, default=0)
+    spent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    document_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SupportPageView(Base):
+    __tablename__ = "support_page_views"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    tg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
 class Goal(Base):

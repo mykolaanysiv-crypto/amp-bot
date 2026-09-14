@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v191_version_and_cache_buster():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.3"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
     base=(ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.3" in base
+    assert "/static/admin.css?v=1.10.4" in base
 
 
 def test_advanced_analytics_metrics_exist():
@@ -38,7 +38,7 @@ def test_report_pdf_is_paginated_without_silent_truncation():
     assert "[:25]" not in reports
     assert "all_items[i:i+15]" in reports
     assert "break_long_words=False" in reports
-    assert "Advanced Analytics" in reports
+    assert "Розширена аналітика" in reports
 
 
 def test_notification_status_and_analytics_layout_polish():

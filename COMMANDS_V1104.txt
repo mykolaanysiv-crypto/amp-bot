@@ -1,0 +1,133 @@
+АМПасадори v1.10.4 — КОМАНДИ ЗАПУСКУ ТА HEROKU DEPLOY
+======================================================
+
+1. ЛОКАЛЬНИЙ ЗАПУСК НА macOS / Linux
+------------------------------------
+
+cd amp_bot_v1104
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+cp .env.example .env
+
+# Відкрийте .env і заповніть щонайменше BOT_TOKEN та інші потрібні параметри.
+# Для автоматичної синхронізації банки:
+# MONOBANK_TOKEN=ВАШ_СЕКРЕТНИЙ_ТОКЕН
+# DONATION_JAR_URL=https://send.monobank.ua/jar/5S531LWQuc
+
+python -m compileall -q app scripts tests run.py run_all.py run_web.py
+pytest -q
+python run_all.py
+
+
+2. ЯКЩО .venv ВЖЕ Є
+-------------------
+
+cd amp_bot_v1104
+source .venv/bin/activate
+pip install -r requirements.txt
+python run_all.py
+
+
+3. HEROKU — ПЕРЕД ДЕПЛОЄМ
+-------------------------
+
+heroku login
+
+# Резервна копія PostgreSQL ОБОВ'ЯЗКОВО перед оновленням:
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+# Публічна банка АМП:
+heroku config:set DONATION_JAR_URL="https://send.monobank.ua/jar/5S531LWQuc" -a amp-bot-ver-1-5-0
+
+# Для автоматичної синхронізації транзакцій вставте СВІЙ секретний токен Monobank Open API:
+heroku config:set MONOBANK_TOKEN="ВАШ_СЕКРЕТНИЙ_ТОКЕН" -a amp-bot-ver-1-5-0
+
+# Переглянути конфігурацію:
+heroku config -a amp-bot-ver-1-5-0
+
+ВАЖЛИВО: ніколи не додавайте MONOBANK_TOKEN у Git або повідомлення.
+
+
+4. HEROKU — ПІДКЛЮЧЕННЯ REMOTE
+------------------------------
+
+cd amp_bot_v1104
+
+# Якщо папка вже є Git-репозиторієм:
+heroku git:remote -a amp-bot-ver-1-5-0
+
+git remote -v
+
+
+5. ЯКЩО ЧИСТИЙ РОЗПАКОВАНИЙ ZIP НЕ МАЄ GIT-ІСТОРІЇ
+-------------------------------------------------
+
+cd amp_bot_v1104
+
+git init
+git branch -M main
+git add .
+git commit -m "Deploy AMP v1.10.4"
+heroku git:remote -a amp-bot-ver-1-5-0
+
+
+6. ДЕПЛОЙ v1.10.4 НА HEROKU
+---------------------------
+
+# Для чистого релізного пакета історія Heroku може відрізнятися.
+# Після резервної копії БД виконайте:
+
+git push heroku HEAD:main --force
+
+# --force тут замінює Git-історію КОДУ на Heroku.
+# Він сам по собі не очищає PostgreSQL і не повинен скидати дані бази.
+
+
+7. ПЕРЕВІРКА ПІСЛЯ ДЕПЛОЮ
+-------------------------
+
+heroku ps -a amp-bot-ver-1-5-0
+heroku releases -a amp-bot-ver-1-5-0
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+# Відкрийте /health у браузері. Має бути version 1.10.4.
+
+
+8. ЯКЩО ПОТРІБНО ПЕРЕЗАПУСТИТИ HEROKU
+------------------------------------
+
+heroku restart -a amp-bot-ver-1-5-0
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+
+9. ПЕРЕВІРКА НОВИХ ФУНКЦІЙ v1.10.4
+----------------------------------
+
+[ ] 📝 Реєстрації — окремий екран від 👥 Учасники
+[ ] Схвалення профілю активує його, надсилає Telegram-повідомлення і пише аудит
+[ ] 💙 Підтримати відкриває банку https://send.monobank.ua/jar/5S531LWQuc
+[ ] 💙 Донати у web показують банку, транзакції, аналітику і звітність
+[ ] MONOBANK_TOKEN увімкнув автоматичну синхронізацію
+[ ] 📄 Звітність у Telegram показує опубліковані документи
+[ ] Донат можна зв'язати з профілем АМП
+[ ] Донатні бейджі нараховуються за системними порогами
+[ ] 🌍 Можливості підтримують фото
+[ ] Суперадмін бачить точні агреговані значення; персональні списки не формуються
+[ ] Темна тема: блок видалення контрастний
+[ ] Мобільні картки не обрізаються справа
+[ ] У правому верхньому куті лише одна кнопка теми
+[ ] Блок прав доступу після збереження закривається
+
+
+10. ПРИМІТКА ПРО MONOBANK
+-------------------------
+
+Перше автоматичне завантаження виписки охоплює останні 31 день через обмеження API.
+Після цього нові транзакції накопичуються локально в АМПасадорах.
+Ім'я донатера відображається лише тоді, коли Monobank реально повертає його у виписці.

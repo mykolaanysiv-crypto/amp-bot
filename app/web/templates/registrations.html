@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}Реєстрації • АМПасадори{% endblock %}{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Реєстрації</b></nav>
+<div class="page-head"><div><span class="eyebrow">ВХІДНА ЧЕРГА</span><h1>📝 Реєстрації</h1><p>Перевірка та підтвердження нових учасників АМП. Після схвалення людина автоматично переходить до бази «Учасники».</p></div></div>
+<div class="kpis registration-kpis"><div class="kpi"><span>Очікують</span><b>{{pending_count}}</b><small>нових заявок</small></div><div class="kpi"><span>Схвалено сьогодні</span><b>{{approved_today}}</b><small>активовано профілів</small></div><div class="kpi"><span>Відхилено</span><b>{{rejected_count}}</b><small>заявок у журналі</small></div></div>
+
+<section class="card">
+  <div class="section-title"><div><h2>Очікують перевірки</h2><p class="muted">Схвалення активує АМП-код, відкриває функції учасника, надсилає повідомлення в Telegram і записує дію в аудит.</p></div><span class="count-badge">{{pending_count}}</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Дата</th><th>ПІБ</th><th>Вік</th><th>Населений пункт</th><th>Telegram</th><th>Телефон</th><th>Статус</th><th>Дії</th></tr></thead><tbody>
+  {% for item in rows %}{% set u=item.user %}<tr>
+    <td>{{u.created_at.strftime('%d.%m.%Y %H:%M')}}</td>
+    <td><b>{{u.full_name}}</b><br><code>АМП-{{'%04d'|format(u.id)}}</code></td>
+    <td>{{item.age if item.age is not none else '—'}}</td>
+    <td>{{u.settlement or '—'}}</td>
+    <td>{% if u.username %}@{{u.username}}{% elif is_superadmin %}<code>{{u.tg_id}}</code>{% else %}<span class="muted">Telegram підключено</span>{% endif %}</td>
+    <td>{{u.phone if is_superadmin else mask_phone(u.phone)}}</td>
+    <td><span class="status-pill warning">Очікує</span></td>
+    <td><div class="registration-actions"><a class="soft-button compact-action" href="/admin/users/{{u.id}}">👁 Переглянути</a><form method="post" action="/admin/users/{{u.id}}/activate"><input type="hidden" name="_csrf" value="{{csrf_token}}"><input type="hidden" name="return_to" value="registrations"><button class="primary compact-action" type="submit">✅ Схвалити</button></form><details class="registration-reject"><summary class="danger-btn compact-action">❌ Відхилити</summary><form method="post" action="/admin/registrations/{{u.id}}/reject"><input type="hidden" name="_csrf" value="{{csrf_token}}"><label><span>Причина</span><textarea name="reason" minlength="5" maxlength="700" required placeholder="Коротко поясніть причину"></textarea></label><button class="danger-btn" type="submit">Підтвердити відхилення</button></form></details></div></td>
+  </tr>{% else %}<tr><td colspan="8" class="muted">Нових заявок немає 🎉</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+{% if rejected_recent %}<section class="card"><details><summary class="soft-button">🗂 Останні відхилені заявки · {{rejected_count}}</summary><div class="table-wrap compact-table"><table><thead><tr><th>Дата</th><th>ПІБ</th><th>АМП-код</th><th>Причина</th><th>Дія</th></tr></thead><tbody>{% for u in rejected_recent %}<tr><td>{{u.registration_reviewed_at.strftime('%d.%m.%Y %H:%M') if u.registration_reviewed_at else '—'}}</td><td>{{u.full_name}}</td><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td>{{u.registration_rejection_reason or '—'}}</td><td><a class="soft-button compact-action" href="/admin/users/{{u.id}}">Переглянути</a></td></tr>{% endfor %}</tbody></table></div></details></section>{% endif %}
+{% endblock %}

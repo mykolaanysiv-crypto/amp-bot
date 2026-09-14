@@ -68,7 +68,7 @@ def _age_group(age: int | None) -> str:
     return "36+"
 
 
-async def build_period_report(session: AsyncSession, start: datetime, end: datetime, label: str) -> dict[str, Any]:
+async def build_period_report(session: AsyncSession, start: datetime, end: datetime, label: str, *, reveal_sensitive_counts: bool = False) -> dict[str, Any]:
     generated_at = event_local_now()
     privacy_threshold = await get_runtime_int(session, "privacy.suppression_threshold")
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
@@ -130,11 +130,13 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
         else:
             for code in codes:
                 vuln_raw["Інша категорія" if code=="other" else CODE_TO_LABEL.get(code,code)]+=1
-    # Privacy threshold for donor/council reports as well as analytics: exact
-    # values for sensitive groups of 1–4 people are never exported.  Charts
-    # receive 0 (rather than the hidden count), while tables display “<5”.
-    vuln=Counter({label:(0 if 0 < int(count) < privacy_threshold else int(count)) for label,count in vuln_raw.items()})
-    vuln_display={label:(f"<{privacy_threshold}" if 0 < int(count) < privacy_threshold else str(int(count))) for label,count in vuln_raw.items()}
+    # Row-level sensitive data is never exported here. For ordinary staff, small
+    # aggregate groups are suppressed; a superadmin may explicitly request exact
+    # aggregate counts while still receiving no participant names/contacts.
+    def _suppressed(count: int) -> bool:
+        return (not reveal_sensitive_counts) and 0 < int(count) < privacy_threshold
+    vuln=Counter({label:(0 if _suppressed(count) else int(count)) for label,count in vuln_raw.items()})
+    vuln_display={label:(f"<{privacy_threshold}" if _suppressed(count) else str(int(count))) for label,count in vuln_raw.items()}
 
     event_rows=[]
     for e in sorted(report_events,key=lambda x:x.starts_at):
@@ -345,7 +347,11 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     period_summary={k:v for k,v in summary.items() if k not in snapshot_keys}
     snapshot_summary={k:summary[k] for k in snapshot_keys}
     snapshot_summary["settlement_directory_profiles"] = sum(1 for u in users if canonicalize_settlement_text(u.settlement))
-    return {"label":label,"start":start,"end":end,"generated_at":generated_at,"as_of":generated_at,"summary":summary,"period_summary":period_summary,"snapshot_summary":snapshot_summary,"outcomes":outcomes,"events":event_rows,"monthly":monthly,"age":age,"gender":gender,"settlement":settlement,"vulnerability":vuln,"vulnerability_display":vuln_display,"badge_weekly":badge_weekly,"league_distribution":league_distribution,"streak_snapshot":streak_snapshot,"cohort_funnel":cohort_funnel,"retention":retention,"engagement":engagement,"heatmap":heatmap,"heatmap_days":["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],"privacy_note":f"Категорії вразливості подаються лише агреговано. Значення 1–{privacy_threshold - 1} приховуються як <{privacy_threshold}; ПІБ, контакти й списки конкретних осіб не формуються."}
+    return {"label":label,"start":start,"end":end,"generated_at":generated_at,"as_of":generated_at,"summary":summary,"period_summary":period_summary,"snapshot_summary":snapshot_summary,"outcomes":outcomes,"events":event_rows,"monthly":monthly,"age":age,"gender":gender,"settlement":settlement,"vulnerability":vuln,"vulnerability_display":vuln_display,"badge_weekly":badge_weekly,"league_distribution":league_distribution,"streak_snapshot":streak_snapshot,"cohort_funnel":cohort_funnel,"retention":retention,"engagement":engagement,"heatmap":heatmap,"heatmap_days":["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],"privacy_note":(
+        "Категорії вразливості подаються лише агреговано. Суперадміністратор бачить точні агреговані значення; ПІБ, контакти й списки конкретних осіб не формуються."
+        if reveal_sensitive_counts else
+        f"Категорії вразливості подаються лише агреговано. Значення 1–{privacy_threshold - 1} приховуються як <{privacy_threshold}; ПІБ, контакти й списки конкретних осіб не формуються."
+    )}
 
 
 def _style_excel(ws) -> None:
@@ -396,7 +402,7 @@ def report_excel(data: dict[str, Any]) -> bytes:
     wb=Workbook(); ws=wb.active; ws.title="Зведення"
     ws.append(["АМПасадори — автоматичний звіт",""])
     ws.append(["Період",data["label"]]); ws.append(["Сформовано",data["generated_at"].strftime("%d.%m.%Y %H:%M")]); ws.append(["Примітка",data["privacy_note"]]); ws.append([])
-    labels={"events":"Завершені події","events_planned":"Усього заплановано подій","events_upcoming":"Майбутні події","events_in_progress":"Події у поточному вікні","unique_participants":"Унікальні залучені учасники","visits":"Підтверджені відвідування","avg_attendance":"Середня відвідуваність","volunteer_hours":"Волонтерські години","tasks_completed":"Виконані волонтерські задачі","quests_completed":"Підтверджені квести","activities_completed":"Підтверджені активності","ideas_submitted":"Подані ідеї","ideas_implemented":"Реалізовані ідеї","requests":"Звернення","requests_resolved":"Вирішені звернення","new_participants":"Нові учасники","xp_awarded":"Нараховано XP","opportunity_interests":"Позначки «Мені цікаво»","surveys_published":"Опубліковані опитування","survey_responses":"Проходження опитувань","badges_awarded":"Отримані бейджі","streak_freeze_days":"Днів заморозки серій","active_profiles":"Активні профілі","inactive_profiles":"Неактивні профілі","deleted_profiles":"Видалені профілі","deleted_permanent_profiles":"Видалені без відновлення","restoration_requests_pending":"Запити на відновлення","probation_profiles":"На 14-денному випробувальному строку","restored_profiles":"Відновлені профілі","restoration_rejected":"Відхилені запити на відновлення","participation_actions":"Дій участі","avg_xp_per_engaged":"Середній XP на залученого","future_attendance_anomalies":"Некоректні attendance поза завершеними подіями","settlement_directory_profiles":"Профілі з canonical населеним пунктом","feedback_responses":"Feedback — відповідей","feedback_avg_rating":"Feedback — середня оцінка","feedback_high_rating_pct":"Висока оцінка 4–5, %","feedback_useful_pct":"Було корисно, %","feedback_new_knowledge_pct":"Нові знання, %","feedback_safe_pct":"Почувалися безпечно, %","feedback_return_pct":"Хочуть прийти ще, %","cohort_first_visit":"Cohort — прийшли 1 раз","cohort_returned":"Cohort — повернулися","cohort_regular":"Cohort — регулярні","cohort_ambassadors":"Cohort — АМПасадори","retention_30_pct":"Retention 30 днів, %","retention_90_pct":"Retention 90 днів, %","engagement_average":"Середній engagement score","engagement_high":"Engagement 75–100"}
+    labels={"events":"Завершені події","events_planned":"Усього заплановано подій","events_upcoming":"Майбутні події","events_in_progress":"Події у поточному вікні","unique_participants":"Унікальні залучені учасники","visits":"Підтверджені відвідування","avg_attendance":"Середня відвідуваність","volunteer_hours":"Волонтерські години","tasks_completed":"Виконані волонтерські задачі","quests_completed":"Підтверджені квести","activities_completed":"Підтверджені активності","ideas_submitted":"Подані ідеї","ideas_implemented":"Реалізовані ідеї","requests":"Звернення","requests_resolved":"Вирішені звернення","new_participants":"Нові учасники","xp_awarded":"Нараховано XP","opportunity_interests":"Позначки «Мені цікаво»","surveys_published":"Опубліковані опитування","survey_responses":"Проходження опитувань","badges_awarded":"Отримані бейджі","streak_freeze_days":"Днів заморозки серій","active_profiles":"Активні профілі","inactive_profiles":"Неактивні профілі","deleted_profiles":"Видалені профілі","deleted_permanent_profiles":"Видалені без відновлення","restoration_requests_pending":"Запити на відновлення","probation_profiles":"На 14-денному випробувальному строку","restored_profiles":"Відновлені профілі","restoration_rejected":"Відхилені запити на відновлення","participation_actions":"Дій участі","avg_xp_per_engaged":"Середній XP на залученого","future_attendance_anomalies":"Некоректні підтвердження участі поза завершеними подіями","settlement_directory_profiles":"Профілі з канонічним населеним пунктом","feedback_responses":"Зворотний зв’язок — відповідей","feedback_avg_rating":"Зворотний зв’язок — середня оцінка","feedback_high_rating_pct":"Висока оцінка 4–5, %","feedback_useful_pct":"Було корисно, %","feedback_new_knowledge_pct":"Нові знання, %","feedback_safe_pct":"Почувалися безпечно, %","feedback_return_pct":"Хочуть прийти ще, %","cohort_first_visit":"Когорта — прийшли 1 раз","cohort_returned":"Когорта — повернулися","cohort_regular":"Когорта — регулярні","cohort_ambassadors":"Когорта — АМПасадори","retention_30_pct":"Повернення за 30 днів, %","retention_90_pct":"Повернення за 90 днів, %","engagement_average":"Середній індекс залученості","engagement_high":"Залученість 75–100"}
     ws.append(["ЗА ПЕРІОД", ""]); ws.append(["Показник","Значення"])
     for k,v in data.get("period_summary", data["summary"]).items(): ws.append([labels.get(k,k),v])
     ws.append([]); ws.append(["СТАНОМ НА ДАТУ ФОРМУВАННЯ", data["generated_at"].strftime("%d.%m.%Y %H:%M")]); ws.append(["Показник","Значення"])
@@ -424,10 +430,10 @@ def report_excel(data: dict[str, Any]) -> bytes:
             chart=BarChart(); chart.title=title; chart.add_data(Reference(sh,min_col=2,min_row=1,max_row=sh.max_row),titles_from_data=True); chart.set_categories(Reference(sh,min_col=1,min_row=2,max_row=sh.max_row)); chart.height=8; chart.width=15; sh.add_chart(chart,"D2")
         _style_excel(sh)
     iw=wb.create_sheet("Вплив")
-    iw.append(["АМПасадори — outcomes / feedback", "Значення"])
+    iw.append(["АМПасадори — результати / зворотний зв’язок", "Значення"])
     iw.append(["Показник", "Значення"])
     impact_rows=[
-        ("Кількість завершених feedback-анкет", data["outcomes"]["responses"]),
+        ("Кількість завершених анкет зворотного зв’язку", data["outcomes"]["responses"]),
         ("Середня оцінка (1–5)", data["outcomes"]["avg_rating"]),
         ("Високо оцінили активності (4–5), %", data["outcomes"]["high_rating_pct"]),
         ("Було корисно, %", data["outcomes"]["useful_pct"]),
@@ -438,21 +444,21 @@ def report_excel(data: dict[str, Any]) -> bytes:
     for title,value in impact_rows: iw.append([title,value])
     iw.column_dimensions["A"].width=48; iw.column_dimensions["B"].width=20; _style_excel(iw)
 
-    aw=wb.create_sheet("Advanced Analytics")
-    aw.append(["АМПасадори — Advanced Analytics", "Значення"])
+    aw=wb.create_sheet("Розширена аналітика")
+    aw.append(["АМПасадори — Розширена аналітика", "Значення"])
     aw.append(["Показник", "Значення"])
     for title,value in [
-        ("Cohort — зареєструвалися",data["cohort_funnel"]["registered"]),
-        ("Cohort — прийшли 1 раз",data["cohort_funnel"]["first_visit"]),
-        ("Cohort — повернулися",data["cohort_funnel"]["returned"]),
-        ("Cohort — стали регулярними",data["cohort_funnel"]["regular"]),
-        ("Cohort — стали АМПасадорами",data["cohort_funnel"]["ambassadors"]),
-        ("Retention 30 днів, %",data["retention"]["days30_pct"]),
-        ("Retention 90 днів, %",data["retention"]["days90_pct"]),
-        ("Середній engagement score",data["engagement"]["average"]),
-        ("Engagement 75–100",data["engagement"]["high"]),
+        ("Когорта — зареєструвалися",data["cohort_funnel"]["registered"]),
+        ("Когорта — прийшли 1 раз",data["cohort_funnel"]["first_visit"]),
+        ("Когорта — повернулися",data["cohort_funnel"]["returned"]),
+        ("Когорта — стали регулярними",data["cohort_funnel"]["regular"]),
+        ("Когорта — стали АМПасадорами",data["cohort_funnel"]["ambassadors"]),
+        ("Повернення за 30 днів, %",data["retention"]["days30_pct"]),
+        ("Повернення за 90 днів, %",data["retention"]["days90_pct"]),
+        ("Середній індекс залученості",data["engagement"]["average"]),
+        ("Залученість 75–100",data["engagement"]["high"]),
     ]: aw.append([title,value])
-    aw.append([]); aw.append(["Heatmap: день / година"]+[f"{h:02d}" for h in range(24)])
+    aw.append([]); aw.append(["Теплова карта: день / година"]+[f"{h:02d}" for h in range(24)])
     for d,day in enumerate(data["heatmap_days"]): aw.append([day]+data["heatmap"][d])
     aw.column_dimensions["A"].width=38
     for c in range(2,26): aw.column_dimensions[get_column_letter(c)].width=6
@@ -538,7 +544,7 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         period_labels=[("Завершені події","events"),("Усього заплановано","events_planned"),("Майбутні події","events_upcoming"),("Унікальні залучені","unique_participants"),("Підтверджені відвідування","visits"),("Середня відвідуваність","avg_attendance"),("Волонтерські години","volunteer_hours"),("Квести","quests_completed"),("Активності","activities_completed"),("Реалізовані ідеї","ideas_implemented"),("Звернення","requests"),("Нові учасники","new_participants"),("Нараховано XP","xp_awarded"),("Опитування","surveys_published"),("Відповіді на опитування","survey_responses"),("Отримані бейджі","badges_awarded"),("Дій участі","participation_actions"),("Середній XP/залученого","avg_xp_per_engaged"),("⚠ Attendance anomalies","future_attendance_anomalies")]
         cards=[(title,data["period_summary"].get(key,0)) for title,key in period_labels]
         for idx in range(0,len(cards),12):
-            kpi_page(pdf,cards[idx:idx+12],title="Показники за період",subtitle="Лише фактично завершені події враховуються у attendance KPI" if idx==0 else "Продовження показників за період",first=(idx==0))
+            kpi_page(pdf,cards[idx:idx+12],title="Показники за період",subtitle="Лише фактично завершені події враховуються у показниках відвідуваності" if idx==0 else "Продовження показників за період",first=(idx==0))
 
         snapshot_labels=[("Активні профілі","active_profiles"),("Неактивні профілі","inactive_profiles"),("Видалені профілі","deleted_profiles"),("Видалені без відновлення","deleted_permanent_profiles"),("Запити на відновлення","restoration_requests_pending"),("На випробувальному строку","probation_profiles"),("Відновлені профілі","restored_profiles"),("Відхилені відновлення","restoration_rejected"),("Профілі з населеним пунктом","settlement_directory_profiles")]
         snapshot_cards=[(title,data["snapshot_summary"].get(key,0)) for title,key in snapshot_labels]
@@ -549,17 +555,17 @@ def report_pdf(data: dict[str, Any]) -> bytes:
             ("Повернулися",data["cohort_funnel"]["returned"]),
             ("Стали регулярними",data["cohort_funnel"]["regular"]),
             ("Стали АМПасадорами",data["cohort_funnel"]["ambassadors"]),
-            ("Retention 30 днів",f"{data['retention']['days30_pct']:g}%"),
-            ("Retention 90 днів",f"{data['retention']['days90_pct']:g}%"),
-            ("Engagement score",f"{data['engagement']['average']:g}/100"),
-            ("Engagement 75–100",data["engagement"]["high"]),
+            ("Повернення за 30 днів",f"{data['retention']['days30_pct']:g}%"),
+            ("Повернення за 90 днів",f"{data['retention']['days90_pct']:g}%"),
+            ("Індекс залученості",f"{data['engagement']['average']:g}/100"),
+            ("Залученість 75–100",data["engagement"]["high"]),
         ]
-        kpi_page(pdf,advanced,title="Advanced Analytics",subtitle="Cohort / retention та внутрішній engagement score")
+        kpi_page(pdf,advanced,title="Розширена аналітика",subtitle="Когортний аналіз, повернення та внутрішній індекс залученості")
 
         # Outcomes page.
         fig=plt.figure(figsize=(8.27,11.69)); fig.patch.set_facecolor("white")
         fig.text(.07,.93,"Вплив",fontsize=24,weight="bold",color=brand)
-        fig.text(.07,.885,"Feedback учасників після подій",fontsize=12,color=muted)
+        fig.text(.07,.885,"Зворотний зв’язок учасників після подій",fontsize=12,color=muted)
         o=data.get("outcomes",{})
         impact=[
             ("Високо оцінили активності",f"{o.get('high_rating_pct',0):g}%"),

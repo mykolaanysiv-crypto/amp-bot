@@ -6,9 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v190_version_and_schema():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert len(Base.metadata.tables) == 48
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert len(Base.metadata.tables) == 52
     ncols = {c.name for c in Notification.__table__.columns}
     assert {
         "recipient_user_id", "recipient_tg_id", "type", "title", "body",
@@ -31,7 +31,7 @@ def test_notification_center_web_and_retry():
     for label in ["Системні", "Події", "Розсилки", "Кейси", "Streak", "Опитування"]:
         assert label in route
     assert "🔔 Сповіщення" in base
-    assert "/static/admin.css?v=1.10.3" in base
+    assert "/static/admin.css?v=1.10.4" in base
 
 
 def test_all_proactive_telegram_delivery_uses_canonical_center():
@@ -85,7 +85,7 @@ def test_feedback_analytics_and_donor_reporting():
     analytics = (ROOT / "app/analytics.py").read_text(encoding="utf-8")
     reports = (ROOT / "app/reports.py").read_text(encoding="utf-8")
     assert "feedback_stats" in events
-    assert "Feedback та вплив" in event_tpl
+    assert "Зворотний зв’язок та вплив" in event_tpl
     assert "Середня оцінка" in event_tpl
     assert "event_outcomes" in analytics
     assert "feedback_new_knowledge_pct" in analytics

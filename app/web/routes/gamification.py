@@ -346,17 +346,24 @@ async def badge_update(
     async with db.session_factory() as session:
         b=await session.get(Badge,badge_id)
         if b:
-            b.name=name.strip(); b.icon=icon or "🏅"; b.description=description.strip(); b.criteria_type=criteria_type or None; b.criteria_value=opt_int(criteria_value); b.automatic=bool(automatic); b.active=bool(active); b.badge_type=badge_type
-            if badge_type == "general" and b.image_path:
-                await delete_image(b.image_path); b.image_path=None
-            elif remove_image and b.image_path:
-                await delete_image(b.image_path); b.image_path=None
-            if badge_type == "ambassador":
-                img=await save_badge_png(badge_png)
-                if img:
-                    if b.image_path: await delete_image(b.image_path)
-                    b.image_path=img
-            await log_audit(session,"web_badge_update",actor_label=request.session.get("admin_name","web"),entity_type="badge",entity_id=b.id,details=f"{name}; type={badge_type}"); await session.commit()
+            donation_criteria = {"donation_first", "donation_single", "donation_total_over"}
+            if b.criteria_type in donation_criteria:
+                # Built-in donation badges are system rules. Keep their criterion,
+                # threshold, automatic flag and type protected from crafted form posts.
+                b.active = True
+            else:
+                b.name=name.strip(); b.icon=icon or "🏅"; b.description=description.strip(); b.criteria_type=criteria_type or None; b.criteria_value=opt_int(criteria_value); b.automatic=bool(automatic); b.active=bool(active); b.badge_type=badge_type
+            if b.criteria_type not in donation_criteria:
+                if badge_type == "general" and b.image_path:
+                    await delete_image(b.image_path); b.image_path=None
+                elif remove_image and b.image_path:
+                    await delete_image(b.image_path); b.image_path=None
+                if badge_type == "ambassador":
+                    img=await save_badge_png(badge_png)
+                    if img:
+                        if b.image_path: await delete_image(b.image_path)
+                        b.image_path=img
+            await log_audit(session,"web_badge_update",actor_label=request.session.get("admin_name","web"),entity_type="badge",entity_id=b.id,details=f"{b.name}; type={b.badge_type}"); await session.commit()
     return RedirectResponse("/admin/badges",303)
 
 

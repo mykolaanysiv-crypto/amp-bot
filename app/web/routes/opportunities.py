@@ -42,16 +42,18 @@ async def opportunity_create(
     format: str = Form("Онлайн/офлайн"), age_min: str = Form(""), age_max: str = Form(""),
     deadline: str = Form(""), url: str = Form(""), description: str = Form(""),
     target_settlements: str = Form(""), active: str | None = Form(None),
+    photo: UploadFile | None = File(None),
 ):
     if r := guard(request): return r
     def oi(v): return int(v) if v.strip().isdigit() else None
     dl = datetime.fromisoformat(deadline) if deadline else None
+    image_path = await save_image(photo, "opportunities") if photo and photo.filename else None
     async with db.session_factory() as session:
         item = Opportunity(
             title=title.strip(), kind=kind.strip() or "можливість", direction=direction.strip() or "Інше",
             format=format.strip() or "Онлайн/офлайн", age_min=oi(age_min), age_max=oi(age_max),
             deadline=dl, url=url.strip() or None, description=description.strip(), active=bool(active),
-            target_settlements=target_settlements.strip() or None, updated_at=datetime.utcnow(),
+            target_settlements=target_settlements.strip() or None, image_path=image_path, updated_at=datetime.utcnow(),
         )
         session.add(item); await session.flush()
         await log_audit(session, "web_opportunity_create", actor_label=request.session.get("admin_name", "web"), entity_type="opportunity", entity_id=item.id, details=item.title)
@@ -79,6 +81,16 @@ async def opportunity_update(request: Request, opportunity_id: int):
             raw = str(form.get(key) or "").strip(); setattr(item, key, int(raw) if raw.isdigit() else None)
         raw = str(form.get("deadline") or "").strip()
         item.deadline = datetime.fromisoformat(raw) if raw else None
+        photo = form.get("photo")
+        if form.get("remove_image") and item.image_path:
+            await delete_image(item.image_path)
+            item.image_path = None
+        if photo and getattr(photo, "filename", ""):
+            new_image = await save_image(photo, "opportunities")
+            if new_image:
+                if item.image_path:
+                    await delete_image(item.image_path)
+                item.image_path = new_image
         item.active = bool(form.get("active")); item.updated_at = datetime.utcnow()
         await log_audit(session, "web_opportunity_update", actor_label=request.session.get("admin_name", "web"), entity_type="opportunity", entity_id=item.id, details=item.title)
         # Rebuild pending matches after every eligibility-related edit.
@@ -95,8 +107,11 @@ async def opportunity_delete(request: Request, opportunity_id: int):
     async with db.session_factory() as session:
         item = await session.get(Opportunity, opportunity_id)
         if item:
+            image_path = item.image_path
             await session.execute(delete(OpportunityInterest).where(OpportunityInterest.opportunity_id == item.id))
             await session.execute(delete(OpportunityMatch).where(OpportunityMatch.opportunity_id == item.id))
             await log_audit(session, "web_opportunity_delete", actor_label=request.session.get("admin_name", "web"), entity_type="opportunity", entity_id=item.id, details=item.title)
             await session.delete(item); await session.commit()
+            if image_path:
+                await delete_image(image_path)
     return RedirectResponse("/admin/opportunities", 303)

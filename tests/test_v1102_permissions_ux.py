@@ -12,9 +12,9 @@ def text(rel: str) -> str:
 
 
 def test_version_and_schema_stay_additive():
-    assert text("VERSION.txt").strip() == "1.10.3"
-    assert text("VERSION_CHECK.txt").strip() == "1.10.3"
-    assert len(Base.metadata.tables) == 48
+    assert text("VERSION.txt").strip() == "1.10.4"
+    assert text("VERSION_CHECK.txt").strip() == "1.10.4"
+    assert len(Base.metadata.tables) == 52
     assert "staff_permissions_json" in Base.metadata.tables["users"].c
     assert "permissions_json" in Base.metadata.tables["web_staff_accounts"].c
     db = text("app/db.py")
@@ -78,8 +78,8 @@ def test_telegram_admin_menu_is_permission_driven():
 def test_main_menu_surfaces_invite_and_requests_and_uses_first_name():
     kb = text("app/keyboards.py")
     participant = text("app/handlers/participant.py")
-    assert '[KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="🆘 Звернення")]' in kb
-    assert '[KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="👤 Мій профіль")]' in kb
+    assert '[KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="💙 Підтримати")]' in kb
+    assert '[KeyboardButton(text="🆘 Звернення"), KeyboardButton(text="👤 Мій профіль")]' in kb
     # They should no longer be hidden inside the profile/more second-level hubs.
     profile_block = kb[kb.index("def profile_hub_keyboard"):kb.index("def more_hub_keyboard")]
     more_block = kb[kb.index("def more_hub_keyboard"):kb.index("def registration_phone_keyboard")]

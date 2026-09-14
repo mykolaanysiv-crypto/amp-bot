@@ -30,7 +30,7 @@ def test_telegram_qr_scanner_flow_is_wired():
     start = (ROOT / "app/handlers/start.py").read_text(encoding="utf-8")
     states = (ROOT / "app/states.py").read_text(encoding="utf-8")
     services = (ROOT / "app/services.py").read_text(encoding="utf-8")
-    assert '("📷 QR Scanner", "admin:event_scanner")' in keyboard
+    assert '("📷 QR-сканер", "admin:event_scanner")' in keyboard
     assert "AdminEventScannerState" in states
     assert 'F.data == "admin:event_scanner"' in admin
     assert 'F.data.startswith("admin:event_scanner_select:")' in admin
@@ -45,14 +45,14 @@ def test_web_scanner_has_cross_browser_telegram_path_and_no_duplicate_title_scri
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
     assert '@router.get("/admin/events/{event_id}/scanner/telegram")' in route
     assert "adminscan_" in route
-    assert "📲 Відкрити QR Scanner у Telegram" in template
+    assert "📲 Відкрити QR-сканер у Telegram" in template
     assert "🌐 Сканувати камерою браузера" in template
     assert template.startswith('{% extends "base.html" %}\n{% block title %}{{event.title}} • Подія{% endblock %}')
     assert template.count("const startBtn = document.getElementById('event-scanner-start');") == 1
 
 
 def test_v1823_version():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.3"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.3" in base
+    assert "/static/admin.css?v=1.10.4" in base

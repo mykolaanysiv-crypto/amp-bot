@@ -312,7 +312,7 @@ async def profile(message: Message, db: Database) -> None:
         b = profile_hub_keyboard()
         await message.answer(
             f"👤 <b>{user.full_name}</b>\n"
-            f"ID АМП: <code>АМП-{user.id:04d}</code>\n\n"
+            f"АМП-код: <code>АМП-{user.id:04d}</code>\n\n"
             f"{progress_text(xp)}\n"
             f"📈 XP сезону{f' «{season.name}»' if season else ''}: <b>{sxp}</b>\n"
             f"🏆 Ліга: <b>{league.icon} {league.title}</b>\n"
@@ -929,7 +929,7 @@ async def opportunities(message: Message, db: Database) -> None:
         for idx, o in enumerate(rows[:20], start=1):
             deadline = o.deadline.strftime("%d.%m.%Y") if o.deadline else "без дедлайну"
             score = matched_ids.get(o.id)
-            prefix = f"✨ {score}% match · " if score else ""
+            prefix = f"✨ Збіг {score}% · " if score else ""
             lines.append(f"\n<b>{idx}. {escape(o.title)}</b>\n{prefix}📆 {deadline} • {escape(o.kind or 'можливість')}")
             label_text = f"✨ {o.title}" if score else f"🌍 {o.title}"
             b.button(text=entity_button_text(label_text), callback_data=f"opp:{o.id}")
@@ -952,8 +952,8 @@ async def opportunity_preferences(call: CallbackQuery, db: Database) -> None:
         b.button(text="💾 Готово", callback_data="opp_pref_done")
         b.adjust(2, 2, 2, 2, 1, 1)
         await call.message.answer(
-            "⚙️ <b>Інтереси для Smart Opportunities</b>\n\n"
-            "Обери теми, які тобі цікаві. Matching використовує лише вік, ці інтереси, населений пункт, формат і дедлайн. "
+            "⚙️ <b>Інтереси для персонального підбору можливостей</b>\n\n"
+            "Обери теми, які тобі цікаві. Підбір використовує лише вік, ці інтереси, населений пункт, формат і дедлайн. "
             "Категорії вразливості не використовуються.",
             reply_markup=b.as_markup(),
         )
@@ -1026,7 +1026,16 @@ async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
             b.button(text="💙 Мені цікаво", callback_data=f"opp_interest:{item.id}")
         b.button(text="⬅️ Назад", callback_data="nav:opportunities")
         b.adjust(1)
-        await call.message.answer(text, reply_markup=b.as_markup())
+        photo = await telegram_photo_input(db, item.image_path)
+        if photo:
+            # Telegram limits media captions; keep the full opportunity text readable.
+            if len(text) <= 950:
+                await call.message.answer_photo(photo, caption=text, reply_markup=b.as_markup())
+            else:
+                await call.message.answer_photo(photo, caption=f"🌍 <b>{escape(item.title)}</b>")
+                await call.message.answer(text, reply_markup=b.as_markup())
+        else:
+            await call.message.answer(text, reply_markup=b.as_markup())
     await call.answer()
 
 

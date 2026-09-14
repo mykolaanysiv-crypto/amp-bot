@@ -31,7 +31,7 @@ def entity_button_text(text: str) -> str:
 
 MAIN_MENU_TEXTS = {
     # v1.10.0 compact participant navigation
-    "🏠 Головна", "🚀 Долучитися", "🌍 Можливості", "👤 Мій профіль", "🎫 QR-бейдж", "☰ Ще",
+    "🏠 Головна", "🚀 Долучитися", "🌍 Можливості", "💙 Підтримати", "👤 Мій профіль", "🎫 QR-бейдж", "☰ Ще",
     # Legacy labels remain recognized so unfinished FSM flows and old Telegram keyboards are safe.
     "🏠 Огляд", "📈 Сезон", "📅 Події", "⚡ Активності", "🎯 Квести",
     "✅ Волонтерство", "✅ Волонтерські задачі", "🏅 Бейджі", "🎁 Винагороди", "🎫 Мій QR-бейдж", "🎫 Мій QR-код",
@@ -44,9 +44,10 @@ def main_menu(role: str) -> ReplyKeyboardMarkup:
     """Compact participant-first keyboard introduced in v1.10.0."""
     rows = [
         [KeyboardButton(text="🏠 Головна"), KeyboardButton(text="🚀 Долучитися")],
-        [KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="🆘 Звернення")],
-        [KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="👤 Мій профіль")],
-        [KeyboardButton(text="🎫 QR-бейдж"), KeyboardButton(text="☰ Ще")],
+        [KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="💙 Підтримати")],
+        [KeyboardButton(text="🆘 Звернення"), KeyboardButton(text="👤 Мій профіль")],
+        [KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="🎫 QR-бейдж")],
+        [KeyboardButton(text="☰ Ще")],
     ]
     if role in ADMIN_ROLES:
         rows.append([KeyboardButton(text="🛠 Адмін-панель")])
@@ -215,7 +216,7 @@ def admin_section_menu(role: str, section: str, permissions: set[str] | frozense
         if "events.edit" in perms:
             buttons.extend([
                 ("✅ Відвідування", "admin:attendance"),
-                ("📷 QR Scanner", "admin:event_scanner"),
+                ("📷 QR-сканер", "admin:event_scanner"),
                 ("🔳 QR відмітки", "admin:event_qr"),
                 ("🔗 Посилання на подію", "admin:event_share_link"),
             ])

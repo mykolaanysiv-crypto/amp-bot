@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v1825_version_and_css_cache():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.3"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.3" in base
+    assert "/static/admin.css?v=1.10.4" in base
 
 
 def test_version_notice_uses_unique_per_user_outbox_dedupe():

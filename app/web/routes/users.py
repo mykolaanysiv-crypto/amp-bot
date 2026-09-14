@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime as dt_datetime, time as dt_time, timedelta as dt_timedelta, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter
 from sqlalchemy.orm import selectinload
@@ -20,7 +22,9 @@ router = APIRouter()
 async def users(request: Request, q: str = "", role: str = "", status: str = "", period: str = "", sort: str = "newest", consent: str = ""):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        stmt = select(User)
+        # The participant base contains reviewed community members only. New or
+        # rejected applications live on the dedicated Registrations work screen.
+        stmt = select(User).where(User.registration_review_status == "approved")
         if q:
             like = f"%{q}%"
             searchable = [User.full_name.ilike(like), User.username.ilike(like), User.settlement.ilike(like)]
@@ -51,6 +55,79 @@ async def users(request: Request, q: str = "", role: str = "", status: str = "",
             request, rows=data, q=q, role=role, status=status, period=period, sort=sort, consent=consent,
             pending_status_requests=pending_status_requests,
         ))
+
+
+@router.get("/admin/registrations", response_class=HTMLResponse)
+async def registrations_page(request: Request):
+    if r := guard_permission(request, "participants.approve"):
+        return r
+    tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
+    today = dt_datetime.now(tz).date()
+    local_start = dt_datetime.combine(today, dt_time.min, tzinfo=tz)
+    local_end = local_start + dt_timedelta(days=1)
+    # Database timestamps are stored as naive UTC datetimes.
+    day_start = local_start.astimezone(dt_timezone.utc).replace(tzinfo=None)
+    day_end = local_end.astimezone(dt_timezone.utc).replace(tzinfo=None)
+    async with db.session_factory() as session:
+        pending = list((await session.scalars(
+            select(User).where(User.registration_review_status == "pending").order_by(User.created_at.asc())
+        )).all())
+        approved_today = int(await session.scalar(
+            select(func.count(User.id)).where(
+                User.registration_review_status == "approved",
+                User.registration_reviewed_at >= day_start,
+                User.registration_reviewed_at < day_end,
+            )
+        ) or 0)
+        rejected_count = int(await session.scalar(
+            select(func.count(User.id)).where(User.registration_review_status == "rejected")
+        ) or 0)
+        rejected_recent = list((await session.scalars(
+            select(User).where(User.registration_review_status == "rejected").order_by(User.registration_reviewed_at.desc().nullslast()).limit(50)
+        )).all())
+        rows = []
+        for user in pending:
+            rows.append({
+                "user": user,
+                "age": age_on(user.birth_date) if user.birth_date else None,
+            })
+    return templates.TemplateResponse(
+        request=request, name="registrations.html",
+        context=ctx(request, rows=rows, pending_count=len(rows), approved_today=approved_today, rejected_count=rejected_count, rejected_recent=rejected_recent),
+    )
+
+
+@router.post("/admin/registrations/{user_id}/reject")
+async def registration_reject(request: Request, user_id: int, reason: str = Form(...)):
+    if r := guard_permission(request, "participants.approve"):
+        return r
+    reason = reason.strip()
+    if len(reason) < 5:
+        raise HTTPException(status_code=400, detail="Вкажіть причину відхилення щонайменше з 5 символів.")
+    notify_tg = None
+    async with db.session_factory() as session:
+        user = await session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Заявку не знайдено.")
+        user.registration_review_status = "rejected"
+        user.registration_reviewed_at = datetime.utcnow()
+        user.registration_reviewed_by = request.session.get("admin_name", "web")
+        user.registration_rejection_reason = reason
+        if user.status == UserStatus.PENDING.value:
+            user.status = UserStatus.INACTIVE.value
+        notify_tg = user.tg_id
+        await log_audit(
+            session, "web_user_registration_rejected", actor_label=request.session.get("admin_name", "web"),
+            entity_type="user", entity_id=user.id, details=reason,
+        )
+        await session.commit()
+    if notify_tg:
+        await notify_telegram(
+            notify_tg,
+            "❌ <b>Реєстрацію в АМП поки не підтверджено.</b>\n\n"
+            f"Причина: {html_escape(reason)}\n\nЯкщо вважаєте, що сталася помилка, зверніться до команди АМП.",
+        )
+    return RedirectResponse("/admin/registrations", 303)
 
 
 @router.get("/admin/users/{user_id}", response_class=HTMLResponse)
@@ -361,7 +438,7 @@ async def user_add_xp(request: Request, user_id: int, amount: int = Form(...), d
 
 
 @router.post("/admin/users/{user_id}/activate")
-async def user_activate_from_web(request: Request, user_id: int):
+async def user_activate_from_web(request: Request, user_id: int, return_to: str = Form("")):
     """Confirm a new participant directly from the web panel.
 
     Superadmins activate immediately. Regular admins create the same protected
@@ -378,11 +455,20 @@ async def user_activate_from_web(request: Request, user_id: int):
         if user.status in {UserStatus.DELETED.value, UserStatus.DELETED_PERMANENT.value}:
             raise HTTPException(status_code=409, detail="Видалений профіль не можна активувати вручну. Використайте workflow відновлення.")
         if user.status == UserStatus.ACTIVE.value:
-            return RedirectResponse(f"/admin/users/{user_id}", 303)
+            if user.registration_review_status != "approved":
+                user.registration_review_status = "approved"
+                user.registration_reviewed_at = datetime.utcnow()
+                user.registration_reviewed_by = request.session.get("admin_name", "web")
+                await session.commit()
+            return RedirectResponse("/admin/registrations" if return_to == "registrations" else f"/admin/users/{user_id}", 303)
         actor = request.session.get("admin_name", "web")
         if has_web_permission(request, "participants.approve"):
             previous = user.status
             user.status = UserStatus.ACTIVE.value
+            user.registration_review_status = "approved"
+            user.registration_reviewed_at = datetime.utcnow()
+            user.registration_reviewed_by = actor
+            user.registration_rejection_reason = None
             await add_active_users_to_default_team(session)
             await reward_referral_if_ready(session, user, settings)
             notify_tg = user.tg_id
@@ -401,7 +487,7 @@ async def user_activate_from_web(request: Request, user_id: int):
         await session.commit()
     if notify_tg:
         await notify_telegram(notify_tg, "✅ <b>Ваш профіль АМП підтверджено</b>\n\nРеєстрацію завершено. Відкрийте /start або головне меню, щоб користуватися всіма можливостями АМПасадорів.")
-    return RedirectResponse(f"/admin/users/{user_id}", 303)
+    return RedirectResponse("/admin/registrations" if return_to == "registrations" else f"/admin/users/{user_id}", 303)
 
 
 @router.post("/admin/users/{user_id}/update")
@@ -483,6 +569,11 @@ async def user_status_request_approve(request: Request,user_id:int,request_id:in
                     source="referral_clawback", dedupe_key=f"referral_clawback:{user.id}",
                 )
         if user.status==UserStatus.ACTIVE.value:
+            if user.registration_review_status != "approved":
+                user.registration_review_status = "approved"
+                user.registration_reviewed_at = datetime.utcnow()
+                user.registration_reviewed_by = item.reviewed_by_label
+                user.registration_rejection_reason = None
             await add_active_users_to_default_team(session)
             if not was_active: await reward_referral_if_ready(session,user,settings)
         await log_audit(session,"web_user_status_approve",actor_label=item.reviewed_by_label,entity_type="user",entity_id=user.id,details=f"{item.previous_status}->{item.requested_status}; requested by {item.requested_by_label}")

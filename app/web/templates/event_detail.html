@@ -79,9 +79,9 @@
   </section>
 
   <section class="card event-scanner-card">
-    <div class="section-title"><div><h2>📷 QR Scanner</h2><p class="muted">Основний режим працює через Telegram і не залежить від підтримки QR API конкретним браузером. Web-камера залишається додатковим варіантом.</p></div></div>
+    <div class="section-title"><div><h2>📷 QR-сканер</h2><p class="muted">Основний режим працює через Telegram і не залежить від підтримки QR у браузері конкретним браузером. Камера браузера залишається додатковим варіантом.</p></div></div>
     <div class="qr-actions scanner-launch-actions">
-      <a class="primary link-button" href="/admin/events/{{event.id}}/scanner/telegram">📲 Відкрити QR Scanner у Telegram</a>
+      <a class="primary link-button" href="/admin/events/{{event.id}}/scanner/telegram">📲 Відкрити QR-сканер у Telegram</a>
       <button class="soft-button scanner-start" type="button" id="event-scanner-start">🌐 Сканувати камерою браузера</button>
     </div>
     <div id="event-scanner-box" class="event-scanner-box" hidden>
@@ -90,7 +90,7 @@
       <button class="soft-button" type="button" id="event-scanner-stop">⏹ Зупинити камеру</button>
     </div>
     <div class="scanner-manual">
-      <label>Або вставте код / АМП-ID вручну<input id="event-scanner-manual" type="text" placeholder="АМП-0008 або текст QR"></label>
+      <label>Або вставте QR-код / АМП-код вручну<input id="event-scanner-manual" type="text" placeholder="АМП-0008 або текст QR"></label>
       <button class="soft-button" type="button" id="event-scanner-manual-submit">Перевірити</button>
     </div>
     <div id="event-scanner-result" class="scanner-result" aria-live="polite"></div>
@@ -106,15 +106,15 @@
 </div>
 
 <section class="card event-attendance-window">
-  <div class="section-title"><div><h2>🕒 Check-in / attendance window</h2><p class="muted">Автоматичний захист від передчасного або запізнілого зарахування участі та XP.</p></div>
+  <div class="section-title"><div><h2>🕒 Вікно відмітки та підтвердження участі</h2><p class="muted">Автоматичний захист від передчасного або запізнілого зарахування участі та XP.</p></div>
     {% if attendance_window.state == 'open' %}<span class="tag active">Відкрито</span>{% elif attendance_window.state == 'too_early' %}<span class="tag pending">Ще не відкрито</span>{% else %}<span class="tag inactive">Закрито</span>{% endif %}
   </div>
   <p>Вікно: <b>{{attendance_window.opens_at.strftime('%d.%m.%Y %H:%M')}}</b> — <b>{{attendance_window.closes_at.strftime('%d.%m.%Y %H:%M')}}</b>.</p>
-  {% if attendance_window.state == 'too_early' %}<p class="muted">QR/check-in та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток можливий лише з причиною й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайний check-in закрито. Для виправлення помилки адміністратор може застосувати ручний override з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR/check-in та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
+  {% if attendance_window.state == 'too_early' %}<p class="muted">QR-відмітка та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток можливий лише з причиною й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайну відмітку закрито. Для виправлення помилки адміністратор може застосувати ручний виняток з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR-відмітка та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
 </section>
 
 <section class="card event-feedback-analytics">
-  <div class="section-title"><div><h2>⭐ Feedback та вплив</h2><p class="muted">Outcome-показники після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} відповідей</span></div>
+  <div class="section-title"><div><h2>⭐ Зворотний зв’язок та вплив</h2><p class="muted">Показники результату після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} відповідей</span></div>
   <div class="kpis five feedback-kpis">
     <div class="kpi"><span>Середня оцінка</span><strong>{{ feedback_stats.avg_rating }}</strong></div>
     <div class="kpi"><span>Було корисно</span><strong>{{ feedback_stats.useful }}%</strong></div>
@@ -127,7 +127,7 @@
 {% if counts.present > counts.confirmed %}
 <section class="card event-bulk-attendance">
   <div><h2>✅ Очікують підтвердження</h2><p class="muted">Відмічено через QR події або вручну: <b>{{counts.present-counts.confirmed}}</b>.</p></div>
-  <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"><input type="hidden" name="_csrf" value="{{ csrf_token }}">{% if attendance_window.state != 'open' %}<label>Причина ручного override<textarea name="override_reason" minlength="5" maxlength="700" required placeholder="Наприклад: виправлення помилки координатора"></textarea></label>{% endif %}<button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Override: підтвердити відмічених{% else %}✅ Підтвердити всіх відмічених{% endif %}</button></form>
+  <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"><input type="hidden" name="_csrf" value="{{ csrf_token }}">{% if attendance_window.state != 'open' %}<label>Причина ручного підтвердження<textarea name="override_reason" minlength="5" maxlength="700" required placeholder="Наприклад: виправлення помилки координатора"></textarea></label>{% endif %}<button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Виняток: підтвердити відмічених{% else %}✅ Підтвердити всіх відмічених{% endif %}</button></form>
 </section>
 {% endif %}
 
@@ -175,7 +175,7 @@
       <p class="muted">{% if has_permission("reports.sensitive_export") %}Для цього акаунта дозволено розширені поля експорту відповідно до виданого granular permission.{% else %}Для захисту персональних даних експорт містить мінімізований набір; чутливі поля залишаються недоступними.{% endif %}</p>
     </div>
     <form method="post" action="/admin/events/{{event.id}}/registration-template" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      <label class="span2">Завантажити / замінити шаблон<input type="file" name="template_file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><small>До 20 МБ. Найкраще автоматично розпізнаються таблиці з колонками «ПІБ», «Телефон», «Email», «Населений пункт», «Статус», «Цифровий код підтвердження» тощо.</small></label>
+      <label class="span2">Завантажити / замінити шаблон<input type="file" name="template_file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><small>До 20 МБ. Найкраще автоматично розпізнаються таблиці з колонками «ПІБ», «Телефон», «Електронна пошта», «Населений пункт», «Статус», «Цифровий код підтвердження» тощо.</small></label>
       <div class="span2"><button class="soft-button" type="submit">⬆ Завантажити форму донора</button></div>
     </form>
   </div>
@@ -194,9 +194,9 @@
       {% if has_permission("reports.sensitive_export") %}<a class="soft-button sensitive-export-button" href="/admin/events/{{event.id}}/participants-sensitive.xlsx">🔐 Розширений Excel</a><a class="soft-button sensitive-export-button" href="/admin/events/{{event.id}}/participants-sensitive.pdf">🔐 Розширений PDF</a>{% endif %}
     </div>
   </div>
-  <p class="muted event-export-note">Базові Excel/PDF містять лише ПІБ, вік, статус участі та ID АМП. {% if has_permission("reports.sensitive_export") %}Розширені Excel/PDF додатково містять стать, соціальний статус, email, телефон і згоду на фото/відеозйомку; доступ журналюється.{% endif %}</p>
+  <p class="muted event-export-note">Базові Excel/PDF містять лише ПІБ, вік, статус участі та АМП-код. {% if has_permission("reports.sensitive_export") %}Розширені Excel/PDF додатково містять стать, соціальний статус, електронну пошту, телефон і згоду на фото/відеозйомку; доступ журналюється.{% endif %}</p>
   <table>
-    <thead><tr><th>Учасник</th><th>ID АМП</th><th>Статус</th><th>Час відмітки</th><th>Код підтвердження</th><th>Дії</th></tr></thead>
+    <thead><tr><th>Учасник</th><th>АМП-код</th><th>Статус</th><th>Час відмітки</th><th>Код підтвердження</th><th>Дії</th></tr></thead>
     <tbody>
     {% for reg,u in registrations %}
       <tr>
@@ -211,13 +211,13 @@
           {% else %}
           <div class="attendance-actions">
             {% if reg.status in ['registered','reserved'] %}
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити (override){% else %}📍 Відмітити присутність{% endif %}</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити вручну{% else %}📍 Відмітити присутність{% endif %}</button></form>
               <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" onsubmit="return confirm('Позначити учасника як такого, що не прийшов?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>
               <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати реєстрацію цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
             {% elif reg.status == 'waitlisted' %}
               <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Прибрати учасника з черги?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Прибрати з черги</button></form>
             {% elif reg.status == 'checked_in' %}
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити (override){% else %}✅ Підтвердити участь{% endif %}</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити вручну{% else %}✅ Підтвердити участь{% endif %}</button></form>
               <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати участь цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
             {% elif reg.status == 'attended' %}
               <span class="tag active">✅ Був присутній</span>
@@ -249,7 +249,7 @@ function requireAttendanceOverride(form) {
   }
   const input = form.querySelector('input[name="override_reason"]');
   if (input) input.value = reason.trim();
-  return window.confirm('Підтвердити ручний override поза дозволеним attendance window?');
+  return window.confirm('Підтвердити ручний виняток поза дозволеним вікном підтвердження участі?');
 }
 
 (() => {
@@ -270,7 +270,7 @@ function requireAttendanceOverride(form) {
   function renderResult(data) {
     if (!data.ok) {
       result.className = 'scanner-result error';
-      result.innerHTML = `<b>⚠️ ${data.error || 'Помилка check-in'}</b>`;
+      result.innerHTML = `<b>⚠️ ${data.error || 'Помилка відмітка'}</b>`;
       return;
     }
     if (data.state === 'unregistered') {
@@ -333,7 +333,7 @@ function requireAttendanceOverride(form) {
       return;
     }
     if (!('BarcodeDetector' in window)) {
-      renderResult({ok:false,error:'Камера QR у цьому браузері недоступна. Скористайтеся QR Scanner у Telegram або введіть АМП-ID вручну.'});
+      renderResult({ok:false,error:'Камера QR у цьому браузері недоступна. Скористайтеся QR-сканером у Telegram або введіть АМП-код вручну.'});
       return;
     }
     try {

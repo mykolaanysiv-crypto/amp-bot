@@ -26,7 +26,7 @@ async def reports_download(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     async with db.session_factory() as session:
-        data = await build_period_report(session, start, end, period_label)
+        data = await build_period_report(session, start, end, period_label, reveal_sensitive_counts=is_superadmin(request))
         await log_audit(session, "web_period_report", actor_label=request.session.get("admin_name","web"), entity_type="report", details=f"{period_label}; format={format}")
         await session.commit()
     safe = f"{year}_{period_type}"

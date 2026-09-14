@@ -282,7 +282,7 @@ async def pending_users(call: CallbackQuery, db: Database) -> None:
             age_text = u.birth_date.strftime("%d.%m.%Y") if u.birth_date else "—"
             consent = "потрібна" if u.parental_consent_required and not u.parental_consent_confirmed else "не потрібна / підтверджена"
             await call.message.answer(
-                f"👤 <b>{u.full_name}</b>\nID АМП: <code>АМП-{u.id:04d}</code>\n"
+                f"👤 <b>{u.full_name}</b>\nАМП-код: <code>АМП-{u.id:04d}</code>\n"
                 f"Дата народження: {age_text}\nНаселений пункт: {u.settlement or '—'}\n"
                 f"Згода батьків: {consent}",
                 reply_markup=pending_user_keyboard(u.id, u.parental_consent_required and not u.parental_consent_confirmed, _staff_permissions(admin)),
@@ -328,6 +328,10 @@ async def approve_user(call: CallbackQuery, db: Database, bot: Bot, settings: Se
             await call.answer("Спочатку підтвердьте згоду батьків", show_alert=True)
             return
         user.status = UserStatus.ACTIVE.value
+        user.registration_review_status = "approved"
+        user.registration_reviewed_at = datetime.utcnow()
+        user.registration_reviewed_by = admin.full_name or f"Telegram:{admin.tg_id}"
+        user.registration_rejection_reason = None
         await add_active_users_to_default_team(session)
         referral_reward = await reward_referral_if_ready(session, user, settings, created_by=admin.id)
         await log_audit(session, "user_activated", admin, entity_type="user", entity_id=user.id)
@@ -366,7 +370,7 @@ async def add_xp_start(call: CallbackQuery, state: FSMContext, db: Database) -> 
     if not await _require_admin(call, db):
         return
     await state.set_state(AdminXPState.user_id)
-    await call.message.answer("⚡ Вкажіть числовий ID учасника (наприклад <code>24</code> для АМП-0024).")
+    await call.message.answer("⚡ Вкажіть числовий номер учасника (наприклад <code>24</code> для АМП-0024).")
     await call.answer()
 
 
@@ -375,7 +379,7 @@ async def add_xp_user(message: Message, state: FSMContext, db: Database) -> None
     try:
         user_id = int((message.text or "").replace("АМП-", "").replace("AMP-", "").lstrip("0") or "0")
     except ValueError:
-        await message.answer("Вкажіть числовий ID.")
+        await message.answer("Вкажіть числовий номер.")
         return
     async with db.session_factory() as session:
         user = await session.get(User, user_id)
@@ -562,7 +566,7 @@ async def event_finish(message: Message, state: FSMContext, db: Database, bot: B
             BufferedInputFile(bio.getvalue(), filename=f"event_{event.id}_qr.png"),
             caption=(
                 f"✅ Подію <b>{event.title}</b> створено.\n"
-                f"ID: {event.id}\n⚡ {event.xp_reward} XP • ⏱ {hours:g} год.\n\n"
+                f"Номер: {event.id}\n⚡ {event.xp_reward} XP • ⏱ {hours:g} год.\n\n"
                 "QR-код використовується для відмітки присутності. XP нарахуються лише після підтвердження адміністратором."
             ),
         )
@@ -673,13 +677,13 @@ async def admin_event_scanner_list(call: CallbackQuery, db: Database, settings: 
             ).order_by(Event.starts_at.asc()).limit(25)
         )).all())
     if not events:
-        await call.message.answer("📷 Немає активних подій для QR Scanner.")
+        await call.message.answer("📷 Немає активних подій для QR-сканера.")
         await call.answer(); return
 
     base = (settings.public_base_url or "").rstrip("/")
     if not base.startswith("https://"):
         await call.message.answer(
-            "⚠️ Для Telegram QR Scanner потрібен HTTPS PUBLIC_BASE_URL. "
+            "⚠️ Для QR-сканера в Telegram потрібна HTTPS-адреса PUBLIC_BASE_URL. "
             "У production Heroku він має починатися з https://."
         )
         await call.answer(); return
@@ -692,9 +696,9 @@ async def admin_event_scanner_list(call: CallbackQuery, db: Database, settings: 
         )])
     rows.append([InlineKeyboardButton(text="📝 Текстовий режим", callback_data="admin:event_scanner_textmode")])
     await call.message.answer(
-        "📷 <b>QR Scanner у Telegram</b>\n\n"
+        "📷 <b>QR-сканер у Telegram</b>\n\n"
         "Оберіть подію — Telegram одразу відкриє сканер QR. Камера залишатиметься відкритою після кожного бейджа, щоб можна було сканувати учасників один за одним.\n\n"
-        "Після кожного сканування бот надішле в чат результат: ПІБ, AMP-ID, назву події та статус реєстрації/присутності.",
+        "Після кожного сканування бот надішле в чат результат: ПІБ, АМП-код, назву події та статус реєстрації/присутності.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
     await call.answer()
@@ -714,7 +718,7 @@ async def admin_event_scanner_textmode(call: CallbackQuery, db: Database) -> Non
         )).all())
     if events:
         await call.message.answer(
-            "📝 Оберіть подію для резервного текстового режиму. Після цього можна надсилати AMP-ID або текст QR.",
+            "📝 Оберіть подію для резервного текстового режиму. Після цього можна надсилати АМП-код або текст QR.",
             reply_markup=_event_select_markup(events, "admin:event_scanner_select"),
         )
     await call.answer()
@@ -731,7 +735,7 @@ async def admin_event_scanner_select(call: CallbackQuery, state: FSMContext, db:
     await state.set_state(AdminEventScannerState.scanning)
     await state.update_data(event_scanner_event_id=event_id)
     await call.message.answer(
-        f"📷 <b>Scanner активний</b>\n"
+        f"📷 <b>QR-сканер активний</b>\n"
         f"📅 {event.title}\n\n"
         "1. Відкрийте камеру телефона.\n"
         "2. Наведіть її на персональний QR-бейдж учасника.\n"
@@ -741,7 +745,7 @@ async def admin_event_scanner_select(call: CallbackQuery, state: FSMContext, db:
         "ℹ️ Режим Telegram не залежить від browser QR API, тому працює незалежно від Chrome/Safari/Firefox/Edge.",
         reply_markup=_scanner_controls(),
     )
-    await call.answer("Scanner увімкнено")
+    await call.answer("QR-сканер увімкнено")
 
 
 @router.message(AdminEventScannerState.scanning)
@@ -760,7 +764,7 @@ async def admin_event_scanner_text(message: Message, state: FSMContext, db: Data
             target = await session.scalar(select(User).where(User.public_token == token))
             participant_id = target.id if target else None
     if not participant_id:
-        await message.answer("⚠️ Не вдалося розпізнати учасника. Скануйте персональний QR-бейдж або надішліть АМП-ID, наприклад <code>АМП-0008</code>.", reply_markup=_scanner_controls())
+        await message.answer("⚠️ Не вдалося розпізнати учасника. Скануйте персональний QR-бейдж або надішліть АМП-код, наприклад <code>АМП-0008</code>.", reply_markup=_scanner_controls())
         return
     await _telegram_scanner_result(message, state, db, admin, event_id, participant_id)
 
@@ -783,7 +787,7 @@ async def admin_event_scanner_register_confirm(call: CallbackQuery, state: FSMCo
 @router.callback_query(F.data == "admin:event_scanner_stop")
 async def admin_event_scanner_stop(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await call.message.answer("✅ QR Scanner завершено.")
+    await call.message.answer("✅ QR-сканування завершено.")
     await call.answer()
 
 
@@ -931,7 +935,7 @@ async def confirm_attendance(call: CallbackQuery, db: Database, bot: Bot) -> Non
         if window["state"] != "open":
             when = window["opens_at"] if window["state"] == "too_early" else window["closes_at"]
             hint = (
-                f"Check-in відкриється {when.strftime('%d.%m.%Y %H:%M')}."
+                f"Відмітка відкриється {when.strftime('%d.%m.%Y %H:%M')}."
                 if window["state"] == "too_early"
                 else f"Вікно attendance закрилося {when.strftime('%d.%m.%Y %H:%M')}."
             )
@@ -939,7 +943,7 @@ async def confirm_attendance(call: CallbackQuery, db: Database, bot: Bot) -> Non
                 "⛔ Звичайне підтвердження участі зараз недоступне.\n" + hint +
                 "\nДля винятку використайте web-панель: ручний override потребує причини й записується в аудит."
             )
-            await call.answer("Поза attendance window", show_alert=True)
+            await call.answer("Поза вікном відмітки", show_alert=True)
             return
         count, results = await confirm_event_attendance(session, event, admin)
         for user, total, level, leveled in results:
@@ -1128,7 +1132,7 @@ async def badge_start(call: CallbackQuery, state: FSMContext, db: Database) -> N
     if not await _require_admin(call, db):
         return
     await state.set_state(AdminBadgeAwardState.user_id)
-    await call.message.answer("🏅 Вкажіть ID учасника (число).")
+    await call.message.answer("🏅 Вкажіть номер учасника (число).")
     await call.answer()
 
 
@@ -1137,7 +1141,7 @@ async def badge_user(message: Message, state: FSMContext, db: Database) -> None:
     try:
         user_id = int((message.text or "").replace("АМП-", "").replace("AMP-", "").lstrip("0") or "0")
     except ValueError:
-        await message.answer("Некоректний ID.")
+        await message.answer("Некоректний номер.")
         return
     async with db.session_factory() as session:
         user = await session.get(User, user_id)
@@ -1151,7 +1155,7 @@ async def badge_user(message: Message, state: FSMContext, db: Database) -> None:
             return
         await state.update_data(user_id=user_id)
         await state.set_state(AdminBadgeAwardState.badge_id)
-        text = "Оберіть ID бейджа:\n" + "\n".join(f"<code>{b.id}</code> — {b.icon} {b.name}" for b in badges)
+        text = "Оберіть номер бейджа:\n" + "\n".join(f"<code>{b.id}</code> — {b.icon} {b.name}" for b in badges)
         await message.answer(text)
 
 
@@ -1163,7 +1167,7 @@ async def badge_finish(message: Message, state: FSMContext, db: Database, bot: B
     try:
         badge_id = int((message.text or "").strip())
     except ValueError:
-        await message.answer("Вкажіть ID бейджа.")
+        await message.answer("Вкажіть номер бейджа.")
         return
     data = await state.get_data()
     async with db.session_factory() as session:
@@ -1729,7 +1733,7 @@ async def set_role(message: Message, db: Database, bot: Bot) -> None:
     try:
         target_id = int(parts[1].replace("АМП-", "").replace("AMP-", "").lstrip("0") or "0")
     except ValueError:
-        await message.answer("Некоректний ID.")
+        await message.answer("Некоректний номер.")
         return
     role_aliases = {
         "учасник": UserRole.PARTICIPANT.value, "participant": UserRole.PARTICIPANT.value,
@@ -1794,7 +1798,7 @@ async def moderation_new_start(call: CallbackQuery, state: FSMContext, db: Datab
         if not await _admin(session, call.from_user.id):
             await call.answer("Недостатньо прав", show_alert=True); return
     await state.set_state(AdminBanState.user_id)
-    await call.message.answer("Введіть <b>ID АМП</b> учасника, якого потрібно тимчасово заблокувати. Наприклад: <code>24</code> або <code>АМП-0024</code>.")
+    await call.message.answer("Введіть <b>АМП-код</b> учасника, якого потрібно тимчасово заблокувати. Наприклад: <code>24</code> або <code>АМП-0024</code>.")
     await call.answer()
 
 
@@ -1807,7 +1811,7 @@ async def moderation_new_user(message: Message, state: FSMContext, db: Database)
     try:
         user_id = int(raw.lstrip("0") or "0")
     except ValueError:
-        await message.answer("Не вдалося прочитати ID. Приклад: АМП-0024")
+        await message.answer("Не вдалося прочитати АМП-код. Приклад: АМП-0024")
         return
     async with db.session_factory() as session:
         admin = await _admin(session, message.from_user.id)

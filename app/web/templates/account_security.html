@@ -3,9 +3,9 @@
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Мій доступ</b></nav>
 <div class="page-head security-page-head">
-  <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h1>🔐 Мій доступ</h1><p>Пароль, двоетапний вхід та активні web-сесії.</p></div>
+  <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h1>🔐 Мій доступ</h1><p>Пароль, двоетапний вхід та активні вебсесії.</p></div>
 </div>
-{% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи web-панелі недоступні.</div>{% endif %}
+{% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи вебпанелі недоступні.</div>{% endif %}
 {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
 {% if success %}<div class="alert success">{{ success }}</div>{% endif %}
 
@@ -16,7 +16,7 @@
       <div><span>Логін</span><b>{{ account.username if account else '—' }}</b></div>
       <div><span>Останній вхід</span><b>{{ account.last_login_at.strftime('%d.%m.%Y %H:%M') if account and account.last_login_at else '—' }}</b></div>
       <div><span>Пароль змінено</span><b>{{ account.password_changed_at.strftime('%d.%m.%Y %H:%M') if account and account.password_changed_at else '—' }}</b></div>
-      <div><span>2FA</span><b>{{ '✅ Увімкнено' if account and (account.two_factor_enabled or account.role=='superadmin') else '— Вимкнено' }}</b></div>
+      <div><span>Двоетапний вхід</span><b>{{ '✅ Увімкнено' if account and (account.two_factor_enabled or account.role=='superadmin') else '— Вимкнено' }}</b></div>
     </div>
   </section>
 
@@ -32,12 +32,12 @@
   </section>
 
   <section class="card security-card" id="two-factor">
-    <div class="section-title"><div><span class="eyebrow">2FA</span><h2>Двоетапний вхід</h2></div></div>
-    {% if account and account.role == 'superadmin' %}<div class="alert info">Для суперадміністратора 2FA обов'язкова і не може бути вимкнена.</div>{% endif %}
+    <div class="section-title"><div><span class="eyebrow">ЗАХИСТ ВХОДУ</span><h2>Двоетапний вхід</h2></div></div>
+    {% if account and account.role == 'superadmin' %}<div class="alert info">Для суперадміністратора двоетапний вхід обов'язковий і не може бути вимкнений.</div>{% endif %}
     <form method="post" action="/admin/account/2fa" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      {% if not is_superadmin %}<label class="check-row"><input type="checkbox" name="enabled" value="1" {% if account and account.two_factor_enabled %}checked{% endif %}><span>Увімкнути 2FA для мого акаунта</span></label>{% else %}<input type="hidden" name="enabled" value="1">{% endif %}
-      <label>Telegram ID для одноразових кодів<input name="telegram_id" inputmode="numeric" value="{{ account.two_factor_tg_id or '' if account else '' }}" placeholder="Наприклад 123456789"></label>
-      <div class="form-actions"><button class="primary" type="submit">💾 Зберегти 2FA</button></div>
+      {% if not is_superadmin %}<label class="check-row"><input type="checkbox" name="enabled" value="1" {% if account and account.two_factor_enabled %}checked{% endif %}><span>Увімкнути двоетапний вхід для мого акаунта</span></label>{% else %}<input type="hidden" name="enabled" value="1">{% endif %}
+      <label>Ідентифікатор Telegram для одноразових кодів<input name="telegram_id" inputmode="numeric" value="{{ account.two_factor_tg_id or '' if account else '' }}" placeholder="Наприклад 123456789"></label>
+      <div class="form-actions"><button class="primary" type="submit">💾 Зберегти захист входу</button></div>
     </form>
   </section>
 </div>

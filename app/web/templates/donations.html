@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% block title %}Донати • АМПасадори{% endblock %}{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Донати</b></nav>
+<div class="page-head"><div><span class="eyebrow">ФІНАНСОВА ПРОЗОРІСТЬ</span><h1>💙 Донати</h1><p>Моніторинг банки АМП, транзакцій, публічної звітності та донатних бейджів.</p></div><a class="primary link-button" href="{{ jar_url }}" target="_blank" rel="noopener">💙 Відкрити банку</a></div>
+{% if notice %}<div class="alert info">{{ notice }}</div>{% endif %}
+{% if not monobank_enabled %}<div class="alert warning"><b>Автоматична синхронізація вимкнена.</b> Додайте секретну змінну <code>MONOBANK_TOKEN</code> у налаштування середовища. Публічне посилання на банку та звітність працюють і без токена.</div>{% endif %}
+{% if jar_state and jar_state.last_error %}<div class="alert warning">{{ jar_state.last_error }}</div>{% endif %}
+
+<section class="card donation-jar-card">
+  <div class="section-title"><div><h2>🏦 Банка Monobank</h2><p class="muted">{% if jar_state and jar_state.title %}{{ jar_state.title }}{% else %}Підтримка АМП{% endif %}</p></div><form method="post" action="/admin/donations/sync"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">↻ Оновити дані</button></form></div>
+  <div class="donation-progress-head"><strong>{{ money(jar_state.balance_kop if jar_state else 0) }}</strong><span>{% if jar_state and jar_state.goal_kop %}із {{ money(jar_state.goal_kop) }} · {{ '%.1f'|format(jar_progress) }}%{% else %}поточний баланс{% endif %}</span></div>
+  <div class="donation-progress"><span style="width:{{ jar_progress }}%"></span></div>
+  <small class="muted">{% if jar_state and jar_state.last_sync_at %}Останнє оновлення: {{ jar_state.last_sync_at.strftime('%d.%m.%Y %H:%M') }}{% else %}Ще не синхронізовано.{% endif %} Перше автоматичне завантаження виписки охоплює останні 31 день; далі історія накопичується у системі.</small>
+</section>
+
+<div class="kpis donation-kpis">
+  <div class="kpi"><span>Зібрано транзакціями</span><b>{{ money(total_collected) }}</b><small>{{ donation_count }} надходжень</small></div>
+  <div class="kpi"><span>Найбільший донат</span><b>{{ money(largest_donation) }}</b><small>за одну транзакцію</small></div>
+  <div class="kpi"><span>Середній донат</span><b>{{ money(average_donation) }}</b><small>серед позитивних надходжень</small></div>
+  <div class="kpi"><span>Донатери</span><b>{{ donor_count }}</b><small>за доступними даними · {{ linked_count }} пов’язано з профілями АМП</small></div>
+  <div class="kpi"><span>Використано</span><b>{{ money(spent_total) }}</b><small>за опублікованими звітами</small></div>
+  <div class="kpi"><span>Сторінка підтримки</span><b>{{ support_views }}</b><small>{{ unique_support_users }} унікальних користувачів</small></div>
+</div>
+
+<section class="card" id="analytics">
+  <div class="section-title"><div><h2>📈 Збір коштів по днях</h2><p class="muted">Позитивні гривневі надходження, отримані через виписку банки.</p></div></div>
+  {% if daily_rows %}<div class="donation-daily-chart">{% for row in daily_rows %}<div class="donation-day-row"><time>{{ row.date.strftime('%d.%m') }}</time><div class="donation-day-track"><span style="width:{{ row.pct }}%"></span></div><b>{{ money(row.amount_kop) }}</b></div>{% endfor %}</div>{% else %}<p class="muted">Даних для графіка ще немає.</p>{% endif %}
+</section>
+
+<section class="card" id="transactions">
+  <div class="section-title"><div><h2>💳 Транзакції</h2><p class="muted">Показується інформація, яку фактично повертає Monobank. Якщо ім’я відправника не передано банком, система його не вигадує. Для автоматичного зв’язування учасник має додати <b>АМП-код</b> у коментар до переказу.</p></div><span class="count-badge">{{ transactions|length }}</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Дата</th><th>Від кого / опис</th><th>Коментар</th><th>Сума</th><th>Учасник АМП</th><th>Дія</th></tr></thead><tbody>
+  {% for tx in transactions %}<tr>
+    <td>{{ tx.occurred_at.strftime('%d.%m.%Y %H:%M') }}</td>
+    <td><b>{{ tx.counter_name or tx.description or 'Не передано Monobank' }}</b>{% if tx.receipt_id %}<br><small>Квитанція: {{ tx.receipt_id }}</small>{% endif %}</td>
+    <td>{{ tx.comment or '—' }}</td>
+    <td><b class="{{ 'money-positive' if tx.amount_kop>0 else 'money-negative' }}">{{ money(tx.amount_kop) }}</b></td>
+    <td>{% if tx.linked_user_id %}<a href="/admin/users/{{tx.linked_user_id}}">АМП-{{ '%04d'|format(tx.linked_user_id) }}</a>{% else %}<span class="muted">Не пов’язано</span>{% endif %}</td>
+    <td><form class="donation-link-form" method="post" action="/admin/donations/transactions/{{tx.id}}/link"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><select name="user_id"><option value="">— не пов’язувати —</option>{% for u in active_users %}<option value="{{u.id}}" {% if tx.linked_user_id==u.id %}selected{% endif %}>АМП-{{'%04d'|format(u.id)}} · {{u.full_name}}</option>{% endfor %}</select><button class="soft-button compact-action" type="submit">💾 Зберегти</button></form></td>
+  </tr>{% else %}<tr><td colspan="6" class="muted">Транзакцій ще немає. Натисніть «Оновити дані» після налаштування токена Monobank.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="card" id="reporting">
+  <div class="section-title"><div><h2>📄 Звітність про використання коштів</h2><p class="muted">Опубліковані записи бачать учасники через Telegram → «Підтримати» → «Звітність». Завантажуйте лише документи, які можна публікувати; перед публікацією приберіть зайві персональні дані з чеків і документів.</p></div></div>
+  <form class="donation-report-form" method="post" action="/admin/donations/reports/create" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="form-grid"><label><span>Назва звіту</span><input name="title" required maxlength="220" placeholder="Наприклад: Закупівля матеріалів для майстер-класу"></label><label><span>Використано коштів, грн</span><input name="amount_spent" inputmode="decimal" placeholder="1500,00"></label><label><span>Дата використання</span><input type="datetime-local" name="spent_at"></label><label><span>PDF / чек / документ</span><input type="file" name="document" accept="application/pdf,image/*"></label></div>
+    <label><span>Опис</span><textarea name="description" rows="3" maxlength="3000" placeholder="На що саме були використані кошти"></textarea></label>
+    <label class="check"><input type="checkbox" name="published" checked> <span>Опублікувати для учасників</span></label>
+    <button class="primary" type="submit">➕ Додати звіт</button>
+  </form>
+  <div class="donation-report-list">{% for row in reports %}<article class="donation-report-item"><div><b>{{row.title}}</b><small>{{ (row.spent_at or row.created_at).strftime('%d.%m.%Y') }}{% if row.amount_spent_kop %} · {{money(row.amount_spent_kop)}}{% endif %} · {{ 'Опубліковано' if row.published else 'Чернетка' }}</small>{% if row.description %}<p>{{row.description}}</p>{% endif %}{% if row.document_path %}<a href="{{row.document_path}}" target="_blank" rel="noopener">📎 {{row.document_name or 'Документ'}}</a>{% endif %}</div><div class="donation-report-actions"><form method="post" action="/admin/donations/reports/{{row.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">{{ '🙈 Приховати' if row.published else '🌐 Опублікувати' }}</button></form><form method="post" action="/admin/donations/reports/{{row.id}}/delete" onsubmit="return confirm('Видалити цей звіт і прикріплений документ?')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">🗑 Видалити</button></form></div></article>{% else %}<p class="muted">Звітів про використання коштів ще немає.</p>{% endfor %}</div>
+</section>
+{% endblock %}

@@ -155,6 +155,8 @@ class Settings:
     season_name: str
     season_start: date
     season_end: date
+    donation_jar_url: str = "https://send.monobank.ua/jar/5S531LWQuc"
+    monobank_token: str = ""
 
 
 def get_settings(require_bot_token: bool = True) -> Settings:
@@ -204,4 +206,6 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         season_name=os.getenv("SEASON_NAME", "Сезон 2026/27").strip(),
         season_start=_parse_date(os.getenv("SEASON_START"), date(2026, 9, 1)),
         season_end=_parse_date(os.getenv("SEASON_END"), date(2027, 8, 31)),
+        donation_jar_url=os.getenv("DONATION_JAR_URL", "https://send.monobank.ua/jar/5S531LWQuc").strip(),
+        monobank_token=os.getenv("MONOBANK_TOKEN", "").strip(),
     )

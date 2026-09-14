@@ -140,13 +140,13 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                 buttons = []
                 if base.startswith("https://"):
                     buttons.append([InlineKeyboardButton(
-                        text="📷 Відкрити камеру QR Scanner",
+                        text="📷 Відкрити камеру QR-сканера",
                         web_app=WebAppInfo(url=f"{base}/tg/event-scanner/{event.id}"),
                     )])
                 buttons.append([InlineKeyboardButton(text="📝 Текстовий режим", callback_data=f"admin:event_scanner_select:{event.id}")])
                 await message.answer(
-                    f"📷 <b>QR Scanner</b>\n📅 {event.title}\n\n"
-                    "Натисніть «Відкрити камеру QR Scanner». Камера відкриється всередині Telegram і залишатиметься активною після кожного сканування.",
+                    f"📷 <b>QR-сканер</b>\n📅 {event.title}\n\n"
+                    "Натисніть «Відкрити камеру QR-сканера». Камера відкриється всередині Telegram і залишатиметься активною після кожного сканування.",
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
                 )
                 return
@@ -271,7 +271,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                 window = await event_checkin_window(session, event)
                 if status == "too_early":
                     await message.answer(
-                        f"⏳ Check-in на подію <b>{event.title}</b> ще не відкрито.\n"
+                        f"⏳ Відмітка на подію <b>{event.title}</b> ще не відкрито.\n"
                         f"Відкриється: <b>{window['opens_at'].strftime('%d.%m.%Y %H:%M')}</b>."
                     )
                 else:
@@ -378,7 +378,7 @@ async def help_command(message: Message) -> None:
         "🏠 «Головна» показує твій прогрес, серію, найближчу подію, актуальний квест, звернення та персональні можливості.\n"
         "🚀 «Долучитися» збирає події, квести, волонтерство, активності, ідеї та опитування.\n"
         "👤 «Мій профіль» — XP, ліга, серії, цілі, бейджі, винагороди й запрошення.\n\n"
-        "Для відмітки на події адміністратор сканує <b>персональний QR-бейдж</b> учасника через QR Scanner."
+        "Для відмітки на події адміністратор сканує <b>персональний QR-бейдж</b> учасника через QR-сканер."
     )
 
 
@@ -609,6 +609,7 @@ async def _complete_registration(message: Message, state: FSMContext, db: Databa
             privacy_acknowledged_at=datetime.fromisoformat(data["privacy_acknowledged_at"]) if data.get("privacy_acknowledged_at") else datetime.utcnow(),
             role=UserRole.PARTICIPANT.value,
             status=UserStatus.PENDING.value,
+            registration_review_status="pending",
             parental_consent_required=minor,
             parental_consent_confirmed=False,
             parental_consent_status="pending" if minor else "not_required",

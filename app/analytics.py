@@ -71,29 +71,29 @@ METRIC_META: dict[str, dict[str, str]] = {
         "description": "Кількість нових реєстрацій у системі за останні 12 місяців.",
     },
     "cohort_funnel": {
-        "title": "Воронка залучення / cohort",
-        "short": "Cohort / retention",
+        "title": "Воронка залучення за когортами",
+        "short": "Когорта / повернення",
         "icon": "👥",
         "kind": "bar",
         "description": "Шлях учасника: зареєструвався → відвідав хоча б одну подію → повернувся → став регулярним → став АМПасадором. Регулярний = щонайменше 3 підтверджені відвідування у 3 різні календарні тижні.",
     },
     "retention": {
         "title": "Повернення після першого відвідування",
-        "short": "Retention 30/90",
+        "short": "Повернення 30/90",
         "icon": "🔁",
         "kind": "bar",
         "description": "Частка учасників, які після першого підтвердженого відвідування прийшли на іншу подію протягом 30 або 90 днів.",
     },
     "engagement_score": {
-        "title": "Engagement score",
-        "short": "Engagement score",
+        "title": "Індекс залученості",
+        "short": "Індекс залученості",
         "icon": "📈",
         "kind": "bar",
         "description": "Внутрішній індекс 0–100 для аналітики. Враховує регулярність, події, волонтерські години, ідеї, опитування та квести; учаснику автоматично не показується.",
     },
     "activity_heatmap": {
         "title": "Теплова карта активності",
-        "short": "Heatmap",
+        "short": "Теплова карта",
         "icon": "🔥",
         "kind": "heatmap",
         "description": "Коли молодь проявляє підтверджену активність: день тижня × година. Допомагає планувати час майбутніх подій.",
@@ -120,8 +120,8 @@ METRIC_META: dict[str, dict[str, str]] = {
         "description": "Кількість підтверджених відвідувачів останніх проведених подій. Скасовані події не враховуються.",
     },
     "event_outcomes": {
-        "title": "Feedback та outcomes після подій",
-        "short": "Вплив / feedback",
+        "title": "Зворотний зв’язок та результати після подій",
+        "short": "Вплив / зворотний зв’язок",
         "icon": "⭐",
         "kind": "bar",
         "description": "Агреговані відповіді завершених feedback-анкет після подій: висока оцінка, корисність, нові знання, відчуття безпеки та готовність повернутися.",
@@ -289,13 +289,13 @@ def _metric(key: str, labels: list[str], values: list[float | int], *, rows: lis
     }
 
 
-async def build_analytics(session: AsyncSession, *, now: datetime | None = None) -> dict[str, Any]:
+async def build_analytics(session: AsyncSession, *, now: datetime | None = None, reveal_sensitive_counts: bool = False) -> dict[str, Any]:
     privacy_threshold = await get_runtime_int(session, "privacy.suppression_threshold")
     """Build live, aggregate-only analytics from the existing database.
 
     No participant names, contacts, Telegram IDs or row-level vulnerability data
-    are returned. This makes the resulting web dashboard and exports suitable for
-    reporting workflows while keeping sensitive categories aggregate-only.
+    are returned. Superadmins may request unsuppressed aggregate counts for small
+    vulnerability groups; all other viewers receive privacy-threshold suppression.
     """
     now = now or datetime.utcnow()
     today = now.date()
@@ -408,7 +408,7 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None)
         value_label="% учасників",
     )
 
-    # Engagement score is a private aggregate index, not another XP balance.
+    # Індекс залученості is a private aggregate index, not another XP balance.
     event_count_by_user = Counter(r.user_id for r in attended_regs)
     quest_count_by_user = Counter(r.user_id for r in quest_parts if r.status == "approved")
     survey_count_by_user = Counter(r.user_id for r in survey_responses)
@@ -438,13 +438,13 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None)
         [name for name, _, _ in engagement_bands],
         engagement_values,
         rows=[
-            {"label": name, "value": count, "secondary": f"Середній score: {engagement_average:g}/100" if idx == 0 else ""}
+            {"label": name, "value": count, "secondary": f"Середній індекс: {engagement_average:g}/100" if idx == 0 else ""}
             for idx, ((name, _, _), count) in enumerate(zip(engagement_bands, engagement_values))
         ],
         value_label="Учасники",
     )
 
-    # Heatmap: confirmed/meaningful participant actions by weekday and hour.
+    # Теплова карта: confirmed/meaningful participant actions by weekday and hour.
     heatmap_matrix = [[0 for _ in range(24)] for _ in range(7)]
     heatmap_stamps: list[datetime] = []
     for reg in attended_regs:
@@ -622,7 +622,7 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None)
     vuln_rows = []
     vuln_values = []
     for name, count in vuln_items:
-        suppressed = 0 < int(count) < privacy_threshold
+        suppressed = (not reveal_sensitive_counts) and 0 < int(count) < privacy_threshold
         vuln_values.append(0 if suppressed else int(count))
         vuln_rows.append({
             "label": name,
@@ -792,7 +792,12 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None)
         "summary": summary,
         "metrics": metrics,
         "metric_order": METRIC_ORDER,
-        "privacy_note": f"Аналітика є агрегованою. Для категорій вразливості значення 1–{privacy_threshold - 1} приховуються як <{privacy_threshold}; ПІБ, контакти та списки конкретних учасників не формуються.",
+        "privacy_note": (
+            "Режим суперадміністратора: точні агреговані значення, включно з малими групами, показуються без приховування. ПІБ, контакти та списки конкретних учасників у цій аналітиці не формуються."
+            if reveal_sensitive_counts else
+            f"Аналітика є агрегованою. Для категорій вразливості значення 1–{privacy_threshold - 1} приховуються як <{privacy_threshold}; ПІБ, контакти та списки конкретних учасників не формуються."
+        ),
+        "sensitive_counts_visible": bool(reveal_sensitive_counts),
     }
 
 
@@ -831,21 +836,21 @@ def analytics_excel(data: dict[str, Any], metric_key: str | None = None) -> byte
         summary_labels = [
             ("Зареєстровані учасники", "participants"),
             ("Нові цього місяця", "new_this_month"),
-            ("Cohort — зареєструвалися", "cohort_registered"),
-            ("Cohort — прийшли 1 раз", "cohort_first_visit"),
-            ("Cohort — повернулися", "cohort_returned"),
-            ("Cohort — регулярні", "cohort_regular"),
-            ("Cohort — АМПасадори", "cohort_ambassadors"),
-            ("Retention 30 днів, %", "retention_30_pct"),
-            ("Retention 90 днів, %", "retention_90_pct"),
+            ("Когорта — зареєструвалися", "cohort_registered"),
+            ("Когорта — прийшли 1 раз", "cohort_first_visit"),
+            ("Когорта — повернулися", "cohort_returned"),
+            ("Когорта — регулярні", "cohort_regular"),
+            ("Когорта — АМПасадори", "cohort_ambassadors"),
+            ("Повернення за 30 днів, %", "retention_30_pct"),
+            ("Повернення за 90 днів, %", "retention_90_pct"),
             ("Середній engagement score", "engagement_average"),
-            ("Engagement 75–100", "engagement_high"),
+            ("Залученість 75–100", "engagement_high"),
             ("Активні за 30 днів", "active30"),
             ("Активні за 90 днів", "active90"),
             ("Підтверджені відвідування", "visits"),
             ("Середня відвідуваність події", "avg_attendance"),
-            ("Feedback — відповідей", "feedback_responses"),
-            ("Feedback — середня оцінка", "feedback_avg_rating"),
+            ("Зворотний зв’язок — відповідей", "feedback_responses"),
+            ("Зворотний зв’язок — середня оцінка", "feedback_avg_rating"),
             ("Висока оцінка 4–5, %", "feedback_high_rating_pct"),
             ("Було корисно, %", "feedback_useful_pct"),
             ("Нові знання, %", "feedback_new_knowledge_pct"),
@@ -972,20 +977,20 @@ def analytics_pdf(data: dict[str, Any], metric_key: str | None = None) -> bytes:
             rows = [
                 ("Зареєстровані учасники", summary["participants"]),
                 ("Нові цього місяця", summary["new_this_month"]),
-                ("Cohort: прийшли 1 раз", summary["cohort_first_visit"]),
-                ("Cohort: повернулися", summary["cohort_returned"]),
-                ("Cohort: регулярні", summary["cohort_regular"]),
-                ("Cohort: АМПасадори", summary["cohort_ambassadors"]),
-                ("Retention 30 днів", f"{summary['retention_30_pct']:g}%"),
-                ("Retention 90 днів", f"{summary['retention_90_pct']:g}%"),
-                ("Engagement score — середній", f"{summary['engagement_average']:g}/100"),
-                ("Engagement 75–100", summary["engagement_high"]),
+                ("Когорта: прийшли 1 раз", summary["cohort_first_visit"]),
+                ("Когорта: повернулися", summary["cohort_returned"]),
+                ("Когорта: регулярні", summary["cohort_regular"]),
+                ("Когорта: АМПасадори", summary["cohort_ambassadors"]),
+                ("Повернення за 30 днів", f"{summary['retention_30_pct']:g}%"),
+                ("Повернення за 90 днів", f"{summary['retention_90_pct']:g}%"),
+                ("Індекс залученості — середній", f"{summary['engagement_average']:g}/100"),
+                ("Залученість 75–100", summary["engagement_high"]),
                 ("Активні за 30 днів", summary["active30"]),
                 ("Активні за 90 днів", summary["active90"]),
                 ("Підтверджені відвідування", summary["visits"]),
                 ("Середня відвідуваність події", summary["avg_attendance"]),
-                ("Feedback — відповідей", summary["feedback_responses"]),
-                ("Feedback — середня оцінка", summary["feedback_avg_rating"]),
+                ("Зворотний зв’язок — відповідей", summary["feedback_responses"]),
+                ("Зворотний зв’язок — середня оцінка", summary["feedback_avg_rating"]),
                 ("Нові знання", f"{summary['feedback_new_knowledge_pct']:g}%"),
                 ("Почувалися безпечно", f"{summary['feedback_safe_pct']:g}%"),
                 ("Волонтерські години", summary["volunteer_hours"]),
@@ -1079,13 +1084,13 @@ def analytics_bot_text(data: dict[str, Any]) -> str:
         f"Станом на {data['generated_at'].strftime('%d.%m.%Y %H:%M')}\n\n"
         f"👥 Учасників: <b>{s['participants']}</b>\n"
         f"🆕 Нові цього місяця: <b>{s['new_this_month']}</b>\n"
-        f"🔁 Retention 30/90: <b>{s['retention_30_pct']:g}% / {s['retention_90_pct']:g}%</b>\n"
-        f"📈 Engagement score: <b>{s['engagement_average']:g}/100</b>\n"
+        f"🔁 Повернення 30/90: <b>{s['retention_30_pct']:g}% / {s['retention_90_pct']:g}%</b>\n"
+        f"📈 Індекс залученості: <b>{s['engagement_average']:g}/100</b>\n"
         f"⚡ Активні 30 днів: <b>{s['active30']}</b>\n"
         f"📈 Активні 90 днів: <b>{s['active90']}</b>\n"
         f"📅 Підтверджених відвідувань: <b>{s['visits']}</b>\n"
         f"👤 Середня відвідуваність: <b>{s['avg_attendance']}</b>\n"
-        f"⭐ Feedback: <b>{s['feedback_avg_rating']:g}/5</b> • нові знання <b>{s['feedback_new_knowledge_pct']:g}%</b> • безпека <b>{s['feedback_safe_pct']:g}%</b>\n"
+        f"⭐ Зворотний зв’язок: <b>{s['feedback_avg_rating']:g}/5</b> • нові знання <b>{s['feedback_new_knowledge_pct']:g}%</b> • безпека <b>{s['feedback_safe_pct']:g}%</b>\n"
         f"⏱ Волонтерських годин: <b>{s['volunteer_hours']:g}</b>\n"
         f"✨ Нараховано XP: <b>{s['total_xp_awarded']}</b>\n"
         f"💡 Реалізованих ідей: <b>{s['implemented_ideas']}</b>\n"

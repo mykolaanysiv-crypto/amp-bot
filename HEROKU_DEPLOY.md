@@ -1,15 +1,17 @@
-# Heroku deploy — AMP XP v1.10.3
+# Heroku deploy — АМП XP v1.10.4
 
-1. Зробіть backup production PostgreSQL перед релізом.
-2. Розпакуйте v1.10.3 у чисту робочу директорію.
-3. Встановіть залежності з `requirements.txt`.
-4. Перевірте `BOT_TOKEN`, `DATABASE_URL`, `WEB_SESSION_SECRET`, `TIMEZONE=Europe/Kyiv` та інші чинні Config Vars.
-5. Виконайте `python -m compileall -q app scripts tests` і `pytest -q`.
-6. Перевірте `VERSION.txt = 1.10.3`.
-7. Commit: `AMP XP v1.10.3 data integrity and data quality`.
-8. Push у Heroku.
-9. Під час startup SQLAlchemy idempotently створить нову таблицю `settlement_references`; bootstrap нормалізує відомі aliases населених пунктів.
-10. `/health` має показати `1.10.3`.
-11. Виконайте smoke checklist із `SERVER_UPDATE_V1103.md`.
+1. Створіть резервну копію production PostgreSQL:
+   `heroku pg:backups:capture -a amp-bot-ver-1-5-0`.
+2. Розпакуйте `amp_bot_v1104.zip` у чисту директорію.
+3. Встановіть залежності: `pip install -r requirements.txt`.
+4. Перевірте чинні `BOT_TOKEN`, `DATABASE_URL`, `WEB_SESSION_SECRET`, `TIMEZONE=Europe/Kyiv`, `MEDIA_STORAGE=database`, `PUBLIC_BASE_URL`.
+5. Для донатів задайте `DONATION_JAR_URL=https://send.monobank.ua/jar/5S531LWQuc`; для автоматичної синхронізації — секретний `MONOBANK_TOKEN`.
+6. Виконайте `python -m compileall -q app scripts tests` і `pytest -q`.
+7. Перевірте `VERSION.txt = 1.10.4`.
+8. Підключіть Heroku remote: `heroku git:remote -a amp-bot-ver-1-5-0`.
+9. Якщо реліз розпаковано як чистий Git-репозиторій і історія Heroku відрізняється, після backup використайте `git push heroku HEAD:main --force`.
+10. Startup виконає additive/idempotent schema upgrade до 52 таблиць; наявні учасники, XP, події та історія не очищаються.
+11. `/health` має показати `1.10.4`.
+12. Виконайте перевірки із `SERVER_UPDATE_V1104.md`.
 
-Rollback коду можливий звичайним Heroku rollback. Нова additive таблиця не заважає v1.10.2, але перед rollback production data все одно рекомендовано мати backup.
+Повні команди: `COMMANDS_V1104.txt`.

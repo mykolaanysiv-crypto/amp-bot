@@ -202,6 +202,10 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             ("permanent_deleted_at", "TIMESTAMP"),
             ("opportunity_interests_json", "TEXT"),
             ("staff_permissions_json", "TEXT"),
+            ("registration_review_status", "VARCHAR(24) DEFAULT 'approved'"),
+            ("registration_reviewed_at", "TIMESTAMP"),
+            ("registration_reviewed_by", "VARCHAR(160)"),
+            ("registration_rejection_reason", "TEXT"),
         ],
         "web_staff_accounts": [
             ("permissions_json", "TEXT"),
@@ -269,6 +273,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             ("postponed_at", "TIMESTAMP"),
         ],
         "opportunities": [
+            ("image_path", "VARCHAR(500)"),
             ("direction", "VARCHAR(100) DEFAULT 'Інше'"),
             ("format", "VARCHAR(80) DEFAULT 'Онлайн/офлайн'"),
             ("age_min", "INTEGER"),
@@ -350,6 +355,17 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             except Exception as exc:
                 log.warning("Could not add %s.%s: %s", table, col, exc)
 
+
+    # v1.10.4: split the registration intake queue from the participant base.
+    # Existing non-pending profiles are already reviewed; legacy pending profiles
+    # stay in the incoming registration queue.
+    try:
+        tables_now = set(inspect(sync_conn).get_table_names())
+        if "users" in tables_now and "registration_review_status" in columns("users"):
+            sync_conn.exec_driver_sql("UPDATE users SET registration_review_status='pending' WHERE status='pending'")
+            sync_conn.exec_driver_sql("UPDATE users SET registration_review_status='approved' WHERE status<>'pending' AND (registration_review_status IS NULL OR registration_review_status='' OR registration_review_status='pending')")
+    except Exception as exc:
+        log.warning("Could not initialize v1.10.4 registration review fields: %s", exc)
 
     # v1.6.8: initialize current consent state for legacy profiles.
     try:

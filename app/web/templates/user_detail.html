@@ -93,7 +93,7 @@
     {% if sensitive %}
       <div class="profile-data-item"><span>Дата народження</span><b>{{ user.birth_date.strftime('%d.%m.%Y') if user.birth_date else '—' }}</b></div>
       <div class="profile-data-item"><span>Стать</span><b>{{ gender_text }}</b></div>
-      <div class="profile-data-item"><span>Telegram</span><b>{% if user.username %}@{{ user.username }}{% else %}ID {{ user.tg_id }}{% endif %}</b></div>
+      <div class="profile-data-item"><span>Telegram</span><b>{% if user.username %}@{{ user.username }}{% else %}ідентифікатор {{ user.tg_id }}{% endif %}</b></div>
       <div class="profile-data-item span-all">
         <span>Соціальний статус / категорії вразливості</span>
         <div class="sensitive-chips">
@@ -121,7 +121,7 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label>Прізвище<input name="last_name" value="{{ last_name }}" required autocomplete="family-name"></label>
         <label>Ім’я<input name="first_name" value="{{ first_name }}" required autocomplete="given-name"></label>
-        <label>Telegram username<input name="username" value="{{ user.username or '' }}" placeholder="без символу @"></label>
+        <label>Ім’я користувача Telegram<input name="username" value="{{ user.username or '' }}" placeholder="без символу @"></label>
         <label>Населений пункт<input name="settlement" value="{{ user.settlement or '' }}"></label>
         <div class="span2 form-actions-row"><button class="primary save-profile-button" type="submit">💾 Зберегти базові дані</button></div>
       </form>
@@ -162,7 +162,7 @@
         <label>Електронна пошта
           <input name="email" type="email" value="{{ user.email or '' }}" autocomplete="email">
         </label>
-        <label>Telegram username
+        <label>Ім’я користувача Telegram
           <input name="username" value="{{ user.username or '' }}" placeholder="без символу @">
         </label>
         <label class="span2">Населений пункт
@@ -313,7 +313,7 @@
     <h2>⚡ Нарахувати досвід</h2>
     <form action="/admin/users/{{ user.id }}/xp" method="post" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Кількість XP<input name="amount" type="number" min="-500" max="40" required><small>Ручний позитивний бонус — максимум 40 XP за одну дію.</small></label>
-      <label>Категорія<input name="category" value="web_admin"></label>
+      <input type="hidden" name="category" value="web_admin"><div class="profile-data-item"><span>Тип операції</span><b>Ручне нарахування адміністратором</b></div>
       <label class="span2">Причина<input name="description" required></label>
       <button class="primary">Нарахувати</button>
     </form>

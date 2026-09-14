@@ -32,7 +32,7 @@ async def _send_step(bot: Bot, session, feedback: EventFeedback, user: User, *, 
         body,
         source="event_feedback",
         notification_type="event",
-        title="Feedback після події",
+        title="Відгук після події",
         recipient_user_id=user.id,
         entity_type=ntype,
         entity_id=feedback.id,
@@ -58,7 +58,7 @@ async def feedback_rating(call: CallbackQuery, db: Database, bot: Bot, state: FS
     async with db.session_factory() as session:
         feedback, event = await _feedback_for_tg(session, fid, call.from_user.id)
         if not feedback:
-            await call.answer("Feedback не знайдено", show_alert=True)
+            await call.answer("Відгук не знайдено", show_alert=True)
             return
         feedback.rating = rating
         feedback.status = "in_progress"
@@ -93,7 +93,7 @@ async def feedback_yes_no(call: CallbackQuery, db: Database, bot: Bot, state: FS
     async with db.session_factory() as session:
         feedback, event = await _feedback_for_tg(session, fid, call.from_user.id)
         if not feedback:
-            await call.answer("Feedback не знайдено", show_alert=True)
+            await call.answer("Відгук не знайдено", show_alert=True)
             return
         setattr(feedback, fields[field], value)
         feedback.status = "in_progress"
@@ -131,7 +131,7 @@ async def feedback_skip(call: CallbackQuery, db: Database, bot: Bot, state: FSMC
     async with db.session_factory() as session:
         feedback, _ = await _feedback_for_tg(session, fid, call.from_user.id)
         if not feedback:
-            await call.answer("Feedback не знайдено", show_alert=True)
+            await call.answer("Відгук не знайдено", show_alert=True)
             return
         user = await session.get(User, feedback.user_id)
         await _finish_feedback(bot, session, feedback, user)
@@ -156,7 +156,7 @@ async def feedback_comment(message: Message, db: Database, bot: Bot, state: FSMC
         feedback, _ = await _feedback_for_tg(session, fid, message.from_user.id)
         if not feedback:
             await state.clear()
-            await message.answer("Не вдалося знайти форму feedback.")
+            await message.answer("Не вдалося знайти форму відгуку.")
             return
         user = await session.get(User, feedback.user_id)
         await _finish_feedback(bot, session, feedback, user, text)

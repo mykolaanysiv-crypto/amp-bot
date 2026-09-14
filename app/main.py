@@ -17,12 +17,13 @@ from .config import get_settings
 from .db import Database
 from .engagement import process_goal_rewards
 from .leagues import refresh_all_streaks
-from .handlers import admin, events, feedback, participant, quests, start, surveys, v11
+from .handlers import admin, donations, events, feedback, participant, quests, start, surveys, v11
 from .models import User, Event, EventFeedback, EventRegistration, QuestParticipation, VolunteerTaskParticipation, ActivityApplication, SurveyResponse, Idea, SystemSetting, UserStatus, Season
 from .keyboards import MAIN_MENU_TEXTS
 from .services import bootstrap_defaults, get_user_by_tg, process_birthdays, process_expired_bans, log_audit, revoke_referral_reward_if_inactive
 from .reliability import job_lock, process_due_telegram_deliveries, queue_telegram_delivery, queue_notification
 from .opportunity_matching import queue_pending_match_digests
+from .donations import sync_monobank_donations
 from .season_history import finalize_season
 from .runtime_config import get_runtime_int
 
@@ -272,7 +273,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                                     f"⭐ <b>Як оціниш подію «{event.title}»?</b>\n\nОбери оцінку від 1 до 5. Це займе менше хвилини та допоможе АМП покращувати наступні активності.",
                                     source="event_feedback",
                                     notification_type="event",
-                                    title=f"Feedback: {event.title}",
+                                    title=f"Відгук: {event.title}",
                                     recipient_user_id=user.id,
                                     entity_type="event_feedback_rating", entity_id=fb.id,
                                     dedupe_key=f"event_feedback:prompt:{event.id}:{user.id}",
@@ -281,7 +282,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка scheduler feedback після подій: %s", exc)
+            log.exception("Помилка планувальника зворотного зв’язку після подій: %s", exc)
         await asyncio.sleep(900)
 
 
@@ -525,6 +526,48 @@ async def _notification_retry_scheduler(bot: Bot, db: Database) -> None:
         await asyncio.sleep(15)
 
 
+async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
+    """Refresh the configured Monobank jar every five minutes.
+
+    A database lock keeps web/bot dynos from racing if this scheduler is moved
+    to more than one worker later. Monobank's statement API is intentionally
+    not polled more frequently.
+    """
+    log = logging.getLogger("amp.donations")
+    while True:
+        try:
+            if settings.monobank_token:
+                async with job_lock(db, "monobank_donations_sync", ttl_seconds=240) as acquired:
+                    if acquired:
+                        async with db.session_factory() as session:
+                            result = await sync_monobank_donations(session, settings)
+                            if result.get("ok"):
+                                log.info("Donations sync: imported=%s linked=%s", result.get("imported", 0), result.get("linked", 0))
+                            else:
+                                log.warning("Donations sync failed: %s", result.get("error"))
+                            for user_id, badge_names in (result.get("awarded") or {}).items():
+                                user = await session.get(User, int(user_id))
+                                if not user or not user.tg_id:
+                                    continue
+                                await queue_telegram_delivery(
+                                    session,
+                                    user.tg_id,
+                                    "💙 <b>Дякуємо за підтримку АМП!</b>\n\n" + "🏅 Нові бейджі: " + ", ".join(badge_names),
+                                    source="donation_badge",
+                                    notification_type="gamification",
+                                    recipient_user_id=user.id,
+                                    entity_type="user",
+                                    entity_id=user.id,
+                                    dedupe_key=f"donation_badges:{user.id}:{':'.join(sorted(badge_names))}",
+                                )
+                            await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.exception("Помилка синхронізації донатів: %s", exc)
+        await asyncio.sleep(300)
+
+
 async def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -573,6 +616,7 @@ async def main() -> None:
     # work even if an administrator left an unfinished creation wizard.
     dp.include_router(start.router)
     dp.include_router(v11.router)
+    dp.include_router(donations.router)
     dp.include_router(feedback.router)
     dp.include_router(surveys.router)
     dp.include_router(participant.router)
@@ -691,6 +735,7 @@ async def main() -> None:
     inactivity_task = asyncio.create_task(_inactivity_scheduler(bot, db), name="participant_inactivity_scheduler")
     smart_opportunities_task = asyncio.create_task(_smart_opportunities_scheduler(bot, db), name="smart_opportunities_scheduler")
     season_history_task = asyncio.create_task(_season_history_scheduler(bot, db), name="season_history_scheduler")
+    donation_sync_task = asyncio.create_task(_donation_sync_scheduler(bot, db, settings), name="donation_sync_scheduler")
     try:
         await dp.start_polling(bot, db=db, settings=settings)
     finally:
@@ -703,7 +748,8 @@ async def main() -> None:
         inactivity_task.cancel()
         smart_opportunities_task.cancel()
         season_history_task.cancel()
-        await asyncio.gather(birthday_task, event_reminder_task, event_feedback_task, goal_reward_task, streak_task, notification_retry_task, inactivity_task, smart_opportunities_task, season_history_task, return_exceptions=True)
+        donation_sync_task.cancel()
+        await asyncio.gather(birthday_task, event_reminder_task, event_feedback_task, goal_reward_task, streak_task, notification_retry_task, inactivity_task, smart_opportunities_task, season_history_task, donation_sync_task, return_exceptions=True)
         await db.close()
 
 

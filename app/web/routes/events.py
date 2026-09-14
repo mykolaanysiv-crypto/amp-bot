@@ -24,7 +24,7 @@ async def telegram_miniapp_event_scanner(request: Request, event_id: int):
     async with db.session_factory() as session:
         event = await session.get(Event, event_id)
         if not event or event.cancelled_at or event.status not in {"open", "closed", "postponed"}:
-            return HTMLResponse("Scanner для цієї події недоступний", status_code=409)
+            return HTMLResponse("QR-сканер для цієї події недоступний", status_code=409)
     response = templates.TemplateResponse(
         request=request,
         name="telegram_event_scanner.html",
@@ -51,7 +51,7 @@ async def telegram_miniapp_event_scan(request: Request, event_id: int):
     scan_id = re.sub(r"[^A-Za-z0-9_-]", "", str(payload.get("scan_id") or ""))[:80]
     tg_user = validate_webapp_init_data(init_data, settings.bot_token, max_age_seconds=3600)
     if not tg_user:
-        return JSONResponse({"ok": False, "error": "Не вдалося підтвердити Telegram-сесію. Закрийте scanner і відкрийте його знову з бота."}, status_code=401)
+        return JSONResponse({"ok": False, "error": "Не вдалося підтвердити Telegram-сесію. Закрийте сканер і відкрийте його знову з бота."}, status_code=401)
     operator_tg_id = int(tg_user.get("id") or 0)
     token, amp_id = _scanner_profile_token(code_text)
     if not token and not amp_id:
@@ -62,11 +62,11 @@ async def telegram_miniapp_event_scan(request: Request, event_id: int):
         if not operator or operator.status != UserStatus.ACTIVE.value or operator.role not in {
             UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value,
         }:
-            return JSONResponse({"ok": False, "error": "Недостатньо прав для QR Scanner."}, status_code=403)
+            return JSONResponse({"ok": False, "error": "Недостатньо прав для QR-сканера."}, status_code=403)
         await process_event_operations(session)
         event = await session.get(Event, event_id)
         if not event or event.cancelled_at or event.status in {"draft", "cancelled", "completed"}:
-            return JSONResponse({"ok": False, "error": "Check-in для цієї події недоступний."}, status_code=409)
+            return JSONResponse({"ok": False, "error": "Відмітка для цієї події недоступна."}, status_code=409)
         participant = await session.get(User, amp_id) if amp_id else await session.scalar(select(User).where(User.public_token == token))
         if not participant:
             return JSONResponse({"ok": False, "error": "Учасника за цим бейджем не знайдено."}, status_code=404)
@@ -540,7 +540,7 @@ async def event_scanner_telegram(request: Request, event_id: int):
     async with db.session_factory() as session:
         event = await session.get(Event, event_id)
         if not event or event.status not in {"open", "closed", "postponed"}:
-            return HTMLResponse("Scanner для цієї події недоступний", status_code=409)
+            return HTMLResponse("QR-сканер для цієї події недоступний", status_code=409)
     if not settings.bot_token:
         return HTMLResponse("BOT_TOKEN не налаштований", status_code=503)
     bot = Bot(settings.bot_token)
@@ -566,10 +566,10 @@ async def event_web_scanner(
         await process_event_operations(session)
         event = await session.get(Event, event_id)
         if not event or event.cancelled_at or event.status in {"draft", "cancelled", "completed"}:
-            return JSONResponse({"ok": False, "error": "Check-in для цієї події недоступний."}, status_code=409)
+            return JSONResponse({"ok": False, "error": "Відмітка для цієї події недоступна."}, status_code=409)
         attendance_window = await event_checkin_window(session, event)
         if attendance_window["state"] != "open":
-            message = "Check-in ще не відкрито." if attendance_window["state"] == "too_early" else "Вікно check-in/attendance уже закрито. Використайте ручний override із причиною."
+            message = "Відмітку ще не відкрито." if attendance_window["state"] == "too_early" else "Вікно відмітки та підтвердження участі вже закрито. Використайте ручне підтвердження з причиною."
             return JSONResponse({"ok": False, "error": message, "state": attendance_window["state"]}, status_code=409)
         user = await session.get(User, amp_id) if amp_id else await session.scalar(select(User).where(User.public_token == token))
         if not user:
@@ -680,7 +680,7 @@ async def web_confirm_single_attendance(request: Request, event_id: int, registr
             window = await event_checkin_window(session, event)
             reason = override_reason.strip()
             if window["state"] != "open" and len(reason) < 5:
-                raise HTTPException(status_code=409, detail="Поза attendance window потрібна причина ручного override (мінімум 5 символів).")
+                raise HTTPException(status_code=409, detail="Поза вікном відмітки та підтвердження участі потрібна причина ручного підтвердження (мінімум 5 символів).")
             result = await confirm_single_event_attendance(session, event, reg, admin_user, override_reason=reason or None)
             if result:
                 user, total, level_name, leveled = result
@@ -796,7 +796,7 @@ async def web_confirm_attendance(request: Request, event_id: int, override_reaso
         window = await event_checkin_window(session, event)
         reason = override_reason.strip()
         if window["state"] != "open" and len(reason) < 5:
-            raise HTTPException(status_code=409, detail="Поза attendance window потрібна причина ручного override (мінімум 5 символів).")
+            raise HTTPException(status_code=409, detail="Поза вікном відмітки та підтвердження участі потрібна причина ручного підтвердження (мінімум 5 символів).")
         count, results = await confirm_event_attendance(session, event, admin_user, override_reason=reason or None)
         for user, total, level_name, leveled in results:
             text = f"✅ Участь у події «{event.title}» підтверджено.\n+{event.xp_reward} XP"

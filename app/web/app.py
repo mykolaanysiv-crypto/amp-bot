@@ -821,7 +821,7 @@ async def _send_web_2fa_code(account: WebStaffAccount, code: str) -> None:
     if not tg_id or not settings.bot_token:
         raise HTTPException(
             status_code=503,
-            detail="Для цього акаунта не налаштовано Telegram для 2FA. Зверніться до суперадміністратора.",
+            detail="Для цього акаунта не налаштовано Telegram для двоетапного входу. Зверніться до суперадміністратора.",
         )
     bot = Bot(settings.bot_token)
     try:
@@ -971,7 +971,7 @@ async def login_2fa(request: Request, code: str = Form(...)):
     if datetime.utcnow() > expires:
         csrf = _csrf_token(request)
         request.session.clear(); request.session["csrf_token"] = csrf
-        return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error="Код 2FA застарів. Увійдіть ще раз."), status_code=401)
+        return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error="Код двоетапного входу застарів. Увійдіть ще раз."), status_code=401)
 
     async with db.session_factory() as session:
         account = await session.get(WebStaffAccount, int(account_id))
@@ -985,9 +985,9 @@ async def login_2fa(request: Request, code: str = Form(...)):
             if attempts >= OTP_MAX_ATTEMPTS:
                 csrf = _csrf_token(request)
                 request.session.clear(); request.session["csrf_token"] = csrf
-                return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error="Забагато невдалих кодів 2FA. Увійдіть заново."), status_code=401)
+                return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error="Забагато невдалих кодів двоетапного входу. Увійдіть заново."), status_code=401)
             return templates.TemplateResponse(request=request, name="login_2fa.html", context=ctx(request, error=f"Невірний код. Залишилось спроб: {OTP_MAX_ATTEMPTS-attempts}."), status_code=401)
-        await log_audit(session, "web_2fa_success", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details="2FA підтверджено")
+        await log_audit(session, "web_2fa_success", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details="Двоетапний вхід підтверджено")
         await _establish_web_session(request, session, account)
         target = "/admin/account/password?required=1" if account.must_change_password else "/admin/dashboard"
         return RedirectResponse(target, status_code=303)
@@ -1111,14 +1111,14 @@ async def account_2fa_update(request: Request, enabled: str = Form(""), telegram
         if want_enabled and not tg_id:
             tg_id = account.two_factor_tg_id or (min(settings.superadmin_ids) if account.role == "superadmin" and settings.superadmin_ids else None)
         if want_enabled and not tg_id:
-            context = await _account_security_context(request, error="Для 2FA потрібно вказати Telegram ID.")
+            context = await _account_security_context(request, error="Для двоетапного входу потрібно вказати ідентифікатор Telegram.")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         account.two_factor_enabled = want_enabled
         account.two_factor_tg_id = tg_id if want_enabled else None
         account.updated_at = datetime.utcnow()
         await log_audit(session, "web_2fa_settings", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=f"enabled={account.two_factor_enabled}; telegram_id={'set' if account.two_factor_tg_id else 'none'}")
         await session.commit()
-    context = await _account_security_context(request, success="Налаштування 2FA збережено.")
+    context = await _account_security_context(request, success="Налаштування двоетапного входу збережено.")
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
@@ -1180,13 +1180,13 @@ async def security_account_permissions(request: Request, account_id: int):
             raise HTTPException(status_code=404, detail="Акаунт не знайдено")
         if account.role == UserRole.SUPERADMIN.value:
             account.permissions_json = None
-            note = "Superadmin: повний доступ незмінний"
+            note = "Суперадміністратор: повний доступ незмінний"
         elif mode == "inherit":
             account.permissions_json = None
-            note = "permissions=role_defaults"
+            note = "права=налаштування_ролі"
         else:
             account.permissions_json = dump_permissions(selected)
-            note = f"permissions={account.permissions_json}"
+            note = f"права={account.permissions_json}"
         account.updated_at = datetime.utcnow()
         await log_audit(session, "web_permissions_update", actor_label=request.session.get("admin_name", "web"), entity_type="web_staff_account", entity_id=account.id, details=note)
         await session.commit()
@@ -1205,13 +1205,13 @@ async def security_telegram_permissions(request: Request, user_id: int):
             raise HTTPException(status_code=404, detail="Працівника не знайдено")
         if user.role == UserRole.SUPERADMIN.value:
             user.staff_permissions_json = None
-            note = "Superadmin: повний доступ незмінний"
+            note = "Суперадміністратор: повний доступ незмінний"
         elif mode == "inherit":
             user.staff_permissions_json = None
-            note = "permissions=role_defaults"
+            note = "права=налаштування_ролі"
         else:
             user.staff_permissions_json = dump_permissions(selected)
-            note = f"permissions={user.staff_permissions_json}"
+            note = f"права={user.staff_permissions_json}"
         await log_audit(session, "telegram_permissions_update", actor_label=request.session.get("admin_name", "web"), entity_type="user", entity_id=user.id, details=note)
         await session.commit()
     return RedirectResponse("/admin/security", 303)
@@ -1267,12 +1267,12 @@ from .routes import (
     opportunities as opportunities_routes, users as users_routes, events as events_routes,
     quests as quests_routes, activities as activities_routes, tasks as tasks_routes,
     ideas as ideas_routes, requests as requests_routes, broadcasts as broadcasts_routes,
-    system as system_routes, adminux as adminux_routes, notifications as notifications_routes,
+    system as system_routes, adminux as adminux_routes, notifications as notifications_routes, donations as donations_routes,
 )
 
 for _router_module in (
     dashboard_routes, gamification_routes, analytics_routes, reports_routes, surveys_routes,
     opportunities_routes, users_routes, events_routes, quests_routes, activities_routes,
-    tasks_routes, ideas_routes, requests_routes, broadcasts_routes, system_routes, adminux_routes, notifications_routes,
+    tasks_routes, ideas_routes, requests_routes, broadcasts_routes, system_routes, adminux_routes, notifications_routes, donations_routes,
 ):
     app.include_router(_router_module.router)

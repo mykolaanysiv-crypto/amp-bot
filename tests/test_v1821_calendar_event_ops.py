@@ -6,10 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v1821_version_and_css_cache_buster():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.3"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.3"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.10.4"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.10.4"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.10.3" in base
+    assert "/static/admin.css?v=1.10.4" in base
 
 
 def test_calendar_has_day_week_month_and_all_requested_sources():
@@ -30,7 +30,7 @@ def test_qr_scanner_is_on_event_page_and_camera_is_allowed_for_self():
     assert '@router.post("/admin/events/{event_id}/scanner")' in route
     assert "BarcodeDetector" in template
     assert "getUserMedia" in template
-    assert "📲 Відкрити QR Scanner у Telegram" in template
+    assert "📲 Відкрити QR-сканер у Telegram" in template
     assert "🌐 Сканувати камерою браузера" in template
     assert "Зареєструвати та підтвердити" in template
     assert "camera=(self)" in middleware
@@ -40,7 +40,7 @@ def test_waitlist_schema_and_two_hour_reservation_flow_exist():
     cols = {c.name for c in EventRegistration.__table__.columns}
     for name in {"waitlisted_at", "waitlist_promoted_at", "reservation_expires_at", "no_show_at"}:
         assert name in cols
-    assert len(Base.metadata.tables) == 48
+    assert len(Base.metadata.tables) == 52
     services = (ROOT / "app/services.py").read_text(encoding="utf-8")
     handlers = (ROOT / "app/handlers/events.py").read_text(encoding="utf-8")
     keyboards = (ROOT / "app/keyboards.py").read_text(encoding="utf-8")
@@ -48,7 +48,7 @@ def test_waitlist_schema_and_two_hour_reservation_flow_exist():
     assert 'events.waitlist_reservation_minutes' in services
     assert 'timedelta(minutes=reservation_minutes)' in services
     runtime_config = (ROOT / 'app/runtime_config.py').read_text(encoding='utf-8')
-    assert 'RuleSpec("events.waitlist_reservation_minutes", "events", "Резерв waitlist", 120' in runtime_config
+    assert 'RuleSpec("events.waitlist_reservation_minutes", "events", "Резерв черги очікування", 120' in runtime_config
     assert 'status = "reserved"' in services
     assert 'status = "waitlisted"' in services
     assert 'event_waitlist:' in handlers

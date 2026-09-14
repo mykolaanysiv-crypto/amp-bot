@@ -3,7 +3,7 @@
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Сповіщення</b></nav>
 <section class="page-head">
-  <div><span class="eyebrow">Єдиний центр доставки</span><h1>🔔 Сповіщення</h1><p class="muted">Системні повідомлення, події, розсилки, кейси, streak та опитування в одному механізмі.</p></div>
+  <div><span class="eyebrow">Єдиний центр доставки</span><h1>🔔 Сповіщення</h1><p class="muted">Системні повідомлення, події, розсилки, звернення, серії та опитування в одному механізмі.</p></div>
   <form method="post" action="/admin/notifications/retry-failed"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn" type="submit">🔁 Повторити невдалі</button></form>
 </section>
 <section class="kpis notification-kpis">

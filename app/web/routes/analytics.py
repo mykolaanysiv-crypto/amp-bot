@@ -13,7 +13,7 @@ router = APIRouter()
 async def analytics_dashboard(request: Request):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     return templates.TemplateResponse(
         request=request, name="analytics.html",
         context=ctx(request, analytics=data, metric_meta=METRIC_META)
@@ -24,7 +24,7 @@ async def analytics_dashboard(request: Request):
 async def analytics_export_excel(request: Request):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_excel(data)
     filename = "AMP_analytics_%s.xlsx" % data["generated_at"].strftime("%Y-%m-%d")
     return Response(
@@ -38,7 +38,7 @@ async def analytics_export_excel(request: Request):
 async def analytics_export_pdf(request: Request):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_pdf(data)
     filename = "AMP_analytics_%s.pdf" % data["generated_at"].strftime("%Y-%m-%d")
     return Response(content=payload, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
@@ -48,7 +48,7 @@ async def analytics_export_pdf(request: Request):
 async def analytics_export_png(request: Request):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_png(data)
     filename = "AMP_analytics_%s.png" % data["generated_at"].strftime("%Y-%m-%d")
     return Response(content=payload, media_type="image/png", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
@@ -60,7 +60,7 @@ async def analytics_detail(request: Request, metric_key: str):
     if metric_key not in METRIC_META:
         raise HTTPException(status_code=404, detail="Аналітичний показник не знайдено")
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     metric = data["metrics"][metric_key]
     return templates.TemplateResponse(
         request=request, name="analytics_detail.html",
@@ -74,7 +74,7 @@ async def analytics_metric_export_excel(request: Request, metric_key: str):
     if metric_key not in METRIC_META:
         raise HTTPException(status_code=404, detail="Аналітичний показник не знайдено")
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_excel(data, metric_key)
     return Response(
         content=payload,
@@ -89,7 +89,7 @@ async def analytics_metric_export_pdf(request: Request, metric_key: str):
     if metric_key not in METRIC_META:
         raise HTTPException(status_code=404, detail="Аналітичний показник не знайдено")
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_pdf(data, metric_key)
     return Response(
         content=payload, media_type="application/pdf",
@@ -103,7 +103,7 @@ async def analytics_metric_export_png(request: Request, metric_key: str):
     if metric_key not in METRIC_META:
         raise HTTPException(status_code=404, detail="Аналітичний показник не знайдено")
     async with db.session_factory() as session:
-        data = await build_analytics(session)
+        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     payload = analytics_png(data, metric_key)
     return Response(content=payload, media_type="image/png", headers={"Content-Disposition": f'attachment; filename="AMP_analytics_{metric_key}.png"'})
 

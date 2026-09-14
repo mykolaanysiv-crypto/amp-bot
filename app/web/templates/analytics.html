@@ -17,15 +17,15 @@
 
 <div class="analytics-privacy-note">
   <span>🔐</span>
-  <div><b>Приватність за замовчуванням</b><p>{{ analytics.privacy_note }}</p></div>
+  <div><b>{{ 'Повна агрегована статистика' if analytics.sensitive_counts_visible else 'Агрегована аналітика' }}</b><p>{{ analytics.privacy_note }}</p></div>
 </div>
 
 <div class="analytics-kpis">
   <div class="analytics-kpi"><span>Учасники</span><strong>{{ analytics.summary.participants }}</strong><small>зареєстровано</small></div>
   <div class="analytics-kpi"><span>Нові цього місяця</span><strong>{{ analytics.summary.new_this_month }}</strong><small>реєстрацій</small></div>
-  <div class="analytics-kpi"><span>Retention 30 днів</span><strong>{{ analytics.summary.retention_30_pct }}%</strong><small>{{ analytics.summary.retention_30_count }} повернулися</small></div>
-  <div class="analytics-kpi"><span>Retention 90 днів</span><strong>{{ analytics.summary.retention_90_pct }}%</strong><small>{{ analytics.summary.retention_90_count }} повернулися</small></div>
-  <div class="analytics-kpi"><span>Engagement score</span><strong>{{ analytics.summary.engagement_average }}</strong><small>середній / 100</small></div>
+  <div class="analytics-kpi"><span>Повернення за 30 днів</span><strong>{{ analytics.summary.retention_30_pct }}%</strong><small>{{ analytics.summary.retention_30_count }} повернулися</small></div>
+  <div class="analytics-kpi"><span>Повернення за 90 днів</span><strong>{{ analytics.summary.retention_90_pct }}%</strong><small>{{ analytics.summary.retention_90_count }} повернулися</small></div>
+  <div class="analytics-kpi"><span>Індекс залученості</span><strong>{{ analytics.summary.engagement_average }}</strong><small>середній / 100</small></div>
   <div class="analytics-kpi"><span>Активні 30 днів</span><strong>{{ analytics.summary.active30 }}</strong><small>учасників</small></div>
   <div class="analytics-kpi"><span>Активні 90 днів</span><strong>{{ analytics.summary.active90 }}</strong><small>учасників</small></div>
   <div class="analytics-kpi"><span>Відвідування</span><strong>{{ analytics.summary.visits }}</strong><small>підтверджено</small></div>
@@ -43,7 +43,7 @@
   <section class="card analytics-card">
     <div class="analytics-card-head">
       <div><span class="analytics-icon">{{ metric.icon }}</span><h2>{{ metric.title }}</h2></div>
-      <span class="analytics-live">LIVE</span>
+      <span class="analytics-live">АКТУАЛЬНО</span>
     </div>
     <p class="analytics-card-description">{{ metric.description }}</p>
     {% if metric.kind == 'heatmap' %}

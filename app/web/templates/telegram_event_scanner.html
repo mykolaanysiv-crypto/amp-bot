@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>QR Scanner • {{ event.title }}</title>
+  <title>QR-сканер • {{ event.title }}</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light dark}
@@ -19,12 +19,12 @@
 </head>
 <body>
   <main class="card">
-    <h1>📷 QR Scanner</h1>
+    <h1>📷 QR-сканер</h1>
     <p><b>{{ event.title }}</b></p>
-    <p class="muted">Камера має відкритися автоматично. Після сканування одного бейджа scanner залишається відкритим — одразу наводьте камеру на наступний.</p>
+    <p class="muted">Камера має відкритися автоматично. Після сканування одного бейджа сканер залишається відкритим — одразу наводьте камеру на наступний.</p>
     <div class="counter"><div class="pill">Сканів<br><b id="scan-count">0</b></div><div class="pill">Успішних<br><b id="ok-count">0</b></div></div>
     <div id="status" class="status">⏳ Запускаємо камеру…</div>
-    <button id="open-scanner" type="button">📷 Відкрити камеру</button>
+    <button id="open-сканер" type="button">📷 Відкрити камеру</button>
     <button id="close-app" type="button">✅ Завершити сканування</button>
   </main>
 <script>
@@ -44,7 +44,7 @@
     busy = true; lastCode = text; lastAt = now; scanCount++; scanCountEl.textContent=scanCount;
     setStatus('⏳ Обробляємо бейдж…');
     try{
-      const response = await fetch('/tg/event-scanner/{{ event.id }}/scan', {
+      const response = await fetch('/tg/event-сканер/{{ event.id }}/scan', {
         method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({init_data: tg ? tg.initData : '', code:text, scan_id:scanId()})
       });
@@ -65,10 +65,10 @@
   }
 
   function openNativeScanner(){
-    if (!tg){ setStatus('❌ Відкрийте scanner саме з Telegram-бота.', true); return; }
+    if (!tg){ setStatus('❌ Відкрийте сканер саме з Telegram-бота.', true); return; }
     tg.ready(); tg.expand();
     if (typeof tg.showScanQrPopup !== 'function'){
-      setStatus('❌ Ця версія Telegram не підтримує вбудований QR Scanner. Оновіть Telegram.', true); return;
+      setStatus('❌ Ця версія Telegram не підтримує вбудований QR-сканер. Оновіть Telegram.', true); return;
     }
     setStatus('📷 Камера активна. Скануйте бейджі один за одним.');
     try{
@@ -79,7 +79,7 @@
     }catch(err){ setStatus('❌ Не вдалося відкрити камеру. Натисніть «Відкрити камеру».', true); }
   }
 
-  document.getElementById('open-scanner').addEventListener('click', openNativeScanner);
+  document.getElementById('open-сканер').addEventListener('click', openNativeScanner);
   document.getElementById('close-app').addEventListener('click', () => {
     try{ tg.closeScanQrPopup(); }catch(e){}
     tg.close();

@@ -8,34 +8,35 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.10.3">
+  <link rel="stylesheet" href="/static/admin.css?v=1.10.4">
 </head>
 <body>
 <div class="mobile-topbar">
   <button class="mobile-menu-button" type="button" aria-label="Відкрити меню" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleSidebar()">☰</button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.8.0" alt="АМПасадори" width="36" height="36">
+    <img src="/static/amp_logo.png?v=1.10.4" alt="АМПасадори" width="36" height="36">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
-  <button class="mobile-theme-button" type="button" aria-label="Змінити тему" onclick="toggleTheme()">◐</button>
+  <span class="mobile-topbar-spacer" aria-hidden="true"></span>
 </div>
+<button class="global-theme-button" type="button" aria-label="Змінити тему" onclick="toggleTheme()" title="Змінити тему">◐</button>
 <div class="sidebar-backdrop" onclick="closeSidebar()" aria-hidden="true"></div>
 <aside class="sidebar" id="adminSidebar">
   <a class="brand" href="/admin/dashboard">
-    <img class="sidebar-logo" src="/static/amp_logo.png?v=1.8.0" alt="Логотип АМПасадорів" width="44" height="44" style="width:44px;height:44px;max-width:44px;max-height:44px;object-fit:contain;display:block;flex:0 0 44px;background:#fff;border-radius:12px;padding:4px;">
+    <img class="sidebar-logo" src="/static/amp_logo.png?v=1.10.4" alt="Логотип АМПасадорів" width="44" height="44" style="width:44px;height:44px;max-width:44px;max-height:44px;object-fit:contain;display:block;flex:0 0 44px;background:#fff;border-radius:12px;padding:4px;">
     <div><b>АМПасадори</b><span>панель керування</span></div>
   </a>
   <nav class="sidebar-nav">
     <div class="nav-section"><span class="nav-section-title">Огляд</span>
-      <a class="{% if request.url.path.startswith('/admin/dashboard') %}active{% endif %}" href="/admin/dashboard">🏠 Dashboard</a>
+      <a class="{% if request.url.path.startswith('/admin/dashboard') %}active{% endif %}" href="/admin/dashboard">🏠 Огляд</a>
       {% if has_permission("analytics.view") %}<a class="{% if request.url.path.startswith('/admin/analytics') %}active{% endif %}" href="/admin/analytics">📊 Аналітика</a>{% endif %}
       {% if has_permission("reports.basic_export") or has_permission("reports.sensitive_export") %}<a class="{% if request.url.path.startswith('/admin/reports') %}active{% endif %}" href="/admin/reports">📄 Звіти</a>{% endif %}
       {% if has_permission("notifications.manage") %}<a class="{% if request.url.path.startswith('/admin/notifications') %}active{% endif %}" href="/admin/notifications">🔔 Сповіщення</a>{% endif %}
       {% if has_permission("events.edit") or has_permission("quests.manage") or has_permission("volunteer.manage") or has_permission("surveys.manage") %}<a class="{% if request.url.path.startswith('/admin/calendar') %}active{% endif %}" href="/admin/calendar">📆 Календар</a>{% endif %}
     </div>
     <div class="nav-section"><span class="nav-section-title">Люди</span>
-      {% if has_permission("participants.view") %}<a class="{% if request.url.path.startswith('/admin/users') and request.query_params.get('status') != 'pending' %}active{% endif %}" href="/admin/users">👥 Учасники</a>{% endif %}
-      {% if has_permission("participants.approve") %}<a class="{% if request.url.path == '/admin/users' and request.query_params.get('status') == 'pending' %}active{% endif %}" href="/admin/users?status=pending">📝 Реєстрації</a>{% endif %}
+      {% if has_permission("participants.view") %}<a class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}" href="/admin/users">👥 Учасники</a>{% endif %}
+      {% if has_permission("participants.approve") %}<a class="{% if request.url.path.startswith('/admin/registrations') %}active{% endif %}" href="/admin/registrations">📝 Реєстрації</a>{% endif %}
       {% if has_permission("moderation.manage") %}<a class="{% if request.url.path.startswith('/admin/moderation') %}active{% endif %}" href="/admin/moderation">🛡 Модерація</a>{% endif %}
     </div>
     <div class="nav-section"><span class="nav-section-title">Активності</span>
@@ -63,6 +64,7 @@
     </div>
     <div class="nav-section"><span class="nav-section-title">Комунікація</span>
       {% if has_permission("broadcast.send") %}<a class="{% if request.url.path.startswith('/admin/broadcasts') %}active{% endif %}" href="/admin/broadcasts">📣 Розсилки</a>{% endif %}
+      {% if has_permission("donations.manage") %}<a class="{% if request.url.path.startswith('/admin/donations') %}active{% endif %}" href="/admin/donations">💙 Донати</a>{% endif %}
     </div>
     <div class="nav-section"><span class="nav-section-title">Система</span>
       {% if has_permission("audit.view") %}<a class="{% if request.url.path.startswith('/admin/audit') %}active{% endif %}" href="/admin/audit">🧾 Аудит</a>{% endif %}
@@ -74,7 +76,6 @@
     </div>
   </nav>
   <div class="sidebar-bottom"><a class="sidebar-access sidebar-access-link" href="/admin/account"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор • обмежений доступ' }} • безпека</span></a><small class="side-copy">© АМПасадори • 2026</small>
-    <button class="ghost" onclick="toggleTheme()">◐ Змінити тему</button>
     <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="ghost" type="submit">↪ Вийти</button></form>
   </div>
 </aside>
@@ -82,7 +83,7 @@
   <form class="global-search-top" action="/admin/search" method="get">
     <span>🔎</span><input name="q" value="{{ request.query_params.get('q','') if request.url.path == '/admin/search' else '' }}" placeholder="Пошук: АМП-0006, ПІБ, подія, кейс…" autocomplete="off"><kbd>/</kbd>
   </form>
-  <div class="topbar-actions"><a class="topbar-icon" href="/admin/dashboard#attention" title="Потребує уваги">🔔</a><button class="topbar-icon" type="button" onclick="toggleTheme()" title="Змінити тему">◐</button></div>
+  <div class="topbar-actions"><a class="topbar-icon" href="/admin/dashboard#attention" title="Потребує уваги">🔔</a></div>
 </div>
 <main class="content">{% block content %}{% endblock %}</main>
 <script>

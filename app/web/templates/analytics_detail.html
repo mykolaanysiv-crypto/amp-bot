@@ -47,7 +47,7 @@
   </div>
 </section>
 
-<div class="analytics-privacy-note analytics-detail-note"><span>🔐</span><div><b>Агрегована аналітика</b><p>{{ analytics.privacy_note }}</p></div></div>
+<div class="analytics-privacy-note analytics-detail-note"><span>🔐</span><div><b>{{ 'Повна агрегована статистика' if analytics.sensitive_counts_visible else 'Агрегована аналітика' }}</b><p>{{ analytics.privacy_note }}</p></div></div>
 <p class="analytics-generated">Сформовано: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
