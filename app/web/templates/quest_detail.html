@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_date_fields.html" import optional_datetime_fields %}
+{% block title %}{{q.title}} • Квест{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/quests">Квести</a><span>›</span><b>{{q.title}}</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">КВЕСТ №{{q.id}}</span>
+    <h1>{{q.title}}</h1>
+    <p>{{label(q.quest_type)}} • {{lifecycle_status_label('cancelled' if q.cancelled_at else q.status)}}{% if q.ends_at %} • до {{q.ends_at.strftime('%d.%m.%Y о %H:%M')}}{% endif %}</p>
+  </div>
+  <a class="soft-button page-edit-button" href="#quest-edit">✏️ Редагувати</a>
+</div>
+
+{% if q.cancelled_at %}
+<section class="card cancellation-banner">
+  <div class="cancellation-icon">⚠️</div>
+  <div><h2>Квест скасовано</h2><p><b>Причина:</b> {{q.cancellation_reason or 'Причину не зазначено.'}}</p><small>Скасовано {{q.cancelled_at.strftime('%d.%m.%Y о %H:%M')}}</small></div>
+</section>
+{% endif %}
+
+{% if q.status=='postponed' %}<section class="card postponed-banner"><div class="cancellation-icon">📅</div><div><h2>Квест перенесено</h2><p><b>Новий дедлайн:</b> {{q.ends_at.strftime('%d.%m.%Y о %H:%M') if q.ends_at else 'не вказано'}}</p><p><b>Причина:</b> {{q.postponed_reason or 'Причину не зазначено.'}}</p></div></section>{% endif %}
+
+<div class="event-detail-grid">
+  <section class="card event-hero">{% if q.image_path %}<div class="event-photo-frame"><img src="{{q.image_path}}" alt="Фото квесту"></div>{% else %}<div class="event-no-image">🎯</div>{% endif %}</section>
+  <section class="card">
+    <h2>Умови квесту</h2>
+    <div class="facts"><div><span>Тип</span><b>{{label(q.quest_type)}}</b></div><div><span>Нагорода</span><b>{{q.xp_reward}} XP</b></div><div><span>Дедлайн</span><b>{{q.ends_at.strftime('%d.%m.%Y · %H:%M') if q.ends_at else 'Без дедлайну'}}</b></div><div><span>Учасників</span><b>{{participants|length}}</b></div>{% if q.quest_type=='team' %}<div><span>Ціль</span><b>{{q.progress_value}} / {{q.target_value}}</b></div><div><span>Завершено</span><b>{{'Так' if q.completed else 'Ні'}}</b></div>{% endif %}</div>
+    <hr><p class="preline">{{q.description or 'Без додаткового опису.'}}</p>
+    {% if q.quest_type=='team' and not q.completed and not q.cancelled_at %}<form class="compact-form" method="post" action="/admin/quests/{{q.id}}/progress"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label>Додати до прогресу<input name="delta" type="number" value="1" min="1"></label><button class="primary">Додати прогрес</button></form>{% endif %}
+  </section>
+</div>
+
+<section class="card"><div class="section-title"><h2>👥 Учасники квесту</h2><span>{{participants|length}}</span></div>
+<div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Долучився</th><th>Статус</th><th>Виконано</th><th>Дії</th></tr></thead><tbody>
+{% for part,user in participants %}<tr><td><a href="/admin/users/{{user.id}}"><b>{{user.full_name}}</b></a></td><td class="nowrap">{{part.joined_at.strftime('%d.%m.%Y %H:%M')}}</td><td><span class="tag">{{label(part.status)}}</span></td><td class="nowrap">{{part.completed_at.strftime('%d.%m.%Y %H:%M') if part.completed_at else '—'}}</td><td>{% if q.cancelled_at %}<span class="muted">Квест скасовано</span>{% elif part.status=='completed' %}<div class="row-actions"><form method="post" action="/admin/quests/{{q.id}}/participant/{{part.id}}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="primary">✅ Підтвердити</button></form><form method="post" action="/admin/quests/{{q.id}}/participant/{{part.id}}/return"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">↩ Повернути</button></form><form method="post" action="/admin/quests/{{q.id}}/participant/{{part.id}}/remove" onsubmit="return confirm('Скасувати участь цього учасника у квесті?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">✕ Скасувати участь</button></form></div>{% elif part.status=='approved' %}<span class="tag good">Нагороду нараховано</span>{% elif part.status!='cancelled' %}<form method="post" action="/admin/quests/{{q.id}}/participant/{{part.id}}/remove" onsubmit="return confirm('Скасувати участь цього учасника у квесті?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% else %}<span class="muted">Участь скасовано</span>{% endif %}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">До квесту ще ніхто не долучився.</td></tr>{% endfor %}</tbody></table></div></section>
+
+<section class="card" id="quest-edit"><h2>✏️ Редагувати квест</h2><form method="post" action="/admin/quests/{{q.id}}/update" enctype="multipart/form-data" class="form-grid entity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label class="span2">Назва<input name="title" value="{{q.title}}" required></label><label>Тип<select name="quest_type"><option value="individual" {% if q.quest_type=='individual' %}selected{% endif %}>Індивідуальний</option><option value="team" {% if q.quest_type=='team' %}selected{% endif %}>Командний</option></select></label><label>XP<input name="xp_reward" type="number" min="5" max="35" value="{{q.xp_reward}}"></label><label>Ціль<input name="target_value" type="number" min="1" value="{{q.target_value}}"></label><label class="span2 upload-field">Нове фото<input name="photo" type="file" accept="image/*"></label>{{ optional_datetime_fields('deadline', q.ends_at) }}{% if not q.cancelled_at %}<label class="check-line"><input type="checkbox" name="active" {% if q.active %}checked{% endif %}> Активний</label>{% else %}<div class="entity-action-locked"><b>Квест скасовано</b><span>Повторна активація через редагування вимкнена.</span></div>{% endif %}<label class="check-line span2 remove-photo-line"><input type="checkbox" name="remove_image" value="1"> Видалити фото</label><label class="span2">Опис<textarea name="description">{{q.description}}</textarea></label><div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div></form></section>
+
+<section class="card entity-danger-zone">
+  <div class="section-title"><div><h2>⚙️ Керування квестом</h2><p class="muted">Причина є обов’язковою. Учасники квесту автоматично отримають повідомлення в Telegram.</p></div></div>
+  <div class="entity-danger-grid">
+    {% if not q.cancelled_at and q.status!='completed' %}<form method="post" action="/admin/quests/{{q.id}}/postpone" class="entity-action-form postpone-form" onsubmit="return confirm('Перенести квест та повідомити учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><h3>📅 Перенести квест</h3><label>Причина<textarea name="reason" required maxlength="700"></textarea></label>{{ optional_datetime_fields('deadline', q.ends_at) }}<button class="soft-button postpone-action">📅 Перенести й повідомити</button></form>{% endif %}
+    {% if not q.cancelled_at and q.status!='completed' %}
+    <form method="post" action="/admin/quests/{{q.id}}/cancel" class="entity-action-form" onsubmit="return confirm('Скасувати квест та повідомити всіх його учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label>Причина скасування<textarea name="reason" maxlength="700" required placeholder="Вкажіть причину скасування квесту"></textarea></label><button class="soft-button cancellation-action" type="submit">⚠️ Скасувати квест</button></form>
+    {% elif q.status=='completed' %}<div class="entity-action-locked"><b>Квест завершено</b><span>Після дедлайну квест автоматично переходить у статус «Завершено».</span></div>{% else %}<div class="entity-action-locked"><b>Квест уже скасовано</b><span>Повторне скасування недоступне, щоб не дублювати повідомлення.</span></div>{% endif %}
+    {% if is_superadmin %}<form method="post" action="/admin/quests/{{q.id}}/delete" class="entity-action-form destructive-form" onsubmit="return confirm('ОСТАТОЧНО видалити квест? Учасники отримають повідомлення. Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label>Причина видалення<textarea name="reason" maxlength="700" required placeholder="Обов’язково вкажіть причину видалення"></textarea></label><button class="danger-btn" type="submit">🗑 Видалити квест</button><small>Видалення доступне лише суперадміністратору. Уже нарахований XP не скасовується.</small></form>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Відповіді респондента • {{survey.title}}{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/surveys">Опитування</a><span>›</span><a href="/admin/surveys/{{survey.id}}">{{survey.title}}</a><span>›</span><b>{{ user.full_name if user else 'Респондент' }}</b></nav>
+<div class="page-head survey-response-head">
+  <div>
+    <span class="eyebrow">ВІДПОВІДІ РЕСПОНДЕНТА</span>
+    <h1>👤 {{ user.full_name if user else 'Респондент' }}</h1>
+    <p>{{survey.title}} · завершено {{response.completed_at.strftime('%d.%m.%Y %H:%M')}} · +{{response.xp_awarded}} XP</p>
+  </div>
+  {% if user %}<a class="soft-button" href="/admin/users/{{user.id}}">Профіль АМП-{{'%04d'|format(user.id)}}</a>{% endif %}
+</div>
+
+<section class="card survey-response-card">
+  <div class="section-title"><h2>📋 Відповіді</h2><span>{{questions|length}} питань</span></div>
+  <div class="survey-response-answer-list">
+  {% for q in questions %}
+    {% set val = answers.get(q.id|string) %}
+    <article class="survey-response-answer">
+      <div class="survey-response-number">{{loop.index}}</div>
+      <div>
+        <h3>{{q.text}}</h3>
+        {% if q.image_path %}<img class="survey-question-image" src="{{q.image_path}}" alt="Фото до питання">{% endif %}
+        {% if val is sequence and val is not string %}
+          <div class="survey-option-chips">{% for item in val %}<span>{{item}}</span>{% else %}<span>Без відповіді</span>{% endfor %}</div>
+        {% elif val %}
+          <p class="survey-response-value">{{val}}</p>
+        {% else %}
+          <p class="muted">Без відповіді</p>
+        {% endif %}
+      </div>
+    </article>
+  {% else %}<p class="muted">Питань немає.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

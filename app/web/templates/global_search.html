@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Пошук • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Глобальний пошук</b></nav>
+<div class="page-head"><div><span class="eyebrow">ШВИДКА НАВІГАЦІЯ</span><h1>🔎 Глобальний пошук</h1><p>Шукайте учасників, події, кейси, ідеї, квести, задачі, активності, можливості й опитування.</p></div></div>
+<form class="card global-search-page-form" action="/admin/search" method="get"><input name="q" value="{{q}}" autofocus placeholder="АМП-0006, ПІБ, телефон, email, AMP-2026-0012, назва…"><button class="primary">🔎 Знайти</button></form>
+{% if q %}<p class="muted search-summary">Знайдено: <b>{{total}}</b> • запит «{{q}}»</p>{% endif %}
+<div class="search-groups">
+{% for group, rows in groups.items() %}
+<section class="card search-group"><div class="section-title"><h2>{{group}}</h2><span class="tag">{{rows|length}}</span></div>
+  {% if rows %}<div class="search-result-list">{% for row in rows %}<a class="search-result-row" href="{{row.url}}"><span><b>{{row.title}}</b><small>{{row.meta}}</small></span><span>→</span></a>{% endfor %}</div>{% else %}<p class="muted">Нічого не знайдено.</p>{% endif %}
+</section>
+{% endfor %}
+</div>
+{% endblock %}

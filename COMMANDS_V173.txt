@@ -1,0 +1,42 @@
+# AMP XP v1.7.3 — команди
+
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups:download -a amp-bot-ver-1-5-0 -o ~/Downloads/AMP_BACKUPS/amp_before_v173.dump
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v173
+
+# Якщо Safari розпакував архів у папку amp_bot_v173:
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  ~/Downloads/amp_bot_v173/ \
+  ~/Downloads/amp_bot_v155/
+
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+pip install -r requirements.txt
+cat VERSION.txt
+cat app/version.py
+python -m compileall -q app scripts
+git diff --check
+git status
+
+git add -u
+git add app scripts VERSION.txt CHANGELOG.md README.md SECURITY.md SERVER_UPDATE.md SERVER_UPDATE_V173.md COMMANDS_V173.txt TEST_REPORT_V173.txt requirements.txt .env.example
+git diff --cached --name-only
+git commit -m "AMP XP v1.7.3 stability and security"
+git push heroku main
+
+heroku ps -a amp-bot-ver-1-5-0
+curl https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+# ПІСЛЯ успішного web-входу суперадміна (пароль + Telegram 2FA),
+# зміни тимчасового пароля та перевірки іменних admin-акаунтів:
+heroku config:unset WEB_ADMIN_PASSWORD WEB_STAFF_ACCOUNTS_JSON -a amp-bot-ver-1-5-0

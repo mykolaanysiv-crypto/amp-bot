@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}{{ user.full_name }} • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/users">Учасники</a><span>›</span><b>{{ user.full_name }}</b></nav>
+<div class="page-head">
+  <div>
+    <h1>{{ user.full_name }}</h1>
+    <p><code>АМП-{{ '%04d'|format(user.id) }}</code> • {{ user.settlement or '—' }}</p>
+  </div>
+  <span class="pill">{{ level }}</span>
+</div>
+
+<div class="kpis four">
+  <div class="kpi"><span>Загальний досвід</span><strong>{{ total }}</strong><small>XP</small></div>
+  <div class="kpi"><span>Досвід сезону</span><strong>{{ sxp }}</strong><small>{{ league.icon }} {{ league.title }}</small></div>
+  <div class="kpi"><span>Баланс для обміну</span><strong>{{ user.wallet_xp }}</strong><small>XP</small></div>
+  <div class="kpi"><span>Волонтерські години</span><strong>{{ user.volunteer_hours }}</strong></div>
+</div>
+
+<section class="card profile-streak-strip">
+  <div><span>📆 Тижнева серія</span><strong>{{ streak_row.weekly_streak }}</strong><small>тижнів · рекорд {{ streak_row.weekly_best }}</small></div>
+  <div><span>🔥 Суперсерія подій</span><strong>{{ streak_row.event_streak }}</strong><small>відвідувань · рекорд {{ streak_row.event_best }}</small></div>
+  <div><span>⏭ Допустимі пропуски</span><strong>{{ streak_row.event_total_misses }}/2</strong><small>поспіль {{ streak_row.event_consecutive_misses }}/1</small></div>
+  <a class="soft-button" href="/admin/leaderboard#streaks">⚙️ Керувати серіями</a>
+</section>
+
+<section class="card participant360-card">
+  <div class="section-title participant360-title"><div><h2>👤 Participant 360</h2><p class="muted">Єдина картина учасника: прогрес, історія, активності та документи в одному місці.</p></div><div class="participant360-status"><span class="tag {{ user.status }}">{{ label(user.status) }}</span><span class="pill">{{ label(user.role) }}</span></div></div>
+  <div class="participant360-summary">
+    <div><strong>{{ user.full_name }}</strong><code>АМП-{{ '%04d'|format(user.id) }}</code></div>
+    <div><span>⚡ {{ total }} XP</span><span>{{ league.icon }} {{ league.title }}</span><span>🔥 {{ streak_row.weekly_streak }} тиж.</span><span>⏱ {{ user.volunteer_hours }} год</span></div>
+  </div>
+  <div class="kpi-grid participant360-kpis">
+    <div class="kpi"><span>📅 Подій</span><b>{{kpi360.events}}</b></div><div class="kpi"><span>🎯 Квестів</span><b>{{kpi360.quests}}</b></div>
+    <div class="kpi"><span>✅ Задач</span><b>{{kpi360.tasks}}</b></div><div class="kpi"><span>⚡ Активностей</span><b>{{kpi360.activities}}</b></div>
+    <div class="kpi"><span>📋 Опитувань</span><b>{{kpi360.surveys}}</b></div><div class="kpi"><span>💡 Ідей</span><b>{{kpi360.ideas}}</b></div>
+    <div class="kpi"><span>🏅 Бейджів</span><b>{{kpi360.badges}}</b></div><div class="kpi"><span>🤝 Referrals</span><b>{{kpi360.referrals}}</b></div>
+  </div>
+  <div class="p360-tabs" data-p360-tabs>
+    <button type="button" class="active" data-tab="overview">🏠 Огляд</button>
+    <button type="button" data-tab="quests">🎯 Квести</button>
+    <button type="button" data-tab="activities">⚡ Активності</button>
+    <button type="button" data-tab="xp">⚡ XP</button>
+    <button type="button" data-tab="events">📅 Події</button>
+    <button type="button" data-tab="volunteer">✅ Волонтерство</button>
+    <button type="button" data-tab="ideas">💡 Ідеї</button>
+    <button type="button" data-tab="surveys">📋 Опитування</button>
+    <button type="button" data-tab="badges">🏅 Бейджі</button>
+    <button type="button" data-tab="seasons">🏆 Сезони</button>
+    <button type="button" data-tab="documents">📄 Документи</button>
+  </div>
+  <div class="p360-panel active" data-panel="overview"><h3>🕘 Timeline</h3><div class="timeline360">{% for item in timeline360 %}<div class="timeline360-row"><span>{{item.icon}}</span><time>{{item.at.strftime('%d.%m.%Y %H:%M')}}</time><div><b>{{item.title}}</b>{% if item.detail %}<small>{{item.detail}}</small>{% endif %}</div></div>{% else %}<p class="muted">Історії ще немає.</p>{% endfor %}</div></div>
+  <div class="p360-panel" data-panel="quests">
+    <h3 class="p360-panel-title">🎯 Квести</h3>
+    <div class="table-wrap p360-table-wrap"><table class="p360-data-table"><thead><tr><th>Квест</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in quest_rows360 %}<tr><td>{{r.quest.title if r.quest else ('#' ~ r.quest_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.approved_at or r.completed_at or r.joined_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає участі</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="p360-panel" data-panel="activities">
+    <h3 class="p360-panel-title">⚡ Активності</h3>
+    <div class="table-wrap p360-table-wrap"><table class="p360-data-table"><thead><tr><th>Активність</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in activity_rows360 %}<tr><td>{{r.activity_type.title if r.activity_type else ('#' ~ r.activity_type_id)}}</td><td>{{activity_status_label(r.status)}}</td><td>{{(r.completed_at or r.requested_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає заявок</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="p360-panel" data-panel="xp"><div class="table-wrap"><table><thead><tr><th>Дата</th><th>XP</th><th>Категорія</th><th>Причина</th></tr></thead><tbody>{% for x in txs %}<tr><td>{{x.created_at.strftime('%d.%m.%Y %H:%M')}}</td><td>{{'%+d'|format(x.amount)}}</td><td>{{label(x.category)}}</td><td>{{x.description}}</td></tr>{% else %}<tr><td colspan="4" class="muted">Транзакцій XP ще немає</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="events"><div class="table-wrap"><table><thead><tr><th>Подія</th><th>Статус</th><th>Дата</th><th>Підтвердження</th></tr></thead><tbody>{% for r in event_regs360 %}<tr><td>{{r.event.title if r.event else ('#' ~ r.event_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.confirmed_at or r.registered_at).strftime('%d.%m.%Y')}}</td><td>{% if r.attendance_signature %}<code>{{r.attendance_signature[:10]}}…</code>{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="4" class="muted">Подій ще немає</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="volunteer"><div class="table-wrap"><table><thead><tr><th>Задача</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in task_rows360 %}<tr><td>{{r.task.title if r.task else ('#' ~ r.task_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.approved_at or r.submitted_at or r.joined_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Волонтерських задач ще немає</td></tr>{% endfor %}</tbody></table></div><p class="muted">Загалом підтверджено: <b>{{kpi360.tasks}}</b> задач · <b>{{user.volunteer_hours}}</b> волонтерських годин.</p></div>
+  <div class="p360-panel" data-panel="ideas"><div class="table-wrap"><table><thead><tr><th>Ідея</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for i in idea_rows360 %}<tr><td>{{i.title}}</td><td>{{idea_status_label(i.status)}}</td><td>{{i.created_at.strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Ідей ще немає</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="surveys"><div class="table-wrap"><table><thead><tr><th>Опитування</th><th>XP</th><th>Дата</th></tr></thead><tbody>{% for r in survey_rows360 %}<tr><td>{{r.survey.title if r.survey else ('#' ~ r.survey_id)}}</td><td>{{r.xp_awarded}}</td><td>{{r.completed_at.strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Опитувань ще не пройдено</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="seasons"><div class="table-wrap"><table><thead><tr><th>Сезон</th><th>Статус</th><th>Ліга</th><th>XP</th><th>Місце</th></tr></thead><tbody>{% for s in season_history360 %}<tr><td><a href="/admin/seasons/{{s.id}}"><b>{{s.name}}</b></a></td><td>{{'Активний' if s.active else 'Завершений'}}</td><td>{{s.league.icon}} {{s.league.title}}</td><td>{{s.xp}}</td><td>{{s.rank or '—'}}</td></tr>{% else %}<tr><td colspan="5" class="muted">Історії сезонів ще немає</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="badges"><div class="chips">{% for b in badges %}<span>{{b.icon}} {{b.name}}</span>{% else %}<span class="muted">Немає бейджів</span>{% endfor %}</div></div>
+  <div class="p360-panel" data-panel="documents"><div class="participant360-docs"><div><span>👪 Батьківська згода</span><b>{% if not user.parental_consent_required %}Не потрібна{% elif user.parental_consent_status=='received' %}✅ Отримана{% elif user.parental_consent_status=='revoked' %}🚫 Відкликана{% else %}⏳ Очікується{% endif %}</b></div><div><span>📷 Фото/відеозгода</span><b>{% if user.media_consent_status=='granted' %}✅ Надана{% elif user.media_consent_status=='revoked' %}🚫 Відкликана{% elif user.media_consent_status=='declined' %}❌ Не надана{% else %}⏳ Очікується{% endif %}</b></div></div>{% if sensitive %}<a class="soft-button" href="#consents">📄 Перейти до документів і історії згод</a>{% else %}<p class="muted">Повні документи доступні лише суперадміністратору.</p>{% endif %}</div>
+</section>
+
+<section class="card profile-card">
+  <div class="section-title profile-section-title">
+    <div>
+      <h2>👤 Дані учасника</h2>
+      <p class="muted profile-note">Конфіденційні дані. Використовуйте лише для внутрішньої роботи уповноваженої команди АМП.</p>
+    </div>
+    <div class="profile-head-actions">
+      <span class="tag {{ user.status }}">{{ label(user.status) }}</span>
+    </div>
+  </div>
+
+  <div class="profile-data-grid">
+    <div class="profile-data-item"><span>Прізвище</span><b>{{ last_name or '—' }}</b></div>
+    <div class="profile-data-item"><span>Ім’я</span><b>{{ first_name or '—' }}</b></div>
+    <div class="profile-data-item"><span>Вік</span><b>{{ age if age is not none else '—' }}</b></div>
+    <div class="profile-data-item"><span>Населений пункт</span><b>{{ user.settlement or '—' }}</b></div>
+    <div class="profile-data-item"><span>Статус профілю</span><b>{{ label(user.status) }}</b></div>
+    <div class="profile-data-item"><span>Роль у системі</span><b>{{ label(user.role) }}</b></div>
+    <div class="profile-data-item"><span>Згода на фото/відео</span><b>{% if user.media_consent_status=='granted' %}✅ Надана{% elif user.media_consent_status=='revoked' %}🚫 Відкликана{% elif user.media_consent_status=='declined' %}❌ Не надана{% else %}⏳ Очікується{% endif %}</b></div>
+    <div class="profile-data-item"><span>Згода батьків</span><b>{% if not user.parental_consent_required %}Не потрібна{% elif user.parental_consent_status=='received' %}✅ Отримана{% elif user.parental_consent_status=='revoked' %}🚫 Відкликана{% else %}⏳ Очікується{% endif %}</b></div>
+    <div class="profile-data-item"><span>Номер телефону</span><b>{% if sensitive %}{{ user.phone or '—' }}{% else %}{{ masked_phone }}{% endif %}</b></div>
+    <div class="profile-data-item"><span>Електронна пошта</span><b>{% if sensitive %}{{ user.email or '—' }}{% else %}{{ masked_email }}{% endif %}</b></div>
+    {% if sensitive %}
+      <div class="profile-data-item"><span>Дата народження</span><b>{{ user.birth_date.strftime('%d.%m.%Y') if user.birth_date else '—' }}</b></div>
+      <div class="profile-data-item"><span>Стать</span><b>{{ gender_text }}</b></div>
+      <div class="profile-data-item"><span>Telegram</span><b>{% if user.username %}@{{ user.username }}{% else %}ID {{ user.tg_id }}{% endif %}</b></div>
+      <div class="profile-data-item span-all">
+        <span>Соціальний статус / категорії вразливості</span>
+        <div class="sensitive-chips">
+          {% for item in vulnerabilities %}<span>{{ item }}</span>{% else %}<em>Не зазначено</em>{% endfor %}
+        </div>
+      </div>
+      <div class="profile-data-item span-all privacy-ack-item">
+        <span>Ознайомлення з використанням даних</span>
+        <b>{% if user.privacy_acknowledged_at %}{{ user.privacy_acknowledged_at.strftime('%d.%m.%Y %H:%M') }} • {{ user.privacy_notice_version or 'версія не зазначена' }}{% else %}Старий профіль — підтвердження в системі відсутнє{% endif %}</b>
+      </div>
+    {% else %}
+      <div class="profile-data-item span-all privacy-hidden-note">
+        <span>Чутливі персональні дані</span>
+        <b>Приховано. Повний перегляд доступний лише суперадміністратору.</b>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if has_permission("participants.edit") and not sensitive %}
+  <details class="profile-editor">
+    <summary class="primary edit-profile-trigger">✏️ Редагувати базові дані</summary>
+    <div class="profile-editor-panel">
+      <div class="editor-intro"><div><b>Базові дані учасника</b><p>Доступні лише нечутливі робочі поля. Контакти, дата народження, категорії вразливості та згоди тут не редагуються.</p></div><span class="pill">participants.edit</span></div>
+      <form action="/admin/users/{{ user.id }}/basic-profile" method="post" class="form-grid profile-edit-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>Прізвище<input name="last_name" value="{{ last_name }}" required autocomplete="family-name"></label>
+        <label>Ім’я<input name="first_name" value="{{ first_name }}" required autocomplete="given-name"></label>
+        <label>Telegram username<input name="username" value="{{ user.username or '' }}" placeholder="без символу @"></label>
+        <label>Населений пункт<input name="settlement" value="{{ user.settlement or '' }}"></label>
+        <div class="span2 form-actions-row"><button class="primary save-profile-button" type="submit">💾 Зберегти базові дані</button></div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+
+  {% if sensitive %}
+  <details class="profile-editor">
+    <summary class="primary edit-profile-trigger">✏️ Редагувати картку учасника</summary>
+    <div class="profile-editor-panel">
+      <div class="editor-intro">
+        <div>
+          <b>Редагування персональних даних</b>
+          <p>Заповніть відсутні поля старих профілів або виправте дані учасника. Вік перераховується автоматично за датою народження.</p>
+        </div>
+        <span class="pill">Доступ суперадміністратора</span>
+      </div>
+      <form action="/admin/users/{{ user.id }}/profile" method="post" class="form-grid profile-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>Прізвище
+          <input name="last_name" value="{{ last_name }}" required autocomplete="family-name">
+        </label>
+        <label>Ім’я
+          <input name="first_name" value="{{ first_name }}" required autocomplete="given-name">
+        </label>
+        <label>Дата народження
+          <input name="birth_date" type="date" value="{{ user.birth_date.isoformat() if user.birth_date else '' }}">
+        </label>
+        <label>Стать
+          <select name="gender">
+            <option value="">Не зазначено</option>
+            {% for code, option_label in gender_options %}<option value="{{ code }}" {% if user.gender==code %}selected{% endif %}>{{ option_label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Номер телефону
+          <input name="phone" value="{{ user.phone or '' }}" autocomplete="tel">
+        </label>
+        <label>Електронна пошта
+          <input name="email" type="email" value="{{ user.email or '' }}" autocomplete="email">
+        </label>
+        <label>Telegram username
+          <input name="username" value="{{ user.username or '' }}" placeholder="без символу @">
+        </label>
+        <label class="span2">Населений пункт
+          <input name="settlement" value="{{ user.settlement or '' }}">
+        </label>
+
+        <fieldset class="vulnerability-fieldset span2">
+          <legend>Соціальний статус / категорії вразливості <small>можна обрати декілька</small></legend>
+          <p class="muted">Ці дані використовуються для внутрішньої аналітики та планування підтримки. «Не відношусь до жодної категорії» не поєднується з іншими варіантами.</p>
+          <div class="vulnerability-options">
+            {% for number, code, option_label in vulnerability_options %}
+              <label class="check-chip">
+                <input type="checkbox" name="vulnerability" value="{{ code }}" {% if code in vulnerability_codes %}checked{% endif %}>
+                <span>{{ option_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <label class="other-vulnerability">Уточнення для «Інша категорія»
+            <input name="vulnerability_other" value="{{ vulnerability_other }}" placeholder="За потреби уточніть категорію">
+          </label>
+        </fieldset>
+
+        <div class="span2 form-actions-row">
+          <button class="primary save-profile-button" type="submit">💾 Зберегти картку учасника</button>
+        </div>
+      </form>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
+{% if sensitive %}
+<section class="card consent-card" id="consents">
+  <div class="section-title">
+    <div><h2>📄 Документи та згоди</h2><p class="muted">Історія не перезаписується: кожна зміна статусу або версії згоди зберігається окремим записом аудиту.</p></div>
+    <span class="pill">Доступ суперадміністратора</span>
+  </div>
+  <div class="consent-status-grid">
+    <div class="consent-status-tile {% if user.parental_consent_status=='received' %}ok{% elif user.parental_consent_status=='revoked' %}danger{% else %}waiting{% endif %}">
+      <span>👪 Згода батьків / законного представника</span>
+      <strong>{% if not user.parental_consent_required %}Не потрібна{% elif user.parental_consent_status=='received' %}Отримана{% elif user.parental_consent_status=='revoked' %}Відкликана{% else %}Очікується{% endif %}</strong>
+      <small>{% if user.parental_consent_received_at %}Дата: {{user.parental_consent_received_at.strftime('%d.%m.%Y %H:%M')}}{% elif user.parental_consent_required %}Документ ще не зафіксований{% endif %}</small>
+      {% if user.parental_consent_file_path %}<a class="soft-button" href="/admin/users/{{user.id}}/consent-file" target="_blank">📎 Відкрити файл / скан</a>{% endif %}
+    </div>
+    <div class="consent-status-tile {% if user.media_consent_status=='granted' %}ok{% elif user.media_consent_status in ['revoked','declined'] %}danger{% else %}waiting{% endif %}">
+      <span>📷 Фото- та відеозгода</span>
+      <strong>{% if user.media_consent_status=='granted' %}Надана{% elif user.media_consent_status=='revoked' %}Відкликана{% elif user.media_consent_status=='declined' %}Не надана{% else %}Очікується{% endif %}</strong>
+      <small>Версія: {{user.media_consent_version or '—'}}{% if user.media_consent_recorded_at %} • {{user.media_consent_recorded_at.strftime('%d.%m.%Y %H:%M')}}{% endif %}</small>
+    </div>
+  </div>
+
+  <details class="profile-editor consent-editor">
+    <summary class="primary edit-profile-trigger">✏️ Оновити статуси / додати документ</summary>
+    <form method="post" action="/admin/users/{{user.id}}/consents" enctype="multipart/form-data" class="form-grid profile-edit-form consent-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Статус згоди батьків
+        <select name="parental_status">
+          <option value="not_required" {% if user.parental_consent_status=='not_required' %}selected{% endif %}>Не потрібна</option>
+          <option value="pending" {% if user.parental_consent_status=='pending' %}selected{% endif %}>Очікується</option>
+          <option value="received" {% if user.parental_consent_status=='received' %}selected{% endif %}>Отримана</option>
+          <option value="revoked" {% if user.parental_consent_status=='revoked' %}selected{% endif %}>Відкликана</option>
+        </select>
+      </label>
+      <label>Дата отримання<input type="datetime-local" name="parental_received_at" value="{{user.parental_consent_received_at.strftime('%Y-%m-%dT%H:%M') if user.parental_consent_received_at else ''}}"></label>
+      <label class="span2">Файл / скан згоди<input type="file" name="parental_file" accept="image/*,.pdf"><small>PDF, JPG, PNG або WebP до 20 МБ.</small>{% if user.parental_consent_file_path %}<span class="check-chip"><input type="checkbox" name="remove_parental_file" value="1"><span>Видалити поточний файл</span></span>{% endif %}</label>
+      <label>Фото/відеозгода
+        <select name="media_status">
+          <option value="pending" {% if user.media_consent_status=='pending' %}selected{% endif %}>Очікується</option>
+          <option value="granted" {% if user.media_consent_status=='granted' %}selected{% endif %}>Надана</option>
+          <option value="declined" {% if user.media_consent_status=='declined' %}selected{% endif %}>Не надана</option>
+          <option value="revoked" {% if user.media_consent_status=='revoked' %}selected{% endif %}>Відкликана</option>
+        </select>
+      </label>
+      <label>Версія згоди<input name="media_version" value="{{user.media_consent_version or ''}}" placeholder="2026-09-12-v1"></label>
+      <label>Дата фіксації<input type="datetime-local" name="media_recorded_at" value="{{user.media_consent_recorded_at.strftime('%Y-%m-%dT%H:%M') if user.media_consent_recorded_at else ''}}"></label>
+      <label class="span2">Примітка до зміни<textarea name="note" placeholder="Наприклад: отримано паперову згоду / учасник відкликав згоду"></textarea></label>
+      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти з історією</button></div>
+    </form>
+  </details>
+
+  <div class="consent-history">
+    <h3>🕘 Історія змін</h3>
+    {% for h in consent_history %}
+      <div class="consent-history-row">
+        <span class="consent-history-icon">{{'👪' if h.consent_type=='parental' else '📷'}}</span>
+        <div><b>{{'Згода батьків' if h.consent_type=='parental' else 'Фото/відеозгода'}} — {{h.status}}</b><small>{{h.changed_at.strftime('%d.%m.%Y %H:%M')}} • {{h.changed_by_label}}{% if h.version %} • версія {{h.version}}{% endif %}</small>{% if h.note %}<p>{{h.note}}</p>{% endif %}{% if h.file_path %}<span class="muted">📎 На цьому етапі був зафіксований документ</span>{% endif %}</div>
+      </div>
+    {% else %}<p class="muted">Історичних записів ще немає. Для старих профілів вони з’являться після першої зміни.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if pending_status_request %}
+<section class="card status-approval-card">
+  <div class="section-title"><div><h2>🛂 Підтвердження статусу</h2><p class="muted">Запит від {{pending_status_request.requested_by_label}} • {{pending_status_request.created_at.strftime('%d.%m.%Y %H:%M')}}</p></div><span class="tag pending">Очікує суперадміна</span></div>
+  <div class="status-change-flow"><span>{{label(pending_status_request.previous_status)}}</span><b>→</b><strong>{{label(pending_status_request.requested_status)}}</strong></div>
+  {% if has_permission("participants.approve") %}<div class="status-approval-actions"><form method="post" action="/admin/users/{{user.id}}/status-request/{{pending_status_request.id}}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="primary">✅ Підтвердити статус</button></form><form method="post" action="/admin/users/{{user.id}}/status-request/{{pending_status_request.id}}/reject" class="status-reject-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="review_note" placeholder="Причина відхилення (необов’язково)"><button class="danger-btn">✕ Відхилити</button></form></div>{% else %}<p class="muted">Зміна набуде чинності після підтвердження суперадміністратором.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if user.status=='pending' %}
+<section class="card pending-registration-card">
+  <div class="section-title"><div><h2>✅ Підтвердження нової реєстрації</h2><p class="muted">Профіль очікує активації. Після підтвердження учасник отримає доступ до функцій Telegram-бота.</p></div></div>
+  <form method="post" action="/admin/users/{{user.id}}/activate"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="primary" type="submit">{{'✅ Підтвердити реєстрацію' if has_permission('participants.approve') else '🛂 Надіслати запит на підтвердження'}}</button></form>
+</section>
+{% endif %}
+
+
+
+{% if user.status=='deleted' and user.restoration_request_status=='pending' %}
+<section class="card attention-card"><h2>♻️ Запит на відновлення</h2><p><b>Чому хоче повернутися:</b> {{restoration_answers.get('reason','—')}}</p><p><b>Планована участь:</b> {{restoration_answers.get('future_activity','—')}}</p>{% if has_permission("participants.approve") %}<div class="actions"><form method="post" action="/admin/users/{{user.id}}/restoration/approve"><input type="hidden" name="_csrf" value="{{csrf_token}}"><button class="primary">✅ Відновити на 14-денний випробувальний строк</button></form><form method="post" action="/admin/users/{{user.id}}/restoration/reject"><input type="hidden" name="_csrf" value="{{csrf_token}}"><input name="review_note" placeholder="Коментар"><button class="danger-btn">✕ Відхилити</button></form></div>{% endif %}</section>
+{% endif %}
+{% if user.probation_until %}<section class="card"><h2>🧪 Випробувальний строк</h2><p>До <b>{{user.probation_until.strftime('%d.%m.%Y %H:%M')}}</b>. Потрібна хоча б одна підтверджена участь.</p></section>{% endif %}
+
+<div class="grid2">
+  <section class="card">
+    <h2>⚙️ Доступ і статус</h2>
+    <form action="/admin/users/{{ user.id }}/update" method="post" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Роль
+        {% if is_superadmin %}
+          <select name="role">{% for r in ['participant','ambassador','coordinator','admin','superadmin'] %}<option value="{{ r }}" {% if user.role==r %}selected{% endif %}>{{ label(r) }}</option>{% endfor %}</select>
+        {% else %}
+          <input value="{{ label(user.role) }}" disabled><input type="hidden" name="role" value="{{ user.role }}">
+        {% endif %}
+      </label>
+      <label>Статус
+        {% if user.status in ['deleted','deleted_permanent'] %}
+          <select name="status" disabled><option selected>{{ label(user.status) }} — автоматичний статус</option></select><input type="hidden" name="status" value="{{user.status}}"><small>Цей статус неможливо встановити або змінити вручну.</small>
+        {% elif user.status == 'blocked' %}
+          <select name="status" disabled><option selected>Заблоковано — керується в «Модерації»</option></select><input type="hidden" name="status" value="blocked">
+        {% else %}
+          <select name="status">{% for s in ['pending','active','inactive'] %}<option value="{{ s }}" {% if user.status==s %}selected{% endif %}>{{ label(s) }}</option>{% endfor %}</select>
+          {% if not is_superadmin %}<small>Зміна статусу буде надіслана суперадміністратору на підтвердження.</small>{% endif %}
+        {% endif %}
+      </label>
+      <button class="primary">Зберегти</button>
+    </form>
+    {% if is_superadmin %}
+    <hr>
+    <p><b>Код запрошення:</b> <code>{{ user.referral_code or '—' }}</code></p>
+    <hr>
+    <h3>🛡 Модерація профілю</h3>
+    {% if user.status=='blocked' %}<div class="ban-notice"><b>{% if user.blocked_until %}Заблоковано до {{user.blocked_until.strftime('%d.%m.%Y %H:%M')}}{% else %}Профіль заблоковано{% endif %}</b><span>{{user.block_reason or 'Причину не зазначено'}}</span></div>{% endif %}
+    <a class="soft-button" href="/admin/moderation">Відкрити модуль модерації</a>
+    {% endif %}
+  </section>
+
+  {% if has_permission("xp.award") %}<section class="card">
+    <h2>⚡ Нарахувати досвід</h2>
+    <form action="/admin/users/{{ user.id }}/xp" method="post" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Кількість XP<input name="amount" type="number" min="-500" max="40" required><small>Ручний позитивний бонус — максимум 40 XP за одну дію.</small></label>
+      <label>Категорія<input name="category" value="web_admin"></label>
+      <label class="span2">Причина<input name="description" required></label>
+      <button class="primary">Нарахувати</button>
+    </form>
+    <h3>🏅 Бейджі</h3>
+    <div class="chips">{% for b in badges %}<span>{{ b.icon }} {{ b.name }}</span>{% else %}<span class="muted">Поки немає</span>{% endfor %}</div>
+  </section>{% endif %}
+</div>
+
+<script>document.addEventListener('DOMContentLoaded',()=>{const root=document.querySelector('[data-p360-tabs]');if(!root)return;root.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{root.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.p360-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===b.dataset.tab));}));});</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Звіти • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Звіти</b></nav>
+<div class="page-head"><div><span class="eyebrow">АВТОМАТИЗОВАНА ЗВІТНІСТЬ</span><h1>📄 Сформувати звіт АМП</h1><p>Оберіть період — система автоматично збере ключові показники та сформує брендований PDF або Excel.</p></div></div>
+<section class="card report-builder-card">
+  <div class="section-title"><div><h2>Період звіту</h2><p class="muted">Доступні місяць, діапазон місяців, квартал або повний рік.</p></div></div>
+  <form class="report-form" action="/admin/reports/download" method="get">
+    <label>Тип періоду<select id="periodType" name="period_type" onchange="togglePeriodFields()"><option value="month">Місяць</option><option value="months">Декілька місяців</option><option value="quarter">Квартал</option><option value="year">Рік</option></select></label>
+    <label>Рік<input type="number" name="year" value="{{current_year}}" min="2023" max="2100" required></label>
+    <label class="period-field" data-period="month">Місяць<select name="month">{% for m,n in [(1,'Січень'),(2,'Лютий'),(3,'Березень'),(4,'Квітень'),(5,'Травень'),(6,'Червень'),(7,'Липень'),(8,'Серпень'),(9,'Вересень'),(10,'Жовтень'),(11,'Листопад'),(12,'Грудень')] %}<option value="{{m}}">{{n}}</option>{% endfor %}</select></label>
+    <label class="period-field" data-period="months">Від місяця<select name="start_month">{% for m in range(1,13) %}<option value="{{m}}">{{m}}</option>{% endfor %}</select></label>
+    <label class="period-field" data-period="months">До місяця<select name="end_month">{% for m in range(1,13) %}<option value="{{m}}" {% if m==12 %}selected{% endif %}>{{m}}</option>{% endfor %}</select></label>
+    <label class="period-field" data-period="quarter">Квартал<select name="quarter"><option value="1">I квартал</option><option value="2">II квартал</option><option value="3">III квартал</option><option value="4">IV квартал</option></select></label>
+    <label>Формат<select name="format"><option value="pdf">PDF — готовий до подання</option><option value="xlsx">Excel — для подальшої роботи</option></select></label>
+    <div class="report-submit"><button class="primary" type="submit">📄 Сформувати звіт</button></div>
+  </form>
+</section>
+<section class="card report-info-card"><h2>Що включається автоматично</h2><div class="report-feature-grid"><span>📅 Події та відвідування</span><span>👥 Унікальні учасники</span><span>⏱ Волонтерські години</span><span>⚡ Активності та XP</span><span>🎯 Квести</span><span>💡 Ідеї</span><span>🆘 Звернення</span><span>📋 Опитування та відповіді</span><span>🌍 Інтерес до можливостей</span><span>🎂 Вікова статистика</span><span>⚧ Гендерна статистика</span><span>📍 Населені пункти</span><span>🏅 Отримані бейджі та динаміка по тижнях</span><span>🏆 Ліги та серії участі</span><span>🧊 Заморозки серій</span><span>🛡 Категорії вразливості — лише агреговано</span></div></section>
+<script>
+function togglePeriodFields(){const t=document.getElementById('periodType').value;document.querySelectorAll('.period-field').forEach(el=>{el.style.display=el.dataset.period===t?'flex':'none';});}
+togglePeriodFields();
+</script>
+{% endblock %}

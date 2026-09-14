@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}{{season.name}} • Сезони{% endblock %}{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/seasons">Сезони</a><span>›</span><b>{{season.name}}</b></nav>
+<div class="page-head"><div><span class="eyebrow">ІСТОРІЯ СЕЗОНУ</span><h1>🏆 {{season.name}}</h1><p>{{season.starts_at.strftime('%d.%m.%Y')}} — {{season.ends_at.strftime('%d.%m.%Y')}} · {{'Активний сезон' if season.active else 'Завершений сезон'}}</p></div>{% if not season.active %}<form method="post" action="/admin/seasons/{{season.id}}/finalize"><input type="hidden" name="_csrf" value="{{csrf_token}}"><button class="soft-button">🔄 Перерахувати snapshot</button></form>{% endif %}</div>
+{% if snapshot %}
+<section class="kpi-grid season-kpi-grid">
+  <article class="kpi"><span>👥 Учасників</span><strong>{{snapshot.stats.participants}}</strong></article>
+  <article class="kpi"><span>⚡ XP сезону</span><strong>{{snapshot.stats.total_xp}}</strong></article>
+  <article class="kpi"><span>🏅 Бейджів</span><strong>{{snapshot.stats.badges_awarded}}</strong></article>
+  <article class="kpi"><span>📦 Статус</span><strong>{{'Архів' if season.archived else 'Активний'}}</strong></article>
+</section>
+<section class="card"><h2>🏅 П'єдестал сезону</h2><div class="season-podium">{% for row in snapshot.top3 %}<div class="season-podium-item"><span>{{['🥇','🥈','🥉'][loop.index0]}}</span><b>{{row.name}}</b><strong>{{row.xp}} XP</strong></div>{% else %}<p class="empty">Ще немає результатів.</p>{% endfor %}</div></section>
+<section class="card"><h2>🏆 Переможці ліг</h2><div class="table-wrap"><table><thead><tr><th>Ліга</th><th>Переможець</th><th>XP</th></tr></thead><tbody>{% for row in snapshot.league_winners %}<tr><td>{{row.icon}} {{row.league}}</td><td>{{row.name}}</td><td>{{row.xp}}</td></tr>{% else %}<tr><td colspan="3">Немає даних</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="card"><h2>🏅 Бейджі сезону</h2><div class="season-mini-stats">{% for row in snapshot.stats.badges %}<span><b>{{row.name}}</b><br>{{row.count}} видано</span>{% else %}<span>Бейджів у цьому сезоні ще не зафіксовано.</span>{% endfor %}</div></section>
+<section class="card"><h2>🚀 Рекорди</h2><div class="kpi-grid three">
+  <article class="kpi"><span>⚡ Рекорд XP</span><strong>{% if snapshot.records.xp %}{{snapshot.records.xp.xp}}{% else %}0{% endif %}</strong><small>{% if snapshot.records.xp %}{{snapshot.records.xp.name}}{% endif %}</small></article>
+  <article class="kpi"><span>🔥 Рекорд streak</span><strong>{% if snapshot.records.streak %}{{snapshot.records.streak.weeks}} тиж.{% else %}0{% endif %}</strong><small>{% if snapshot.records.streak %}{{snapshot.records.streak.name}}{% endif %}</small></article>
+  <article class="kpi"><span>⏱ Волонтерські години</span><strong>{% if snapshot.records.volunteer_hours %}{{snapshot.records.volunteer_hours.hours}}{% else %}0{% endif %}</strong><small>{% if snapshot.records.volunteer_hours %}{{snapshot.records.volunteer_hours.name}}{% endif %}</small></article>
+</div></section>
+<section class="card table-wrap"><h2>📊 Фінальний рейтинг</h2><table><thead><tr><th>#</th><th>Учасник</th><th>Роль</th><th>XP</th></tr></thead><tbody>{% for row in snapshot.leaderboard %}<tr><td>{{loop.index}}</td><td>{{row.name}}</td><td>{{row.role}}</td><td><b>{{row.xp}}</b></td></tr>{% else %}<tr><td colspan="4">Немає даних</td></tr>{% endfor %}</tbody></table></section>
+{% else %}
+<section class="card"><p class="empty">Сезон ще активний. Підсумковий історичний snapshot буде зафіксовано після завершення.</p></section>
+{% endif %}
+{% endblock %}

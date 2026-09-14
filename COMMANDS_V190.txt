@@ -1,0 +1,151 @@
+АМПасадори v1.9.0 — КОМАНДИ ОНОВЛЕННЯ НА HEROKU
+================================================
+
+HEROKU APP:
+amp-bot-ver-1-5-0
+
+ПОТОЧНА РОБОЧА ПАПКА:
+~/Downloads/amp_bot_v155
+
+НОВА ПАПКА ПІСЛЯ РОЗПАКУВАННЯ:
+~/Downloads/amp_bot_v190
+
+
+1. BACKUP PRODUCTION DATABASE
+-----------------------------
+
+cd ~/Downloads/amp_bot_v155
+
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download \
+  -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v190.dump
+
+
+2. РОЗПАКУВАТИ v1.9.0
+---------------------
+
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v190
+unzip ~/Downloads/amp_bot_v190.zip -d ~/Downloads/
+
+Перевірити:
+
+cat ~/Downloads/amp_bot_v190/VERSION.txt
+
+Має бути:
+1.9.0
+
+
+3. СКОПІЮВАТИ КОД У РОБОЧУ ПАПКУ
+---------------------------------
+
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v190/ \
+  ~/Downloads/amp_bot_v155/
+
+ВАЖЛИВО:
+source тут саме ~/Downloads/amp_bot_v190/
+НЕ додавайте ще одну /amp_bot_v190/ після неї.
+
+
+4. ЛОКАЛЬНА ПЕРЕВІРКА
+---------------------
+
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+cat VERSION.txt
+python -c "from app.version import APP_VERSION; print(APP_VERSION)"
+
+python -m compileall -q app scripts tests
+
+git diff --check
+
+pytest -q \
+  tests/test_v181_features.py \
+  tests/test_v182_ui.py \
+  tests/test_v1821_calendar_event_ops.py \
+  tests/test_v1822_startup_hotfix.py \
+  tests/test_v1823_runtime_fixes.py \
+  tests/test_v1824_telegram_scanner.py \
+  tests/test_v1825_admin_menu_version_dedupe.py \
+  tests/test_v190_notification_center.py
+
+
+5. GIT
+------
+
+git status
+git add -A
+git diff --cached --check
+git status
+
+git commit -m "AMP XP v1.9.0 Notification Center and Outcomes"
+
+
+6. DEPLOY
+---------
+
+git push heroku main
+
+Heroku release command сам виконає необхідну additive/idempotent DB initialization.
+НЕ запускайте вручну migrate_sqlite_to_postgres.py.
+
+
+7. ПЕРЕВІРКА ПІСЛЯ DEPLOY
+-------------------------
+
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+
+heroku logs -n 250 -a amp-bot-ver-1-5-0
+
+За потреби live logs:
+
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+
+8. ЩО ПЕРЕВІРИТИ У WEB
+----------------------
+
+- Dashboard працює.
+- 🔔 Сповіщення відкривається.
+- KPI: В черзі / Надіслано / Помилки.
+- Фільтри працюють.
+- 🔁 Повторити невдалі працює.
+- Сторінка події містить ⭐ Feedback та вплив.
+- Аналітика містить outcomes.
+- Звіт Excel/PDF містить feedback/outcomes.
+- PDF містить сторінку Вплив.
+
+
+9. ROLLBACK У РАЗІ ПРОБЛЕМИ
+---------------------------
+
+heroku releases -a amp-bot-ver-1-5-0
+
+Потім оберіть попередній успішний release, наприклад:
+
+heroku rollback vXX -a amp-bot-ver-1-5-0
+
+Перевірити:
+
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 200 -a amp-bot-ver-1-5-0

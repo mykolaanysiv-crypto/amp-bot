@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Сповіщення • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Сповіщення</b></nav>
+<section class="page-head">
+  <div><span class="eyebrow">Єдиний центр доставки</span><h1>🔔 Сповіщення</h1><p class="muted">Системні повідомлення, події, розсилки, кейси, streak та опитування в одному механізмі.</p></div>
+  <form method="post" action="/admin/notifications/retry-failed"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn" type="submit">🔁 Повторити невдалі</button></form>
+</section>
+<section class="kpis notification-kpis">
+  <article class="kpi"><span>⏳ В черзі</span><strong>{{ kpi.queued }}</strong></article>
+  <article class="kpi"><span>✅ Надіслано</span><strong>{{ kpi.sent }}</strong></article>
+  <article class="kpi"><span>⚠️ Помилки</span><strong>{{ kpi.failed }}</strong></article>
+</section>
+<section class="card">
+  <form method="get" class="smart-filters">
+    <label>Пошук<input type="search" name="q" value="{{ q }}" placeholder="Назва або текст"></label>
+    <label>Тип<select name="type"><option value="">Усі</option>{% for value,label in filters %}<option value="{{ value }}" {% if filter_type==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>Статус<select name="status"><option value="">Усі</option><option value="queued" {% if filter_status=='queued' %}selected{% endif %}>В черзі</option><option value="sent" {% if filter_status=='sent' %}selected{% endif %}>Надіслано</option><option value="failed" {% if filter_status=='failed' %}selected{% endif %}>Помилки</option></select></label>
+    <div class="filter-actions"><button class="btn" type="submit">Застосувати</button><a class="btn ghost" href="/admin/notifications">Скинути</a></div>
+  </form>
+</section>
+<section class="card table-card">
+  <div class="table-wrap"><table class="notification-table"><thead><tr><th>Час</th><th>Одержувач</th><th>Тип</th><th>Назва</th><th>Сутність</th><th>Статус</th><th>Спроб</th><th>Помилка</th></tr></thead><tbody>
+  {% for row in rows %}
+    <tr>
+      <td class="notification-time">{{ row.created_at.strftime('%d.%m.%Y %H:%M') if row.created_at else '—' }}</td>
+      <td class="notification-recipient">{% set u=users.get(row.recipient_user_id) if row.recipient_user_id else None %}{{ u.full_name if u else row.recipient_tg_id }}</td>
+      <td class="notification-type"><span class="pill">{{ row.type }}</span></td>
+      <td><b>{{ row.title or 'Сповіщення' }}</b><div class="muted small">{{ row.body|striptags|truncate(120) }}</div></td>
+      <td class="notification-entity">{{ row.entity_type or '—' }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</td>
+      <td class="notification-status"><span class="status status-{{ row.status }}">{{ {'queued':'В черзі','retry':'Повтор','sent':'Надіслано','failed':'Помилка'}.get(row.status,row.status) }}</span></td>
+      <td class="notification-attempts">{{ row.retry_count or 0 }}</td>
+      <td class="small">{{ row.error or '—' }}</td>
+    </tr>
+  {% else %}<tr><td colspan="8" class="empty-note">Сповіщень за вибраними умовами немає.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

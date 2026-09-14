@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{idea.title}} • Ідея{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/ideas">Ідеї</a><span>›</span><b>{{idea.title}}</b></nav>
+<div class="page-head">
+  <div><span class="eyebrow">ІДЕЯ №{{idea.id}}</span><h1>{{idea.title}}</h1><p>Автор: <a href="/admin/users/{{author.id}}">{{author.full_name}}</a> • {{idea.created_at.strftime('%d.%m.%Y %H:%M')}}</p></div>
+  <span class="status-badge status-{{idea.status}}">{{idea_status_label(idea.status)}}</span>
+</div>
+
+<section class="card idea-workflow-card idea-stage-{{idea.status}}">
+  <div class="section-title"><div><h2>🧭 Шлях ідеї</h2><p class="muted">Ідея → Схвалення → Реалізація → Результат</p></div></div>
+  {% set stage = 1 %}
+  {% if idea.status in ['approved','in_progress','paused','implemented'] %}{% set stage = 2 %}{% endif %}
+  {% if idea.status in ['in_progress','paused','implemented'] %}{% set stage = 3 %}{% endif %}
+  {% if idea.status == 'implemented' %}{% set stage = 4 %}{% endif %}
+  <div class="idea-workflow">
+    <div class="workflow-step done {% if stage==1 %}current{% endif %}"><b>1</b><span>Ідея</span></div>
+    <div class="workflow-line {% if stage>=2 %}done{% endif %}"></div>
+    <div class="workflow-step {% if stage>=2 %}done{% endif %} {% if stage==2 %}current{% endif %}"><b>2</b><span>Схвалення</span></div>
+    <div class="workflow-line {% if stage>=3 %}done{% endif %}"></div>
+    <div class="workflow-step {% if stage>=3 %}done{% endif %} {% if stage==3 %}current{% endif %}"><b>3</b><span>Реалізація</span></div>
+    <div class="workflow-line {% if stage>=4 %}done{% endif %}"></div>
+    <div class="workflow-step {% if stage>=4 %}done{% endif %} {% if stage==4 %}current{% endif %}"><b>4</b><span>Результат</span></div>
+  </div>
+</section>
+
+<div class="idea-detail-grid">
+  <section class="card"><h2>Проблема / потреба</h2><p class="preline">{{idea.problem or '—'}}</p></section>
+  <section class="card"><h2>Що пропонується</h2><p class="preline">{{idea.description or '—'}}</p></section>
+  <section class="card"><h2>Цільова аудиторія</h2><p class="preline">{{idea.audience or '—'}}</p></section>
+  <section class="card"><h2>Очікуваний результат</h2><p class="preline">{{idea.expected_result or '—'}}</p></section>
+  <section class="card"><h2>Початкові ресурси / допомога</h2><p class="preline">{{idea.resources or '—'}}</p></section>
+</div>
+
+<section class="card">
+  <div class="section-title"><div><h2>⚙️ Робота команди</h2><p class="muted">Після схвалення ідея перетворюється на міні-проєкт із планом, прогресом і результатом.</p></div></div>
+  <form id="idea-update-form" method="post" action="/admin/ideas/{{idea.id}}/update" enctype="multipart/form-data" class="form-grid idea-project-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label>Статус<select name="status">{% for st in statuses %}<option value="{{st}}" {% if idea.status==st %}selected{% endif %}>{{idea_status_label(st)}}</option>{% endfor %}</select></label>
+    <label>Напрям<select name="category">{% for value in ['event_idea','space','education','media','volunteering','partnership','other'] %}<option value="{{value}}" {% if idea.category==value %}selected{% endif %}>{{label(value)}}</option>{% endfor %}</select></label>
+    <label class="span2">Відповідальний<select name="responsible_user_id"><option value="">Не призначено</option>{% for u in team %}<option value="{{u.id}}" {% if idea.responsible_user_id==u.id %}selected{% endif %}>{{u.full_name}} — {{label(u.role)}}</option>{% endfor %}</select></label>
+    <label class="span2">Проблема / потреба<textarea name="problem">{{idea.problem or ''}}</textarea></label>
+    <label class="span2">Опис рішення<textarea name="description">{{idea.description or ''}}</textarea></label>
+    <label class="span2">Цільова аудиторія<textarea name="audience">{{idea.audience or ''}}</textarea></label>
+    <label class="span2">Очікуваний результат<textarea name="expected_result">{{idea.expected_result or ''}}</textarea></label>
+    <label class="span2">Початкові ресурси<textarea name="resources">{{idea.resources or ''}}</textarea></label>
+
+    {% if idea.status in ['approved','in_progress','paused','implemented'] %}
+    <div class="span2 idea-project-divider"><span>🚀 МІНІ-ПРОЄКТ</span></div>
+    <label class="span2">Команда реалізації<textarea name="project_team" placeholder="Хто входить до команди, партнери, ролі...">{{idea.project_team or ''}}</textarea></label>
+    <label>Дедлайн реалізації<input type="datetime-local" name="implementation_deadline" value="{{idea.implementation_deadline.strftime('%Y-%m-%dT%H:%M') if idea.implementation_deadline else ''}}"></label>
+    <label>Прогрес, %<input type="number" name="progress_percent" min="0" max="100" value="{{idea.progress_percent or 0}}"></label>
+    <div class="span2 project-progress-wrap"><div class="project-progress-head"><b>Прогрес реалізації</b><span>{{idea.progress_percent or 0}}%</span></div><div class="project-progress"><i style="width:{{idea.progress_percent or 0}}%"></i></div></div>
+    <label class="span2">Бюджет / ресурси<textarea name="budget_resources" placeholder="Кошти, матеріали, приміщення, обладнання, партнерська підтримка...">{{idea.budget_resources or ''}}</textarea></label>
+    <label class="span2">Завдання / план дій<textarea name="project_tasks" placeholder="1. ...&#10;2. ...&#10;3. ...">{{idea.project_tasks or ''}}</textarea></label>
+    <label class="span2">Результат реалізації<textarea name="implementation_result" placeholder="Що зроблено, кого залучено, який результат отримано...">{{idea.implementation_result or ''}}</textarea></label>
+    {% if idea.result_image_path %}<div class="span2 idea-result-photo"><img src="{{idea.result_image_path}}" alt="Фото результату"></div>{% endif %}
+    <label class="span2 upload-field">Фото результату<input name="result_photo" type="file" accept="image/*"><small>JPG, PNG або WebP, до 20 МБ.</small></label>
+    {% if idea.result_image_path %}<label class="check-line span2 remove-photo-line"><input type="checkbox" name="remove_result_image" value="1"> Видалити фото результату</label>{% endif %}
+    {% else %}
+    <div class="span2 project-locked-note"><b>🚀 Блок міні-проєкту відкриється після статусу «Схвалена».</b><span>Тоді тут з’являться команда, дедлайн, бюджет/ресурси, завдання, прогрес, результат і фото.</span></div>
+    {% endif %}
+
+    <label class="span2">Внутрішня примітка команди<textarea name="admin_note" placeholder="Рішення команди, наступний крок, домовленості...">{{idea.admin_note or ''}}</textarea></label>
+  </form>
+  <div class="idea-detail-actions"><button class="primary" type="submit" form="idea-update-form">💾 Зберегти</button><form method="post" action="/admin/ideas/{{idea.id}}/delete" onsubmit="return confirm('Видалити цю ідею назавжди?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">🗑 Видалити ідею</button></form></div>
+</section>
+{% endblock %}

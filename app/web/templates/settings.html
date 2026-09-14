@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Налаштування • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Налаштування</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">СИСТЕМА</span>
+    <h1>⚙️ Налаштування</h1>
+    <p>Операційні правила, які можна змінювати без нового релізу коду.</p>
+  </div>
+</div>
+{% if request.query_params.get('saved') %}<div class="notice success">✅ Налаштування збережено й застосовуються до нових автоматичних операцій.</div>{% endif %}
+<form method="post" action="/admin/settings" class="settings-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <div class="settings-grid">
+  {% for section, meta in sections.items() %}
+    <section class="card settings-card">
+      <div class="section-title"><div><h2>{{ meta[0] }}</h2><p class="muted">{{ meta[1] }}</p></div></div>
+      <div class="settings-fields">
+      {% for spec in grouped[section] %}
+        <label class="settings-field">
+          <span><b>{{ spec.label }}</b>{% if spec.unit %}<small>{{ spec.unit }}</small>{% endif %}</span>
+          <input name="{{ spec.key.replace('.', '__') }}" type="number" min="{{ spec.minimum }}" max="{{ spec.maximum }}" value="{{ values[spec.key] }}" {% if not is_superadmin %}disabled{% endif %}>
+          <small class="muted">{{ spec.help }}</small>
+        </label>
+      {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+  </div>
+  {% if is_superadmin %}
+  <div class="settings-savebar"><button class="primary" type="submit">💾 Зберегти правила</button><span class="muted">Зміни журналюються в аудиті.</span></div>
+  {% else %}
+  <div class="notice">🔐 Перегляд доступний. Змінювати системні правила може лише суперадміністратор.</div>
+  {% endif %}
+</form>
+<section class="card"><h2>💤 Неактивність і retention</h2><p>Механізм 55/59/60 днів неактивності та 14-денний probation після відновлення залишається окремою lifecycle-політикою.</p><p class="muted">Privacy retention period = 0 означає, що історичні та audit-зв’язки не видаляються фізично автоматично. Значення зберігається як керована політика для наступних retention-процесів.</p></section>
+{% endblock %}

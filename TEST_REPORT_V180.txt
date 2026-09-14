@@ -1,0 +1,35 @@
+AMP XP / АМПасадори v1.8.0 — QA REPORT
+Date: 2026-09-13
+
+SCOPE
+- v1.7.4.1 baseline preserved.
+- v1.8.0 Admin UX, Telegram FSM navigation protection and 60-day inactivity policy added.
+
+STATIC QA PERFORMED IN CURRENT BUILD ENVIRONMENT
+PASS  Python compileall: app / scripts / tests
+PASS  Python AST parse: release source
+PASS  Jinja parse: 45 templates, 0 parse errors
+PASS  FastAPI static decorator scan: 157 method+path routes, 157 unique, 0 duplicates
+PASS  SQLAlchemy metadata import: 44 tables
+PASS  Version: VERSION.txt = 1.8.0, app/version.py fallback = 1.8.0
+PASS  All base-admin templates extending base.html have unified breadcrumb markup
+PASS  Smart-filter forms present for users/events/quests/tasks/activities/opportunities/surveys/ideas/requests
+PASS  System Health actions use common system-action control styling
+PASS  Package hygiene check is performed again after final ZIP generation
+
+PYTEST NOTE
+The current sandbox does not have runtime dependency `aiogram` (and has no network access to install it), so the full pytest suite cannot be executed in this environment. Collection stops at tests/test_reliability.py before running tests. This is an environment dependency limitation, not a claimed PASS.
+
+The existing v1.7.4.1 regression suite (18 tests in the baseline) remains in the package unchanged. Run after installing requirements.txt:
+    python -m compileall -q app scripts tests
+    pytest -q
+
+POST-DEPLOY SMOKE CHECK
+1. /health -> 1.8.0
+2. /admin/dashboard -> Attention Center
+3. /admin/search?q=АМП-0006
+4. /admin/calendar
+5. Smart filters on main lists + Reset + persistence while staying in the section
+6. /admin/system-health -> common actions / retry failed Telegram deliveries
+7. Telegram: start New Idea -> press another main-menu button -> Yes/No confirmation; No keeps state, Yes navigates
+8. Inactivity scheduler: participant/ambassador only; warning at 55/59 days; inactive at 60; blocked/staff excluded

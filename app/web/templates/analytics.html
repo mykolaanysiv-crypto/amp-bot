@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Аналітика • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Аналітика</b></nav>
+<div class="hero analytics-hero">
+  <div>
+    <span class="eyebrow">АМП • АВТОМАТИЗОВАНІ ДАНІ</span>
+    <h1>📊 Аналітика</h1>
+    <p>Живі агреговані показники для внутрішньої роботи, звітів сільради та донорів.</p>
+  </div>
+  <div class="analytics-hero-actions">
+    <a class="soft-button analytics-export-button" href="/admin/analytics/export.xlsx">📥 Загальний Excel</a>
+    <a class="primary link-button analytics-export-button" href="/admin/analytics/export.pdf">📄 Загальний PDF</a>
+    <a class="soft-button" href="/admin/analytics/export.png">🖼 PNG</a>
+  </div>
+</div>
+
+<div class="analytics-privacy-note">
+  <span>🔐</span>
+  <div><b>Приватність за замовчуванням</b><p>{{ analytics.privacy_note }}</p></div>
+</div>
+
+<div class="analytics-kpis">
+  <div class="analytics-kpi"><span>Учасники</span><strong>{{ analytics.summary.participants }}</strong><small>зареєстровано</small></div>
+  <div class="analytics-kpi"><span>Нові цього місяця</span><strong>{{ analytics.summary.new_this_month }}</strong><small>реєстрацій</small></div>
+  <div class="analytics-kpi"><span>Retention 30 днів</span><strong>{{ analytics.summary.retention_30_pct }}%</strong><small>{{ analytics.summary.retention_30_count }} повернулися</small></div>
+  <div class="analytics-kpi"><span>Retention 90 днів</span><strong>{{ analytics.summary.retention_90_pct }}%</strong><small>{{ analytics.summary.retention_90_count }} повернулися</small></div>
+  <div class="analytics-kpi"><span>Engagement score</span><strong>{{ analytics.summary.engagement_average }}</strong><small>середній / 100</small></div>
+  <div class="analytics-kpi"><span>Активні 30 днів</span><strong>{{ analytics.summary.active30 }}</strong><small>учасників</small></div>
+  <div class="analytics-kpi"><span>Активні 90 днів</span><strong>{{ analytics.summary.active90 }}</strong><small>учасників</small></div>
+  <div class="analytics-kpi"><span>Відвідування</span><strong>{{ analytics.summary.visits }}</strong><small>підтверджено</small></div>
+  <div class="analytics-kpi"><span>Середня відвідуваність</span><strong>{{ analytics.summary.avg_attendance }}</strong><small>осіб / подію</small></div>
+  <div class="analytics-kpi"><span>Волонтерські години</span><strong>{{ analytics.summary.volunteer_hours }}</strong><small>годин</small></div>
+  <div class="analytics-kpi"><span>Реалізовані ідеї</span><strong>{{ analytics.summary.implemented_ideas }}</strong><small>ідей</small></div>
+  <div class="analytics-kpi"><span>Опитування</span><strong>{{ analytics.summary.survey_responses_12w }}</strong><small>проходжень / 12 тижнів</small></div>
+  <div class="analytics-kpi"><span>Бейджі</span><strong>{{ analytics.summary.badges_12w }}</strong><small>отримано / 12 тижнів</small></div>
+  <div class="analytics-kpi"><span>Заморожені серії</span><strong>{{ analytics.summary.frozen_streaks }}</strong><small>{{ analytics.summary.freeze_days_quarter }} дн. використано в кварталі</small></div>
+</div>
+
+<div class="analytics-grid">
+{% for key in analytics.metric_order %}
+  {% set metric = analytics.metrics[key] %}
+  <section class="card analytics-card">
+    <div class="analytics-card-head">
+      <div><span class="analytics-icon">{{ metric.icon }}</span><h2>{{ metric.title }}</h2></div>
+      <span class="analytics-live">LIVE</span>
+    </div>
+    <p class="analytics-card-description">{{ metric.description }}</p>
+    {% if metric.kind == 'heatmap' %}
+    <div class="analytics-heatmap-wrap">
+      <div class="analytics-heatmap" style="--heatmap-cols: {{ metric.hours|length }}">
+        <div class="heatmap-corner"></div>
+        {% for hour in metric.hours %}<div class="heatmap-hour">{{ hour[:2] }}</div>{% endfor %}
+        {% set maxv = metric.matrix|map('max')|max if metric.matrix else 0 %}
+        {% for day in metric.days %}
+          {% set d = loop.index0 %}<div class="heatmap-day">{{ day }}</div>
+          {% for value in metric.matrix[d] %}<div class="heatmap-cell" title="{{ day }} {{ metric.hours[loop.index0] }} — {{ value }}" style="--heat: {{ (value / maxv) if maxv else 0 }}">{{ value if value else '' }}</div>{% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}<div class="analytics-chart-wrap"><canvas id="chart-{{ metric.key }}"></canvas></div>{% endif %}
+    <div class="analytics-card-actions">
+      <a class="primary link-button" href="/admin/analytics/{{ metric.key }}">👁 Детально</a>
+      <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.xlsx">Excel</a>
+      <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.pdf">PDF</a>
+      <a class="soft-button" href="/admin/analytics/{{metric.key}}/export.png">PNG</a>
+    </div>
+  </section>
+{% endfor %}
+</div>
+
+<p class="analytics-generated">Оновлено автоматично: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+const analyticsMetrics = {{ analytics.metrics|tojson }};
+const css = getComputedStyle(document.documentElement);
+const chartBase = '#06AEBB';
+const chartAlt = '#6C63FF';
+const chartGood = '#2FAE75';
+const chartWarm = '#F3A63A';
+const palette = ['#06AEBB','#6C63FF','#2FAE75','#F3A63A','#E86C8D','#5C86D9','#8C6CCF','#42A5A5','#D47B45','#6D8C75','#A0A7B4'];
+function createAmpChart(metric){
+  if(metric.kind==='heatmap') return;
+  const el=document.getElementById('chart-'+metric.key); if(!el) return;
+  const isDoughnut=metric.kind==='doughnut';
+  new Chart(el,{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:chartBase,backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:chartBase}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+Object.values(analyticsMetrics).forEach(createAmpChart);
+</script>
+{% endblock %}

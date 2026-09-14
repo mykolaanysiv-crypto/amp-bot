@@ -1,0 +1,113 @@
+AMP XP / «АМПасадори» v1.8.2 — QA REPORT
+===========================================
+Дата: 13.09.2026
+Версія: 1.8.2
+
+1. VERSION
+----------
+VERSION.txt: 1.8.2
+VERSION_CHECK.txt: 1.8.2
+CSS cache-buster: /static/admin.css?v=1.8.2
+
+2. STATIC / COMPILE QA
+----------------------
+python -m compileall -q app scripts tests: PASS
+AST parse: 74 Python files, 0 errors
+Jinja parse: 45 templates, 0 errors
+FastAPI static route scan: 159 unique method+path routes, duplicates = 0
+SQLAlchemy metadata: 44 tables
+
+3. v1.8.2 UI FEATURE TESTS
+-------------------------
+Command:
+pytest -q tests/test_v182_ui.py
+
+Result:
+5 passed
+
+Covered:
+- VERSION 1.8.2 + CSS cache-buster;
+- separate Participant 360 tabs for Quests and Activities;
+- 4-column compact Participant 360 KPI grid;
+- centered/aligned tables with overflow protection;
+- duplicate bottom XP-history block removed while XP tab and manual XP award remain.
+
+4. v1.8.1 + v1.8.2 TARGETED REGRESSION
+--------------------------------------
+Command:
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py
+
+Result:
+11 passed
+
+This verifies the v1.8.1 lifecycle/Participant 360 wiring together with the
+v1.8.2 UI changes.
+
+5. FULL HISTORICAL PYTEST IN THIS SANDBOX
+-----------------------------------------
+Full command attempted:
+pytest -q
+
+Collection stops because this sandbox does not have runtime package `aiogram`:
+
+ModuleNotFoundError: No module named 'aiogram'
+
+This is the same environment limitation recorded for v1.8.1. Therefore this
+report DOES NOT claim the entire historical regression suite as PASS here.
+In the normal local/CI environment run:
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pytest -q
+
+before production deploy.
+
+6. DATABASE / ROUTES
+--------------------
+v1.8.2 is UI-only:
+- new tables: 0
+- new DB fields: 0
+- total SQLAlchemy tables: 44
+- FastAPI routes: 159 unique
+- duplicate routes: 0
+
+No manual SQLite -> PostgreSQL migration is required.
+Standard Heroku release remains:
+python -m scripts.heroku_release
+
+7. IMPORTANT v1.8.2 PROPERTIES
+------------------------------
+- Quests and Activities no longer share a two-column Participant 360 panel.
+- Desktop KPI layout is explicitly 4 columns (8 KPI = 4x2).
+- KPI text/numbers are centered and compact.
+- Participant 360 tables are centered and protected from overlap.
+- Long quest/activity titles wrap inside the title column.
+- Tabs use consistent height/alignment and horizontal scrolling on narrow screens.
+- Duplicate bottom XP transaction history is removed.
+- The Participant 360 XP tab remains the single history view.
+- Manual XP award functionality is preserved.
+- v1.8.1 lifecycle/security/reliability/business logic is not changed.
+
+8. PACKAGE HYGIENE
+------------------
+Release ZIP must not contain:
+.env
+*.db / *.sqlite / *.dump
+__pycache__
+.pytest_cache
+*.pyc
+local data/
+
+END OF REPORT
+
+9. FRESH-EXTRACT CHECK
+----------------------
+A clean extraction of `amp_bot_v182.zip` was rechecked before final packaging:
+- VERSION: 1.8.2
+- compileall: PASS
+- targeted v1.8.1 + v1.8.2 tests: 11 passed
+- 74 Python files / 0 AST errors
+- 45 Jinja templates / 0 parse errors
+- 159 FastAPI routes / 159 unique / 0 duplicates
+- 44 SQLAlchemy tables
+

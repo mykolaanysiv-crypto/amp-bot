@@ -1,0 +1,94 @@
+AMP XP / «АМПасадори» v1.10.3 — QA REPORT
+================================================
+
+RELEASE
+-------
+Version: 1.10.3
+Name: Data Integrity & Data Quality Fix Pack
+
+SCOPE
+-----
+P0 / Data Integrity:
+- configurable event check-in window (default: 60 min before / 360 min after start);
+- check-in blocked before opening and after closing of the window;
+- attendance confirmation and XP award blocked outside the window unless staff uses an explicit manual override;
+- manual attendance override requires a reason (minimum 5 characters) and is written to audit log;
+- repeated check-in and repeated attendance confirmation remain idempotent;
+- event time comparisons use the configured local timezone instead of Heroku/host UTC wall-clock;
+- monthly/period reports separate completed, upcoming and in-progress events;
+- future/in-progress events do not contribute attendance, average attendance or engaged-participant KPIs;
+- legacy future-attendance rows are exposed as a data-integrity anomaly instead of being counted;
+- “unique participants” now means actual engagement actions, not merely creation of a new profile;
+- report KPIs are split into “for the period” and “snapshot as of report generation”.
+
+Data Quality:
+- new canonical settlement directory (`settlement_references`);
+- aliases such as `Анисів`, `Анисiв`, `с.Анисів` are normalized to one canonical value;
+- registration and web profile editing resolve settlement through the canonical directory;
+- analytics, reports, broadcasts and Smart Opportunities compare normalized settlement values;
+- Dashboard includes a Data Quality card with duplicate/noncanonical counters and an audited normalization action;
+- fuzzy duplicate detection is conservative and report-only; it does not silently merge uncertain values.
+
+SCHEMA
+------
+- SQLAlchemy tables: 48
+- New table: settlement_references
+- Migration style: additive/idempotent through existing Base.metadata.create_all()/bootstrap path.
+
+RUNTIME SETTINGS
+----------------
+- events.checkin_open_before_minutes: default 60, range 0..1440
+- events.checkin_close_after_minutes: default 360, range 15..1440
+
+P0 REGRESSION TESTS
+-------------------
+New file: tests/test_v1103_data_integrity.py
+Tests: 10
+
+Covered cases:
+1. check-in one day before event -> blocked, no mutation, no XP;
+2. check-in before opening window -> blocked;
+3. exact opening/closing boundary -> allowed;
+4. check-in after closing window -> blocked;
+5. manual override -> reason required, successful override awards once;
+6. repeated check-in -> one registration, no XP before confirmation;
+7. repeated attendance confirmation -> no double XP;
+8. future event / legacy attended row -> excluded from monthly attendance KPIs and surfaced as anomaly;
+9. settlement aliases normalize to one canonical value;
+10. web manual override has reason field and audit wiring.
+
+FULL REGRESSION QA IN THIS SANDBOX
+----------------------------------
+- pytest collection: 100 tests
+- pytest result: 100 PASS
+- Python compileall (app/scripts/tests): PASS
+- AST parse: 97 Python files / 0 errors
+- Jinja parse: 48 templates / 0 errors
+- static route declarations: 173 unique / 0 duplicates
+- SQLAlchemy metadata: 48 tables
+- report smoke test (XLSX + PDF generation): PASS
+
+ENVIRONMENT NOTE
+----------------
+The sandbox does not provide the production runtime packages `aiogram` and `aiosqlite`, and outbound package installation is unavailable. To execute the complete historical pytest suite here, minimal temporary test-only compatibility shims were placed under `/tmp/testdeps`.
+
+Those shims are NOT part of the release tree or final ZIP. They only satisfy imports in this isolated QA environment. Application code, release dependencies and requirements.txt were not replaced by the shims.
+
+SECURITY / AUDIT NOTES
+----------------------
+- ordinary staff attendance confirmation cannot silently bypass the event window;
+- outside-window web override requires a written reason;
+- override action is recorded as `web_event_attendance_override`;
+- settlement normalization action is recorded as `web_settlement_data_quality_normalize`;
+- existing granular permission checks remain in force.
+
+PACKAGE HYGIENE REQUIREMENTS
+----------------------------
+Final ZIP must not include:
+- .env;
+- local database/dump files;
+- .pytest_cache;
+- __pycache__;
+- *.pyc;
+- temporary QA shims;
+- generated smoke-report files.

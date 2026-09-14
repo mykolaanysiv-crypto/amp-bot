@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ metric.short }} • Аналітика{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/analytics">Аналітика</a><span>›</span><b>{{ metric.short }}</b></nav>
+<div class="hero analytics-detail-hero">
+  <div>
+    <span class="eyebrow"><a href="/admin/analytics">📊 Аналітика</a> • детальний показник</span>
+    <h1>{{ metric.icon }} {{ metric.title }}</h1>
+    <p>{{ metric.description }}</p>
+  </div>
+  <div class="analytics-hero-actions">
+    <a class="soft-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.xlsx">📥 Excel</a>
+    <a class="primary link-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.pdf">📄 PDF</a>
+    <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.png">🖼 PNG</a>
+  </div>
+</div>
+
+<section class="card analytics-detail-card">
+{% if metric.kind == 'heatmap' %}
+  <div class="analytics-heatmap-wrap analytics-heatmap-detail">
+    <div class="analytics-heatmap" style="--heatmap-cols: {{ metric.hours|length }}">
+      <div class="heatmap-corner"></div>
+      {% for hour in metric.hours %}<div class="heatmap-hour">{{ hour[:2] }}</div>{% endfor %}
+      {% set maxv = metric.matrix|map('max')|max if metric.matrix else 0 %}
+      {% for day in metric.days %}
+        {% set d = loop.index0 %}<div class="heatmap-day">{{ day }}</div>
+        {% for value in metric.matrix[d] %}<div class="heatmap-cell" title="{{ day }} {{ metric.hours[loop.index0] }} — {{ value }}" style="--heat: {{ (value / maxv) if maxv else 0 }}">{{ value if value else '' }}</div>{% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+{% else %}<div class="analytics-detail-chart"><canvas id="detailChart"></canvas></div>{% endif %}
+</section>
+
+<section class="card analytics-table-card">
+  <div class="section-title"><h2>Детальні агреговані дані</h2><span>{{ metric.rows|length }} рядків</span></div>
+  <div class="analytics-table-wrap">
+    <table class="analytics-table">
+      <thead><tr><th>Категорія / період</th><th>{{ metric.value_label }}</th><th>Додатково</th></tr></thead>
+      <tbody>
+      {% for row in metric.rows %}
+        <tr><td><b>{{ row.label }}</b></td><td>{{ row.display_value if row.display_value is defined else row.value }}</td><td>{{ row.secondary or '—' }}</td></tr>
+      {% else %}
+        <tr><td colspan="3" class="muted">Даних поки немає.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="analytics-privacy-note analytics-detail-note"><span>🔐</span><div><b>Агрегована аналітика</b><p>{{ analytics.privacy_note }}</p></div></div>
+<p class="analytics-generated">Сформовано: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+const metric={{ metric|tojson }};
+if(metric.kind!=='heatmap'){
+  const palette=['#06AEBB','#6C63FF','#2FAE75','#F3A63A','#E86C8D','#5C86D9','#8C6CCF','#42A5A5','#D47B45','#6D8C75','#A0A7B4'];
+  const isDoughnut=metric.kind==='doughnut';
+  new Chart(document.getElementById('detailChart'),{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:'#06AEBB',backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:'#06AEBB'}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+</script>
+{% endblock %}

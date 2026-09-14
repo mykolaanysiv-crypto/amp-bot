@@ -1,0 +1,90 @@
+AMP XP / АМПасадори v1.7.4 — FINAL TEST REPORT
+Дата: 2026-09-13
+
+1. VERSION
+- VERSION.txt = 1.7.4
+- app/version.py APP_VERSION = 1.7.4
+- Expected /health version = 1.7.4
+
+2. AUTOMATED TESTS
+- Added pytest suite under tests/.
+- 14 automated tests passed in the build environment.
+- Covered scenarios:
+  * registration: pending -> approval -> active
+  * event: create/register/check-in/confirm -> XP/hours; repeated confirm idempotent
+  * quest: completed -> approve -> XP once
+  * volunteer task: submitted -> approve -> XP + hours once
+  * activity: evidence -> complete idempotently
+  * survey: publish/complete -> response + XP once
+  * idea: first approval -> +10 XP once + mini-project state
+  * case: create/assign/reply/close
+  * streak: freeze quota + restore
+  * broadcast retry schema/state
+  * scheduler distributed lock exclusion/release
+  * Telegram durable outbox retry -> success
+  * DB initialization/migration can be run repeatedly
+
+3. STATIC CODE
+- Python compileall app/scripts/tests: OK.
+- AST parse: 69 Python files: OK.
+- Jinja parse: 41 templates: OK.
+- CSS braces/parse sanity: OK.
+- FastAPI static route scan: 148 method+path routes, duplicate method+path = 0.
+
+4. WEB ARCHITECTURE
+- app/web/app.py reduced to shared bootstrap/auth/security/lifespan/helpers.
+- Feature routes physically moved under app/web/routes/:
+  dashboard, users, events, quests, tasks, activities, ideas, requests,
+  surveys, analytics, reports, broadcasts, gamification, opportunities, system.
+- Runtime route registration smoke test: dashboard/events/System Health registered: OK.
+
+5. SCHEDULER LOCK
+- New DB table: scheduled_jobs.
+- Distributed DB lease prevents the same critical job from running in parallel.
+- Lock state records last start/success/error, run_count and failure_count.
+- Birthday XP, event reminder, lifecycle, streak, goals, Telegram retry and broadcast retry use DB locking.
+
+6. TELEGRAM DELIVERY RETRY
+- New DB table: notification_deliveries.
+- Durable outbox preserves messages across temporary Telegram/API errors/restarts.
+- Retry policy after a failed initial attempt: 1 min -> 5 min -> 15 min -> failed after the 4th failed send (3 retries).
+- Optional inline callback button is persisted with queued notification.
+
+7. BROADCAST RETRY
+- broadcast_recipients has attempt_count, last_attempt_at, next_retry_at.
+- Temporary send error -> retry instead of immediate permanent loss.
+- Campaign does not become completed while pending/retry recipients remain.
+- Per-campaign lock prevents duplicate parallel delivery.
+
+8. SYSTEM HEALTH
+- New route: GET /admin/system-health.
+- Shows Database, Telegram Bot API, Scheduler/jobs, APP_VERSION,
+  Heroku release metadata if available, pending/failed Telegram deliveries,
+  failed broadcasts, retry recipients, media usage, latest successful job,
+  backup marker/local backup when available.
+- Responsive branded template and sidebar navigation added.
+
+9. DATABASE COMPATIBILITY
+- v1.7.3: 42 tables.
+- v1.7.4: 44 tables.
+- New tables: scheduled_jobs, notification_deliveries.
+- broadcast_recipients receives additive retry columns.
+- Upgrade/create migration executed twice in schema simulation: OK/idempotent.
+- No migrate_sqlite_to_postgres.py is required.
+
+10. PACKAGE HYGIENE
+- Final archive must not contain .env, database dumps/files, data/, .pytest_cache,
+  __pycache__, *.pyc or temporary build-only dependency shims.
+
+BUILD ENVIRONMENT NOTE
+- The base sandbox did not have the installed runtime packages from requirements.txt.
+  For test execution only, a temporary /tmp aiosqlite compatibility shim was used
+  to exercise SQLAlchemy async SQLite workflows; this shim is NOT part of the release.
+- Production/local deployment installs the real dependencies from requirements.txt.
+
+11. FRESH-EXTRACT VERIFICATION
+- Final ZIP was extracted into a clean temporary directory.
+- VERSION.txt / app/version.py consistency: OK (1.7.4).
+- 14 pytest tests from the extracted package: PASS.
+- compileall / AST / Jinja / CSS / route uniqueness / 44-table metadata checks: PASS.
+- Archive hygiene scan: no .env, DB/dump, data/, cache or bytecode artifacts.

@@ -1,0 +1,51 @@
+AMP XP / «АМПасадори» v1.7.0 — фінальний звіт перевірки
+Дата: 12.09.2026
+
+ВЕРСІЯ
+- VERSION.txt: 1.7.0
+- app/version.py: APP_VERSION = "1.7.0"
+
+СТАТИЧНІ ПЕРЕВІРКИ
+- Python compileall: OK
+- AST: 38 Python-файлів (app + scripts): OK
+- Jinja: 35 шаблонів: OK
+- CSS parser: 0 синтаксичних помилок
+- FastAPI route static scan: 125 маршрутів, 0 дублікатів
+
+БАЗА ДАНИХ / МІГРАЦІЯ
+- Схема v1.6.9: 38 таблиць
+- Схема v1.7.0: 39 таблиць
+- Нова таблиця: participation_streaks
+- Нове поле: rewards.reward_type
+- participation_streaks.manual_lock присутнє
+- Повторний запуск additive migration: OK
+- Повторний SQLite → PostgreSQL перенос НЕ потрібен
+
+ЦІЛЬОВІ ПЕРЕВІРКИ v1.7.0
+- Ліги за сезонним XP: Bronze/Silver/Gold/Platinum/Diamond — межі перевірені
+- Telegram callbacks rating:overall / rating:league: присутні
+- Telegram callbacks assigned_idea / assigned_request: присутні
+- Спеціальна винагорода restore_super_streak: присутня
+- Web /admin/leaderboard: присутній
+- Web moderation streak routes: update / rebuild / rebuild-all: присутні
+- leaderboard.html smoke render: OK
+
+ЛОГІКА СЕРІЙ
+- Тижнева серія рахує підтверджені позитивні XP-активності за календарними тижнями; birthday та goal_reward не використовуються як самостійна активність.
+- Суперсерія дозволяє 1 пропуск поспіль і 2 загалом; 2-й поспіль або 3-й загальний пропуск обриває серію.
+- Втрачену серію зберігається як recoverable і можна повернути special reward.
+- Ручна корекція у web ставить manual_lock; scheduler її не перезаписує до «Перерахувати з історії».
+- Бейдж «Суперсерія 30 днів» видається автоматично при серії 30+ днів та щонайменше 2 відвіданих подіях.
+
+ВІДПОВІДАЛЬНІ
+- При новому призначенні відповідального за ідею створюється Telegram-повідомлення + кнопка «Детально».
+- При новому призначенні відповідального за звернення створюється Telegram-повідомлення + кнопка «Детально».
+- Callback деталей перевіряє право доступу: відповідальний / автор / admin / superadmin / coordinator.
+
+ОБМЕЖЕННЯ ЛОКАЛЬНОГО ТЕСТУ
+- У sandbox немає встановленого aiogram та немає доступу до мережі для pip install, тому реальний Telegram polling / callback delivery не запускався.
+- Production Heroku, BOT_TOKEN і жива PostgreSQL не запускались у sandbox.
+- Код Telegram пройшов compile/AST та цільові статичні перевірки; живий smoke-test потрібно зробити після deploy.
+
+ПІДСУМОК
+Збірка v1.7.0 готова до production deploy після стандартного PostgreSQL backup та перевірки Heroku logs / Telegram smoke-test.

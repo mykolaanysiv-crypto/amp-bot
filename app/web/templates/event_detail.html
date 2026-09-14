@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block title %}{{event.title}} • Подія{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/events">Події</a><span>›</span><b>{{event.title}}</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ДЕТАЛІ ПОДІЇ</span>
+    <h1>{{event.title}}</h1>
+    <p>{{event.starts_at.strftime('%d.%m.%Y о %H:%M')}} • {{event.location}}</p>
+  </div>
+  <span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span>
+</div>
+
+{% if event.status == 'postponed' %}
+<section class="card postponed-banner"><div class="cancellation-icon">📅</div><div><h2>Подію перенесено</h2><p><b>Нова дата:</b> {{event.starts_at.strftime('%d.%m.%Y о %H:%M')}}</p><p><b>Причина:</b> {{event.postponed_reason or 'Причину не зазначено.'}}</p></div></section>
+{% endif %}
+
+{% if event.cancelled_at or event.status == 'cancelled' %}
+<section class="card cancellation-banner">
+  <div class="cancellation-icon">⚠️</div>
+  <div>
+    <h2>Подію скасовано</h2>
+    <p><b>Причина:</b> {{event.cancellation_reason or 'Причину не зазначено.'}}</p>
+    {% if event.cancelled_at %}<small>Скасовано {{event.cancelled_at.strftime('%d.%m.%Y о %H:%M')}}</small>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+<div class="event-detail-grid">
+  <section class="card event-hero">
+    {% if event.image_path %}
+      <div class="event-photo-frame"><img src="{{event.image_path}}" alt="Фото події"></div>
+    {% else %}
+      <div class="event-no-image">📅</div>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>Основне</h2>
+    <div class="facts">
+      <div><span>Досвід</span><b>{{event.xp_reward}} XP</b></div>
+      <div><span>Волонтерські години</span><b>{{event.volunteer_hours}} год.</b></div>
+      <div><span>Місткість</span><b>{{event.capacity or 'Без обмежень'}}</b></div>
+      <div><span>Зареєстровано</span><b>{{counts.all}}</b></div>
+    </div>
+    <hr>
+    <h3>Опис</h3>
+    <p class="preline">{{event.description or 'Опис не додано.'}}</p>
+  </section>
+</div>
+
+<section class="card event-share-card">
+  <div class="section-title"><div><h2>📤 Поділитися подією</h2><p class="muted">Публічне посилання не містить QR для відмітки присутності та персональних даних учасників.</p></div></div>
+  {% if share_url %}
+  <div class="share-link-row">
+    <input id="event-share-link" type="text" value="{{share_url}}" readonly aria-label="Публічне посилання на подію">
+    <button type="button" class="primary" onclick="const u=document.getElementById('event-share-link').value;if(navigator.share){navigator.share({url:u}).catch(()=>{});}else{navigator.clipboard.writeText(u).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='📤 Поділитися',1800)});}">📤 Поділитися</button>
+    <button type="button" class="soft-button" onclick="navigator.clipboard.writeText(document.getElementById('event-share-link').value).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='🔗 Копіювати',1800)});">🔗 Копіювати</button>
+    <a class="soft-button" href="{{share_url}}" target="_blank" rel="noopener">👁 Відкрити</a>
+  </div>
+  {% else %}<p class="muted">Посилання ще не згенеровано. Воно буде створене після перезапуску/міграції v1.7.4.1.</p>{% endif %}
+</section>
+
+{% if not event.cancelled_at and event.status not in ['cancelled','draft','completed'] %}
+<div class="grid2">
+  <section class="card">
+    <div class="section-title"><h2>📱 QR події</h2><span>Відмітка присутності</span></div>
+    <p>Покажіть QR на вході або відкрийте його на екрані. Після сканування Telegram відкриє бота й відмітить учасника саме на цій події.</p>
+    <div class="qr-panel">
+      <img class="qr-image" src="/admin/events/{{event.id}}/checkin-qr.png" alt="QR події">
+      <div>
+        <b>{{event.title}}</b>
+        <p class="muted">Персональний QR учасника не замінює QR події — це різні функції.</p>
+        <div class="qr-actions">
+          <a class="soft-button" href="/admin/events/{{event.id}}/checkin-qr.png" target="_blank">👁 Відкрити</a>
+          <a class="primary" href="/admin/events/{{event.id}}/checkin-qr.png?download=1">⬇ Завантажити QR</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card event-scanner-card">
+    <div class="section-title"><div><h2>📷 QR Scanner</h2><p class="muted">Основний режим працює через Telegram і не залежить від підтримки QR API конкретним браузером. Web-камера залишається додатковим варіантом.</p></div></div>
+    <div class="qr-actions scanner-launch-actions">
+      <a class="primary link-button" href="/admin/events/{{event.id}}/scanner/telegram">📲 Відкрити QR Scanner у Telegram</a>
+      <button class="soft-button scanner-start" type="button" id="event-scanner-start">🌐 Сканувати камерою браузера</button>
+    </div>
+    <div id="event-scanner-box" class="event-scanner-box" hidden>
+      <video id="event-scanner-video" playsinline muted></video>
+      <div class="scanner-frame" aria-hidden="true"></div>
+      <button class="soft-button" type="button" id="event-scanner-stop">⏹ Зупинити камеру</button>
+    </div>
+    <div class="scanner-manual">
+      <label>Або вставте код / АМП-ID вручну<input id="event-scanner-manual" type="text" placeholder="АМП-0008 або текст QR"></label>
+      <button class="soft-button" type="button" id="event-scanner-manual-submit">Перевірити</button>
+    </div>
+    <div id="event-scanner-result" class="scanner-result" aria-live="polite"></div>
+  </section>
+</div>
+{% endif %}
+
+<div class="kpis four event-attendance-kpis">
+  <div class="kpi"><span>Зареєстровані</span><strong>{{counts.all}}</strong></div>
+  <div class="kpi"><span>У черзі</span><strong>{{counts.waitlisted}}</strong></div>
+  <div class="kpi"><span>Були присутні</span><strong>{{counts.confirmed}}</strong></div>
+  <div class="kpi"><span>Не прийшли</span><strong>{{counts.no_show}}</strong></div>
+</div>
+
+<section class="card event-attendance-window">
+  <div class="section-title"><div><h2>🕒 Check-in / attendance window</h2><p class="muted">Автоматичний захист від передчасного або запізнілого зарахування участі та XP.</p></div>
+    {% if attendance_window.state == 'open' %}<span class="tag active">Відкрито</span>{% elif attendance_window.state == 'too_early' %}<span class="tag pending">Ще не відкрито</span>{% else %}<span class="tag inactive">Закрито</span>{% endif %}
+  </div>
+  <p>Вікно: <b>{{attendance_window.opens_at.strftime('%d.%m.%Y %H:%M')}}</b> — <b>{{attendance_window.closes_at.strftime('%d.%m.%Y %H:%M')}}</b>.</p>
+  {% if attendance_window.state == 'too_early' %}<p class="muted">QR/check-in та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток можливий лише з причиною й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайний check-in закрито. Для виправлення помилки адміністратор може застосувати ручний override з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR/check-in та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
+</section>
+
+<section class="card event-feedback-analytics">
+  <div class="section-title"><div><h2>⭐ Feedback та вплив</h2><p class="muted">Outcome-показники після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} відповідей</span></div>
+  <div class="kpis five feedback-kpis">
+    <div class="kpi"><span>Середня оцінка</span><strong>{{ feedback_stats.avg_rating }}</strong></div>
+    <div class="kpi"><span>Було корисно</span><strong>{{ feedback_stats.useful }}%</strong></div>
+    <div class="kpi"><span>Нові знання</span><strong>{{ feedback_stats.new_knowledge }}%</strong></div>
+    <div class="kpi"><span>Почувалися безпечно</span><strong>{{ feedback_stats.felt_safe }}%</strong></div>
+    <div class="kpi"><span>Повернуться</span><strong>{{ feedback_stats.would_return }}%</strong></div>
+  </div>
+</section>
+
+{% if counts.present > counts.confirmed %}
+<section class="card event-bulk-attendance">
+  <div><h2>✅ Очікують підтвердження</h2><p class="muted">Відмічено через QR події або вручну: <b>{{counts.present-counts.confirmed}}</b>.</p></div>
+  <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"><input type="hidden" name="_csrf" value="{{ csrf_token }}">{% if attendance_window.state != 'open' %}<label>Причина ручного override<textarea name="override_reason" minlength="5" maxlength="700" required placeholder="Наприклад: виправлення помилки координатора"></textarea></label>{% endif %}<button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Override: підтвердити відмічених{% else %}✅ Підтвердити всіх відмічених{% endif %}</button></form>
+</section>
+{% endif %}
+
+<section class="card entity-danger-zone">
+  <div class="section-title"><div><h2>⚙️ Керування подією</h2><p class="muted">Для скасування або видалення обов’язково вкажіть причину. Зареєстровані учасники автоматично отримають повідомлення в Telegram.</p></div></div>
+  <div class="entity-danger-grid">
+    {% if not event.cancelled_at and event.status not in ['cancelled','completed'] %}
+    <form method="post" action="/admin/events/{{event.id}}/postpone" class="entity-action-form postpone-form" onsubmit="return confirm('Перенести подію та повідомити всіх зареєстрованих учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <h3>📅 Перенести подію</h3><label>Причина перенесення<textarea name="reason" maxlength="700" required placeholder="Чому змінюється дата або час"></textarea></label>
+      <div class="compact-date-grid"><label>День<input name="day" type="number" min="1" max="31" value="{{event.starts_at.day}}" required></label><label>Місяць<input name="month" type="number" min="1" max="12" value="{{event.starts_at.month}}" required></label><label>Рік<input name="year" type="number" min="2026" max="2100" value="{{event.starts_at.year}}" required></label><label>Час<input name="event_time" type="time" value="{{event.starts_at.strftime('%H:%M')}}" required></label></div>
+      <button class="soft-button postpone-action" type="submit">📅 Перенести й повідомити</button>
+    </form>
+    {% endif %}
+
+    {% if not event.cancelled_at and event.status not in ['cancelled','completed'] %}
+    <form method="post" action="/admin/events/{{event.id}}/cancel" class="entity-action-form" onsubmit="return confirm('Скасувати подію та автоматично повідомити всіх зареєстрованих учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Причина скасування<textarea name="reason" maxlength="700" required placeholder="Наприклад: через безпекову ситуацію / зміну планів / технічні причини"></textarea></label>
+      <button class="soft-button cancellation-action" type="submit">⚠️ Скасувати подію</button>
+    </form>
+    {% else %}
+    <div class="entity-action-locked"><b>{% if event.status=='completed' %}Подію завершено{% else %}Подію вже скасовано{% endif %}</b><span>{% if event.status=='completed' %}Завершену подію не можна скасувати.{% else %}Повторне скасування недоступне, щоб учасники не отримували дублікати повідомлень.{% endif %}</span></div>
+    {% endif %}
+
+    {% if is_superadmin %}
+    <form method="post" action="/admin/events/{{event.id}}/delete" class="entity-action-form destructive-form" onsubmit="return confirm('ОСТАТОЧНО видалити подію? Учасники отримають повідомлення. Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Причина видалення<textarea name="reason" maxlength="700" required placeholder="Обов’язково вкажіть, чому подію видаляють"></textarea></label>
+      <button class="danger-btn" type="submit">🗑 Видалити подію</button>
+      <small>Видалення доступне лише суперадміністратору. Уже нарахований XP учасників не скасовується.</small>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card event-register-template-card">
+  <div class="section-title"><div><h2>🗂 Реєстраційна форма події</h2><p class="muted">Можна завантажити форму донора у Word (.docx) або Excel (.xlsx). Під час експорту система заповнить знайдені колонки учасниками, не перебудовуючи дизайн файлу. Якщо шаблону немає — використовується стандартний список АМПасадорів.</p></div></div>
+  <div class="grid2">
+    <div>
+      {% if event.registration_template_path %}
+        <p><b>Поточний шаблон:</b> {{event.registration_template_name or 'Форма донора'}}</p>
+        <form method="post" action="/admin/events/{{event.id}}/registration-template/remove" onsubmit="return confirm('Прибрати форму донора з цієї події?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🗑 Прибрати шаблон</button></form>
+      {% else %}
+        <p><b>Поточна форма:</b> стандартна форма АМПасадорів.</p>
+      {% endif %}
+      {% if has_permission("reports.basic_export") %}<a class="primary" href="/admin/events/{{event.id}}/registration-form">⬇ Завантажити заповнений список</a>{% endif %}
+      <p class="muted">{% if has_permission("reports.sensitive_export") %}Для цього акаунта дозволено розширені поля експорту відповідно до виданого granular permission.{% else %}Для захисту персональних даних експорт містить мінімізований набір; чутливі поля залишаються недоступними.{% endif %}</p>
+    </div>
+    <form method="post" action="/admin/events/{{event.id}}/registration-template" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="span2">Завантажити / замінити шаблон<input type="file" name="template_file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><small>До 20 МБ. Найкраще автоматично розпізнаються таблиці з колонками «ПІБ», «Телефон», «Email», «Населений пункт», «Статус», «Цифровий код підтвердження» тощо.</small></label>
+      <div class="span2"><button class="soft-button" type="submit">⬆ Завантажити форму донора</button></div>
+    </form>
+  </div>
+  <p class="muted"><b>Цифрове підтвердження участі:</b> після підтвердження адміністратором кожній присутності створюється унікальний SHA-256 код. Це внутрішній технічний код цілісності/підтвердження АМП, а не КЕП чи власноручний юридичний підпис учасника.</p>
+</section>
+
+<section class="card table-wrap event-participants-card">
+  <div class="event-participants-head">
+    <div class="event-participants-heading">
+      <h2>👥 Учасники події</h2>
+      <span class="event-participants-count" aria-label="Кількість записів">{{counts.roster}}</span>
+    </div>
+    <div class="event-export-actions">
+      {% if has_permission("reports.basic_export") %}<a class="primary event-participants-export" href="/admin/events/{{event.id}}/participants.xlsx">📥 Базовий Excel</a>
+      <a class="soft-button event-participants-export" href="/admin/events/{{event.id}}/participants.pdf">📄 Базовий PDF</a>{% endif %}
+      {% if has_permission("reports.sensitive_export") %}<a class="soft-button sensitive-export-button" href="/admin/events/{{event.id}}/participants-sensitive.xlsx">🔐 Розширений Excel</a><a class="soft-button sensitive-export-button" href="/admin/events/{{event.id}}/participants-sensitive.pdf">🔐 Розширений PDF</a>{% endif %}
+    </div>
+  </div>
+  <p class="muted event-export-note">Базові Excel/PDF містять лише ПІБ, вік, статус участі та ID АМП. {% if has_permission("reports.sensitive_export") %}Розширені Excel/PDF додатково містять стать, соціальний статус, email, телефон і згоду на фото/відеозйомку; доступ журналюється.{% endif %}</p>
+  <table>
+    <thead><tr><th>Учасник</th><th>ID АМП</th><th>Статус</th><th>Час відмітки</th><th>Код підтвердження</th><th>Дії</th></tr></thead>
+    <tbody>
+    {% for reg,u in registrations %}
+      <tr>
+        <td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td>
+        <td><code>АМП-{{'%04d'|format(u.id)}}</code></td>
+        <td><span class="tag {{reg.status}}">{{event_registration_status_label(reg.status)}}</span></td>
+        <td>{% if reg.checkin_at %}{{reg.checkin_at.strftime('%d.%m.%Y %H:%M')}}{% elif reg.status == 'reserved' and reg.reservation_expires_at %}<span class="muted">Резерв до {{reg.reservation_expires_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'waitlisted' and reg.waitlisted_at %}<span class="muted">Черга з {{reg.waitlisted_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'no_show' %}<span class="muted">Не відмічався</span>{% else %}<span class="muted">Ще не відмічено</span>{% endif %}</td>
+        <td>{% if reg.attendance_signature %}<code title="{{reg.attendance_signature}}">{{reg.attendance_signature[:12]}}…</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>
+          {% if event.cancelled_at or event.status == 'cancelled' %}
+            <span class="muted">Подію скасовано</span>
+          {% else %}
+          <div class="attendance-actions">
+            {% if reg.status in ['registered','reserved'] %}
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити (override){% else %}📍 Відмітити присутність{% endif %}</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" onsubmit="return confirm('Позначити учасника як такого, що не прийшов?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати реєстрацію цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
+            {% elif reg.status == 'waitlisted' %}
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Прибрати учасника з черги?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Прибрати з черги</button></form>
+            {% elif reg.status == 'checked_in' %}
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити (override){% else %}✅ Підтвердити участь{% endif %}</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати участь цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
+            {% elif reg.status == 'attended' %}
+              <span class="tag active">✅ Був присутній</span>
+            {% elif reg.status == 'no_show' %}
+              <span class="tag no_show">🚫 Не прийшов</span>
+            {% elif reg.status == 'cancelled' %}
+              <div class="cancelled-registration-actions">
+                <span class="muted">Реєстрацію скасовано</span>
+                <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/delete" onsubmit="return confirm('Видалити скасовану реєстрацію цього учасника? Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action" type="submit">🗑 Видалити</button></form>
+              </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">На подію ще ніхто не зареєструвався.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+function requireAttendanceOverride(form) {
+  const reason = window.prompt('Вкажіть причину ручного override (мінімум 5 символів). Дія буде записана в аудит:');
+  if (!reason || reason.trim().length < 5) {
+    window.alert('Причина обов’язкова і має містити щонайменше 5 символів.');
+    return false;
+  }
+  const input = form.querySelector('input[name="override_reason"]');
+  if (input) input.value = reason.trim();
+  return window.confirm('Підтвердити ручний override поза дозволеним attendance window?');
+}
+
+(() => {
+  const startBtn = document.getElementById('event-scanner-start');
+  if (!startBtn) return;
+  const stopBtn = document.getElementById('event-scanner-stop');
+  const box = document.getElementById('event-scanner-box');
+  const video = document.getElementById('event-scanner-video');
+  const result = document.getElementById('event-scanner-result');
+  const manual = document.getElementById('event-scanner-manual');
+  const manualBtn = document.getElementById('event-scanner-manual-submit');
+  const csrf = {{ csrf_token|tojson }};
+  let stream = null;
+  let scanning = false;
+  let lastCode = '';
+  let detector = null;
+
+  function renderResult(data) {
+    if (!data.ok) {
+      result.className = 'scanner-result error';
+      result.innerHTML = `<b>⚠️ ${data.error || 'Помилка check-in'}</b>`;
+      return;
+    }
+    if (data.state === 'unregistered') {
+      result.className = 'scanner-result warning';
+      result.innerHTML = `<div class="scanner-person"><b>⚠️ ${data.name}</b><code>${data.amp_id}</code><span>${data.registration}</span></div><p>${data.message}</p><button type="button" class="primary" id="scanner-register-confirm">Зареєструвати та підтвердити</button>`;
+      document.getElementById('scanner-register-confirm').addEventListener('click', () => submitCode(lastCode, 'register_confirm'));
+      return;
+    }
+    result.className = 'scanner-result success';
+    result.innerHTML = `<div class="scanner-person"><b>✅ ${data.name}</b><code>${data.amp_id}</code><span>${data.registration || 'Зареєстрований'}</span></div><p><b>${data.message}</b>${data.xp ? ` • +${data.xp} XP` : ''}</p>`;
+  }
+
+  async function submitCode(code, action='scan') {
+    code = (code || '').trim();
+    if (!code) return;
+    lastCode = code;
+    result.className = 'scanner-result loading';
+    result.textContent = 'Перевіряємо…';
+    const form = new FormData();
+    form.append('_csrf', csrf);
+    form.append('code', code);
+    form.append('action', action);
+    try {
+      const response = await fetch('/admin/events/{{event.id}}/scanner', {method: 'POST', body: form, credentials: 'same-origin'});
+      let data;
+      try { data = await response.json(); } catch (_) { data = {ok:false,error:'Сервер повернув неочікувану відповідь.'}; }
+      renderResult(data);
+    } catch (err) {
+      renderResult({ok:false,error:'Не вдалося зв’язатися із сервером.'});
+    }
+  }
+
+  async function stopScanner() {
+    scanning = false;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    video.srcObject = null;
+    box.hidden = true;
+    startBtn.disabled = false;
+  }
+
+  async function scanLoop() {
+    if (!scanning || !detector) return;
+    try {
+      const codes = await detector.detect(video);
+      if (codes && codes.length && codes[0].rawValue) {
+        const raw = codes[0].rawValue;
+        await stopScanner();
+        await submitCode(raw, 'scan');
+        return;
+      }
+    } catch (_) {}
+    if (scanning) setTimeout(scanLoop, 250);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    result.textContent = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      renderResult({ok:false,error:'Цей браузер не дозволяє відкрити камеру. Скористайтеся ручним полем нижче.'});
+      return;
+    }
+    if (!('BarcodeDetector' in window)) {
+      renderResult({ok:false,error:'Камера QR у цьому браузері недоступна. Скористайтеся QR Scanner у Telegram або введіть АМП-ID вручну.'});
+      return;
+    }
+    try {
+      detector = new BarcodeDetector({formats:['qr_code']});
+      stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+      video.srcObject = stream;
+      await video.play();
+      scanning = true;
+      box.hidden = false;
+      startBtn.disabled = true;
+      scanLoop();
+    } catch (err) {
+      await stopScanner();
+      renderResult({ok:false,error:'Не вдалося відкрити камеру. Перевірте дозвіл браузера або використайте ручне поле.'});
+    }
+  });
+  stopBtn.addEventListener('click', stopScanner);
+  manualBtn.addEventListener('click', () => submitCode(manual.value, 'scan'));
+  manual.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitCode(manual.value, 'scan'); } });
+  window.addEventListener('pagehide', stopScanner);
+})();
+</script>
+
+{% endblock %}

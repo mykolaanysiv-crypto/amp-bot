@@ -1,0 +1,46 @@
+# AMP XP v1.7.1 — команди оновлення
+
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+heroku pg:backups:download -a amp-bot-ver-1-5-0 -o ~/Downloads/AMP_BACKUPS/amp_before_v171.dump
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v171
+
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  ~/Downloads/amp_bot_v171/ \
+  ~/Downloads/amp_bot_v155/
+
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cat VERSION.txt
+cat app/version.py
+python -m compileall -q app scripts
+git diff --check
+git status
+
+git add -u
+git add app scripts VERSION.txt VERSION_CHECK.txt CHANGELOG.md README.md HEROKU_DEPLOY.md SERVER_UPDATE.md SERVER_UPDATE_V171.md COMMANDS_V171.txt TEST_REPORT_V171.txt requirements.txt .env.example
+
+git status
+git diff --cached --name-only
+
+git commit -m "AMP XP v1.7.1 survey exports streak freeze analytics"
+git push heroku main
+
+heroku ps -a amp-bot-ver-1-5-0
+curl https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+# Очікуваний /health:
+# {"status":"ok","version":"1.7.1"}
+# НЕ запускати migrate_sqlite_to_postgres.py

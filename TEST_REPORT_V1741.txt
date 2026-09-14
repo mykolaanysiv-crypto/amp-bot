@@ -1,0 +1,69 @@
+AMP XP / АМПасадори v1.7.4.1 — FINAL TEST REPORT
+Дата: 2026-09-13
+
+1. VERSION
+- VERSION.txt = 1.7.4.1
+- app/version.py APP_VERSION = 1.7.4.1
+- Expected /health version = 1.7.4.1
+
+2. AUTOMATED TESTS
+- 18 automated tests passed in the build environment.
+- Existing v1.7.4 regression workflows remain covered.
+- New v1.7.4.1 coverage includes:
+  * event attendance SHA-256 code is created once and remains idempotent;
+  * referral XP clawback within 30 days and repeated call does not double-charge;
+  * 9 default space rewards are seeded idempotently as repeatable `service` rewards;
+  * donor XLSX template keeps existing content and receives participant + confirmation code;
+  * donor DOCX table is filled and existing heading/content remains.
+
+3. STATIC CODE
+- Python compileall app/scripts/tests: OK.
+- AST parse: 71 Python files across app/scripts/tests: OK.
+- app Python files: 50.
+- Jinja parse: 42 templates: OK.
+- CSS brace sanity: OK.
+- FastAPI static route scan: 153 method+path routes, duplicate method+path = 0.
+
+4. DATABASE
+- SQLAlchemy metadata: 44 tables (unchanged from v1.7.4).
+- Additive columns added for events, event_registrations and referrals.
+- DB init/migration repeated in automated tests: PASS/idempotent.
+- Explicit ORM foreign_keys added to User.registrations/EventRegistration.user because attendance_confirmed_by_user_id creates a second FK path from event_registrations to users.
+
+5. EVENT SHARING / QR
+- Public event URL uses random `share_token`; check-in token is not reused.
+- Telegram admin/superadmin registration link and public link implemented.
+- Telegram coordinator/admin/superadmin QR generation uses existing event check-in token and returns downloadable PNG.
+
+6. DONOR REGISTRATION TEMPLATES
+- `.xlsx` and `.docx` supported.
+- Uploaded templates are stored in staff-private media category.
+- Typical participant columns and event placeholders are recognized.
+- Unrecognized donor layout is preserved and receives a separate AMP participant table/sheet instead of destructive rewriting.
+- Standard AMP XLSX is used when no donor template is attached.
+
+7. ATTENDANCE CONFIRMATION CODE
+- 64-char SHA-256 code created only after confirmed attendance.
+- Code is tied to one EventRegistration and stored with version/timestamp/confirming admin id.
+- Repeated confirm is idempotent and does not regenerate code or XP.
+- This is an internal technical confirmation code, not a qualified/legal electronic signature.
+
+8. REFERRAL CLAWBACK
+- Only `rewarded` referral can be revoked.
+- Window: <=30 days from referral reward.
+- Exact stored referral XP is reversed using `referral_reversal` transaction.
+- Referral becomes `revoked` and stores reason/time/clawback amount.
+- Durable notification queued to inviter.
+- TelegramForbiddenError in outbox/broadcast marks active participant/ambassador inactive and invokes the same clawback rule.
+
+9. REWARDS
+- 9 requested defaults seeded without overwriting existing reward titles.
+- Type `service` is repeatable after previous claim is fulfilled/rejected; simultaneous duplicate requested claim remains blocked.
+
+10. BUILD ENVIRONMENT NOTE
+- Base sandbox did not contain real runtime `aiogram` or `aiosqlite` packages from requirements.txt and has no network access.
+- For automated tests only, temporary `/tmp` compatibility shims were used for `aiosqlite` and the single `aiogram.exceptions.TelegramForbiddenError` symbol needed by reliability tests.
+- These shims are NOT included in the release ZIP. Production/local deployment installs real packages from requirements.txt.
+
+11. PACKAGE HYGIENE REQUIREMENT
+Final ZIP must not contain `.env`, DB/dump files, `data/`, `.pytest_cache`, `__pycache__`, `*.pyc`, or temporary test shims.

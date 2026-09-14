@@ -1,0 +1,84 @@
+AMP XP / «АМПасадори» v1.8.2.3 — ВСТАНОВЛЕННЯ НА HEROKU
+
+ВАЖЛИВО: ZIP після розпакування створює папку ~/Downloads/amp_bot_v1823/
+НЕ додавайте ще одну /amp_bot_v1823/ у source-шлях rsync.
+
+1. Перейти у production repo:
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+2. Backup PostgreSQL:
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+3. Розпакувати нову версію:
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v1823
+unzip ~/Downloads/amp_bot_v1823.zip -d ~/Downloads/
+
+Перевірити, що папка існує:
+ls -la ~/Downloads/amp_bot_v1823
+cat ~/Downloads/amp_bot_v1823/VERSION.txt
+
+Очікувано: 1.8.2.3
+
+4. Скопіювати код у production repo:
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v1823/ \
+  ~/Downloads/amp_bot_v155/
+
+5. Перевірити локально:
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+cat VERSION.txt
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+python -m compileall -q app scripts tests
+git diff --check
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py tests/test_v1821_calendar_event_ops.py tests/test_v1822_startup_hotfix.py tests/test_v1823_runtime_fixes.py
+
+6. Перевірити зміни:
+git status
+git diff --stat
+
+7. Commit:
+git add -A
+git status
+git commit -m "AMP XP v1.8.2.3 Telegram scanner runtime fixes"
+
+8. Deploy:
+git push heroku main
+
+9. Перевірити production:
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 250 -a amp-bot-ver-1-5-0
+
+Очікувано: /health version = 1.8.2.3, web dyno = up.
+
+10. Smoke test:
+- Відкрити Календар.
+- Відкрити Ідеї.
+- Відкрити Звернення.
+- Telegram → Адмін-панель → 📷 QR Scanner → обрати подію.
+- Просканувати персональний QR учасника.
+- Перевірити registered і unregistered сценарії.
+- На web detail події перевірити кнопку 📲 QR Scanner у Telegram.
+
+Якщо після deploy щось не стартує:
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+Для аварійного rollback спочатку подивитися release:
+heroku releases -a amp-bot-ver-1-5-0
+
+Потім:
+heroku rollback vXX -a amp-bot-ver-1-5-0

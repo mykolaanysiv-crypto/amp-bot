@@ -1,0 +1,61 @@
+АМП XP / АМПасадори v1.7.2 — команди оновлення
+
+# 0. Робоча папка
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+# 1. Резервна копія production PostgreSQL
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 -o ~/Downloads/AMP_BACKUPS/amp_before_v172.dump
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v172
+
+# 2. Якщо Safari розпакував архів, папка має бути ~/Downloads/amp_bot_v172
+# Якщо є ZIP, розпакувати:
+# cd ~/Downloads && unzip -o amp_bot_v172.zip
+
+# 3. Перенести нову версію поверх Git-каталогу без секретів/даних
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  ~/Downloads/amp_bot_v172/ \
+  ~/Downloads/amp_bot_v155/
+
+# 4. Перевірка локально
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+pip install -r requirements.txt
+cat VERSION.txt
+cat app/version.py
+python -m compileall -q app scripts
+git diff --check
+git status
+
+# VERSION.txt та APP_VERSION мають бути 1.7.2
+
+# 5. Додати зміни (НЕ додавати .env / backup dump)
+git add -u
+git add app scripts VERSION.txt CHANGELOG.md README.md SERVER_UPDATE.md SERVER_UPDATE_V172.md COMMANDS_V172.txt TEST_REPORT_V172.txt HEROKU_DEPLOY.md START_HERE.txt requirements.txt .env.example
+
+git status
+git diff --cached --name-only
+
+# 6. Commit
+git commit -m "AMP XP v1.7.2 streaks leagues surveys branded exports"
+
+# 7. Deploy
+git push heroku main
+
+# 8. Перевірка production
+heroku ps -a amp-bot-ver-1-5-0
+curl https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+# Очікується: {"status":"ok","version":"1.7.2"}
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+# ВАЖЛИВО
+# migrate_sqlite_to_postgres.py НЕ запускати.
+# v1.7.2 не додає таблиць або колонок відносно v1.7.1.

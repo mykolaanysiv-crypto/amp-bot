@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Модерація • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Модерація</b></nav>
+<div class="page-head">
+  <div><span class="eyebrow">БЕЗПЕКА СПІЛЬНОТИ</span><h1>Модерація та тимчасові блокування</h1><p>Окремий журнал банів учасників: причина, строк, історія, скорочення або дострокове зняття.</p></div>
+  <span class="tag blocked">🛡 Рівень суперадміністратора</span>
+</div>
+
+<div class="moderation-overview-grid">
+  <section class="card moderation-create-card">
+    <div class="section-title"><div><h2>⛔ Видати тимчасовий бан</h2><p class="muted">Блокування застосовується до профілю людини, а не до окремої ідеї, події чи звернення.</p></div></div>
+    <form method="post" action="/admin/moderation/ban" class="form-grid moderation-ban-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="span2">Учасник
+        <select name="user_id" required>
+          <option value="">Оберіть учасника</option>
+          {% for u in users %}<option value="{{u.id}}">АМП-{{'%04d'|format(u.id)}} — {{u.full_name}}{% if u.username %} (@{{u.username}}){% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Строк
+        <select name="days">
+          <option value="1">1 день</option><option value="3">3 дні</option><option value="7" selected>7 днів</option>
+          <option value="14">14 днів</option><option value="30">30 днів</option><option value="90">90 днів</option>
+        </select>
+      </label>
+      <label class="span2">Причина<input name="reason" required placeholder="Коротко та конкретно: яке правило порушено"></label>
+      <div class="span2 form-actions-row"><button class="danger-btn" type="submit">⛔ Видати бан</button></div>
+    </form>
+  </section>
+
+  <section class="card moderation-rules-card">
+    <h2>Принципи модерації</h2>
+    <ul class="moderation-principles">
+      <li>Бан — крайній інструмент після фіксації порушення.</li>
+      <li>У причині не використовуйте принизливих або чутливих характеристик людини.</li>
+      <li>Строк можна лише скоротити або зняти достроково.</li>
+      <li>Уся історія рішень зберігається для прозорості команди.</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <div class="section-title"><div><h2>🔴 Активні блокування</h2><p class="muted">Звідси можна скоротити строк або достроково повернути доступ.</p></div><span class="pill">{{active|length}}</span></div>
+  <div class="active-ban-grid">
+    {% for ban in active %}
+      {% set u = people.get(ban.user_id) %}
+      <article class="ban-card">
+        <div class="ban-card-head"><div><span class="tag blocked">Активний бан</span><h3>{{u.full_name if u else 'Учасник видалений'}}</h3><small class="muted">Видав: {{people.get(ban.issued_by_user_id).full_name if ban.issued_by_user_id and people.get(ban.issued_by_user_id) else ('вебпанель' if ban.source=='web' else ban.source)}}</small></div><code>АМП-{{'%04d'|format(ban.user_id)}}</code></div>
+        <div class="ban-facts">
+          <div><span>Початок</span><b>{{ban.started_at.strftime('%d.%m.%Y %H:%M')}}</b></div>
+          <div><span>До</span><b>{{ban.ends_at.strftime('%d.%m.%Y %H:%M')}}</b></div>
+        </div>
+        <p class="ban-reason"><b>Причина:</b> {{ban.reason}}</p>
+        <div class="ban-actions">
+          <form method="post" action="/admin/moderation/{{ban.id}}/shorten" class="ban-shorten-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <label>Новий строк від сьогодні<select name="remaining_days"><option value="1">1 день</option><option value="3">3 дні</option><option value="7">7 днів</option><option value="14">14 днів</option></select></label>
+            <button class="soft-button" type="submit">⏳ Скоротити</button>
+          </form>
+          <form method="post" action="/admin/moderation/{{ban.id}}/unban" onsubmit="return confirm('Зняти блокування з цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="lift_reason" value="Блокування знято суперадміністратором">
+            <button class="primary" type="submit">✅ Зняти бан</button>
+          </form>
+        </div>
+      </article>
+    {% else %}
+      <p class="empty">Активних тимчасових блокувань немає.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card table-wrap">
+  <div class="section-title"><div><h2>🕘 Історія блокувань</h2><p class="muted">Останні 300 рішень модерації.</p></div></div>
+  <table class="moderation-history-table">
+    <thead><tr><th>Учасник</th><th>Причина</th><th>Хто видав</th><th>Видано</th><th>Початковий строк</th><th>Фактичний строк</th><th>Статус / завершення</th></tr></thead>
+    <tbody>
+      {% for ban in history %}
+        {% set u = people.get(ban.user_id) %}
+        <tr>
+          <td><b>{{u.full_name if u else 'Учасник видалений'}}</b><br><code>АМП-{{'%04d'|format(ban.user_id)}}</code></td>
+          <td>{{ban.reason}}</td>
+          <td>{{people.get(ban.issued_by_user_id).full_name if ban.issued_by_user_id and people.get(ban.issued_by_user_id) else ('вебпанель' if ban.source=='web' else ban.source)}}</td>
+          <td>{{ban.started_at.strftime('%d.%m.%Y %H:%M')}}</td>
+          <td>{{ban.original_ends_at.strftime('%d.%m.%Y %H:%M')}}</td>
+          <td>{{ban.ends_at.strftime('%d.%m.%Y %H:%M')}}</td>
+          <td>
+            {% if ban.lifted_at %}<span class="tag active">Завершено</span><br><small>{{ban.lifted_at.strftime('%d.%m.%Y %H:%M')}}{% if ban.lift_reason %} • {{ban.lift_reason}}{% endif %}</small>
+            {% elif ban.ends_at <= now %}<span class="tag">Строк минув</span>
+            {% else %}<span class="tag blocked">Активний</span>{% endif %}
+          </td>
+        </tr>
+      {% else %}<tr><td colspan="7" class="muted">Історія блокувань порожня.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Серії {{user.full_name}} • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/leaderboard">Рейтинг і серії</a><span>›</span><b>{{user.full_name}}</b></nav>
+<div class="page-head streak-detail-head">
+  <div><span class="eyebrow">СЕРІЇ УЧАСТІ</span><h1>🔥 {{user.full_name}}</h1><p>АМП-{{'%04d'|format(user.id)}} · {{league.icon}} {{league.title}} · {{season_xp}} XP сезону</p></div>
+  <a class="soft-button" href="/admin/users/{{user.id}}">👤 Основний профіль</a>
+</div>
+
+<section class="streak-detail-kpis">
+  <article class="metric-card"><span>📆 Тижнева</span><strong>{{streak.weekly_streak}}</strong><small>рекорд {{streak.weekly_best}} тиж.</small></article>
+  <article class="metric-card"><span>🔥 Суперсерія</span><strong>{{streak.event_streak}}</strong><small>рекорд {{streak.event_best}} подій</small></article>
+  <article class="metric-card"><span>⏭ Пропуски</span><strong>{{streak.event_total_misses}}/2</strong><small>поспіль {{streak.event_consecutive_misses}}/1</small></article>
+  <article class="metric-card"><span>🧊 Заморозка</span><strong>{{freeze.used}}/{{freeze_limit}}</strong><small>залишок {{freeze.remaining}} дн.</small></article>
+</section>
+
+{% if freeze.active_until %}<section class="card streak-freeze-banner"><b>🧊 Серія зараз заморожена</b><span>до {{freeze.active_until.strftime('%d.%m.%Y %H:%M')}}</span></section>{% endif %}
+
+<div class="grid2 streak-detail-grid">
+  <section class="card streak-edit-card">
+    <div class="section-title"><div><h2>⚙️ Ручна корекція</h2><p class="muted">Після ручної зміни автоматичний перерахунок не перепише значення, доки не натиснете «Перерахувати з історії».</p></div></div>
+    <form method="post" action="/admin/streaks/{{user.id}}/update" class="form-grid streak-edit-grid-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Тижнева серія<input type="number" min="0" name="weekly_streak" value="{{streak.weekly_streak}}"></label>
+      <label>Рекорд тижнів<input type="number" min="0" name="weekly_best" value="{{streak.weekly_best}}"></label>
+      <label>Суперсерія<input type="number" min="0" name="event_streak" value="{{streak.event_streak}}"></label>
+      <label>Рекорд подій<input type="number" min="0" name="event_best" value="{{streak.event_best}}"></label>
+      <label>Пропущено поспіль<input type="number" min="0" max="1" name="event_consecutive_misses" value="{{streak.event_consecutive_misses}}"></label>
+      <label>Пропущено загалом<input type="number" min="0" max="2" name="event_total_misses" value="{{streak.event_total_misses}}"></label>
+      <label class="span2">Початок суперсерії<input type="datetime-local" name="event_started_at" value="{{streak.event_started_at.strftime('%Y-%m-%dT%H:%M') if streak.event_started_at else ''}}"></label>
+      <label class="span2">Примітка адміністратора<textarea name="manual_note" rows="4">{{streak.manual_note or ''}}</textarea></label>
+      <div class="span2 form-actions-row"><button class="primary" type="submit">💾 Зберегти корекцію</button></div>
+    </form>
+    <form method="post" action="/admin/streaks/{{user.id}}/rebuild" class="streak-rebuild-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary" type="submit">↻ Перерахувати з історії</button></form>
+  </section>
+
+  <section class="card streak-freeze-card">
+    <div class="section-title"><div><h2>🧊 Заморозка серії</h2><p class="muted">Можна використати до {{freeze_limit}} днів сумарно в календарному кварталі.</p></div></div>
+    <div class="freeze-progress"><div><span>Використано</span><b>{{freeze.used}} дн.</b></div><div><span>Залишилось</span><b>{{freeze.remaining}} дн.</b></div></div>
+    <form method="post" action="/admin/streaks/{{user.id}}/freeze" class="form-grid streak-freeze-detail-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Кількість днів<input type="number" name="days" min="1" max="{{freeze.remaining}}" value="1" {% if freeze.remaining|int <= 0 %}disabled{% endif %}></label>
+      <label class="span2">Примітка<input name="freeze_note" placeholder="Наприклад: запит учасника / відпустка / хвороба"></label>
+      <div class="span2 form-actions-row"><button class="soft-button" type="submit" {% if freeze.remaining|int <= 0 %}disabled{% endif %}>🧊 Заморозити серію</button></div>
+    </form>
+    <hr>
+    <h3>Історія заморозок</h3>
+    <div class="freeze-history-list">
+      {% for item in freeze_history %}<div class="freeze-history-row"><span><b>{{item.days}} дн.</b> · {{item.starts_at.strftime('%d.%m.%Y %H:%M')}} → {{item.ends_at.strftime('%d.%m.%Y %H:%M')}}</span><small>{{item.quarter_key}} · {{item.created_by_label}}{% if item.note %} · {{item.note}}{% endif %}</small></div>{% else %}<p class="muted">Заморозок ще не було.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="card streak-system-card">
+  <div class="section-title"><h2>📌 Системний стан</h2></div>
+  <div class="facts">
+    <div><span>Початок суперсерії</span><b>{{streak.event_started_at.strftime('%d.%m.%Y %H:%M') if streak.event_started_at else '—'}}</b></div>
+    <div><span>Остання оброблена подія</span><b>{{streak.event_last_processed_at.strftime('%d.%m.%Y %H:%M') if streak.event_last_processed_at else '—'}}</b></div>
+    <div><span>Серію можна відновити</span><b>{{streak.recoverable_event_streak or 0}} подій</b></div>
+    <div><span>Відновлень використано</span><b>{{streak.restores_used or 0}}</b></div>
+  </div>
+</section>
+{% endblock %}

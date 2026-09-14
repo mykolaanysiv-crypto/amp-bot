@@ -1,0 +1,119 @@
+AMP XP / АМПасадори v1.8.1 — ШВИДКІ КОМАНДИ DEPLOY
+====================================================
+
+1. ПЕРЕЙТИ У ПОТОЧНИЙ PRODUCTION-ПРОЄКТ
+
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+
+2. BACKUP POSTGRESQL ПЕРЕД ОНОВЛЕННЯМ
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+heroku pg:backups:download \
+  -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v181.dump
+
+
+3. РОЗПАКУВАТИ НОВУ ВЕРСІЮ
+
+cd ~/Downloads
+
+rm -rf ~/Downloads/amp_bot_v181
+
+unzip ~/Downloads/amp_bot_v181.zip -d ~/Downloads/
+
+cat ~/Downloads/amp_bot_v181/VERSION.txt
+
+Має показати:
+1.8.1
+
+
+4. БЕЗПЕЧНО СКОПІЮВАТИ НОВИЙ КОД У РОБОЧУ ПАПКУ
+
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v181/ \
+  ~/Downloads/amp_bot_v155/
+
+
+5. ВСТАНОВИТИ ЗАЛЕЖНОСТІ ТА ПЕРЕВІРИТИ
+
+cd ~/Downloads/amp_bot_v155
+
+source .venv/bin/activate
+
+pip install -r requirements.txt
+
+pip install -r requirements-dev.txt
+
+cat VERSION.txt
+
+python -c "from app.version import APP_VERSION; print(APP_VERSION)"
+
+python -m compileall -q app scripts tests
+
+pytest -q
+
+git diff --check
+
+git status
+
+
+6. COMMIT
+
+git add -A
+
+git diff --cached --check
+
+git status
+
+git commit -m "AMP XP v1.8.1 Participant 360"
+
+
+7. DEPLOY НА HEROKU
+
+git push heroku main
+
+
+8. ПЕРЕВІРКА ПІСЛЯ DEPLOY
+
+heroku releases -a amp-bot-ver-1-5-0
+
+heroku ps -a amp-bot-ver-1-5-0
+
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+Очікувана версія /health:
+1.8.1
+
+
+ВАЖЛИВО
+=======
+
+НЕ запускати вручну:
+python scripts/migrate_sqlite_to_postgres.py
+
+НЕ перезаписувати:
+.env
+.git/
+.venv/
+data/
+
+v1.8.1 не додає нових таблиць. Стандартний Heroku release сам виконає
+additive/idempotent оновлення полів users через:
+python -m scripts.heroku_release

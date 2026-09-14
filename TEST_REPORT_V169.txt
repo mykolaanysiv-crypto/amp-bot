@@ -1,0 +1,77 @@
+AMP XP / «АМПасадори» v1.6.9 — фінальний звіт перевірки
+Дата: 12.09.2026
+
+1. Версія
+- VERSION.txt: 1.6.9
+- app/version.py: APP_VERSION = "1.6.9"
+- Узгодженість версії: OK
+
+2. Python / синтаксис
+- python -m compileall -q app scripts: OK
+- AST parse: 37 Python-файлів: OK
+
+3. Web / шаблони / CSS
+- Jinja parse: 34 шаблони, 0 помилок
+- CSS parse (tinycss2): 0 синтаксичних помилок
+- FastAPI route static scan: 121 route-декораторів, дублікатів немає
+
+4. База даних / схема
+- Поточна схема SQLAlchemy: 38 таблиць
+- Нові v1.6.9 таблиці присутні:
+  * surveys
+  * survey_questions
+  * survey_responses
+  * user_status_change_requests
+- Ідемпотентний виклик compatibility migration на поточній SQLite-схемі виконано двічі: OK
+- Повторний migrate_sqlite_to_postgres.py для production НЕ потрібен.
+
+5. Опитування
+- Web CRUD/публікація/закриття/результати: статично перевірено маршрути та шаблони
+- Telegram handler «📋 Опитування» підключений у app/main.py
+- Підтримуються single / multiple / text питання
+- XP нараховується після завершення і захищений від повторного проходження на рівні response-check
+- Публікація створює системну Telegram-розсилку активним учасникам
+- Дедлайн перевіряється сервером
+
+6. Події
+- Статуси: Чернетка / Відкрита реєстрація / Реєстрацію закрито / Перенесено / Завершено / Скасовано
+- Telegram показує open / closed / postponed майбутні події
+- Нова реєстрація дозволена лише для open / postponed
+- Для lifecycle-статусів перенесення/завершення/скасування збережені окремі захисти
+
+7. Запросити друга
+- Додана кнопка «🔳 Згенерувати QR-запрошення»
+- Callback invite:qr присутній
+- Генерація персонального QR-запрошення використовує referral-посилання
+
+8. Підтвердження статусу учасника
+- Звичайний web-admin при зміні статусу створює pending request
+- Superadmin має окрему чергу у «Учасники»
+- Є approve / reject endpoints та аудит дії
+- Фактичний статус змінюється лише після approve суперадміном
+
+9. Адмін для Вови Дороша
+- Доданий scripts/promote_existing_user.py
+- Скрипт змінює роль ІСНУЮЧОГО профілю без створення дубля
+- При кількох збігах скрипт зупиняється і показує AMP-ID
+- Web-login створюється окремо через scripts/add_staff_account.py
+
+10. UI / темна тема
+- Ідеї: стабілізована двоколонкова картка + responsive fallback
+- Звіти: tiles використовують var(--surface-2), var(--ink), var(--line), тому текст читабельний у dark theme
+- Уніфіковано gaps/max-width/padding для Звернень, Розсилок, Модерації та Бейджів
+- Додані responsive правила для нових блоків v1.6.9
+
+11. Автоматичні звіти
+- Smoke test XLSX: OK
+- Smoke test PDF: OK
+- PDF render: 7 сторінок, кирилиця відображається коректно; контрольні сторінки без обрізання/накладання/black squares
+- У звіт включені показники опитувань: surveys_published та survey_responses
+
+12. Обмеження середовища перевірки
+- У sandbox відсутні aiogram та aiosqlite, а інтернет-доступ для pip вимкнений.
+- Тому live Telegram polling, async SQLite init та production Heroku/BOT_TOKEN не запускались у цьому середовищі.
+- SQLAlchemy schema/migration перевірена через sync SQLite; Telegram/web Python-код пройшов compile/AST/static checks.
+- Після deploy обов’язковий production smoke-test: /health, heroku logs, тестове опитування, QR-запрошення та status approval.
+
+ПІДСУМОК: фінальна збірка v1.6.9 готова до production deploy після стандартного PostgreSQL backup.

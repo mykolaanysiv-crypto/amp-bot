@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_date_fields.html" import optional_datetime_fields %}
+{% block title %}Квести • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Квести</b></nav>
+<div class="page-head">
+  <div><span class="eyebrow">ГЕЙМІФІКАЦІЯ</span><h1>Квести</h1><p>Створюйте квести, відстежуйте учасників, прогрес та підтверджуйте виконання.</p></div>
+  <span class="upload-note">Фото: до 20 МБ</span>
+</div>
+
+<form class="smart-filters card" method="get">
+  <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва або опис"></label>
+  <label><span>Статус</span><select name="status"><option value="">Усі статуси</option>{% for st in ['open','closed','postponed','completed','cancelled'] %}<option value="{{st}}" {% if status==st %}selected{% endif %}>{{lifecycle_status_label(st)}}</option>{% endfor %}</select></label>
+  <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
+  <label><span>Тип</span><select name="type"><option value="">Усі типи</option><option value="individual" {% if type=='individual' %}selected{% endif %}>Індивідуальні</option><option value="team" {% if type=='team' %}selected{% endif %}>Командні</option></select></label>
+  <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option><option value="deadline" {% if sort=='deadline' %}selected{% endif %}>За дедлайном</option></select></label>
+  {% if review %}<input type="hidden" name="review" value="{{review}}">{% endif %}<button class="primary smart-filter-submit">Застосувати</button>
+</form>
+
+<section class="card entity-create-card">
+  <div class="section-title"><div><h2>➕ Новий квест</h2><p class="muted form-section-note">Дедлайн, як і в подіях, вводиться окремо: день, місяць, рік і час.</p></div></div>
+  <form method="post" action="/admin/quests/create" enctype="multipart/form-data" class="form-grid entity-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label class="span2">Назва<input name="title" required></label>
+    <label>Тип<select name="quest_type"><option value="individual">Індивідуальний</option><option value="team">Командний</option></select></label>
+    <label>Нагорода, XP<input name="xp_reward" type="number" min="5" max="35" value="20"><small>Індивідуальний: 10–35 XP. Командний: 5–20 XP кожному.</small></label>
+    <label>Ціль<input name="target_value" type="number" value="1" min="1"></label>
+    <label class="span2 upload-field">Фото<input name="photo" type="file" accept="image/*"><small>До 20 МБ</small></label>
+    {{ optional_datetime_fields('deadline') }}
+    <label class="check-line"><input type="checkbox" name="active" checked> Активний</label>
+    <label class="span2">Опис<textarea name="description"></textarea></label>
+    <div class="span2 form-actions-row"><button class="primary entity-save-button" type="submit">Створити квест</button></div>
+  </form>
+</section>
+
+<div class="work-cards-grid">
+{% for q in rows %}
+  <article class="card entity-card-v2 quest-card-v2">
+    <div class="entity-card-media">
+      {% if q.image_path %}<img src="{{q.image_path}}" alt="Фото квесту">{% else %}<div class="entity-placeholder">🎯</div>{% endif %}
+    </div>
+    <div class="entity-card-body">
+      <div class="entity-card-topline">
+        <div class="entity-card-tags"><span class="tag">{{label(q.quest_type)}}</span>{% if q.cancelled_at %}<span class="tag cancelled">Скасовано</span>{% else %}<span class="tag {% if q.status in ['open','postponed'] %}good{% endif %}">{{lifecycle_status_label(q.status)}}</span>{% endif %}</div>
+        <span class="event-date-badge">{{q.ends_at.strftime('%d.%m.%Y · %H:%M') if q.ends_at else 'Без дедлайну'}}</span>
+      </div>
+      <h3>{{q.title}}</h3>
+      <div class="entity-card-info">
+        <span>⚡ {{q.xp_reward}} XP</span><span>👥 {{participant_counts.get(q.id,0)}} уч.</span><span>✅ {{completed_counts.get(q.id,0)}} виконали</span>
+        {% if q.quest_type=='team' %}<span>🎯 {{q.progress_value}} / {{q.target_value}}</span>{% endif %}
+      </div>
+      {% if q.cancelled_at %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{q.cancellation_reason or 'не зазначено'}}</p>{% elif q.description %}<p class="entity-card-description">{{q.description[:180]}}{{'…' if q.description|length > 180 else ''}}</p>{% endif %}
+      {% if q.quest_type=='team' %}<div class="progress"><i style="width:{{ [100,(q.progress_value*100/q.target_value)|int]|min }}%"></i></div>{% endif %}
+      <div class="unified-card-actions">
+        <a class="primary link-button unified-action-button" href="/admin/quests/{{q.id}}">👁 Детально</a>
+        <details class="event-edit-details unified-edit-details">
+          <summary class="soft-button event-edit-trigger unified-action-button">✏️ Редагувати</summary>
+          <form method="post" action="/admin/quests/{{q.id}}/update" enctype="multipart/form-data" class="form-grid entity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <label class="span2">Назва<input name="title" value="{{q.title}}" required></label>
+            <label>Тип<select name="quest_type"><option value="individual" {% if q.quest_type=='individual' %}selected{% endif %}>Індивідуальний</option><option value="team" {% if q.quest_type=='team' %}selected{% endif %}>Командний</option></select></label>
+            <label>XP<input name="xp_reward" type="number" min="5" max="35" value="{{q.xp_reward}}"></label>
+            <label>Ціль<input name="target_value" type="number" min="1" value="{{q.target_value}}"></label>
+            {{ optional_datetime_fields('deadline', q.ends_at) }}
+            {% if q.cancelled_at or q.status in ['cancelled','completed','postponed'] %}<div class="entity-action-locked"><b>{{lifecycle_status_label('cancelled' if q.cancelled_at else q.status)}}</b><span>{% if q.status=='postponed' and not q.cancelled_at %}Перенесення керується на детальній сторінці.{% else %}Повторна активація через звичайне редагування вимкнена.{% endif %}</span></div>{% else %}<label class="check-line"><input type="checkbox" name="active" {% if q.active %}checked{% endif %}> Активний</label>{% endif %}
+            <label class="span2 upload-field">Нове фото<input name="photo" type="file" accept="image/*"></label>
+            <label class="check-line span2 remove-photo-line"><input type="checkbox" name="remove_image" value="1"> Видалити фото</label>
+            <label class="span2">Опис<textarea name="description">{{q.description}}</textarea></label>
+            <div class="span2 form-actions-row"><button class="primary" type="submit">💾 Зберегти зміни</button></div>
+          </form>
+        </details>
+      </div>
+    </div>
+  </article>
+{% else %}
+  <section class="card"><p class="empty">Квестів ще немає.</p></section>
+{% endfor %}
+</div>
+{% endblock %}

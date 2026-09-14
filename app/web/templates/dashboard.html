@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Огляд • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><b>Огляд</b></nav>
+<div class="hero">
+  <div><span class="eyebrow">АМП • СИСТЕМА АКТИВНОСТІ</span><h1>Огляд простору</h1><p>Ключові показники, найближчі події та дії, які потребують уваги.</p></div>
+  {% if season %}<span class="pill">📈 {{ season.name }}</span>{% endif %}
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span>Активні учасники</span><strong>{{ stats.users }}</strong></div>
+  <div class="kpi"><span>АМПасадори й координатори</span><strong>{{ stats.ambassadors }}</strong></div>
+  <div class="kpi"><span>Події</span><strong>{{ stats.events }}</strong></div>
+  <div class="kpi"><span>Нараховано досвіду</span><strong>{{ stats.xp }}</strong><small>XP</small></div>
+  <div class="kpi"><span>Заявки на винагороди</span><strong>{{ stats.rewards }}</strong></div>
+  <div class="kpi"><span>Задачі на підтвердженні</span><strong>{{ stats.tasks }}</strong></div>
+  <div class="kpi"><span>Заявки на активності</span><strong>{{ stats.activities }}</strong><small>потребують уваги</small></div>
+  <div class="kpi"><span>Відкриті звернення</span><strong>{{ stats.requests }}</strong></div>
+</div>
+
+<section class="card attention-card" id="attention">
+  <div class="section-title"><div><h2>🔔 Потребує уваги</h2><p class="muted">Тільки те, що зараз вимагає дії команди.</p></div><span class="tag">{{ attention|length }}</span></div>
+  {% if attention %}<div class="attention-grid">{% for item in attention %}<a class="attention-item" href="{{item.url}}"><span class="attention-count">{{item.count}}</span><span><b>{{item.icon}} {{item.title}}</b><small>Перейти до відфільтрованого списку</small></span><span class="attention-action">{{item.action}} →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">✅ Зараз немає термінових пунктів.</div>{% endif %}
+</section>
+
+
+<section class="card" id="data-quality">
+  <div class="section-title"><div><h2>🧹 Якість даних</h2><p class="muted">Canonical-довідник населених пунктів і контроль дублів у профілях.</p></div><span class="tag">{{ data_quality.directory_count }} значень</span></div>
+  <div class="kpis four">
+    <div class="kpi"><span>Профілі з населеним пунктом</span><strong>{{ data_quality.profiles_with_settlement }}</strong></div>
+    <div class="kpi"><span>Групи дублів</span><strong>{{ data_quality.duplicate_count }}</strong></div>
+    <div class="kpi"><span>Неканонічні значення</span><strong>{{ data_quality.noncanonical_count }}</strong></div>
+    <div class="kpi"><span>Стан</span><strong>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}⚠️{% else %}✅{% endif %}</strong><small>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}потрібна перевірка{% else %}дані узгоджені{% endif %}</small></div>
+  </div>
+  {% if data_quality.duplicate_groups %}<p><b>Знайдені варіанти:</b> {% for group in data_quality.duplicate_groups %}<code>{{ group|join(' / ') }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  {% if data_quality.noncanonical_values %}<p><b>Поза довідником:</b> {{ data_quality.noncanonical_values|join(', ') }}</p>{% endif %}
+  {% if has_permission("participants.edit") %}<form method="post" action="/admin/data-quality/settlements/normalize"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🧹 Перевірити й нормалізувати</button></form>{% endif %}
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>📅 Найближчі події</h2><a href="/admin/events">Усі події →</a></div>
+  {% if upcoming %}
+    <div class="upcoming-list">
+    {% for e in upcoming %}
+      <div class="upcoming-item">
+        <div class="upcoming-date">{{e.starts_at.strftime('%d')}}<small>{{e.starts_at.strftime('%m.%Y')}}</small></div>
+        <div><h3>{{e.title}}</h3><p>{{e.starts_at.strftime('%H:%M')}} • {{e.location}} • {{e.xp_reward}} XP</p></div>
+        <a class="soft-button" href="/admin/events/{{e.id}}">Детально</a>
+      </div>
+    {% endfor %}
+    </div>
+  {% else %}<p class="muted">Найближчих відкритих подій поки немає.</p>{% endif %}
+</section>
+
+{% if is_superadmin %}
+<div class="grid2 dashboard-duo">
+<section class="card dashboard-card dashboard-ranking-card">
+  <div class="section-title"><h2>🏆 Найактивніші</h2><span>ТОП-10</span></div>
+  <div class="dashboard-ranking-wrap">
+    <table class="dashboard-ranking-table">
+      <thead><tr><th>Місце</th><th>Учасник</th><th>Досвід</th></tr></thead>
+      <tbody>
+      {% for id,name,xp in top %}
+        <tr><td>{{ loop.index }}</td><td><a href="/admin/users/{{ id }}"><b>{{ name }}</b></a></td><td><b>{{ xp|int }} XP</b></td></tr>
+      {% else %}
+        <tr><td colspan="3" class="muted">Даних ще немає.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="card dashboard-card dashboard-audit-card">
+  <div class="section-title"><h2>🧾 Останні дії</h2><a href="/admin/audit">Усі записи →</a></div>
+  {% if recent %}
+    <div class="timeline dashboard-timeline">
+      {% for row in recent %}
+        <a href="/admin/audit/{{row.id}}"><b>{{ action_title(row.action) }}</b><span>{{ row.actor_label }} • {{ row.created_at.strftime('%d.%m %H:%M') }}</span><small>{{ action_description(row.action) }}</small></a>
+      {% endfor %}
+    </div>
+  {% else %}<p class="muted">Записів ще немає.</p>{% endif %}
+</section>
+</div>
+{% else %}
+<div class="dashboard-single">
+<section class="card dashboard-card dashboard-ranking-card">
+  <div class="section-title"><h2>🏆 Найактивніші</h2><span>ТОП-10</span></div>
+  <div class="dashboard-ranking-wrap">
+    <table class="dashboard-ranking-table">
+      <thead><tr><th>Місце</th><th>Учасник</th><th>Досвід</th></tr></thead>
+      <tbody>
+      {% for id,name,xp in top %}
+        <tr><td>{{ loop.index }}</td><td><a href="/admin/users/{{ id }}"><b>{{ name }}</b></a></td><td><b>{{ xp|int }} XP</b></td></tr>
+      {% else %}
+        <tr><td colspan="3" class="muted">Даних ще немає.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+{% endif %}
+{% endblock %}

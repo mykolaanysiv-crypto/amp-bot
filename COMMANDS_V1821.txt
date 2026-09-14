@@ -1,0 +1,161 @@
+AMP XP / АМПасадори v1.8.2.1 — КОМАНДИ ОНОВЛЕННЯ
+==================================================
+
+1. ПЕРЕЙТИ У ПОТОЧНИЙ PRODUCTION-ПРОЄКТ
+
+cd ~/Downloads/amp_bot_v155
+
+git status
+
+
+2. BACKUP POSTGRESQL ПЕРЕД ОНОВЛЕННЯМ
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+heroku pg:backups:download \
+  -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v1821.dump
+
+# Якщо є локальний .env — зробіть резервну копію:
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v1821
+
+
+3. РОЗПАКУВАТИ НОВУ ВЕРСІЮ
+
+cd ~/Downloads
+
+rm -rf ~/Downloads/amp_bot_v1821
+
+unzip ~/Downloads/amp_bot_v1821.zip -d ~/Downloads/
+
+cat ~/Downloads/amp_bot_v1821/VERSION.txt
+
+Має показати:
+1.8.2.1
+
+
+4. БЕЗПЕЧНО СКОПІЮВАТИ НОВИЙ КОД
+
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v1821/ \
+  ~/Downloads/amp_bot_v155/
+
+
+5. ЛОКАЛЬНА ПЕРЕВІРКА
+
+cd ~/Downloads/amp_bot_v155
+
+source .venv/bin/activate
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+cat VERSION.txt
+python -c "from app.version import APP_VERSION; print(APP_VERSION)"
+
+python -m compileall -q app scripts tests
+
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py tests/test_v1821_calendar_event_ops.py
+
+# За наявності всіх runtime-залежностей також:
+pytest -q
+
+git diff --check
+
+git status
+
+
+6. COMMIT
+
+git add -A
+
+git diff --cached --check
+
+git status
+
+git commit -m "AMP XP v1.8.2.1 Calendar and Event Operations"
+
+
+7. DEPLOY НА HEROKU
+
+git push heroku main
+
+
+8. ПЕРЕВІРКА ПІСЛЯ DEPLOY
+
+heroku releases -a amp-bot-ver-1-5-0
+
+heroku ps -a amp-bot-ver-1-5-0
+
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+Очікувана версія /health:
+1.8.2.1
+
+
+9. ЩО ПЕРЕВІРИТИ В WEB
+
+КАЛЕНДАР
+- День / Тиждень / Місяць.
+- Події.
+- Квести.
+- Волонтерські задачі.
+- Опитування.
+- Дедлайни можливостей.
+- Кейси.
+- Ідеї/мініпроєкти.
+- Freezes.
+
+QR SCANNER
+- Відкрити detail події з телефона через HTTPS.
+- Натиснути «📷 Почати check-in».
+- Дозволити camera.
+- Зареєстрований учасник -> attendance підтверджено.
+- Незареєстрований -> «Зареєструвати та підтвердити».
+- Якщо браузер не підтримує BarcodeDetector, перевірити ручне поле AMP-ID/QR.
+
+WAITLIST
+- Створити capacity-подію та заповнити всі місця.
+- Наступний учасник має побачити «⏳ Стати в чергу».
+- Після скасування місце резервується першому в черзі на 2 години.
+- Перевірити Telegram «✅ Підтвердити місце».
+- Перевірити повернення простроченого reserve у waitlist.
+
+ATTENDANCE
+- Зареєстрований.
+- Скасував.
+- У черзі.
+- Місце зарезервовано.
+- Відмічено присутність.
+- Був присутній.
+- Не прийшов.
+
+
+ВАЖЛИВО
+=======
+
+НЕ запускати вручну:
+python scripts/migrate_sqlite_to_postgres.py
+
+НЕ перезаписувати:
+.env
+.git/
+.venv/
+data/
+
+v1.8.2.1 НЕ додає нових таблиць. Release script сам additive/idempotent додає нові поля event_registrations.
+Стандартний Heroku release:
+python -m scripts.heroku_release

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Стан системи — АМПасадори{% endblock %}
+{% block content %}
+<div class="page-shell system-health-page">
+  <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Стан системи</b></div>
+  <div class="page-heading-row">
+    <div>
+      <h1>🩺 Стан системи</h1>
+      <p class="muted">Технічний огляд АМП XP: бот, база даних, планувальники, черги повідомлень, резервні копії та сховище.</p>
+    </div>
+    <a class="soft-button system-action" href="/admin/system-health">↻ Оновити</a>
+  </div>
+
+  <section class="health-grid">
+    <article class="health-card {{ 'health-ok' if bot_ok else 'health-bad' }}">
+      <div class="health-icon">🤖</div>
+      <div><span>Telegram Bot</span><strong>{{ 'Працює' if bot_ok else 'Проблема' }}</strong><small>{{ bot_label }}</small></div>
+    </article>
+    <article class="health-card {{ 'health-ok' if db_ok else 'health-bad' }}">
+      <div class="health-icon">🗄️</div>
+      <div><span>Database</span><strong>{{ 'Працює' if db_ok else 'Проблема' }}</strong><small>{{ db_error or 'З’єднання успішне' }}</small></div>
+    </article>
+    <article class="health-card {{ 'health-ok' if scheduler_ok else 'health-warn' }}">
+      <div class="health-icon">⏱️</div>
+      <div><span>Scheduler</span><strong>{{ scheduler_label }}</strong><small>Активних lock: {{ active_locks }}</small></div>
+    </article>
+    <article id="telegram-delivery" class="health-card {{ 'health-ok' if failed_notifications == 0 else 'health-warn' }}">
+      <div class="health-icon">📨</div>
+      <div><span>Telegram retry</span><strong>{{ pending_notifications }} в черзі</strong><small>Невдалих остаточно: {{ failed_notifications }}</small></div>
+    </article>
+  </section>
+  {% if failed_notifications %}<form method="post" action="/admin/system-health/retry-failed-notifications" class="system-health-actions"><button class="soft-button system-action" type="submit">↻ Повторити невдалі Telegram-повідомлення</button></form>{% endif %}
+
+  <section class="panel health-summary-panel">
+    <div class="panel-heading"><div><h2>Поточний стан</h2><p>Ключові показники для швидкої діагностики.</p></div></div>
+    <div class="health-kpi-grid">
+      <div class="health-kpi"><span>APP_VERSION</span><b>v{{ app_version }}</b><small>Версія застосунку</small></div>
+      <div class="health-kpi"><span>Heroku release</span><b>{{ release_version }}</b><small>Dyno: {{ dyno }}</small></div>
+      <div class="health-kpi"><span>Pending jobs</span><b>{{ pending_jobs }}</b><small>Telegram + розсилки</small></div>
+      <div class="health-kpi"><span>Failed broadcasts</span><b>{{ failed_broadcasts }}</b><small>Кампанії з помилками</small></div>
+      <div class="health-kpi"><span>Media storage</span><b>{{ media_count }}</b><small>{{ '%.2f'|format(media_bytes / 1024 / 1024) }} МБ у БД</small></div>
+      <div class="health-kpi"><span>Останній successful job</span><b>{{ latest_job.job_name if latest_job else '—' }}</b><small>{{ latest_job.last_success_at.strftime('%d.%m.%Y %H:%M:%S') if latest_job and latest_job.last_success_at else 'Ще немає' }}</small></div>
+      <div class="health-kpi"><span>Останній backup</span><b>{{ backup_at.strftime('%d.%m.%Y %H:%M') if backup_at else '—' }}</b><small>{{ backup_label }}</small></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div><h2>Планувальники та lock</h2><p>Один job одночасно може виконувати лише один процес. Прострочений lock автоматично звільняється.</p></div>
+    </div>
+    {% if jobs %}
+    <div class="table-wrap">
+      <table class="admin-table health-jobs-table">
+        <thead><tr><th>Job</th><th>Стан</th><th>Останній запуск</th><th>Останній успіх</th><th>Запусків</th><th>Помилок</th></tr></thead>
+        <tbody>
+        {% for job in jobs %}
+          {% set locked = job.locked_until and job.locked_until > now %}
+          <tr>
+            <td><b>{{ job.job_name }}</b>{% if job.last_error %}<small class="health-error-text">{{ job.last_error }}</small>{% endif %}</td>
+            <td><span class="status-pill {{ 'status-open' if locked else 'status-muted' }}">{{ 'Виконується' if locked else 'Очікує' }}</span></td>
+            <td>{{ job.last_started_at.strftime('%d.%m %H:%M:%S') if job.last_started_at else '—' }}</td>
+            <td>{{ job.last_success_at.strftime('%d.%m %H:%M:%S') if job.last_success_at else '—' }}</td>
+            <td>{{ job.run_count or 0 }}</td>
+            <td>{{ job.failure_count or 0 }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty-state"><b>Планувальники ще не створили записи.</b><span>Після першого циклу scheduler тут з’явиться їхній стан.</span></div>
+    {% endif %}
+  </section>
+
+  <section class="panel health-note">
+    <h2>Що означають показники</h2>
+    <p><b>Pending jobs</b> — повідомлення або розсилки, які ще мають бути доставлені. Тимчасова помилка Telegram не втрачає повідомлення: система повторить спробу до 3 разів.</p>
+    <p><b>Scheduler lock</b> — захист від подвійного виконання birthday XP, нагадувань, серій, автоматичного завершення та інших фонових задач при кількох процесах.</p>
+    <p><b>Backup</b> — локальна/зафіксована резервна копія. Heroku PGBackups залишається зовнішнім механізмом і керується окремо.</p>
+    <p class="muted mono-small">Source: {{ source_version }}</p>
+  </section>
+</div>
+{% endblock %}

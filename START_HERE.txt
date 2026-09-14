@@ -1,0 +1,21 @@
+АМПасадори / АМП XP v1.10.3 — ШВИДКИЙ СТАРТ
+
+ГОЛОВНЕ У v1.10.3
+- Data Integrity: check-in/attendance window 60 хв до / 360 хв після старту (runtime-configurable).
+- Manual attendance override: тільки web + обов’язкова причина + audit.
+- Reports: завершені/майбутні/поточні події окремо; future attendance не входить у KPI.
+- Унікальні залучені = реальна участь, а не факт реєстрації профілю.
+- Data Quality: canonical settlement directory + Dashboard widget.
+- Schema = 48 tables; нова additive таблиця settlement_references.
+
+ПЕРЕД ДЕПЛОЄМ
+1. Розпакувати пакет у чисту директорію.
+2. Активувати venv та встановити requirements.txt.
+3. Перевірити Config Vars / .env.
+4. Запустити: python -m compileall -q app scripts tests
+5. Запустити: pytest -q
+6. Перевірити VERSION.txt = 1.10.3.
+7. Після першого startup відкрити Dashboard → Data Quality та перевірити нормалізацію населених пунктів.
+
+ВАЖЛИВО
+Передчасний check-in більше не є допустимим сценарієм. Якщо координатор виправляє реальну помилку поза часовим вікном, це робиться у web-панелі через override із причиною.

@@ -1,0 +1,141 @@
+AMP XP / «АМПасадори» v1.10.0 — встановлення на Heroku
+=============================================================
+
+Heroku app: amp-bot-ver-1-5-0
+Робоча production-папка: ~/Downloads/amp_bot_v155
+Нова папка після розпакування: ~/Downloads/amp_bot_v1100
+
+1) BACKUP БАЗИ
+--------------
+cd ~/Downloads/amp_bot_v155
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+За бажанням скачати backup локально:
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v1100.dump
+
+Якщо є локальний .env — зробити резервну копію:
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v1100
+
+2) РОЗПАКУВАТИ ZIP
+------------------
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v1100
+unzip ~/Downloads/amp_bot_v1100.zip -d ~/Downloads/
+cat ~/Downloads/amp_bot_v1100/VERSION.txt
+
+Має бути:
+1.10.0
+
+3) ОНОВИТИ РОБОЧУ ПАПКУ
+-----------------------
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v1100/ \
+  ~/Downloads/amp_bot_v155/
+
+ВАЖЛИВО:
+source — саме ~/Downloads/amp_bot_v1100/
+Без другого вкладеного /amp_bot_v1100/.
+
+4) ЛОКАЛЬНА ПЕРЕВІРКА
+---------------------
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+cat VERSION.txt
+python -m pip install -r requirements.txt
+python -m compileall -q app scripts tests
+git diff --check
+
+Targeted regression для актуальних релізів:
+pytest -q \
+  tests/test_v190_notification_center.py \
+  tests/test_v191_advanced_analytics.py \
+  tests/test_v192_smart_opportunities_seasons.py \
+  tests/test_v1100_major_ux.py
+
+Очікувано: 24 PASS.
+
+Якщо у локальному .venv встановлені всі dev-залежності, додатково:
+pip install -r requirements-dev.txt
+pytest -q
+
+5) ПЕРЕВІРИТИ ЗМІНИ GIT
+-----------------------
+git status
+git diff --check
+
+Переконайтеся, що НЕ додаються:
+.env
+*.dump
+*.db
+data/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+6) COMMIT
+---------
+git add -A
+git diff --cached --check
+git status
+git commit -m "AMP XP v1.10.0 Major UX Refresh and Runtime Settings"
+
+7) DEPLOY
+---------
+git push heroku main
+
+НЕ запускати вручну migrate_sqlite_to_postgres.py.
+Release-команда Heroku сама виконає idempotent init/upgrade.
+У v1.10.0 нових таблиць/полів немає; runtime settings зберігаються у system_settings.
+
+8) PRODUCTION CHECK
+-------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+У /health має бути APP_VERSION 1.10.0.
+
+9) TELEGRAM SMOKE TEST
+----------------------
+[ ] /start одразу показує «Мій АМП сьогодні».
+[ ] Головна клавіатура має 6 participant-пунктів + Admin panel лише для staff.
+[ ] 🚀 Долучитися -> 6 потрібних підрозділів.
+[ ] 👤 Мій профіль -> Profile/XP/League/Streaks/Goals/Badges/Rewards/Invite/Season history.
+[ ] ☰ Ще -> Звернення/Правила/Допомога.
+[ ] Старі кнопки з кешованої клавіатури не ламають FSM navigation.
+[ ] 🎫 QR-бейдж відкривається з нової головної кнопки.
+
+10) WEB SMOKE TEST
+------------------
+[ ] Participant 360: усі вкладки мають іконки.
+[ ] Система -> ⚙️ Налаштування відкривається.
+[ ] Звичайний admin бачить settings read-only.
+[ ] Superadmin може змінити значення і зберегти.
+[ ] Після save є audit і values залишаються після refresh/restart.
+[ ] Змінений suppression threshold відображається в analytics/report privacy note.
+[ ] Змінений event reminder/feedback/waitlist час використовується scheduler/workflow.
+[ ] Змінений freeze/miss/badge threshold використовується streak workflow.
+
+11) ЯКЩО Є ПОМИЛКА
+------------------
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+Показати releases:
+heroku releases -a amp-bot-ver-1-5-0
+
+Rollback за потреби (підставити попередній успішний release):
+heroku rollback vXX -a amp-bot-ver-1-5-0
+
+v1.10.0 не має schema changes, тому rollback коду не потребує destructive DB rollback.

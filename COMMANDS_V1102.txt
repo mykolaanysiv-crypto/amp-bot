@@ -1,0 +1,156 @@
+AMP XP / «АМПасадори» v1.10.2 — ПОВНЕ ВСТАНОВЛЕННЯ НА HEROKU
+=================================================================
+
+Heroku app: amp-bot-ver-1-5-0
+Робоча production-папка: ~/Downloads/amp_bot_v155
+Нова папка після розпакування: ~/Downloads/amp_bot_v1102
+
+ВАЖЛИВО
+-------
+- Не видаляйте стару Git-папку amp_bot_v155.
+- Не копіюйте новий .env поверх чинного.
+- Не запускайте migrate_sqlite_to_postgres.py вручну.
+- Перед deploy обов'язково зробіть PostgreSQL backup.
+- Source для rsync — РІВНО ~/Downloads/amp_bot_v1102/ (без другого вкладеного amp_bot_v1102).
+
+1) BACKUP
+---------
+cd ~/Downloads/amp_bot_v155
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v1102.dump
+
+Якщо є локальний .env:
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v1102
+
+2) РОЗПАКУВАТИ v1.10.2
+----------------------
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v1102
+unzip ~/Downloads/amp_bot_v1102.zip -d ~/Downloads/
+cat ~/Downloads/amp_bot_v1102/VERSION.txt
+
+Має бути:
+1.10.2
+
+3) ОНОВИТИ РОБОЧУ GIT-ПАПКУ
+-----------------------------
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v1102/ \
+  ~/Downloads/amp_bot_v155/
+
+4) ЗАЛЕЖНОСТІ ТА ВЕРСІЯ
+------------------------
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+cat VERSION.txt
+python -c "from app.version import APP_VERSION; print(APP_VERSION)"
+
+Обидві перевірки мають показати 1.10.2.
+
+5) STATIC QA
+-----------
+python -m compileall -q app scripts tests
+git diff --check
+
+6) ТЕСТИ v1.10.2
+----------------
+pytest -q tests/test_v1102_permissions_ux.py
+
+Потім regression group:
+pytest -q \
+  tests/test_v1100_major_ux.py \
+  tests/test_v1102_permissions_ux.py \
+  tests/test_v181_features.py \
+  tests/test_v1821_calendar_event_ops.py \
+  tests/test_v1822_startup_hotfix.py \
+  tests/test_v1823_runtime_fixes.py \
+  tests/test_v1824_telegram_scanner.py \
+  tests/test_v1825_admin_menu_version_dedupe.py \
+  tests/test_v182_ui.py \
+  tests/test_v190_notification_center.py \
+  tests/test_v191_advanced_analytics.py \
+  tests/test_v192_smart_opportunities_seasons.py
+
+І ОБОВ'ЯЗКОВО ПОВНИЙ SUITE перед deploy:
+pytest -q
+
+DeprecationWarning щодо datetime.utcnow() — warning, а не failure.
+Якщо є хоча б один FAILED — НЕ робіть git push, спочатку виправте помилку.
+
+7) РУЧНИЙ SMOKE CHECK
+---------------------
+Локально за потреби:
+python run_all.py
+
+Перевірити:
+- Telegram Головна звертається по імені;
+- у меню є 🤝 Запросити друга та 🆘 Звернення;
+- superadmin web → Безпека та права доступу;
+- видати тестовому staff тільки один/два permissions;
+- переконатися, що зайві sidebar sections і direct URLs закриті;
+- повернути «Права за роллю»;
+- перевірити basic і sensitive event export окремо.
+
+Ctrl+C — зупинити локальний сервер.
+
+8) GIT
+------
+git status
+git diff --check
+git add -A
+git diff --cached --check
+git status
+git commit -m "AMP XP v1.10.2 granular permissions and Telegram home"
+
+9) DEPLOY
+---------
+git push heroku main
+
+Heroku сам виконає release command.
+НЕ запускати вручну migrate_sqlite_to_postgres.py.
+
+10) PRODUCTION CHECK
+--------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 250 -a amp-bot-ver-1-5-0
+
+У /health має бути APP_VERSION 1.10.2.
+
+11) ПЕРЕВІРИТИ ПІСЛЯ DEPLOY
+---------------------------
+[ ] Telegram Головна показує ім'я, XP/прогрес, wallet, league, streak, години.
+[ ] 🤝 Запросити друга і 🆘 Звернення видно одразу.
+[ ] Адмін-панель Telegram показує лише дозволені дії.
+[ ] Web sidebar відповідає permissions.
+[ ] Direct URL без permission повертає заборону/redirect.
+[ ] Global Search не показує заборонені модулі.
+[ ] Dashboard «Потребує уваги» не показує заборонені workflow.
+[ ] participants.edit не відкриває sensitive поля.
+[ ] reports.sensitive_export відкриває розширений export тільки тим, кому його видано.
+[ ] Логи без Traceback/ERROR startup.
+
+12) ROLLBACK ЗА ПОТРЕБИ
+-----------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku rollback vXX -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+
+Нові DB-поля additive/nullable, тому destructive DB rollback не потрібний.

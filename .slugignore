@@ -1,0 +1,9 @@
+.git/
+.env
+.venv/
+.testvenv/
+__pycache__/
+*.pyc
+*.db
+backups/
+.DS_Store

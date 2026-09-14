@@ -1,0 +1,85 @@
+AMP XP / «АМПасадори» v1.10.2 — QA REPORT
+================================================
+
+RELEASE
+-------
+Version: 1.10.2
+Name: Granular Permissions & Telegram Home
+
+SCOPE
+-----
+- granular web + Telegram staff permissions;
+- server-side permission enforcement for actions and direct URL reads;
+- permission-aware sidebar, global search and Dashboard attention;
+- non-sensitive participant edit workflow;
+- sensitive event/donor exports controlled by reports.sensitive_export;
+- permission-aware Telegram admin menu/callbacks;
+- Telegram Home redesign with first-name greeting;
+- invite friend and requests moved to the main participant menu.
+
+SCHEMA
+------
+- SQLAlchemy tables: 47
+- New tables: 0
+- Additive nullable fields:
+  - users.staff_permissions_json
+  - web_staff_accounts.permissions_json
+- Migration style: additive/idempotent via existing release upgrade.
+
+STATIC QA
+---------
+- compileall app/scripts/tests: PASS
+- AST: 91 Python files / 0 errors
+- Jinja parse: 48 templates / 0 errors
+- FastAPI static route scan: 172 method+path / 172 unique / 0 duplicates
+- SQLAlchemy metadata: 47 tables
+
+TARGETED REGRESSION
+-------------------
+Command covered v1.8.1/v1.8.2.x/v1.9.x/v1.10.0/v1.10.2 feature tests.
+Result: 72 PASS.
+
+New v1.10.2 tests cover:
+- permission catalog/defaults/custom override/fail-closed behavior;
+- direct URL safety net;
+- web/Telegram permission editor wiring;
+- permission-driven Telegram admin menu/callback protection;
+- permission-filtered global search and Attention Center;
+- participants.edit non-sensitive workflow;
+- reports.sensitive_export event/donor export gate;
+- role change clearing stale custom Telegram ACL;
+- Telegram Home invite/request visibility and first-name addressing.
+
+FULL HISTORICAL PYTEST IN THIS SANDBOX
+--------------------------------------
+Attempted: pytest -q
+Result: NOT RUN TO COMPLETION. Collection stops because the sandbox does not contain runtime package `aiogram`; `aiosqlite` is also absent. Network installation is unavailable in this environment.
+
+This is an environment limitation, not a claimed PASS. The user's local .venv previously showed aiogram and aiosqlite installed, therefore `COMMANDS_V1102.txt` explicitly requires a full `pytest -q` locally before deploy. If any FAILED remains locally, do not deploy.
+
+SECURITY NOTES
+--------------
+- Superadmin is an unconditional break-glass role with all permissions.
+- Explicit malformed ACL fails closed.
+- Hiding UI is not treated as access control; middleware checks direct URLs.
+- Sensitive participant profile/media/consents remain under the stricter privacy baseline.
+- reports.sensitive_export controls expanded event/donor exports and is audited.
+- Role changes clear custom ACL to prevent stale privilege carry-over.
+
+PACKAGE HYGIENE REQUIREMENTS
+----------------------------
+Final ZIP must not include .env, database/dump files, data/, .pytest_cache, __pycache__ or *.pyc.
+
+FRESH-EXTRACT VERIFICATION
+--------------------------
+Final release tree was zipped, extracted into a clean verification directory and checked again:
+- VERSION.txt: 1.10.2
+- compileall: PASS
+- AST: 91 / 0 errors
+- Jinja: 48 / 0 errors
+- routes: 172 / 172 unique / 0 duplicates
+- schema: 47 tables
+- targeted regression: 72 PASS
+- forbidden release artifacts scan: clean
+
+Warnings from datetime.utcnow() remain deprecation warnings only and did not fail the targeted suite.

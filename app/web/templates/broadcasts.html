@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Розсилки • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Розсилки</b></nav>
+<section class="page-head">
+  <div>
+    <div class="eyebrow">КОМУНІКАЦІЙНИЙ ЦЕНТР</div>
+    <h1>📣 Розсилки</h1>
+    <p>Оберіть аудиторію, підготуйте повідомлення, перевірте попередній перегляд і лише після цього запустіть надсилання через Telegram.</p>
+  </div>
+  <div class="broadcast-security-note">🔐 Лише суперадмін</div>
+</section>
+
+<form class="broadcast-compose" action="/admin/broadcasts/preview" method="post" id="broadcastForm"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <section class="card broadcast-panel">
+    <div class="section-title broadcast-title-row">
+      <h2>1. Кому надсилаємо</h2>
+      <span class="pill">Активні профілі</span>
+    </div>
+    <div class="broadcast-audience-grid">
+      <label class="span2">Аудиторія
+        <select name="audience_type" id="audienceType" required>
+          <option value="all" {% if form_data.get('audience_type','all') == 'all' %}selected{% endif %}>Усі учасники зі статусом «Активний»</option>
+          <option value="ambassadors" {% if form_data.get('audience_type') == 'ambassadors' %}selected{% endif %}>Лише АМПасадори</option>
+          <option value="age_group" {% if form_data.get('audience_type') == 'age_group' %}selected{% endif %}>Конкретна вікова група</option>
+          <option value="settlement" {% if form_data.get('audience_type') == 'settlement' %}selected{% endif %}>Населений пункт</option>
+          <option value="event" {% if form_data.get('audience_type') == 'event' %}selected{% endif %}>Учасники конкретної події</option>
+          <option value="inactive" {% if form_data.get('audience_type') == 'inactive' %}selected{% endif %}>Давно не були активні</option>
+        </select>
+      </label>
+
+      <div class="broadcast-extra span2" data-audience="age_group">
+        <div class="form-grid">
+          <label>Вік від
+            <input type="number" name="age_min" min="0" max="120" value="{{ form_data.get('age_min','14') }}" inputmode="numeric">
+          </label>
+          <label>Вік до
+            <input type="number" name="age_max" min="0" max="120" value="{{ form_data.get('age_max','35') }}" inputmode="numeric">
+          </label>
+        </div>
+        <div class="broadcast-presets" aria-label="Швидкий вибір вікової групи">
+          <button type="button" class="mini-choice" data-age="14,16">14–16</button>
+          <button type="button" class="mini-choice" data-age="17,21">17–21</button>
+          <button type="button" class="mini-choice" data-age="22,29">22–29</button>
+          <button type="button" class="mini-choice" data-age="30,35">30–35</button>
+          <button type="button" class="mini-choice" data-age="14,35">14–35</button>
+        </div>
+      </div>
+
+      <div class="broadcast-extra span2" data-audience="settlement">
+        <label>Оберіть населений пункт
+          <select name="settlement_value" data-audience-input="settlement">
+            <option value="">— Оберіть —</option>
+            {% for settlement in settlements %}
+              <option value="{{ settlement }}" {% if form_data.get('audience_type') == 'settlement' and form_data.get('audience_value') == settlement %}selected{% endif %}>{{ settlement }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <div class="broadcast-extra span2" data-audience="event">
+        <label>Оберіть подію
+          <select name="event_value" data-audience-input="event">
+            <option value="">— Оберіть подію —</option>
+            {% for event in events %}
+              <option value="{{ event.id }}" {% if form_data.get('audience_type') == 'event' and form_data.get('audience_value')|string == event.id|string %}selected{% endif %}>{{ event.starts_at.strftime('%d.%m.%Y %H:%M') }} • {{ event.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <div class="broadcast-extra span2" data-audience="inactive">
+        <label>Не були активні
+          <select name="inactive_days">
+            {% for days in [14,30,60,90,180] %}
+              <option value="{{ days }}" {% if form_data.get('inactive_days','30')|int == days %}selected{% endif %}>{{ days }}+ днів</option>
+            {% endfor %}
+          </select>
+        </label>
+        <p class="field-help">Активність визначається за останньою взаємодією учасника з Telegram-ботом.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card broadcast-panel">
+    <div class="section-title broadcast-title-row">
+      <h2>2. Повідомлення</h2>
+      <span class="pill">Telegram</span>
+    </div>
+
+    <div class="broadcast-template-grid">
+      {% for code, title, text in broadcast_templates %}
+      <button type="button" class="broadcast-template-button {% if form_data.get('template_code') == code %}is-selected{% endif %}" data-template-code="{{ code }}" data-template-text='{{ text|tojson }}'>
+        <span>{{ title }}</span>
+        <small>Вставити шаблон</small>
+      </button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="template_code" id="templateCode" value="{{ form_data.get('template_code','') }}">
+
+    <label class="broadcast-message-label">Текст повідомлення
+      <textarea name="message_text" id="broadcastText" maxlength="3800" required placeholder="Напишіть повідомлення для учасників…">{{ form_data.get('message_text','') }}</textarea>
+    </label>
+    <div class="broadcast-editor-meta">
+      <span>Персоналізація: <code>{first_name}</code> або <code>{full_name}</code></span>
+      <strong id="broadcastCharCount">0 / 3800</strong>
+    </div>
+    <button class="primary broadcast-preview-button" type="submit">👁 Попередній перегляд</button>
+  </section>
+</form>
+
+<section class="card broadcast-template-manager" id="customTemplates">
+  <div class="section-title broadcast-title-row">
+    <div>
+      <h2>🧩 Власні шаблони</h2>
+      <p class="muted">Створюйте свої заготовки для регулярних повідомлень. Активні шаблони одразу з’являються вище в блоці «Повідомлення».</p>
+    </div>
+    <span class="pill">{{ custom_templates|length }} шаблонів</span>
+  </div>
+
+  <div class="broadcast-template-manager-grid">
+    <form method="post" action="/admin/broadcasts/templates/create" class="custom-template-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Назва шаблону
+        <input name="title" maxlength="120" required placeholder="Наприклад: Нагадування про толоку">
+      </label>
+      <label>Текст повідомлення
+        <textarea name="text" maxlength="3800" required placeholder="Текст шаблону. Можна використовувати {first_name} та {full_name}."></textarea>
+      </label>
+      <div class="custom-template-hint">Персоналізація: <code>{first_name}</code> або <code>{full_name}</code></div>
+      <button class="primary" type="submit">➕ Додати шаблон</button>
+    </form>
+
+    <div class="custom-template-list">
+      {% for item in custom_templates %}
+      <details class="custom-template-item" {% if not item.active %}data-inactive="1"{% endif %}>
+        <summary>
+          <span><b>{{ item.title }}</b><small>{{ 'Активний' if item.active else 'Вимкнений' }}</small></span>
+          <span class="tag {% if item.active %}good{% endif %}">{{ 'Доступний' if item.active else 'Прихований' }}</span>
+        </summary>
+        <form method="post" action="/admin/broadcasts/templates/{{item.id}}/update" class="custom-template-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <label>Назва<input name="title" maxlength="120" value="{{item.title}}" required></label>
+          <label>Текст<textarea name="text" maxlength="3800" required>{{item.text}}</textarea></label>
+          <label class="check-line"><input type="checkbox" name="active" {% if item.active %}checked{% endif %}> Активний шаблон</label>
+          <button class="primary" type="submit">💾 Зберегти</button>
+        </form>
+        <form method="post" action="/admin/broadcasts/templates/{{item.id}}/delete" class="custom-template-delete" onsubmit="return confirm('Видалити цей шаблон?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="danger-btn" type="submit">🗑 Видалити шаблон</button>
+        </form>
+      </details>
+      {% else %}
+      <div class="entity-action-locked"><b>Власних шаблонів ще немає</b><span>Створіть перший шаблон у формі ліворуч.</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if preview %}
+<section class="card broadcast-preview-card" id="broadcastPreview">
+  <div class="section-title">
+    <h2>3. Попередній перегляд</h2>
+    <span class="tag {% if preview.count %}active{% else %}blocked{% endif %}">{{ preview.count }} одержувачів</span>
+  </div>
+  <div class="broadcast-preview-grid">
+    <div class="broadcast-audience-summary">
+      <span>Аудиторія</span>
+      <strong>{{ preview.description }}</strong>
+      {% if preview.names %}
+      <div class="broadcast-recipient-preview">
+        {% for name in preview.names %}<span>{{ name }}</span>{% endfor %}
+        {% if preview.count > preview.names|length %}<span>+ ще {{ preview.count - preview.names|length }}</span>{% endif %}
+      </div>
+      {% else %}
+      <p class="empty-note">За цим фільтром поки немає активних одержувачів.</p>
+      {% endif %}
+    </div>
+    <div>
+      <span class="preview-caption">Так виглядатиме повідомлення для першого одержувача</span>
+      <div class="telegram-preview">
+        <div class="telegram-preview-brand">АМПасадори</div>
+        <div class="telegram-preview-text">{{ preview.text }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if preview.count %}
+  <form action="/admin/broadcasts/send" method="post" class="broadcast-send-form" onsubmit="return confirm('Надіслати повідомлення {{ preview.count }} одержувачам через Telegram?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="audience_type" value="{{ form_data.get('audience_type','') }}">
+    <input type="hidden" name="audience_value" value="{{ form_data.get('audience_value','') }}">
+    <input type="hidden" name="age_min" value="{{ form_data.get('age_min','') }}">
+    <input type="hidden" name="age_max" value="{{ form_data.get('age_max','') }}">
+    <input type="hidden" name="inactive_days" value="{{ form_data.get('inactive_days','30') }}">
+    <input type="hidden" name="template_code" value="{{ form_data.get('template_code','') }}">
+    <textarea name="message_text" hidden>{{ form_data.get('message_text','') }}</textarea>
+    <a class="soft-button" href="#broadcastForm">✏️ Повернутися до редагування</a>
+    <button class="primary" type="submit">📣 Надіслати {{ preview.count }} одержувачам</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="section-title">
+    <h2>Історія розсилок</h2>
+    <span>{{ campaigns|length }} останніх</span>
+  </div>
+  {% if campaigns %}
+  <div class="broadcast-history-list">
+    {% for campaign in campaigns %}
+    <a class="broadcast-history-item" href="/admin/broadcasts/{{ campaign.id }}">
+      <div class="broadcast-history-main">
+        <strong>Розсилка №{{ campaign.id }}</strong>
+        <span>{{ campaign.created_at.strftime('%d.%m.%Y %H:%M') }} • {{ campaign.author_label }}</span>
+        <p>{{ campaign.message_text[:160] }}{% if campaign.message_text|length > 160 %}…{% endif %}</p>
+      </div>
+      <div class="broadcast-history-stats">
+        <span class="broadcast-status status-{{ campaign.status }}">
+          {% if campaign.status == 'queued' %}У черзі{% elif campaign.status == 'sending' %}Надсилається{% elif campaign.status == 'completed' %}Завершено{% elif campaign.status == 'completed_with_errors' %}Завершено з помилками{% else %}Помилка{% endif %}
+        </span>
+        <b>{{ campaign.sent_count }}/{{ campaign.recipient_count }}</b>
+        {% if campaign.failed_count %}<small>{{ campaign.failed_count }} помилок</small>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-note">Розсилок ще не було.</p>
+  {% endif %}
+</section>
+
+<script>
+(function(){
+  const audience = document.getElementById('audienceType');
+  const extras = Array.from(document.querySelectorAll('.broadcast-extra'));
+  function syncAudience(){
+    const value = audience.value;
+    extras.forEach(el => {
+      const active = el.dataset.audience === value;
+      el.hidden = !active;
+      el.querySelectorAll('select,input').forEach(input => {
+        if(input.name === 'settlement_value' || input.name === 'event_value') input.disabled = !active;
+      });
+    });
+  }
+  audience.addEventListener('change', syncAudience);
+  syncAudience();
+
+  document.querySelectorAll('[data-age]').forEach(btn => btn.addEventListener('click', function(){
+    const [min,max] = this.dataset.age.split(',');
+    document.querySelector('input[name="age_min"]').value=min;
+    document.querySelector('input[name="age_max"]').value=max;
+  }));
+
+  const textarea = document.getElementById('broadcastText');
+  const counter = document.getElementById('broadcastCharCount');
+  const templateCode = document.getElementById('templateCode');
+  function count(){ counter.textContent = `${textarea.value.length} / 3800`; }
+  textarea.addEventListener('input', count); count();
+
+  document.querySelectorAll('.broadcast-template-button').forEach(btn => btn.addEventListener('click', function(){
+    let text = this.dataset.templateText || '""';
+    try { text = JSON.parse(text); } catch(e) {}
+    textarea.value = text;
+    templateCode.value = this.dataset.templateCode || '';
+    document.querySelectorAll('.broadcast-template-button').forEach(x=>x.classList.remove('is-selected'));
+    this.classList.add('is-selected');
+    count();
+    textarea.focus();
+  }));
+
+  if(document.getElementById('broadcastPreview')){
+    setTimeout(()=>document.getElementById('broadcastPreview').scrollIntoView({behavior:'smooth',block:'start'}),100);
+  }
+})();
+</script>
+{% endblock %}

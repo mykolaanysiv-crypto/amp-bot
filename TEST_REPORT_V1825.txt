@@ -1,0 +1,60 @@
+AMP XP / «АМПасадори» v1.8.2.5 — TEST REPORT
+================================================
+
+Scope:
+- version notification duplicate hardening;
+- durable outbox per-user/version dedupe;
+- retirement of unfinished legacy system_update campaigns;
+- non-reentrant DB job locks;
+- 2-level role-aware Telegram admin menu.
+
+TARGETED PYTEST
+---------------
+Command:
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py tests/test_v1821_calendar_event_ops.py tests/test_v1822_startup_hotfix.py tests/test_v1823_runtime_fixes.py tests/test_v1824_telegram_scanner.py tests/test_v1825_admin_menu_version_dedupe.py
+
+Result:
+33 PASS
+
+New v1.8.2.5 tests only:
+5 PASS
+
+STATIC QA
+---------
+VERSION.txt: 1.8.2.5
+VERSION_CHECK.txt: 1.8.2.5
+CSS cache-buster: 1.8.2.5
+compileall: PASS
+AST: 80 Python files, 0 errors
+Jinja: 46 templates, 0 errors
+FastAPI static routes: 164 total / 164 unique / 0 duplicates
+SQLAlchemy __tablename__: 44 / 44 unique
+Leading-underscore FastAPI Form/File/Body/Query/Path/Header/Cookie risk: 0
+
+VERSION DEDUPE DESIGN
+---------------------
+1. Distributed startup lock: version_announce:{APP_VERSION}
+2. SystemSetting: last_announced_app_version
+3. UNIQUE notification_deliveries.dedupe_key:
+   system_version_update:{APP_VERSION}:user:{user_id}
+4. Unfinished legacy BroadcastCampaign(template_code=system_update) are retired before recovery.
+5. queue_telegram_delivery handles concurrent duplicate insert via nested transaction + IntegrityError recovery.
+6. acquire_job_lock no longer permits same-worker concurrent re-entry.
+
+ADMIN MENU DESIGN
+-----------------
+Top level:
+- Events
+- Activities
+- XP & rewards
+- People (admin/superadmin)
+- Analytics & communications (admin/superadmin)
+- Web panel
+
+Detailed actions are in second-level role-aware menus. Every submenu has a return-to-main button.
+
+FULL HISTORICAL PYTEST
+----------------------
+`pytest -q` cannot be collected in this sandbox because runtime dependency `aiogram` is not installed.
+Observed collection error: ModuleNotFoundError: No module named 'aiogram'.
+Therefore the full historical suite is NOT claimed as PASS in this environment.

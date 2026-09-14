@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Рейтинг і серії • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Рейтинг і серії</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ГЕЙМІФІКАЦІЯ</span>
+    <h1>🏆 Рейтинг і серії участі</h1>
+    <p>Загальний рейтинг, шість ліг учасників, тижневі серії активності та суперсерії відвідування подій.</p>
+  </div>
+  {% if season %}<span class="tag">📈 {{ season.name }}</span>{% endif %}
+</div>
+
+{% if not season %}
+<section class="card"><p class="empty">Активний сезон ще не налаштований.</p></section>
+{% else %}
+<section class="analytics-kpi-grid leaderboard-kpis">
+  <article class="metric-card"><span>👥 У рейтингу</span><strong>{{ stats.participants }}</strong><small>активних учасників</small></article>
+  <article class="metric-card"><span>📆 Тижнева серія</span><strong>{{ stats.weekly_active }}</strong><small>учасників із чинною серією</small></article>
+  <article class="metric-card"><span>🔥 Суперсерія</span><strong>{{ stats.super_active }}</strong><small>учасників у серії подій</small></article>
+  <article class="metric-card"><span>🏅 Рекорди</span><strong>{{ stats.best_weekly }} / {{ stats.best_event }}</strong><small>тижні / відвідування</small></article>
+  <article class="metric-card"><span>🧊 Заморожено</span><strong>{{ stats.frozen_now }}</strong><small>серій зараз на паузі</small></article>
+</section>
+
+<div class="leaderboard-layout">
+  <section class="card leaderboard-panel">
+    <div class="section-title"><h2>🌍 Загальний ТОП-20</h2><span>{{ overall|length }}</span></div>
+    <p class="muted">Загальний сезонний рейтинг без поділу на ліги.</p>
+    <div class="leaderboard-list">
+      {% for user_id, name, xp in overall %}
+        {% set lg = league_for_xp(xp|int) %}
+        <div class="leaderboard-row {% if loop.index <= 3 %}is-podium{% endif %}">
+          <span class="leader-position">{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}</span>
+          <a class="leader-name" href="/admin/users/{{ user_id }}">{{ name }}</a>
+          <span class="leader-league">{{ lg.icon }} {{ lg.title }}</span>
+          <strong>{{ xp|int }} XP</strong>
+        </div>
+      {% else %}<p class="empty">Рейтинг поки порожній.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card leaderboard-panel">
+    <div class="section-title"><h2>🏆 Ліги</h2><span>{{ stats.participants }}</span></div>
+    <p class="muted">Ліга визначається автоматично за XP поточного сезону.</p>
+    <div class="league-summary-grid">
+      {% for item in leagues %}
+      <article class="league-summary-card league-{{ item.league.code }}">
+        <div class="league-icon">{{ item.league.icon }}</div>
+        <div><b>{{ item.league.title }}</b><small>{{ item.league.min_xp }}{% if item.league.max_xp is not none %}–{{ item.league.max_xp }}{% else %}+{% endif %} XP</small></div>
+        <strong>{{ item.count }}</strong>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="card league-tops-card">
+  <div class="section-title"><h2>🎖 ТОП-10 кожної ліги</h2><span>{{ leagues|length }} ліг</span></div>
+  <div class="league-columns">
+    {% for item in leagues %}
+    <article class="league-column league-{{ item.league.code }}">
+      <header><span>{{ item.league.icon }}</span><div><b>{{ item.league.title }}</b><small>{{ item.count }} учасників · {{ item.league.min_xp }}{% if item.league.max_xp is not none %}–{{ item.league.max_xp }}{% else %}+{% endif %} XP</small></div></header>
+      <ol>
+        {% for user_id, name, xp in item.rows %}
+        <li><span class="league-rank">{{ loop.index }}.</span><a href="/admin/users/{{ user_id }}" title="{{ name }}">{{ name }}</a><strong>{{ xp|int }} XP</strong></li>
+        {% else %}<li class="muted league-empty">Поки порожньо</li>{% endfor %}
+      </ol>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card streak-admin-card" id="streaks">
+  <div class="section-title streak-title-row">
+    <div><h2>🔥 Серії участі</h2><p class="muted">У таблиці — короткий стан. Детальне редагування, заморозка й історія відкриваються на окремій сторінці учасника.</p></div>
+    <form method="post" action="/admin/streaks/rebuild-all"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary" type="submit">↻ Перерахувати всі</button></form>
+  </div>
+  <div class="streak-rules">
+    <span>📆 Тижнева серія: щонайменше 1 позитивна XP-активність на тиждень.</span>
+    <span>🔥 Суперсерія: можна пропустити 1 подію поспіль і максимум 2 за серію.</span>
+    <span>🏅 30+ днів серії: автоматичний бейдж.</span>
+    <span>🧊 Заморозка: до {{ freeze_limit }} днів сумарно на календарний квартал.</span>
+  </div>
+  <div class="table-wrap streak-table-wrap">
+    <table class="streak-table streak-table-compact">
+      <thead><tr><th>Учасник</th><th>Тижнева</th><th>Суперсерія</th><th>Пропуски</th><th>Заморозка</th><th>Відновлення</th><th></th></tr></thead>
+      <tbody>
+      {% for u, st in streak_rows %}
+        {% set freeze = freeze_map.get(u.id, {}) %}
+        <tr>
+          <td><a href="/admin/streaks/{{u.id}}"><b>{{ u.full_name }}</b></a><small>АМП-{{ "%04d"|format(u.id) }}{% if st and st.manual_lock %} · 🔒 ручна корекція{% endif %}</small></td>
+          <td><b>{{ st.weekly_streak if st else 0 }}</b> тиж.<small>рекорд {{ st.weekly_best if st else 0 }}</small></td>
+          <td><b>{{ st.event_streak if st else 0 }}</b> подій<small>рекорд {{ st.event_best if st else 0 }}</small></td>
+          <td>{{ st.event_total_misses if st else 0 }}/2<small>поспіль {{ st.event_consecutive_misses if st else 0 }}/1</small></td>
+          <td>{% if freeze.get('active_until') %}<span class="tag freeze-active">🧊 до {{ freeze.get('active_until').strftime('%d.%m %H:%M') }}</span>{% else %}<span class="muted">Не заморожена</span>{% endif %}<small>{{ freeze.get('used',0) }}/{{freeze_limit}} дн. · ще {{ freeze.get('remaining',freeze_limit) }}</small></td>
+          <td>{% if st and st.recoverable_event_streak %}<span class="tag warn">🔥 {{ st.recoverable_event_streak }}</span>{% else %}<span class="muted">—</span>{% endif %}{% if st and st.restores_used %}<small>повернень {{ st.restores_used }}</small>{% endif %}</td>
+          <td class="streak-row-action"><a class="soft-button compact-action unified-action-button" href="/admin/streaks/{{u.id}}">⚙️ Детально</a></td>
+        </tr>
+      {% else %}<tr><td colspan="7" class="muted">Активних учасників немає.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

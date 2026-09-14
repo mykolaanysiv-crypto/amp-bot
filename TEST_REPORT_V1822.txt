@@ -1,0 +1,53 @@
+AMP XP / «АМПасадори» v1.8.2.2 — QA REPORT
+================================================
+
+Purpose
+-------
+Emergency startup hotfix for v1.8.2.1 after Heroku dyno crash during FastAPI route registration.
+
+Production error reproduced from supplied logs
+----------------------------------------------
+Route: POST /admin/events/{event_id}/scanner
+Error: NameError: Fields must not use names with leading underscores; e.g., use 'csrf' instead of '_csrf'.
+Cause: route signature contained `_csrf: str = Form("")`. FastAPI/Pydantic v2 creates a body model during startup and rejects field names beginning with `_`.
+
+Fix
+---
+- Removed `_csrf` from the Python route signature.
+- Browser still sends `_csrf` in FormData.
+- CSRFMiddleware still reads form.get("_csrf") and validates it with compare_digest before the route executes.
+- No CSRF weakening.
+- No DB/schema/business-logic changes.
+
+Checks performed
+----------------
+1. Targeted pytest:
+   tests/test_v1822_startup_hotfix.py
+   tests/test_v1821_calendar_event_ops.py
+   tests/test_v182_ui.py
+   tests/test_v181_features.py
+   Result: 19 PASS.
+
+2. python -m compileall -q app scripts tests
+   Result: PASS.
+
+3. AST parse
+   Result: 76 Python files parsed successfully.
+
+4. FastAPI parameter guard scan
+   Result: no Form/File/Body/Query/Path/Header/Cookie route parameter with a Python name beginning with `_`.
+
+5. Static FastAPI route scan
+   Result: 161 method+path routes; 161 unique; duplicate = 0.
+
+6. Jinja parse
+   Result: 45 templates; errors = 0.
+
+7. Version
+   VERSION.txt = 1.8.2.2
+   VERSION_CHECK.txt = 1.8.2.2
+   CSS cache-buster = /static/admin.css?v=1.8.2.2
+
+Environment limitation
+----------------------
+The current sandbox does not contain the runtime package `aiogram`, so the complete production application import/full historical pytest suite cannot be executed here. The supplied Heroku traceback is nevertheless deterministic: the crash occurs while FastAPI registers the scanner route, and the exact invalid `_csrf: Form(...)` field has been removed. A regression test now prevents the same class of startup error from being reintroduced.

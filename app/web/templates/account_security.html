@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Мій доступ • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Мій доступ</b></nav>
+<div class="page-head security-page-head">
+  <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h1>🔐 Мій доступ</h1><p>Пароль, двоетапний вхід та активні web-сесії.</p></div>
+</div>
+{% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи web-панелі недоступні.</div>{% endif %}
+{% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+{% if success %}<div class="alert success">{{ success }}</div>{% endif %}
+
+<div class="security-grid">
+  <section class="card security-card">
+    <div class="section-title"><div><span class="eyebrow">ПРОФІЛЬ ДОСТУПУ</span><h2>{{ account.display_name if account else admin_name }}</h2></div><span class="status-pill">{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></div>
+    <div class="security-facts">
+      <div><span>Логін</span><b>{{ account.username if account else '—' }}</b></div>
+      <div><span>Останній вхід</span><b>{{ account.last_login_at.strftime('%d.%m.%Y %H:%M') if account and account.last_login_at else '—' }}</b></div>
+      <div><span>Пароль змінено</span><b>{{ account.password_changed_at.strftime('%d.%m.%Y %H:%M') if account and account.password_changed_at else '—' }}</b></div>
+      <div><span>2FA</span><b>{{ '✅ Увімкнено' if account and (account.two_factor_enabled or account.role=='superadmin') else '— Вимкнено' }}</b></div>
+    </div>
+  </section>
+
+  <section class="card security-card" id="password">
+    <div class="section-title"><div><span class="eyebrow">ПАРОЛЬ</span><h2>Змінити пароль</h2></div></div>
+    <p class="muted">Не менше 12 символів: велика і мала літера, цифра та спецсимвол. Після зміни всі інші сесії буде завершено.</p>
+    <form method="post" action="/admin/account/password" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Поточний пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
+      <label>Новий пароль<input type="password" name="new_password" autocomplete="new-password" minlength="12" required></label>
+      <label>Повторіть новий пароль<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label>
+      <div class="form-actions"><button class="primary" type="submit">🔑 Змінити пароль</button></div>
+    </form>
+  </section>
+
+  <section class="card security-card" id="two-factor">
+    <div class="section-title"><div><span class="eyebrow">2FA</span><h2>Двоетапний вхід</h2></div></div>
+    {% if account and account.role == 'superadmin' %}<div class="alert info">Для суперадміністратора 2FA обов'язкова і не може бути вимкнена.</div>{% endif %}
+    <form method="post" action="/admin/account/2fa" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      {% if not is_superadmin %}<label class="check-row"><input type="checkbox" name="enabled" value="1" {% if account and account.two_factor_enabled %}checked{% endif %}><span>Увімкнути 2FA для мого акаунта</span></label>{% else %}<input type="hidden" name="enabled" value="1">{% endif %}
+      <label>Telegram ID для одноразових кодів<input name="telegram_id" inputmode="numeric" value="{{ account.two_factor_tg_id or '' if account else '' }}" placeholder="Наприклад 123456789"></label>
+      <div class="form-actions"><button class="primary" type="submit">💾 Зберегти 2FA</button></div>
+    </form>
+  </section>
+</div>
+
+<section class="card security-card sessions-card">
+  <div class="section-title"><div><span class="eyebrow">СЕСІЇ</span><h2>Активні сесії</h2><p>Завершуйте доступ на пристроях, якими більше не користуєтесь.</p></div><span class="count-badge">{{ web_sessions|length }}</span></div>
+  {% if web_sessions %}
+  <div class="session-list">
+    {% for item in web_sessions %}
+    <div class="session-row {% if item.token_hash == current_session_hash %}current{% endif %}">
+      <div class="session-icon">💻</div>
+      <div class="session-main"><b>{{ browser_label(item.user_agent) }}</b><span>Вхід: {{ item.created_at.strftime('%d.%m.%Y %H:%M') }} • остання активність: {{ item.last_seen_at.strftime('%d.%m.%Y %H:%M') }}</span><small>{% if item.token_hash == current_session_hash %}Цей пристрій{% else %}Інша активна сесія{% endif %}</small></div>
+      <form method="post" action="/admin/account/sessions/{{ item.id }}/revoke"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Завершити</button></form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="empty-state">Активних сесій не знайдено.</div>{% endif %}
+</section>
+{% endblock %}

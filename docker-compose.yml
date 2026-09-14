@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: amp_bot
+      POSTGRES_USER: amp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}
+    volumes:
+      - amp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amp -d amp_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://amp:${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}@db:5432/amp_bot
+      AMP_DATA_DIR: /app/data
+    volumes:
+      - amp_uploads:/app/data/uploads
+    command: ["python", "run.py"]
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://amp:${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}@db:5432/amp_bot
+      AMP_DATA_DIR: /app/data
+      WEB_HOST: 0.0.0.0
+      WEB_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - amp_uploads:/app/data/uploads
+    command: ["python", "run_web.py"]
+
+volumes:
+  amp_pgdata:
+  amp_uploads:

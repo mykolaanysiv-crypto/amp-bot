@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#06B8C5">
+  <link rel="stylesheet" href="/static/admin.css?v=1.7.3">
+  <title>2FA • АМПасадори</title>
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <img class="login-brand" src="/static/amp_logo.png?v=1.7.3" alt="АМПасадори">
+    <span class="eyebrow">ДВОЕТАПНИЙ ВХІД</span>
+    <h1>Підтвердіть вхід</h1>
+    <p>Ми надіслали одноразовий 6-значний код у Telegram. Код діє обмежений час.</p>
+    {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+    <form method="post" action="/admin/login/2fa">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Одноразовий код
+        <input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="otp-input" placeholder="000000">
+      </label>
+      <button class="primary" type="submit">🔐 Підтвердити</button>
+    </form>
+    <a class="soft-button login-back" href="/admin/login">← Повернутися до входу</a>
+  </div>
+</body>
+</html>

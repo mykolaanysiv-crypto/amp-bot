@@ -1,0 +1,46 @@
+# AMP XP v1.6.9 — безпечне production-оновлення
+
+cd ~/Downloads/amp_bot_v155
+
+git status
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 -o ~/Downloads/AMP_BACKUPS/amp_before_v169.dump
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v169
+
+# Якщо Safari вже розпакував ZIP і є папка ~/Downloads/amp_bot_v169:
+rsync -av --exclude='.git' --exclude='.env' --exclude='.venv' --exclude='data' ~/Downloads/amp_bot_v169/ ~/Downloads/amp_bot_v155/
+
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+pip install -r requirements.txt
+cat VERSION.txt
+cat app/version.py
+python -m compileall -q app scripts
+git diff --check
+git status
+
+git add -u
+git add app scripts VERSION.txt VERSION_CHECK.txt CHANGELOG.md README.md START_HERE.txt SERVER_UPDATE.md SERVER_UPDATE_V169.md COMMANDS_V169.txt TEST_REPORT.txt TEST_REPORT_V169.txt HEROKU_DEPLOY.md requirements.txt .env.example
+git status
+git diff --cached --name-only
+
+git commit -m "AMP XP v1.6.9 polls statuses approvals UI"
+git push heroku main
+
+heroku ps -a amp-bot-ver-1-5-0
+curl https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+# Вова Дорош: змінити роль вже ІСНУЮЧОГО профілю, не створюючи дубль.
+# Команда безпечна й покаже знайденого учасника; якщо збігів декілька — зупиниться.
+heroku run -a amp-bot-ver-1-5-0 -- python scripts/promote_existing_user.py --name "Вова Дорош" --role admin
+
+# Окремий персональний web-login для Вови (згенерує пароль і збереже інші staff-акаунти):
+cd ~/Downloads/amp_bot_v155
+python scripts/add_staff_account.py --app amp-bot-ver-1-5-0 --username vova.dorosh --display-name "Вова Дорош"
+
+# Після config:set Heroku створить ще один release; версія коду лишається 1.6.9.
+curl https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health

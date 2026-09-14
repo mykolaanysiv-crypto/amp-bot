@@ -1,0 +1,107 @@
+AMP XP / «АМПасадори» v1.9.2 — встановлення на Heroku
+============================================================
+
+Heroku app: amp-bot-ver-1-5-0
+Робоча production-папка: ~/Downloads/amp_bot_v155
+Нова папка після розпакування: ~/Downloads/amp_bot_v192
+
+1) BACKUP БАЗИ
+--------------
+cd ~/Downloads/amp_bot_v155
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+За бажанням скачати backup локально:
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v192.dump
+
+2) РОЗПАКУВАТИ ZIP
+------------------
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v192
+unzip ~/Downloads/amp_bot_v192.zip -d ~/Downloads/
+cat ~/Downloads/amp_bot_v192/VERSION.txt
+
+Має бути:
+1.9.2
+
+3) ОНОВИТИ РОБОЧУ ПАПКУ
+-----------------------
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v192/ \
+  ~/Downloads/amp_bot_v155/
+
+ВАЖЛИВО: source — саме ~/Downloads/amp_bot_v192/
+Без другого вкладеного /amp_bot_v192/.
+
+4) ЛОКАЛЬНА ПЕРЕВІРКА
+---------------------
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+cat VERSION.txt
+python -m pip install -r requirements.txt
+python -m compileall -q app scripts tests
+
+git diff --check
+
+Targeted regression v1.9.0–v1.9.2:
+pytest -q \
+  tests/test_v190_notification_center.py \
+  tests/test_v191_advanced_analytics.py \
+  tests/test_v192_smart_opportunities_seasons.py
+
+Очікувано для цього набору: 18 PASS.
+
+5) GIT / DEPLOY
+---------------
+git status
+git add -A
+git diff --cached --check
+git commit -m "AMP XP v1.9.2 Smart Opportunities and Seasons History"
+git push heroku main
+
+НЕ запускати вручну migrate_sqlite_to_postgres.py.
+Release-команда Heroku сама оновить additive/idempotent schema.
+
+6) PRODUCTION CHECK
+-------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+У /health має бути APP_VERSION 1.9.2.
+
+7) ШВИДКИЙ SMOKE TEST
+---------------------
+[ ] Telegram -> Мій профіль -> Інтереси можливостей.
+[ ] Вибираються 9 категорій інтересів, вибір зберігається.
+[ ] Telegram -> Можливості: релевантні opportunity показують match %.
+[ ] Без обраних інтересів загальний каталог доступний, але auto-match не створюється.
+[ ] Web -> Можливості: є вік, формат, напрям, цільові населені пункти, matched/interested.
+[ ] Notification Center отримує Smart Opportunities digest без дублювання.
+[ ] Web -> Сезони: є історія та detail завершеного сезону.
+[ ] Telegram -> Профіль/Сезон -> Історія сезонів.
+[ ] Participant 360 -> вкладка Сезони.
+[ ] Завершений сезон не реактивується після restart.
+
+8) ЯКЩО Є ПОМИЛКА
+-----------------
+heroku logs --tail -a amp-bot-ver-1-5-0
+
+Для rollback спочатку:
+heroku releases -a amp-bot-ver-1-5-0
+
+Потім, за потреби, наприклад:
+heroku rollback vXX -a amp-bot-ver-1-5-0
+
+Примітка: v1.9.2 має additive schema changes. Rollback коду не видаляє додані nullable поля/таблицю,
+і вони не заважають попередньому коду.

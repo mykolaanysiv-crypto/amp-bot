@@ -1,0 +1,92 @@
+AMP XP / «АМПасадори» v1.8.1 — QA REPORT
+===========================================
+Дата: 13.09.2026
+Версія: 1.8.1
+
+1. VERSION
+----------
+VERSION.txt: 1.8.1
+VERSION_CHECK.txt: 1.8.1
+
+2. STATIC / COMPILE QA
+----------------------
+python -m compileall -q app scripts tests: PASS
+AST parse: 73 Python files, 0 errors
+Jinja parse: 45 templates, 0 errors
+FastAPI static route scan: 159 unique method+path routes, duplicates = 0
+SQLAlchemy metadata: 44 tables
+
+3. v1.8.1 FEATURE TESTS
+----------------------
+Command:
+pytest -q tests/test_v181_features.py
+
+Result:
+6 passed
+
+Covered by this v1.8.1 test module:
+- automatic deleted / deleted_permanent statuses and additive user fields;
+- 44-table schema invariant;
+- deleted statuses absent from manual participant status workflow;
+- Telegram restoration + 14-day probation wiring;
+- Participant 360 tabs and «Стан системи» label;
+- automatic notification wiring for event / quest / task / activity / survey / opportunity;
+- expanded lifecycle / restoration / participation analytics and report fields.
+
+4. FULL REGRESSION PYTEST IN THIS SANDBOX
+------------------------------------------
+Full `pytest -q` was attempted, but collection stops before tests run because
+this execution sandbox does not have runtime package `aiogram` installed:
+
+ModuleNotFoundError: No module named 'aiogram'
+
+An attempt to install aiogram/aiosqlite with pip also failed because this
+sandbox has no working external package network/DNS. This is an environment
+limitation, not a discovered code assertion failure.
+
+Therefore this report DOES NOT claim the complete historical regression suite
+as PASS in this environment. Run `pip install -r requirements.txt` and
+`pip install -r requirements-dev.txt`, then `pytest -q` in the normal local or
+CI environment before production deploy.
+
+5. DATABASE / MIGRATION DESIGN
+------------------------------
+No new tables: 44 total.
+The lifecycle/restoration fields are additive nullable columns on `users` and
+are included in the idempotent migration map used by the normal release flow.
+No manual SQLite -> PostgreSQL transfer is required.
+
+6. IMPORTANT v1.8.1 SAFETY PROPERTIES
+--------------------------------------
+- `deleted` and `deleted_permanent` are automatic lifecycle statuses; normal
+  status edit/approval routes cannot set or manually clear them.
+- Soft deletion preserves participant data, XP, participation history and
+  reporting relations.
+- `deleted_permanent` has no restoration route.
+- Superadmin restoration starts a 14-day probation.
+- Probation is completed automatically after qualifying recorded participation;
+  otherwise status becomes deleted_permanent after expiry.
+- New-content notifications use existing durable broadcast/outbox reliability.
+- v1.7.3 security and v1.7.4 reliability mechanisms were not removed.
+
+7. FRESH-EXTRACT CHECK OF RELEASE ZIP
+-------------------------------------
+A clean extraction of `amp_bot_v181.zip` was rechecked:
+- VERSION: 1.8.1
+- compileall: PASS
+- 159 routes / 0 duplicates
+- 45 Jinja templates parsed
+- 73 Python files parsed/compiled
+- `pytest -q tests/test_v181_features.py`: 6 passed
+
+8. PACKAGE CHECK BEFORE ZIP
+---------------------------
+Release package must not include:
+.env
+*.db / *.sqlite / *.dump
+__pycache__
+.pytest_cache
+*.pyc
+local data/
+
+END OF REPORT

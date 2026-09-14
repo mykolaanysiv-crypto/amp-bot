@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Можливості • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Можливості</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">SMART OPPORTUNITIES</span>
+    <h1>🌍 Каталог можливостей</h1>
+    <p>Персональний matching враховує вік, обрані інтереси, населений пункт, формат і дедлайн. Категорії вразливості для автоматичного профілювання не використовуються.</p>
+  </div>
+</div>
+
+<form class="smart-filters card" method="get">
+  <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва, напрям, населений пункт"></label>
+  <label><span>Статус</span><select name="status"><option value="">Усі статуси</option><option value="active" {% if status=='active' %}selected{% endif %}>Активні</option><option value="inactive" {% if status=='inactive' %}selected{% endif %}>Неактивні</option></select></label>
+  <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
+  <label><span>Тип</span><select name="type"><option value="">Усі типи</option>{% for k in kinds %}<option value="{{k}}" {% if type==k %}selected{% endif %}>{{k}}</option>{% endfor %}</select></label>
+  <label><span>Сортування</span><select name="sort"><option value="deadline" {% if sort=='deadline' %}selected{% endif %}>За дедлайном</option><option value="newest" {% if sort=='newest' %}selected{% endif %}>Нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
+  <button class="primary smart-filter-submit">Застосувати</button>
+</form>
+
+<section class="card">
+  <div class="section-title"><div><h2>➕ Додати можливість</h2><p class="muted">Активна можливість автоматично потрапляє у matching. Сповіщення отримають лише релевантні активні учасники, які обрали інтереси.</p></div></div>
+  <form class="form-grid" method="post" action="/admin/opportunities/create">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label class="span2">Назва<input name="title" required></label>
+    <label>Тип<input name="kind" placeholder="Грант / навчання / обмін"></label>
+    <label>Напрям<select name="direction"><option value="Інше">Інше</option>{% for interest in opportunity_interests %}<option value="{{interest}}">{{interest}}</option>{% endfor %}</select></label>
+    <label>Формат<select name="format"><option>Онлайн</option><option>Офлайн</option><option>Гібрид</option><option selected>Онлайн/офлайн</option></select></label>
+    <label>Мін. вік<input name="age_min" type="number" min="10" max="99"></label>
+    <label>Макс. вік<input name="age_max" type="number" min="10" max="99"></label>
+    <label class="span2">Населені пункти<input name="target_settlements" placeholder="Напр.: Анисів, Іванівка. Порожньо = усі"></label>
+    <label>Дедлайн<input name="deadline" type="datetime-local"></label>
+    <label class="span2">Посилання<input name="url" type="url" placeholder="https://..."></label>
+    <label class="span2">Опис<textarea name="description"></textarea></label>
+    <label class="check-line"><input name="active" type="checkbox" value="1" checked> Опубліковано</label>
+    <div class="span2 form-actions-row"><button class="primary">🌍 Опублікувати</button></div>
+  </form>
+</section>
+
+<div class="work-cards-grid opportunity-cards">
+{% for item in items %}
+<article class="card opportunity-card">
+  <div class="entity-card-topline">
+    <div><span class="tag">{{item.kind}}</span> <span class="tag {% if item.active %}good{% endif %}">{{'Активна' if item.active else 'Неактивна'}}</span></div>
+    <span class="event-date-badge">{{item.deadline.strftime('%d.%m.%Y · %H:%M') if item.deadline else 'Без дедлайну'}}</span>
+  </div>
+  <h3>{{item.title}}</h3>
+  <div class="entity-card-info">
+    <span>🧭 {{item.direction or 'Інше'}}</span><span>💻 {{item.format or '—'}}</span>
+    <span>🎂 {% if item.age_min or item.age_max %}{{item.age_min or '—'}}–{{item.age_max or '—'}}{% else %}без обмежень{% endif %}</span>
+    <span>📍 {{item.target_settlements or 'усі населені пункти'}}</span>
+    <span>✨ {{match_counts.get(item.id,0)}} match</span><span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span>
+  </div>
+  <p>{{item.description or 'Без опису.'}}</p>
+  {% if item.url %}<p><a class="soft-button" target="_blank" rel="noopener" href="{{item.url}}">🔗 Відкрити посилання</a></p>{% endif %}
+  <details class="event-edit-details">
+    <summary class="soft-button">✏️ Редагувати</summary>
+    <form method="post" action="/admin/opportunities/{{item.id}}/update" class="form-grid entity-edit-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="span2">Назва<input name="title" value="{{item.title}}" required></label>
+      <label>Тип<input name="kind" value="{{item.kind}}"></label>
+      <label>Напрям<select name="direction"><option value="{{item.direction}}">{{item.direction}}</option>{% for interest in opportunity_interests %}{% if interest != item.direction %}<option value="{{interest}}">{{interest}}</option>{% endif %}{% endfor %}<option value="Інше">Інше</option></select></label>
+      <label>Формат<input name="format" value="{{item.format}}"></label>
+      <label>Мін. вік<input name="age_min" type="number" value="{{item.age_min or ''}}"></label>
+      <label>Макс. вік<input name="age_max" type="number" value="{{item.age_max or ''}}"></label>
+      <label class="span2">Населені пункти<input name="target_settlements" value="{{item.target_settlements or ''}}"></label>
+      <label>Дедлайн<input name="deadline" type="datetime-local" value="{{item.deadline.strftime('%Y-%m-%dT%H:%M') if item.deadline else ''}}"></label>
+      <label class="span2">Посилання<input name="url" value="{{item.url or ''}}"></label>
+      <label class="span2">Опис<textarea name="description">{{item.description}}</textarea></label>
+      <label class="check-line"><input name="active" type="checkbox" value="1" {% if item.active %}checked{% endif %}> Опубліковано</label>
+      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
+    </form>
+  </details>
+  <form method="post" action="/admin/opportunities/{{item.id}}/delete" onsubmit="return confirm('Видалити можливість та записи інтересу/matching?');">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button>
+  </form>
+</article>
+{% else %}
+<section class="card"><p class="empty">Можливостей ще немає.</p></section>
+{% endfor %}
+</div>
+{% endblock %}

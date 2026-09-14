@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Активності • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Активності</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ГЕЙМІФІКАЦІЯ</span>
+    <h1>Активності та XP</h1>
+    <p>Каталог зрозумілих способів заробити XP: учасник подає заявку, адміністратор погоджує виконання, а після підтвердженого результату система автоматично нараховує XP та волонтерські години.</p>
+  </div>
+</div>
+
+<form class="smart-filters card" method="get">
+  <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Активність, учасник, результат"></label>
+  <label><span>Статус</span><select name="status"><option value="all" {% if selected=='all' %}selected{% endif %}>Усі</option><option value="attention" {% if selected=='attention' %}selected{% endif %}>Потребують уваги</option>{% for st in statuses %}<option value="{{st}}" {% if selected==st %}selected{% endif %}>{{activity_status_label(st)}}</option>{% endfor %}</select></label>
+  <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
+  <label><span>Тип</span><select name="type"><option value="">Усі категорії</option>{% for cat in categories %}<option value="{{cat}}" {% if type==cat %}selected{% endif %}>{{activity_category_label(cat)}}</option>{% endfor %}</select></label>
+  <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="name" {% if sort=='name' %}selected{% endif %}>За учасником</option></select></label>
+  <button class="primary smart-filter-submit">Застосувати</button>
+</form>
+
+<section class="card xp-flow-card">
+  <div class="section-title"><h2>Як працює заявка на активність</h2><span>4 кроки</span></div>
+  <div class="flow-steps">
+    <div><b>1</b><span>Учасник обирає активність і описує план.</span></div>
+    <div><b>2</b><span>Адміністратор погоджує або відхиляє заявку.</span></div>
+    <div><b>3</b><span>Учасник виконує активність і подає результат.</span></div>
+    <div><b>4</b><span>Адміністратор ставить «Виконано» — XP і години нараховуються автоматично.</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>Автоматичні способи отримання XP</h2><span>без окремої заявки</span></div>
+  <div class="xp-auto-grid">
+    {% for title, xp, note in automatic_guide %}
+    <div class="xp-auto-item"><b>{{title}}</b><strong>{{xp}}</strong><small>{{note}}</small></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>Каталог активностей за заявкою</h2><span>{{catalog|length}}</span></div>
+  <div class="activity-catalog-grid">
+    {% for a in catalog %}
+    <article class="activity-catalog-card {% if not a.active %}is-inactive{% endif %}">
+      <div class="activity-card-head">
+        <div><span class="activity-category">{{activity_category_label(a.category)}}</span><h3>{{a.title}}</h3></div>
+        <div class="activity-points"><strong>{{a.xp_reward}}</strong><span>XP</span></div>
+      </div>
+      <p>{{a.description}}</p>
+      <div class="activity-meta"><span>⏱ {{a.hours_reward}} год.</span><span>{% if a.active %}🟢 Доступна{% else %}⚪ Вимкнена{% endif %}</span></div>
+      <details>
+        <summary>Редагувати</summary>
+        <form method="post" action="/admin/activities/{{a.id}}/update" class="form-grid activity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <label>Назва<input name="title" value="{{a.title}}" required></label>
+          <label>Категорія<select name="category">{% for value, title in activity_category_options %}<option value="{{value}}" {% if a.category==value %}selected{% endif %}>{{title}}</option>{% endfor %}</select></label>
+          <label>XP<input name="xp_reward" type="number" min="1" max="40" value="{{a.xp_reward}}"></label>
+          <label>Години<input name="hours_reward" type="number" min="0" max="12" step="0.5" value="{{a.hours_reward}}"></label>
+          <label class="span2">Опис<textarea name="description">{{a.description}}</textarea></label>
+          <label class="span2">Що учасник має пояснити у заявці<textarea name="instructions">{{a.instructions}}</textarea></label>
+          <label class="toggle-label"><input name="active" type="checkbox" {% if a.active %}checked{% endif %}> Доступна учасникам</label>
+          <button class="primary">Зберегти</button>
+        </form>
+      </details>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <details>
+    <summary class="create-summary">➕ Додати власний вид активності</summary>
+    <form method="post" action="/admin/activities/create" class="form-grid three create-activity-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>Назва<input name="title" required></label>
+      <label>Категорія<select name="category">{% for value, title in activity_category_options %}<option value="{{value}}" {% if value=='other' %}selected{% endif %}>{{title}}</option>{% endfor %}</select></label>
+      <label>XP<input name="xp_reward" type="number" min="1" max="40" value="10"></label>
+      <label>Волонтерські години<input name="hours_reward" type="number" min="0" max="12" step="0.5" value="0"></label>
+      <label class="span3">Опис<textarea name="description"></textarea></label>
+      <label class="span3">Що учасник має пояснити у заявці<textarea name="instructions"></textarea></label>
+      <button class="primary">Створити активність</button>
+    </form>
+  </details>
+</section>
+
+<div class="status-tabs activity-tabs">
+  <a class="{% if selected=='attention' %}active{% endif %}" href="/admin/activities?status=attention">Потребують уваги <b>{{counts.get('activity_requested',0)+counts.get('activity_submitted',0)}}</b></a>
+  {% for st in statuses %}<a class="{% if selected==st %}active{% endif %}" href="/admin/activities?status={{st}}">{{activity_status_label(st)}} <b>{{counts.get(st,0)}}</b></a>{% endfor %}
+  <a class="{% if selected=='all' %}active{% endif %}" href="/admin/activities?status=all">Усі</a>
+</div>
+
+<section class="activity-app-list">
+  {% for app,item,user in rows %}
+  <article class="activity-app-card">
+    <div class="activity-app-main">
+      <div class="activity-app-title-row">
+        <div><span class="activity-app-id">Заявка #{{app.id}}</span><h3>{{item.title}}</h3></div>
+        <span class="activity-status activity-status-{{app.status}}">{{activity_status_label(app.status)}}</span>
+      </div>
+      <div class="activity-app-person"><a href="/admin/users/{{user.id}}">{{user.full_name}}</a><span>{{app.xp_reward}} XP</span><span>{{app.hours_reward}} год.</span><span>{{app.requested_at.strftime('%d.%m.%Y %H:%M')}}</span></div>
+      <div class="activity-text-grid">
+        <div><small>План учасника</small><p>{{app.plan_text or '—'}}</p></div>
+        <div><small>Результат</small><p>{{app.result_note or 'Ще не подано'}}</p></div>
+      </div>
+      {% if app.result_image_path %}<div class="activity-proof"><small>Фото / скріншот підтвердження</small><a href="{{app.result_image_path}}" target="_blank"><img src="{{app.result_image_path}}" alt="Підтвердження активності"></a></div>{% endif %}
+    </div>
+    <div class="activity-app-actions">
+      {% if app.status=='activity_requested' %}
+      <form method="post" action="/admin/activity-applications/{{app.id}}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">✅ Дозволити</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/reject" class="action-note-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" placeholder="Коментар (необов'язково)"><button class="danger-btn">Відхилити</button></form>
+      {% elif app.status=='activity_submitted' %}
+      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">🏁 Виконано + нарахувати XP</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/return" class="action-note-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" placeholder="Що потрібно уточнити"><button>↩ Повернути</button></form>
+      {% elif app.status=='activity_approved' %}
+      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">🏁 Підтвердити виконання</button></form>
+      <span class="muted">Учасник ще не подав результат.</span>
+      {% else %}
+      <span class="muted">Додаткових дій не потрібно.</span>
+      {% endif %}
+      <details class="activity-evidence-editor"><summary class="soft-button">📷 Фото підтвердження</summary><form method="post" action="/admin/activity-applications/{{app.id}}/evidence" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP, до 20 МБ.</small>{% if app.result_image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}<button class="soft-button" type="submit">Зберегти фото</button></form></details>
+      {% if app.admin_note %}<div class="admin-note"><b>Коментар:</b> {{app.admin_note}}</div>{% endif %}
+    </div>
+  </article>
+  {% else %}<section class="card"><p class="muted">Заявок у цьому фільтрі немає.</p></section>{% endfor %}
+</section>
+{% endblock %}

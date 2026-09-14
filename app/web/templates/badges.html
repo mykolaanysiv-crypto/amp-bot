@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Бейджі • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Бейджі</b></nav>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ВІДЗНАКИ</span>
+    <h1>🏅 Бейджі</h1>
+    <p>Загальні відзнаки для всіх учасників та окремі PNG-бейджі АМПасадорів. Бейдж можна видати одному або відразу кільком учасникам.</p>
+  </div>
+</div>
+
+<section class="card badge-create-section">
+  <div class="section-title"><div><h2>➕ Новий бейдж</h2><p class="muted">Для типу «Бейдж АМПасадора» можна завантажити PNG із прозорим фоном.</p></div></div>
+  <form method="post" action="/admin/badges/create" enctype="multipart/form-data" class="form-grid three badge-create-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label>Тип
+      <select name="badge_type" id="badgeTypeCreate" onchange="toggleBadgePng('Create')">
+        <option value="general">Загальний бейдж</option>
+        <option value="ambassador">Бейдж АМПасадора</option>
+      </select>
+    </label>
+    <label>Назва<input name="name" required maxlength="120"></label>
+    <label>Іконка<input name="icon" value="🏅" maxlength="16"></label>
+    <label>Критерій
+      <select name="criteria_type">
+        <option value="">Без автоматичного критерію</option>
+        <option value="xp_total">Загальний досвід (XP)</option>
+        <option value="volunteer_hours">Волонтерські години</option>
+        <option value="referrals">Запрошені учасники</option>
+        <option value="events">Участь у подіях</option>
+        <option value="quests">Виконані квести</option>
+        <option value="activities">Підтверджені активності</option>
+        <option value="tasks">Волонтерські задачі</option>
+        <option value="surveys">Пройдені опитування</option>
+        <option value="ideas">Реалізовані ідеї</option>
+        <option value="weekly_streak">Тижнева серія</option>
+        <option value="event_streak">Суперсерія подій</option>
+      </select>
+    </label>
+    <label>Значення<input name="criteria_value" type="number"></label>
+    <label class="check-line badge-toggle-line"><input name="automatic" type="checkbox"> Авто</label>
+    <label class="check-line badge-toggle-line"><input name="active" type="checkbox" checked> Активний</label>
+    <label class="span3">Опис<textarea name="description"></textarea></label>
+    <label class="span3 badge-png-field" id="badgePngCreate" style="display:none">PNG бейджа АМПасадора
+      <input name="badge_png" type="file" accept="image/png,.png">
+      <small>Рекомендовано PNG із прозорим фоном, до 20 МБ.</small>
+    </label>
+    <div class="span3 form-actions-row form-actions-left"><button class="primary" type="submit">Створити бейдж</button></div>
+  </form>
+</section>
+
+<section class="card badge-award-section">
+  <div class="section-title"><div><h2>🎁 Видати бейдж учасникам</h2><p class="muted">Оберіть бейдж і позначте одного або кількох людей. Уже видані дублікати система пропустить.</p></div></div>
+  <form method="post" action="/admin/badges/award-batch" class="badge-award-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label>Бейдж
+      <select name="badge_id" required>
+        <option value="">Оберіть бейдж</option>
+        {% for b in rows if b.active %}<option value="{{b.id}}">{{'АМПасадорський' if b.badge_type=='ambassador' else 'Загальний'}} • {{b.icon}} {{b.name}}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="badge-award-tools"><button type="button" class="soft-button" onclick="setBadgeUsers(true)">Обрати всіх</button><button type="button" class="soft-button" onclick="setBadgeUsers(false)">Очистити</button></div>
+    <div class="badge-user-list">
+      {% for u in users %}
+      <label class="badge-user-choice"><input type="checkbox" name="user_ids" value="{{u.id}}"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} • {{label(u.role)}}</small></span></label>
+      {% endfor %}
+    </div>
+    <div class="form-actions-row"><button class="primary" type="submit">🏅 Видати обраним</button></div>
+  </form>
+</section>
+
+<div class="badge-section-title"><h2>🌐 Загальні бейджі</h2></div>
+<div class="cards badge-library-grid">
+  {% for b in rows if b.badge_type!='ambassador' %}
+  <article class="card badge-card">
+    <div class="big-icon">{{b.icon}}</div>
+    <span class="tag">{% if b.automatic %}Автоматичний{% else %}Ручний{% endif %}</span>
+    <h3>{{b.name}}</h3><p>{{b.description}}</p>
+    {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {{b.criteria_value}}{% endif %}</p>{% endif %}
+    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+      <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="badge_type" value="general">
+        <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>
+        <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
+        <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
+        <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label><label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
+        <label class="span2">Опис<textarea name="description">{{b.description}}</textarea></label><button class="primary">Зберегти</button>
+      </form>
+    </details>
+  </article>
+  {% else %}<p class="empty">Загальних бейджів ще немає.</p>{% endfor %}
+</div>
+
+<div class="badge-section-title"><h2>🚀 Бейджі АМПасадора</h2></div>
+<div class="cards badge-library-grid">
+  {% for b in rows if b.badge_type=='ambassador' %}
+  <article class="card badge-card ambassador-badge-card">
+    <div class="ambassador-badge-preview">{% if b.image_path %}<img src="{{b.image_path}}" alt="{{b.name}}">{% else %}<div class="big-icon">{{b.icon}}</div>{% endif %}</div>
+    <span class="tag">АМПасадорський</span><h3>{{b.name}}</h3><p>{{b.description}}</p>
+    {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {{b.criteria_value}}{% endif %}</p>{% endif %}
+    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+      <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="badge_type" value="ambassador">
+        <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>
+        <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
+        <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
+        <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label><label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
+        <label class="span2">Опис<textarea name="description">{{b.description}}</textarea></label>
+        <label class="span2">Новий PNG<input name="badge_png" type="file" accept="image/png,.png"><small>Прозорий фон збережеться.</small></label>
+        {% if b.image_path %}<label class="check-line span2"><input name="remove_image" type="checkbox" value="1"> Видалити PNG</label>{% endif %}
+        <button class="primary">Зберегти</button>
+      </form>
+    </details>
+  </article>
+  {% else %}<p class="empty">Бейджів АМПасадора ще немає.</p>{% endfor %}
+</div>
+<script>
+function toggleBadgePng(suffix){const type=document.getElementById('badgeType'+suffix);const field=document.getElementById('badgePng'+suffix);if(type&&field)field.style.display=type.value==='ambassador'?'flex':'none';}
+function setBadgeUsers(value){document.querySelectorAll('input[name="user_ids"]').forEach(el=>el.checked=value);}
+toggleBadgePng('Create');
+</script>
+{% endblock %}

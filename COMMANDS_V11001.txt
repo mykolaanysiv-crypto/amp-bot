@@ -1,0 +1,103 @@
+AMP XP / «АМПасадори» v1.10.0.1 — встановлення на Heroku
+=================================================================
+
+Heroku app: amp-bot-ver-1-5-0
+Робоча production-папка: ~/Downloads/amp_bot_v155
+Нова папка після розпакування: ~/Downloads/amp_bot_v11001
+
+1) BACKUP БАЗИ
+--------------
+cd ~/Downloads/amp_bot_v155
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+За бажанням скачати backup:
+mkdir -p ~/Downloads/AMP_BACKUPS
+heroku pg:backups:download -a amp-bot-ver-1-5-0 \
+  -o ~/Downloads/AMP_BACKUPS/amp_before_v11001.dump
+
+Якщо є локальний .env:
+cp .env ~/Downloads/AMP_BACKUPS/.env.before-v11001
+
+2) РОЗПАКУВАТИ ZIP
+------------------
+cd ~/Downloads
+rm -rf ~/Downloads/amp_bot_v11001
+unzip ~/Downloads/amp_bot_v11001.zip -d ~/Downloads/
+cat ~/Downloads/amp_bot_v11001/VERSION.txt
+
+Має бути:
+1.10.0.1
+
+3) ОНОВИТИ РОБОЧУ ПАПКУ
+-----------------------
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='data' \
+  --exclude='.pytest_cache' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  ~/Downloads/amp_bot_v11001/ \
+  ~/Downloads/amp_bot_v155/
+
+ВАЖЛИВО: source — саме ~/Downloads/amp_bot_v11001/ без другого вкладеного каталогу.
+
+4) ЛОКАЛЬНА ПЕРЕВІРКА
+---------------------
+cd ~/Downloads/amp_bot_v155
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+pip install -r requirements-dev.txt
+cat VERSION.txt
+python -m compileall -q app scripts tests
+git diff --check
+
+Спочатку перевірити саме 4 виправлені regression-напрями:
+pytest -q \
+  tests/test_reliability.py \
+  tests/test_v181_features.py \
+  tests/test_v1821_calendar_event_ops.py \
+  tests/test_v1100_major_ux.py
+
+Потім ОБОВ'ЯЗКОВО повний suite:
+pytest -q
+
+У v1.10.0.1 саме повний suite має більше не падати на:
+- legacy NotificationDelivery expectations;
+- opportunity_created mass-notification expectation;
+- hard-coded timedelta(hours=2) waitlist expectation.
+
+DeprecationWarning щодо datetime.utcnow() не є test failure і може лишатися warning.
+
+5) GIT
+------
+git status
+git diff --check
+git add -A
+git diff --cached --check
+git commit -m "AMP XP v1.10.0.1 regression alignment hotfix"
+
+6) DEPLOY
+---------
+git push heroku main
+
+НЕ запускати вручну migrate_sqlite_to_postgres.py.
+Schema changes у v1.10.0.1 немає.
+
+7) PRODUCTION CHECK
+-------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+У /health має бути APP_VERSION 1.10.0.1.
+
+8) ROLLBACK ЗА ПОТРЕБИ
+----------------------
+heroku releases -a amp-bot-ver-1-5-0
+heroku rollback vXX -a amp-bot-ver-1-5-0
+
+Оскільки schema changes немає, rollback коду не потребує destructive DB rollback.

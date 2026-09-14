@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Опитування • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Опитування</b></nav>
+<div class="page-head"><div><span class="eyebrow">ЗВОРОТНИЙ ЗВ’ЯЗОК</span><h1>📋 Опитування</h1><p>Створюйте опитування, нараховуйте XP за проходження та автоматично повідомляйте учасників у Telegram.</p></div></div>
+
+<form class="smart-filters card" method="get">
+  <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва або опис"></label>
+  <label><span>Статус</span><select name="status"><option value="">Усі статуси</option><option value="draft" {% if status=='draft' %}selected{% endif %}>Чернетки</option><option value="published" {% if status=='published' %}selected{% endif %}>Опубліковані</option><option value="closed" {% if status=='closed' %}selected{% endif %}>Закриті</option></select></label>
+  <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
+  <label><span>Тип</span><select name="type"><option value="">Усі типи</option><option value="rewarded" {% if type=='rewarded' %}selected{% endif %}>З XP</option><option value="no_reward" {% if type=='no_reward' %}selected{% endif %}>Без XP</option></select></label>
+  <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option><option value="deadline" {% if sort=='deadline' %}selected{% endif %}>За дедлайном</option></select></label>
+  <button class="primary smart-filter-submit">Застосувати</button>
+</form>
+
+<section class="card survey-create-card">
+  <div class="section-title"><div><h2>➕ Нове опитування</h2><p class="muted">Спочатку створіть картку, потім додайте питання й опублікуйте.</p></div></div>
+  <form method="post" action="/admin/surveys/create" class="form-grid survey-create-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label class="span2">Назва<input name="title" maxlength="180" required placeholder="Наприклад: Що покращити в АМП?"></label>
+    <label>XP за проходження<input name="xp_reward" type="number" min="0" max="40" value="5"></label>
+    <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
+    <label class="span2">Опис<textarea name="description" placeholder="Навіщо проводимо опитування та скільки часу воно займе"></textarea></label>
+    <div class="span2 form-actions-row"><button class="primary">Створити опитування</button></div>
+  </form>
+</section>
+
+<div class="survey-grid">
+{% for item in rows %}
+  <article class="card survey-card">
+    <div class="survey-card-head"><span class="tag survey-{{item.status}}">{% if item.status=='draft' %}Чернетка{% elif item.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span><span class="event-date-badge">{{ item.ends_at.strftime('%d.%m.%Y %H:%M') if item.ends_at else 'Без дедлайну' }}</span></div>
+    <h2>{{item.title}}</h2><p class="muted">{{item.description or 'Без опису'}}</p>
+    <div class="survey-stats"><span>❓ {{qcounts.get(item.id,0)}} питань</span><span>👥 {{counts.get(item.id,0)}} відповідей</span><span>🎁 {{item.xp_reward}} XP</span></div>
+    <a class="primary link-button" href="/admin/surveys/{{item.id}}">👁 Детально</a>
+  </article>
+{% else %}<section class="card"><p class="muted">Опитувань ще немає.</p></section>{% endfor %}
+</div>
+{% endblock %}

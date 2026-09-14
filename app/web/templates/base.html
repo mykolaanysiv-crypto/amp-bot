@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06B8C5">
+  <title>{% block title %}АМПасадори{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/admin.css?v=1.10.3">
+</head>
+<body>
+<div class="mobile-topbar">
+  <button class="mobile-menu-button" type="button" aria-label="Відкрити меню" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleSidebar()">☰</button>
+  <a class="mobile-brand" href="/admin/dashboard">
+    <img src="/static/amp_logo.png?v=1.8.0" alt="АМПасадори" width="36" height="36">
+    <span><b>АМПасадори</b><small>панель керування</small></span>
+  </a>
+  <button class="mobile-theme-button" type="button" aria-label="Змінити тему" onclick="toggleTheme()">◐</button>
+</div>
+<div class="sidebar-backdrop" onclick="closeSidebar()" aria-hidden="true"></div>
+<aside class="sidebar" id="adminSidebar">
+  <a class="brand" href="/admin/dashboard">
+    <img class="sidebar-logo" src="/static/amp_logo.png?v=1.8.0" alt="Логотип АМПасадорів" width="44" height="44" style="width:44px;height:44px;max-width:44px;max-height:44px;object-fit:contain;display:block;flex:0 0 44px;background:#fff;border-radius:12px;padding:4px;">
+    <div><b>АМПасадори</b><span>панель керування</span></div>
+  </a>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><span class="nav-section-title">Огляд</span>
+      <a class="{% if request.url.path.startswith('/admin/dashboard') %}active{% endif %}" href="/admin/dashboard">🏠 Dashboard</a>
+      {% if has_permission("analytics.view") %}<a class="{% if request.url.path.startswith('/admin/analytics') %}active{% endif %}" href="/admin/analytics">📊 Аналітика</a>{% endif %}
+      {% if has_permission("reports.basic_export") or has_permission("reports.sensitive_export") %}<a class="{% if request.url.path.startswith('/admin/reports') %}active{% endif %}" href="/admin/reports">📄 Звіти</a>{% endif %}
+      {% if has_permission("notifications.manage") %}<a class="{% if request.url.path.startswith('/admin/notifications') %}active{% endif %}" href="/admin/notifications">🔔 Сповіщення</a>{% endif %}
+      {% if has_permission("events.edit") or has_permission("quests.manage") or has_permission("volunteer.manage") or has_permission("surveys.manage") %}<a class="{% if request.url.path.startswith('/admin/calendar') %}active{% endif %}" href="/admin/calendar">📆 Календар</a>{% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Люди</span>
+      {% if has_permission("participants.view") %}<a class="{% if request.url.path.startswith('/admin/users') and request.query_params.get('status') != 'pending' %}active{% endif %}" href="/admin/users">👥 Учасники</a>{% endif %}
+      {% if has_permission("participants.approve") %}<a class="{% if request.url.path == '/admin/users' and request.query_params.get('status') == 'pending' %}active{% endif %}" href="/admin/users?status=pending">📝 Реєстрації</a>{% endif %}
+      {% if has_permission("moderation.manage") %}<a class="{% if request.url.path.startswith('/admin/moderation') %}active{% endif %}" href="/admin/moderation">🛡 Модерація</a>{% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Активності</span>
+      {% if has_permission("events.create") or has_permission("events.edit") or has_permission("events.delete") %}<a class="{% if request.url.path.startswith('/admin/events') %}active{% endif %}" href="/admin/events">📅 Події</a>{% endif %}
+      {% if has_permission("quests.manage") %}<a class="{% if request.url.path.startswith('/admin/quests') %}active{% endif %}" href="/admin/quests">🎯 Квести</a>{% endif %}
+      {% if has_permission("volunteer.manage") %}<a class="{% if request.url.path.startswith('/admin/tasks') %}active{% endif %}" href="/admin/tasks">✅ Волонтерство</a>{% endif %}
+      {% if has_permission("activities.manage") %}<a class="{% if request.url.path.startswith('/admin/activities') %}active{% endif %}" href="/admin/activities">⚡ Активності</a>{% endif %}
+      {% if has_permission("opportunities.manage") %}<a class="{% if request.url.path.startswith('/admin/opportunities') %}active{% endif %}" href="/admin/opportunities">🌍 Можливості</a>{% endif %}
+      {% if has_permission("surveys.manage") %}<a class="{% if request.url.path.startswith('/admin/surveys') %}active{% endif %}" href="/admin/surveys">📋 Опитування</a>{% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Ініціативи</span>
+      {% if has_permission("ideas.manage") %}<a class="{% if request.url.path.startswith('/admin/ideas') %}active{% endif %}" href="/admin/ideas">💡 Ідеї</a>{% endif %}
+      {% if has_permission("cases.manage") %}<a class="{% if request.url.path.startswith('/admin/requests') %}active{% endif %}" href="/admin/requests">🆘 Звернення</a>{% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Гейміфікація</span>
+      {% if has_permission("gamification.manage") or has_permission("xp.award") %}
+      <a class="{% if request.url.path.startswith('/admin/leaderboard') or request.url.path.startswith('/admin/streaks') %}active{% endif %}" href="/admin/leaderboard">🏆 Рейтинг і серії</a>
+      {% endif %}
+      {% if has_permission("gamification.manage") %}
+      <a class="{% if request.url.path.startswith('/admin/goals') %}active{% endif %}" href="/admin/goals">🏁 Цілі</a>
+      <a class="{% if request.url.path.startswith('/admin/badges') %}active{% endif %}" href="/admin/badges">🏅 Бейджі</a>
+      <a class="{% if request.url.path.startswith('/admin/rewards') %}active{% endif %}" href="/admin/rewards">🎁 Винагороди</a>
+      <a class="{% if request.url.path.startswith('/admin/seasons') %}active{% endif %}" href="/admin/seasons">📈 Сезони</a>
+      {% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Комунікація</span>
+      {% if has_permission("broadcast.send") %}<a class="{% if request.url.path.startswith('/admin/broadcasts') %}active{% endif %}" href="/admin/broadcasts">📣 Розсилки</a>{% endif %}
+    </div>
+    <div class="nav-section"><span class="nav-section-title">Система</span>
+      {% if has_permission("audit.view") %}<a class="{% if request.url.path.startswith('/admin/audit') %}active{% endif %}" href="/admin/audit">🧾 Аудит</a>{% endif %}
+      {% if has_permission("system.health") %}<a class="{% if request.url.path.startswith('/admin/system-health') %}active{% endif %}" href="/admin/system-health">🩺 Стан системи</a>{% endif %}
+      {% if has_permission("settings.manage") %}<a class="{% if request.url.path.startswith('/admin/settings') %}active{% endif %}" href="/admin/settings">⚙️ Налаштування</a>{% endif %}
+      <a class="{% if request.url.path.startswith('/admin/account') %}active{% endif %}" href="/admin/account">🔐 Мій доступ</a>
+      {% if is_superadmin %}<a class="{% if request.url.path.startswith('/admin/security') %}active{% endif %}" href="/admin/security">🛡 Безпека доступу</a>{% endif %}
+      <a class="{% if request.url.path.startswith('/admin/help') %}active{% endif %}" href="/admin/help">❓ Довідка</a>
+    </div>
+  </nav>
+  <div class="sidebar-bottom"><a class="sidebar-access sidebar-access-link" href="/admin/account"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор • обмежений доступ' }} • безпека</span></a><small class="side-copy">© АМПасадори • 2026</small>
+    <button class="ghost" onclick="toggleTheme()">◐ Змінити тему</button>
+    <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="ghost" type="submit">↪ Вийти</button></form>
+  </div>
+</aside>
+<div class="admin-topbar">
+  <form class="global-search-top" action="/admin/search" method="get">
+    <span>🔎</span><input name="q" value="{{ request.query_params.get('q','') if request.url.path == '/admin/search' else '' }}" placeholder="Пошук: АМП-0006, ПІБ, подія, кейс…" autocomplete="off"><kbd>/</kbd>
+  </form>
+  <div class="topbar-actions"><a class="topbar-icon" href="/admin/dashboard#attention" title="Потребує уваги">🔔</a><button class="topbar-icon" type="button" onclick="toggleTheme()" title="Змінити тему">◐</button></div>
+</div>
+<main class="content">{% block content %}{% endblock %}</main>
+<script>
+function toggleTheme(){const b=document.body;const d=b.dataset.theme==='dark';b.dataset.theme=d?'light':'dark';localStorage.setItem('amp-theme',b.dataset.theme)}
+(function(){document.body.dataset.theme=localStorage.getItem('amp-theme')||'light'})();
+
+function toggleSidebar(){
+  const sidebar=document.getElementById('adminSidebar');
+  const button=document.querySelector('.mobile-menu-button');
+  const open=!sidebar.classList.contains('is-open');
+  sidebar.classList.toggle('is-open',open);
+  document.body.classList.toggle('nav-open',open);
+  if(button) button.setAttribute('aria-expanded',String(open));
+}
+function closeSidebar(){
+  const sidebar=document.getElementById('adminSidebar');
+  const button=document.querySelector('.mobile-menu-button');
+  if(sidebar) sidebar.classList.remove('is-open');
+  document.body.classList.remove('nav-open');
+  if(button) button.setAttribute('aria-expanded','false');
+}
+(function(){
+  document.querySelectorAll('#adminSidebar nav a').forEach(a=>a.addEventListener('click',()=>{if(window.innerWidth<=1023) closeSidebar()}));
+  window.addEventListener('resize',()=>{if(window.innerWidth>1023) closeSidebar()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') closeSidebar()});
+})();
+
+(function enhanceFileInputs(){
+  document.querySelectorAll('input[type="file"]:not([data-file-enhanced])').forEach(function(input){
+    input.dataset.fileEnhanced='1';
+    const shell=document.createElement('div');
+    shell.className='file-upload-shell';
+    const button=document.createElement('span');
+    button.className='file-upload-button';
+    button.textContent='Обрати файл';
+    const name=document.createElement('span');
+    name.className='file-upload-name';
+    name.textContent='Файл не вибрано';
+    input.parentNode.insertBefore(shell,input);
+    shell.appendChild(button);
+    shell.appendChild(name);
+    shell.appendChild(input);
+    input.classList.add('file-upload-native');
+    input.addEventListener('change',function(){
+      name.textContent=input.files && input.files.length ? input.files[0].name : 'Файл не вибрано';
+      name.title=name.textContent;
+    });
+  });
+})();
+
+
+(function smartFilters(){
+  document.querySelectorAll('form.smart-filters, form.filters').forEach(function(form){
+    if((form.method||'get').toLowerCase()!=='get') return;
+    const key='amp-filter:'+location.pathname;
+    const params=new URLSearchParams(location.search);
+    if(!params.toString()){
+      try{
+        const saved=JSON.parse(sessionStorage.getItem(key)||'{}');
+        let changed=false;
+        Object.entries(saved).forEach(([name,value])=>{
+          const field=form.elements.namedItem(name);
+          if(field && value!=='' && value!=null){field.value=value;changed=true;}
+        });
+        if(changed && form.dataset.autorestore!=='0') form.requestSubmit();
+      }catch(e){}
+    }
+    form.addEventListener('submit',function(){
+      const data={}; new FormData(form).forEach((v,k)=>{if(k!=='_csrf') data[k]=String(v)});
+      try{sessionStorage.setItem(key,JSON.stringify(data));}catch(e){}
+    });
+    let reset=form.querySelector('[data-filter-reset]');
+    if(!reset){
+      reset=document.createElement('a'); reset.href=location.pathname; reset.className='soft-button filter-reset'; reset.dataset.filterReset='1'; reset.textContent='Скинути'; form.appendChild(reset);
+    }
+    reset.addEventListener('click',function(){try{sessionStorage.removeItem(key)}catch(e){}});
+  });
+})();
+(function globalSearchShortcut(){
+  document.addEventListener('keydown',function(e){
+    if(e.key==='/' && !/input|textarea|select/i.test(document.activeElement.tagName)){e.preventDefault();const el=document.querySelector('.global-search-top input');if(el) el.focus();}
+  });
+})();
+
+(function installCsrfProtection(){
+  const token={{ csrf_token|tojson }};
+  function ensure(form){
+    if(!form || String(form.method||'get').toLowerCase()!=='post') return;
+    let input=form.querySelector('input[name="_csrf"]');
+    if(!input){input=document.createElement('input');input.type='hidden';input.name='_csrf';form.appendChild(input);}
+    input.value=token;
+  }
+  document.querySelectorAll('form').forEach(ensure);
+  document.addEventListener('submit',function(e){ensure(e.target)},true);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{% macro optional_datetime_fields(prefix, dt=None, note='Залиште всі поля порожніми, якщо дедлайн не потрібен.') -%}
+<div class="date-time-fields span2">
+  <label>День
+    <input name="{{prefix}}_day" type="number" min="1" max="31" value="{{dt.day if dt else ''}}" placeholder="ДД">
+  </label>
+  <label>Місяць
+    <select name="{{prefix}}_month">
+      <option value="">—</option>
+      <option value="1" {% if dt and dt.month==1 %}selected{% endif %}>Січень</option>
+      <option value="2" {% if dt and dt.month==2 %}selected{% endif %}>Лютий</option>
+      <option value="3" {% if dt and dt.month==3 %}selected{% endif %}>Березень</option>
+      <option value="4" {% if dt and dt.month==4 %}selected{% endif %}>Квітень</option>
+      <option value="5" {% if dt and dt.month==5 %}selected{% endif %}>Травень</option>
+      <option value="6" {% if dt and dt.month==6 %}selected{% endif %}>Червень</option>
+      <option value="7" {% if dt and dt.month==7 %}selected{% endif %}>Липень</option>
+      <option value="8" {% if dt and dt.month==8 %}selected{% endif %}>Серпень</option>
+      <option value="9" {% if dt and dt.month==9 %}selected{% endif %}>Вересень</option>
+      <option value="10" {% if dt and dt.month==10 %}selected{% endif %}>Жовтень</option>
+      <option value="11" {% if dt and dt.month==11 %}selected{% endif %}>Листопад</option>
+      <option value="12" {% if dt and dt.month==12 %}selected{% endif %}>Грудень</option>
+    </select>
+  </label>
+  <label>Рік
+    <input name="{{prefix}}_year" type="number" min="2026" max="2100" value="{{dt.year if dt else ''}}" placeholder="РРРР">
+  </label>
+  <label class="time-field">Час
+    <input name="{{prefix}}_time" type="time" value="{{dt.strftime('%H:%M') if dt else ''}}">
+  </label>
+  <small class="date-time-note">{{note}}</small>
+</div>
+{%- endmacro %}

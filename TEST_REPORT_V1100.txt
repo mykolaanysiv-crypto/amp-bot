@@ -1,0 +1,78 @@
+AMP XP / «АМПасадори» v1.10.0 — QA REPORT
+==========================================
+
+Версія: 1.10.0
+Release: 🎨 Major UX Refresh & ⚙️ Runtime Settings
+
+STATIC QA
+---------
+VERSION.txt / VERSION_CHECK.txt: 1.10.0 / 1.10.0 — OK
+compileall app/scripts/tests: PASS
+AST: 89 Python files, 0 parse errors — PASS
+Jinja: 48 templates, 0 parse errors — PASS
+FastAPI static route scan: 169 method+path, 169 unique, duplicates 0 — PASS
+SQLAlchemy metadata: 47 tables — unchanged from v1.9.2
+CSS cache-buster: /static/admin.css?v=1.10.0 — PASS
+
+TARGETED REGRESSION
+-------------------
+Command:
+pytest -q \
+  tests/test_v190_notification_center.py \
+  tests/test_v191_advanced_analytics.py \
+  tests/test_v192_smart_opportunities_seasons.py \
+  tests/test_v1100_major_ux.py
+
+Result: 24 PASS.
+New v1.10.0 tests: 6 PASS.
+
+WHAT v1.10.0 TESTS COVER
+------------------------
+- version/cache alignment;
+- compact Telegram main menu and three participant hubs;
+- callback routing for join/profile/more;
+- «Мій АМП сьогодні» and /start landing;
+- icons on every Participant 360 tab;
+- runtime Settings UI and superadmin update route;
+- runtime keys wired into XP/streak/event/privacy code paths;
+- dynamic privacy suppression threshold in analytics and reports.
+
+RUNTIME SETTINGS WIRED
+----------------------
+XP:
+- xp.birthday -> birthday automation;
+- xp.idea_approved -> first idea approval;
+- xp.referral_max -> quarterly referral schedule;
+- xp.streak_restore_cost -> service reward cost.
+
+Streak:
+- streak.freeze_limit_quarter -> participant/web freeze logic;
+- streak.super_total_misses + streak.super_consecutive_misses -> super-streak lifecycle;
+- streak.badge_days -> badge threshold and notifications.
+
+Events:
+- events.reminder_minutes -> event reminder scheduler;
+- events.feedback_delay_minutes -> post-event feedback scheduler;
+- events.waitlist_reservation_minutes -> waitlist reservation expiry.
+
+Privacy:
+- privacy.suppression_threshold -> analytics + reporting aggregation threshold;
+- privacy.retention_days -> persisted privacy policy value. Default 0 preserves the current non-destructive audit/history model; v1.10.0 does not physically delete participant history.
+
+FULL HISTORICAL PYTEST NOTE
+---------------------------
+The sandbox does not contain every production/dev runtime dependency. In particular,
+aiosqlite is unavailable for async SQLite fixture tests and aiogram is unavailable for
+full Telegram runtime import tests. Therefore the complete historical suite is NOT
+claimed as PASS in this environment. The current release targeted suite above ran and
+passed; syntax/template/route/schema checks also passed.
+
+SECURITY / COMPATIBILITY
+------------------------
+- No new DB tables or columns.
+- Existing v1.7.3 security controls retained.
+- Existing v1.7.4 reliability/idempotency retained.
+- Notification Center, Outcomes, Advanced Analytics, Smart Opportunities, Season History,
+  Participant 360 and QR flows retained.
+- Runtime Settings editing is superadmin-only and audited.
+- Old Telegram menu labels remain recognized as compatibility aliases for cached keyboards/FSM safety.

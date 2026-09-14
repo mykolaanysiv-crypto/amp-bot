@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Події • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Події</b></nav>
+<div class="page-head">
+  <div><span class="eyebrow">АКТИВНОСТІ</span><h1>Події</h1><p>Створення, перегляд і редагування подій АМП.</p></div>
+  <span class="upload-note">Фото: до 20 МБ • без обрізання • автоматичне масштабування</span>
+</div>
+
+<form class="smart-filters card" method="get">
+  <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва, локація, опис"></label>
+  <label><span>Статус</span><select name="status"><option value="">Усі статуси</option>{% for st in ['draft','open','closed','postponed','completed','cancelled'] %}<option value="{{st}}" {% if status==st %}selected{% endif %}>{{lifecycle_status_label(st)}}</option>{% endfor %}</select></label>
+  <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
+  <label><span>Тип</span><select name="type"><option value="">Усі</option><option value="upcoming" {% if type=='upcoming' %}selected{% endif %}>Майбутні</option><option value="past" {% if type=='past' %}selected{% endif %}>Минулі</option></select></label>
+  <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
+  <button class="primary smart-filter-submit">Застосувати</button>
+</form>
+
+<section class="card event-create-card">
+  <div class="section-title"><div><h2>➕ Нова подія</h2><p class="muted">Дата вводиться окремими полями, щоб уникнути помилок формату.</p></div></div>
+  <form method="post" action="/admin/events/create" enctype="multipart/form-data" class="form-grid event-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label class="event-title-field">Назва події<input name="title" required placeholder="Наприклад: Толока АМП"></label>
+    <div class="event-date-fields span2">
+      <label>День<input name="day" type="number" min="1" max="31" required value="{{today.day}}"></label>
+      <label>Місяць<select name="month" required>
+        <option value="1" {% if today.month==1 %}selected{% endif %}>Січень</option><option value="2" {% if today.month==2 %}selected{% endif %}>Лютий</option><option value="3" {% if today.month==3 %}selected{% endif %}>Березень</option><option value="4" {% if today.month==4 %}selected{% endif %}>Квітень</option>
+        <option value="5" {% if today.month==5 %}selected{% endif %}>Травень</option><option value="6" {% if today.month==6 %}selected{% endif %}>Червень</option><option value="7" {% if today.month==7 %}selected{% endif %}>Липень</option><option value="8" {% if today.month==8 %}selected{% endif %}>Серпень</option>
+        <option value="9" {% if today.month==9 %}selected{% endif %}>Вересень</option><option value="10" {% if today.month==10 %}selected{% endif %}>Жовтень</option><option value="11" {% if today.month==11 %}selected{% endif %}>Листопад</option><option value="12" {% if today.month==12 %}selected{% endif %}>Грудень</option>
+      </select></label>
+      <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{today.year}}" required></label>
+      <label class="time-field">Час<input name="event_time" type="time" required></label>
+    </div>
+    <label>Локація<input name="location" value="АМП" placeholder="АМП / парк / онлайн"></label>
+    <label>Досвід за участь, XP<input name="xp_reward" type="number" min="5" max="25" value="10"><small>5–25 XP. Типова подія — 10 XP.</small></label>
+    <label>Волонтерські години<input name="volunteer_hours" type="number" min="0" step="0.5" value="0"></label>
+    <label>Максимум учасників<input name="capacity" type="number" min="1" placeholder="Без обмежень"></label>
+    <label>Статус<select name="status"><option value="draft">Чернетка — не показувати учасникам</option><option value="open" selected>Відкрита реєстрація</option><option value="closed">Реєстрацію закрито</option></select></label>
+    <label class="span2 upload-field">Фото<input name="photo" type="file" accept="image/*"><small>JPG, PNG або WebP до 20 МБ. Зображення не обрізається.</small></label>
+    <label class="span2">Опис<textarea name="description" placeholder="Що відбудеться, для кого подія та що варто знати учаснику"></textarea></label>
+    <div class="span2 form-actions-row"><button class="primary event-save-button" type="submit">Створити подію</button></div>
+  </form>
+</section>
+
+<div class="event-cards-grid">
+{% for e in rows %}
+  <article class="card media-card event-card-v2">
+    <div class="event-card-media">
+      {% if e.image_path %}<img src="{{e.image_path}}" alt="Фото події">{% else %}<div class="event-placeholder">📅</div>{% endif %}
+    </div>
+    <div class="event-card-body">
+      <div class="event-card-topline">
+        <span class="tag {{e.status}}">{{lifecycle_status_label(e.status)}}</span>
+        <span class="event-date-badge">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.starts_at.strftime('%H:%M')}}</span>
+      </div>
+      <h3>{{e.title}}</h3>
+      <div class="event-card-info">
+        <span>📍 {{e.location or 'АМП'}}</span>
+        <span>⚡ {{e.xp_reward}} XP</span>
+        <span>⏱ {{e.volunteer_hours}} год.</span>
+        <span>👥 {{e.capacity or '∞'}}</span>
+      </div>
+      {% if e.cancelled_at or e.status == 'cancelled' %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{e.cancellation_reason or 'не зазначено'}}</p>{% elif e.description %}<p class="event-card-description">{{e.description[:180]}}{{'…' if e.description|length > 180 else ''}}</p>{% endif %}
+      <div class="card-actions event-card-actions-v2">
+        <a class="primary link-button" href="/admin/events/{{e.id}}">👁 Детально</a>
+        <details class="event-edit-details">
+          <summary class="soft-button event-edit-trigger">✏️ Редагувати</summary>
+          <form method="post" action="/admin/events/{{e.id}}/update" enctype="multipart/form-data" class="form-grid event-edit-form-v2"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <label class="span2">Назва<input name="title" value="{{e.title}}" required></label>
+            <div class="event-date-fields span2">
+              <label>День<input name="day" type="number" min="1" max="31" value="{{e.starts_at.day}}" required></label>
+              <label>Місяць<select name="month" required>
+                <option value="1" {% if e.starts_at.month==1 %}selected{% endif %}>Січень</option><option value="2" {% if e.starts_at.month==2 %}selected{% endif %}>Лютий</option>
+                <option value="3" {% if e.starts_at.month==3 %}selected{% endif %}>Березень</option><option value="4" {% if e.starts_at.month==4 %}selected{% endif %}>Квітень</option>
+                <option value="5" {% if e.starts_at.month==5 %}selected{% endif %}>Травень</option><option value="6" {% if e.starts_at.month==6 %}selected{% endif %}>Червень</option>
+                <option value="7" {% if e.starts_at.month==7 %}selected{% endif %}>Липень</option><option value="8" {% if e.starts_at.month==8 %}selected{% endif %}>Серпень</option>
+                <option value="9" {% if e.starts_at.month==9 %}selected{% endif %}>Вересень</option><option value="10" {% if e.starts_at.month==10 %}selected{% endif %}>Жовтень</option>
+                <option value="11" {% if e.starts_at.month==11 %}selected{% endif %}>Листопад</option><option value="12" {% if e.starts_at.month==12 %}selected{% endif %}>Грудень</option>
+              </select></label>
+              <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{e.starts_at.year}}" required></label>
+              <label class="time-field">Час<input name="event_time" type="time" value="{{e.starts_at.strftime('%H:%M')}}" required></label>
+            </div>
+            <label>Локація<input name="location" value="{{e.location}}"></label>
+            <label>XP<input name="xp_reward" type="number" min="5" max="25" value="{{e.xp_reward}}"></label>
+            <label>Години<input name="volunteer_hours" type="number" min="0" step="0.5" value="{{e.volunteer_hours}}"></label>
+            <label>Місткість<input name="capacity" type="number" min="1" value="{{e.capacity or ''}}"></label>
+            {% if e.cancelled_at or e.status in ['cancelled','completed','postponed'] %}
+            <input type="hidden" name="status" value="{{e.status}}">
+            <div class="entity-action-locked"><b>{{lifecycle_status_label(e.status)}}</b><span>{% if e.status=='postponed' %}Статус перенесення керується на детальній сторінці.{% else %}Статус не можна повернути через звичайне редагування.{% endif %}</span></div>
+            {% else %}
+            <label>Статус<select name="status">{% for s in ['draft','open','closed'] %}<option value="{{s}}" {% if e.status==s %}selected{% endif %}>{{label(s)}}</option>{% endfor %}</select></label>
+            {% endif %}
+            <label class="span2 upload-field">Нове фото<input name="photo" type="file" accept="image/*"></label>
+            <label class="check-line span2 remove-photo-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>
+            <label class="span2">Опис<textarea name="description">{{e.description}}</textarea></label>
+            <div class="span2 form-actions-row"><button class="primary" type="submit">💾 Зберегти зміни</button></div>
+          </form>
+        </details>
+      </div>
+    </div>
+  </article>
+{% else %}
+  <section class="card"><p class="empty">Подій ще немає.</p></section>
+{% endfor %}
+</div>
+{% endblock %}

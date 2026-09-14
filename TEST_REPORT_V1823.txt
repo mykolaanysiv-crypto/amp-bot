@@ -1,0 +1,56 @@
+AMP XP / «АМПасадори» v1.8.2.3 — QA REPORT
+================================================
+
+VERSION
+- VERSION.txt: 1.8.2.3
+- VERSION_CHECK.txt: 1.8.2.3
+
+ВИПРАВЛЕНІ PRODUCTION/RUNTIME ПРОБЛЕМИ
+1. Calendar Internal Server Error
+   - причина: Jinja `day.items` конфліктував із методом dict.items;
+   - виправлення: route передає `entries`, template використовує `day.entries`.
+
+2. Ideas / Requests Internal Server Error
+   - причина: workflow constants IDEA_STATUSES / REQUEST_* не були визначені після модульного refactor;
+   - виправлення: canonical constants додано в app/ui_labels.py та explicit import у feature routes.
+
+3. QR Scanner
+   - Telegram admin menu: `📷 QR Scanner`;
+   - scanner FSM для coordinator/admin/superadmin;
+   - profile QR deep-link у scanner mode = attendance scan;
+   - unregistered participant -> `Зареєструвати та підтвердити`;
+   - AMP-ID/manual text fallback;
+   - web endpoint `/admin/events/{event_id}/scanner/telegram` відкриває Telegram scanner;
+   - native browser BarcodeDetector scanner залишено як optional fallback.
+
+TARGETED TESTS
+Команда:
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py tests/test_v1821_calendar_event_ops.py tests/test_v1822_startup_hotfix.py tests/test_v1823_runtime_fixes.py
+
+Результат:
+24 tests PASS
+
+STATIC QA
+- compileall app/scripts/tests: PASS
+- AST: 77 Python files PASS
+- Jinja: 45 templates, 0 parse errors
+- FastAPI static route scan: 162 method+path, 162 unique, duplicates = 0
+- DB metadata: 44 tables
+- leading-underscore FastAPI Form/File/Body/Query/Path/Header/Cookie params: 0
+- schema changes: NONE
+
+FULL HISTORICAL PYTEST
+У поточному sandbox повний `pytest -q` не збирається на collection через відсутній runtime package `aiogram`:
+ModuleNotFoundError: No module named 'aiogram'
+
+Це limitation sandbox environment, а не PASS/FAIL production runtime. Повний historical suite тому НЕ позначається як PASS. Targeted source/schema/UI regression suite v1.8.1-v1.8.2.3 = PASS.
+
+PACKAGE HYGIENE
+Перед фінальним ZIP видаляються:
+- .env
+- DB / dump
+- data/
+- .pytest_cache/
+- __pycache__/
+- *.pyc
+

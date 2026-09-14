@@ -1,0 +1,153 @@
+AMP XP / «АМПасадори» v1.8.2.1 — QA REPORT
+=============================================
+Дата: 14.09.2026
+Версія: 1.8.2.1
+
+1. VERSION
+----------
+VERSION.txt: 1.8.2.1
+VERSION_CHECK.txt: 1.8.2.1
+CSS cache-buster: /static/admin.css?v=1.8.2.1
+
+2. STATIC / COMPILE QA
+----------------------
+python -m compileall -q app scripts tests: PASS
+AST parse: 75 Python files, 0 errors
+Jinja parse: 45 templates, 0 errors
+FastAPI static route scan: 161 unique method+path routes, duplicates = 0
+SQLAlchemy metadata: 44 tables
+
+3. v1.8.2.1 FEATURE TESTS
+-------------------------
+Included file:
+tests/test_v1821_calendar_event_ops.py
+
+Covered:
+- VERSION 1.8.2.1 + CSS cache-buster;
+- unified calendar day/week/month and all requested data sources;
+- icon + type visual semantics;
+- QR Scanner, getUserMedia, BarcodeDetector and manual fallback wiring;
+- admin register + confirm workflow for unregistered scan;
+- Permissions-Policy camera=(self);
+- waitlist DB fields, 2-hour reservation lifecycle and Telegram callbacks;
+- attendance labels and no-show route;
+- total SQLAlchemy tables remain 44.
+
+4. TARGETED REGRESSION
+----------------------
+Command:
+pytest -q tests/test_v181_features.py tests/test_v182_ui.py tests/test_v1821_calendar_event_ops.py
+
+Result:
+16 passed
+
+This covers v1.8.1 Participant 360/lifecycle, v1.8.2 UI polish, and v1.8.2.1 Calendar/Event Operations wiring.
+
+5. FULL HISTORICAL PYTEST IN THIS SANDBOX
+-----------------------------------------
+Full command was attempted:
+pytest -q
+
+Collection cannot complete in this sandbox because runtime package `aiogram` is not installed:
+
+ModuleNotFoundError: No module named 'aiogram'
+
+Therefore this report DOES NOT claim the full historical suite as PASS here.
+In the normal local/CI environment run:
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pytest -q
+
+before production deploy.
+
+6. DATABASE / MIGRATION
+-----------------------
+New tables: 0
+Total SQLAlchemy tables: 44
+
+Additive/idempotent nullable fields added to event_registrations:
+- waitlisted_at
+- waitlist_promoted_at
+- reservation_expires_at
+- no_show_at
+
+Indexes:
+- ix_event_registrations_waitlisted_at
+- ix_event_registrations_reservation_expires_at
+
+Manual SQLite -> PostgreSQL migration is NOT required.
+Standard Heroku release remains:
+python -m scripts.heroku_release
+
+7. CALENDAR
+-----------
+Verified route/template wiring for:
+- day view
+- week view
+- month view
+- previous/today/next navigation
+- Event
+- Quest start/deadline
+- VolunteerTask deadline
+- Survey start/deadline
+- Opportunity deadline
+- RequestCase response deadline
+- Idea/miniproject implementation deadline
+- StreakFreeze spans
+
+Each type includes icon plus a separate CSS type class/accent.
+
+8. QR SCANNER / SECURITY
+------------------------
+- QR scanner is inside admin event detail.
+- Uses browser getUserMedia({facingMode: environment}).
+- Uses BarcodeDetector for qr_code when available.
+- Manual AMP-ID / QR-text fallback remains available.
+- Scanner POST is CSRF-protected.
+- camera Permissions-Policy is restricted to self.
+- microphone/geolocation remain disabled.
+- Existing idempotent attendance confirmation service is reused.
+
+9. WAITLIST / ATTENDANCE
+------------------------
+Waitlist capacity occupancy: registered/reserved/checked_in/attended.
+Waitlist promotion: FIFO by waitlisted_at.
+Reservation duration: 2 hours.
+Reservation notification: durable Telegram outbox with confirm callback.
+Expired reservation: returns to waitlisted and next participant can be promoted.
+Cancellation processes the queue immediately.
+Completed event registered/reserved participants are marked no_show.
+
+Human labels:
+- registered = Зареєстрований
+- cancelled = Скасував
+- waitlisted = У черзі
+- reserved = Місце зарезервовано
+- checked_in = Відмічено присутність
+- attended = Був присутній
+- no_show = Не прийшов
+
+10. PACKAGE HYGIENE
+-------------------
+Final release ZIP must not contain:
+.env
+*.db / *.sqlite / *.dump
+__pycache__
+.pytest_cache
+*.pyc
+local data/
+
+END OF REPORT
+
+11. FRESH-EXTRACT CHECK
+----------------------
+A clean extraction of the release ZIP was rechecked before final handoff:
+- VERSION: 1.8.2.1
+- compileall: PASS
+- targeted v1.8.1 + v1.8.2 + v1.8.2.1 regression: 16 passed
+- 75 Python files / 0 AST errors
+- 45 Jinja templates / 0 parse errors
+- 161 FastAPI routes / 161 unique / 0 duplicates
+- 44 SQLAlchemy tables
+- release archive contains no .env, DB/dump, data/, __pycache__, .pytest_cache or .pyc files

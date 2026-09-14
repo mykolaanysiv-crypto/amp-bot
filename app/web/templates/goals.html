@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Цілі & місії • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Цілі & місії</b></nav>
+<div class="page-head">
+  <div><span class="eyebrow">ЖИВА ГЕЙМІФІКАЦІЯ</span><h1>🏁 Цілі & місії</h1><p>Адміністратор сам задає умову, спосіб вимірювання, дедлайн і нагороду. Прогрес рахується автоматично, XP за виконання видаються один раз.</p></div>
+</div>
+
+<section class="card goal-builder-card">
+  <div class="section-title"><div><h2>➕ Нова ціль або місія</h2><p class="muted">Сформулюйте конкретне завдання і оберіть, за яким показником система має рахувати прогрес.</p></div></div>
+  <form class="form-grid goal-form" method="post" action="/admin/goals/create" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label>Тип
+      <select name="scope" id="goalScope" onchange="toggleGoalUser()">
+        <option value="season">🌟 Сезонна місія — кожен виконує особисто</option>
+        <option value="personal">🎯 Персональна ціль</option>
+        <option value="team">👥 Командна ціль АМПасадорів</option>
+      </select>
+    </label>
+    <label>Спосіб вимірювання
+      <select name="metric">{% for key,val in metric_labels.items() %}<option value="{{key}}">{{val}}</option>{% endfor %}</select>
+    </label>
+    <label class="span2">Назва<input name="title" required maxlength="180" placeholder="Наприклад: Волонтерський ривок вересня"></label>
+    <label class="span2">Завдання / умова<textarea name="task_text" required placeholder="Що саме має зробити учасник або команда"></textarea></label>
+    <label>Цільове значення<input name="target_value" type="number" min="0.01" step="0.5" value="10" required></label>
+    <label>XP за виконання<input name="reward_xp" type="number" min="0" max="500" value="10"><small>Нараховуються автоматично один раз після досягнення цілі.</small></label>
+    <label id="goalUserField">Учасник<select name="user_id"><option value="">—</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name}} • АМП-{{'%04d'|format(u.id)}}</option>{% endfor %}</select></label>
+    <label>Початок<input name="starts_at" type="datetime-local"></label>
+    <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
+    <label>Фото<input name="photo" type="file" accept="image/*"><small>До 20 МБ. Показується учасникам разом із місією.</small></label>
+    <label class="span2">Опис<textarea name="description" placeholder="Контекст, правила, підказки або додаткові умови"></textarea></label>
+    <div class="span2 form-actions-row"><button class="primary">🏁 Створити ціль</button></div>
+  </form>
+</section>
+
+<div class="work-cards-grid goal-cards">
+{% for g,progress,reward_count in rows %}
+  {% set pct = [100, ((progress / g.target_value * 100) if g.target_value else 100)]|min %}
+  <article class="card goal-card {% if not g.active %}goal-paused{% endif %}">
+    {% if g.image_path %}<img class="goal-cover" src="{{g.image_path}}" alt="Фото цілі">{% endif %}
+    <div class="entity-card-topline">
+      <span class="tag">{{'🎯 Персональна' if g.scope=='personal' else ('👥 Командна' if g.scope=='team' else '🌟 Сезонна')}}</span>
+      <span class="tag {% if g.active %}good{% endif %}">{{'Активна' if g.active else 'Призупинена'}}</span>
+    </div>
+    <h3>{{g.title}}</h3>
+    <div class="goal-task-box"><span>Завдання</span><b>{{g.task_text or g.description or 'Умову не зазначено'}}</b></div>
+    {% if g.description and g.description != g.task_text %}<p class="muted">{{g.description}}</p>{% endif %}
+    <div class="goal-meta-grid">
+      <div><span>Вимірювання</span><b>{{metric_labels.get(g.metric,g.metric)}}</b></div>
+      <div><span>Нагорода</span><b>+{{g.reward_xp}} XP</b></div>
+      <div><span>Початок</span><b>{{g.starts_at.strftime('%d.%m.%Y %H:%M') if g.starts_at else '—'}}</b></div>
+      <div><span>Дедлайн</span><b>{{g.ends_at.strftime('%d.%m.%Y %H:%M') if g.ends_at else 'Без дедлайну'}}</b></div>
+    </div>
+    <div class="goal-progress-value"><b>{{progress|round(1)}} / {{g.target_value|round(1)}}</b><span>{{metric_labels.get(g.metric,g.metric)}} • {{pct|round(0)|int}}%</span></div>
+    <div class="progress"><i style="width:{{pct}}%"></i></div>
+    <p class="muted goal-reward-count">🎁 Нагороду вже отримали: <b>{{reward_count}}</b></p>
+
+    <details class="goal-editor"><summary class="soft-button">✏️ Редагувати</summary>
+      <form class="form-grid goal-edit-form" method="post" action="/admin/goals/{{g.id}}/update" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>Тип<select name="scope" class="goal-scope-edit"><option value="season" {% if g.scope=='season' %}selected{% endif %}>Сезонна</option><option value="personal" {% if g.scope=='personal' %}selected{% endif %}>Персональна</option><option value="team" {% if g.scope=='team' %}selected{% endif %}>Командна</option></select></label>
+        <label>Вимірювання<select name="metric">{% for key,val in metric_labels.items() %}<option value="{{key}}" {% if g.metric==key %}selected{% endif %}>{{val}}</option>{% endfor %}</select></label>
+        <label class="span2">Назва<input name="title" value="{{g.title}}" required></label>
+        <label class="span2">Завдання<textarea name="task_text" required>{{g.task_text}}</textarea></label>
+        <label>Ціль<input name="target_value" type="number" min="0.01" step="0.5" value="{{g.target_value}}" required></label>
+        <label>XP<input name="reward_xp" type="number" min="0" max="500" value="{{g.reward_xp}}"></label>
+        <label>Учасник<select name="user_id"><option value="">—</option>{% for u in users %}<option value="{{u.id}}" {% if g.user_id==u.id %}selected{% endif %}>{{u.full_name}} • АМП-{{'%04d'|format(u.id)}}</option>{% endfor %}</select></label>
+        <label>Початок<input name="starts_at" type="datetime-local" value="{{g.starts_at.strftime('%Y-%m-%dT%H:%M') if g.starts_at else ''}}"></label>
+        <label>Дедлайн<input name="ends_at" type="datetime-local" value="{{g.ends_at.strftime('%Y-%m-%dT%H:%M') if g.ends_at else ''}}"></label>
+        <label>Нове фото<input name="photo" type="file" accept="image/*">{% if g.image_path %}<span class="check-chip"><input type="checkbox" name="remove_photo" value="1"><span>Прибрати поточне фото</span></span>{% endif %}</label>
+        <label class="span2">Опис<textarea name="description">{{g.description}}</textarea></label>
+        <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
+      </form>
+    </details>
+    <div class="goal-actions">
+      <form method="post" action="/admin/goals/{{g.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{{'⏸ Призупинити' if g.active else '▶️ Увімкнути'}}</button></form>
+      <form method="post" action="/admin/goals/{{g.id}}/delete" onsubmit="return confirm('Видалити цю ціль? Історія її автоматичних нагород теж буде видалена.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>
+    </div>
+  </article>
+{% else %}<section class="card"><p class="empty">Цілей ще немає.</p></section>{% endfor %}
+</div>
+<script>
+function toggleGoalUser(){document.getElementById('goalUserField').style.display=document.getElementById('goalScope').value==='personal'?'flex':'none';}
+toggleGoalUser();
+</script>
+{% endblock %}

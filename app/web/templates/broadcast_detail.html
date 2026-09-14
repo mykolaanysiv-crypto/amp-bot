@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Розсилка №{{ campaign.id }} • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Розсилки</b></nav>
+<a class="back" href="/admin/broadcasts">← Розсилки</a>
+<section class="page-head broadcast-detail-head">
+  <div>
+    <div class="eyebrow">КОМУНІКАЦІЙНИЙ ЦЕНТР</div>
+    <h1>Розсилка №{{ campaign.id }}</h1>
+    <p>{{ audience_description_text }}</p>
+  </div>
+  <a class="soft-button" href="/admin/broadcasts">+ Нова розсилка</a>
+</section>
+
+<div class="kpis four broadcast-kpis">
+  <div class="kpi"><span>Одержувачі</span><strong>{{ campaign.recipient_count }}</strong></div>
+  <div class="kpi"><span>Доставлено</span><strong>{{ campaign.sent_count }}</strong></div>
+  <div class="kpi"><span>Помилки</span><strong>{{ campaign.failed_count }}</strong></div>
+  <div class="kpi"><span>Статус</span><strong class="broadcast-status-text">{% if campaign.status == 'queued' %}У черзі{% elif campaign.status == 'sending' %}Надсилається{% elif campaign.status == 'completed' %}Завершено{% elif campaign.status == 'completed_with_errors' %}З помилками{% else %}Помилка{% endif %}</strong></div>
+</div>
+
+<section class="grid2 broadcast-detail-grid">
+  <article class="card">
+    <h2>Повідомлення</h2>
+    <div class="telegram-preview large">
+      <div class="telegram-preview-brand">АМПасадори</div>
+      <div class="telegram-preview-text">{{ campaign.message_text }}</div>
+    </div>
+  </article>
+  <article class="card">
+    <h2>Параметри</h2>
+    <div class="facts">
+      <div><span>Створено</span><b>{{ campaign.created_at.strftime('%d.%m.%Y %H:%M') }}</b></div>
+      <div><span>Автор</span><b>{{ campaign.author_label }}</b></div>
+      <div><span>Аудиторія</span><b>{{ audience_description_text }}</b></div>
+      <div><span>Шаблон</span><b>{{ campaign.template_code or 'Власний текст' }}</b></div>
+      <div><span>Початок</span><b>{{ campaign.started_at.strftime('%d.%m.%Y %H:%M') if campaign.started_at else '—' }}</b></div>
+      <div><span>Завершення</span><b>{{ campaign.completed_at.strftime('%d.%m.%Y %H:%M') if campaign.completed_at else '—' }}</b></div>
+    </div>
+    {% if campaign.status in ['queued','sending'] %}
+    <p class="broadcast-live-note">⏳ Розсилка виконується у фоні. Оновіть сторінку через кілька секунд, щоб побачити актуальні результати.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-title">
+    <h2>Одержувачі</h2>
+    <span>{{ recipients|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="broadcast-recipient-table">
+      <thead><tr><th>Учасник</th><th>Telegram ID</th><th>Статус</th><th>Час</th><th>Деталі</th></tr></thead>
+      <tbody>
+      {% for recipient in recipients %}
+        <tr>
+          <td><a href="/admin/users/{{ recipient.user_id }}">{{ recipient.recipient_name }}</a></td>
+          <td>{{ recipient.recipient_tg_id }}</td>
+          <td><span class="broadcast-status status-{{ recipient.status }}">{% if recipient.status == 'sent' %}Доставлено{% elif recipient.status == 'failed' %}Помилка{% else %}Очікує{% endif %}</span></td>
+          <td>{{ recipient.sent_at.strftime('%d.%m.%Y %H:%M:%S') if recipient.sent_at else '—' }}</td>
+          <td class="broadcast-error">{{ recipient.error_text or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
