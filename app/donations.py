@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .version import APP_VERSION
 from .models import Badge, DonationJarState, DonationTransaction, User, UserBadge, UserRole
 
 MONOBANK_API = "https://api.monobank.ua"
@@ -96,7 +97,7 @@ def _jar_send_id(jar_url: str) -> str:
 def _api_get(path: str, token: str) -> Any:
     req = Request(
         f"{MONOBANK_API}{path}",
-        headers={"X-Token": token, "User-Agent": "AMPasadors/1.11.1"},
+        headers={"X-Token": token, "User-Agent": f"AMPasadors/{APP_VERSION}"},
         method="GET",
     )
     try:

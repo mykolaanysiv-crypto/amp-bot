@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v1825_version_and_css_cache():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.12.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.12.0"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.1" in base
+    assert "/static/admin.css?v=1.12.0" in base
 
 
 def test_version_notice_uses_unique_per_user_outbox_dedupe():
@@ -62,7 +62,7 @@ def test_admin_panel_is_two_level_and_role_aware():
 
 
 def test_admin_handlers_support_root_and_sections():
-    source = (ROOT / "app/handlers/admin.py").read_text(encoding="utf-8")
+    source = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
     assert '@router.callback_query(F.data == "admin:menu")' in source
     assert '@router.callback_query(F.data.startswith("admin:section:"))' in source
     assert "admin_section_menu(admin.role, section, _staff_permissions(admin))" in source

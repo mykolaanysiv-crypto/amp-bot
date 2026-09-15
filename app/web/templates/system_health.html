@@ -40,7 +40,7 @@
       <div class="health-kpi"><span>Невдалі розсилки</span><b>{{ failed_broadcasts }}</b><small>Кампанії з помилками</small></div>
       <div class="health-kpi"><span>Сховище медіа</span><b>{{ media_count }}</b><small>{{ '%.2f'|format(media_bytes / 1024 / 1024) }} МБ у БД</small></div>
       <div class="health-kpi"><span>Останнє успішне фонове завдання</span><b>{{ label(latest_job.job_name) if latest_job else '—' }}</b><small>{{ latest_job.last_success_at.strftime('%d.%m.%Y %H:%M:%S') if latest_job and latest_job.last_success_at else 'Ще немає' }}</small></div>
-      <div class="health-kpi"><span>Остання резервна копія</span><b>{{ backup_at.strftime('%d.%m.%Y %H:%M') if backup_at else '—' }}</b><small>{{ backup_label }}</small></div>
+      <div class="health-kpi"><span>Остання резервна копія</span><b>{{ backup_at.strftime('%d.%m.%Y %H:%M') if backup_at else '—' }}</b><small>{{ backup_label }}{% if backup_status.age_hours is not none %} · {{ backup_status.age_hours }} год тому{% endif %} · {{ 'перевірено' if backup_status.ok else 'потребує перевірки' }}</small></div>
     </div>
   </section>
 

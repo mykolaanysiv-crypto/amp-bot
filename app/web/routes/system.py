@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 import os
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.reliability import backup_verification_status
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -78,6 +79,7 @@ async def system_health(request: Request):
     latest_job = None
     backup_label = "Немає даних"
     backup_at = None
+    backup_status = {"ok": False, "status": "unknown", "age_hours": None}
     pending_notifications = failed_notifications = 0
     failed_broadcasts = pending_broadcasts = 0
     media_count = media_bytes = 0
@@ -116,6 +118,7 @@ async def system_health(request: Request):
                 except ValueError:
                     backup_at = None
                 backup_label = raw[1] if len(raw) > 1 else "Зафіксована резервна копія"
+            backup_status = await backup_verification_status(session)
     except Exception as exc:
         db_ok = False
         db_error = str(exc)[:300]
@@ -124,6 +127,9 @@ async def system_health(request: Request):
     if local_backup_at and (not backup_at or local_backup_at > backup_at):
         backup_at = local_backup_at
         backup_label = local_backup_name or "Локальна резервна копія"
+        age_hours = max(0.0, (now - local_backup_at).total_seconds() / 3600)
+        if backup_status.get("status") == "unknown":
+            backup_status = {"ok": age_hours <= 168, "status": "ok" if age_hours <= 168 else "stale", "age_hours": round(age_hours, 1)}
 
     if settings.bot_token:
         bot = Bot(settings.bot_token)
@@ -162,6 +168,7 @@ async def system_health(request: Request):
             latest_job=latest_job,
             backup_at=backup_at,
             backup_label=backup_label,
+            backup_status=backup_status,
             pending_notifications=pending_notifications,
             failed_notifications=failed_notifications,
             failed_broadcasts=failed_broadcasts,

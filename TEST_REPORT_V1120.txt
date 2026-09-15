@@ -1,0 +1,55 @@
+АМПасадори v1.12.0 — QA / RELEASE REPORT
+=========================================
+Дата підготовки: 15.09.2026
+
+1. Перевірки, виконані у release workspace
+-----------------------------------------
+- python -m compileall -q app scripts migrations tests — PASS
+- python -m scripts.production_preflight — PASS
+- AST parse: 107 Python-файлів — PASS
+- Jinja parse: 51 шаблон — PASS
+- FastAPI static route scan: 184 routes, 0 дублів — PASS
+- SQLAlchemy metadata: 53 таблиці
+- Focused v1.12.0 architecture/regression suite — PASS
+- Розширений source/regression suite — 87/87 PASS
+
+2. PostgreSQL / CI
+------------------
+До релізу додано GitHub Actions CI з PostgreSQL 16 service і окремим
+integration smoke test. CI запускає compile/preflight, regression tests,
+PostgreSQL integration tests, Alembic/release smoke та alembic current.
+
+У поточному sandbox відсутні production/test залежності aiogram, aiosqlite
+та asyncpg, тому повний історичний pytest і реальний PostgreSQL integration
+run локально тут не заявляються як виконані. Відомі collection/fixture errors
+у цій оболонці пов'язані саме з відсутніми пакетами, а не з assertion failures.
+
+3. Production engineering
+-------------------------
+- Procfile: release / web / worker розділені.
+- web: python run_web.py
+- worker: python run.py
+- release: python -m scripts.heroku_release
+- Alembic baseline для v1.11.1 + gradual adoption.
+- Structured JSON logging + request ID + secret redaction.
+- Optional Sentry без PII за замовчуванням.
+- Failed Notification Center direct superadmin alert.
+- Backup verification marker + stale/missing backup alert.
+
+4. Gamification 2.0
+-------------------
+- Bronze/Silver/Gold transition analytics.
+- 7/28-day retention.
+- XP category effectiveness.
+- Reward claims/fulfillment/XP spend.
+- Розумні можливості та запрошення.
+- clean-data baseline і readiness gate:
+  <28 днів — збір даних;
+  28–55 — попередній аналіз;
+  >=56 — достатня база для рішень.
+- Автоматичне балансування XP НЕ виконується.
+
+5. Безпека релізу
+-----------------
+У release ZIP не повинні входити .env, локальні БД, __pycache__, *.pyc,
+.pytest_cache або тестові compatibility shims.

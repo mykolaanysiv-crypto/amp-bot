@@ -25,6 +25,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
 
 from ..config import get_settings
+from ..observability import RequestContextMiddleware
 from ..db import Database
 from ..gamification import AUTOMATIC_XP_GUIDE, get_level, normalize_event_xp, normalize_manual_xp, normalize_quest_xp, normalize_task_xp
 from ..models import (
@@ -85,35 +86,18 @@ async def _refresh_lifecycle(session) -> dict[str, int]:
     return combined
 
 
-async def _lifecycle_scheduler() -> None:
-    """Keep expired content fresh, but never let two web dynos process it at once."""
-    while True:
-        try:
-            async with job_lock(db, "content_lifecycle", ttl_seconds=240) as acquired:
-                if acquired:
-                    async with db.session_factory() as session:
-                        await _refresh_lifecycle(session)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logging.getLogger(__name__).exception("Помилка автоматичного оновлення статусів контенту")
-        await asyncio.sleep(300)
-
-
-
-@asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init()
     await bootstrap_defaults(db, settings)
     await _retire_legacy_version_broadcasts()
     await _recover_pending_broadcasts()
     await _announce_version_update()
-    lifecycle_task = asyncio.create_task(_lifecycle_scheduler(), name="lifecycle_scheduler")
+    # Deadline/status background housekeeping is owned by the dedicated worker
+    # in v1.12. Web pages still call _refresh_lifecycle() on relevant requests.
     broadcast_retry_task = asyncio.create_task(_broadcast_retry_scheduler(), name="broadcast_retry_scheduler")
     yield
-    lifecycle_task.cancel()
     broadcast_retry_task.cancel()
-    await asyncio.gather(lifecycle_task, broadcast_retry_task, return_exceptions=True)
+    await asyncio.gather(broadcast_retry_task, return_exceptions=True)
     for task in list(_broadcast_tasks):
         task.cancel()
     if _broadcast_tasks:
@@ -123,6 +107,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="АМПасадори — панель керування", lifespan=lifespan)
+app.add_middleware(RequestContextMiddleware, service="web")
 # Add inner security middleware first; SessionMiddleware is added last so it wraps
 # them and makes the signed session available for CSRF/session validation.
 app.add_middleware(AdminSessionValidationMiddleware, db=db)

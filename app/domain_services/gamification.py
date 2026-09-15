@@ -1,0 +1,334 @@
+from .common import *  # noqa: F401,F403
+
+async def current_season(session: AsyncSession) -> Season | None:
+    return await session.scalar(select(Season).where(Season.active == True).order_by(Season.starts_at.desc()))  # noqa: E712
+
+
+async def ensure_default_season(session: AsyncSession, settings: Settings) -> Season:
+    """Ensure an initial season without re-activating archived history.
+
+    v1.9.2 makes seasons historical objects. If an administrator has already
+    created another active season, startup must respect it instead of forcing
+    the config-named season back to active. Likewise, a finalized/expired
+    configured season is never resurrected after restart.
+    """
+    active = await current_season(session)
+    if active:
+        season = active
+    else:
+        season = await session.scalar(select(Season).where(Season.name == settings.season_name))
+        if not season:
+            try:
+                async with session.begin_nested():
+                    candidate = Season(
+                        name=settings.season_name,
+                        starts_at=settings.season_start,
+                        ends_at=settings.season_end,
+                        active=settings.season_end >= date.today(),
+                        archived=settings.season_end < date.today(),
+                    )
+                    session.add(candidate)
+                    await session.flush()
+            except IntegrityError:
+                pass
+            season = await session.scalar(select(Season).where(Season.name == settings.season_name))
+            if not season:
+                raise RuntimeError(f"Не вдалося створити або отримати сезон: {settings.season_name}")
+        # Only sync dates for a non-finalized config season. Historical snapshots
+        # must remain stable after archival.
+        if not season.finalized_at:
+            season.starts_at = settings.season_start
+            season.ends_at = settings.season_end
+            if settings.season_end >= date.today():
+                season.active = True
+                season.archived = False
+
+    # Backfill legacy XP into whichever season is currently selected.
+    start_dt = datetime.combine(season.starts_at, datetime.min.time())
+    end_dt = datetime.combine(season.ends_at, datetime.max.time())
+    legacy = (await session.scalars(select(XPTransaction).where(
+        XPTransaction.season_id.is_(None),
+        XPTransaction.created_at >= start_dt,
+        XPTransaction.created_at <= end_dt,
+    ))).all()
+    for tx in legacy:
+        tx.season_id = season.id
+    return season
+
+
+async def xp_total(session: AsyncSession, user_id: int) -> int:
+    value = await session.scalar(
+        select(func.coalesce(func.sum(XPTransaction.amount), 0)).where(XPTransaction.user_id == user_id)
+    )
+    return int(value or 0)
+
+
+async def season_xp(session: AsyncSession, user_id: int, season_id: int | None = None) -> int:
+    if season_id is None:
+        season = await current_season(session)
+        if not season:
+            return 0
+        season_id = season.id
+    value = await session.scalar(
+        select(func.coalesce(func.sum(XPTransaction.amount), 0)).where(
+            XPTransaction.user_id == user_id,
+            XPTransaction.season_id == season_id,
+        )
+    )
+    return int(value or 0)
+
+
+async def add_xp(
+    session: AsyncSession,
+    user: User,
+    amount: int,
+    description: str,
+    category: str = "other",
+    created_by: int | None = None,
+    event_id: int | None = None,
+) -> tuple[int, str, bool]:
+    before = await xp_total(session, user.id)
+    before_level = get_level(before)[0]
+    season = await current_season(session)
+    tx = XPTransaction(
+        user_id=user.id,
+        amount=amount,
+        description=description,
+        category=category,
+        created_by=created_by,
+        event_id=event_id,
+        season_id=season.id if season else None,
+    )
+    session.add(tx)
+    # Spendable wallet follows earned/corrected XP, but reward redemption does not
+    # change lifetime XP or level.
+    user.wallet_xp = max(0, int(user.wallet_xp or 0) + amount)
+    await session.flush()
+    if amount >= 0 and category in {"event", "quest", "task", "activity", "survey", "team_quest", "idea_approved"}:
+        await mark_first_activity(session, user.id, tx.created_at or datetime.utcnow())
+    after = before + amount
+    after_level = get_level(after)[0]
+    await evaluate_automatic_badges(session, user)
+    return after, after_level, before_level != after_level
+
+
+async def process_birthdays(session: AsyncSession, today: date) -> list[tuple[int, str, int]]:
+    """Award the annual birthday bonus exactly once per calendar year.
+
+    Returns tuples: (telegram_id, first_name, xp_awarded). Only active users with
+    a birth date are eligible. The persisted birthday_reward_year makes the job
+    safe across restarts and repeated scheduler runs.
+    """
+    birthday_xp = await get_runtime_int(session, "xp.birthday")
+    users = (await session.scalars(
+        select(User).where(
+            User.status == UserStatus.ACTIVE.value,
+            User.birth_date.is_not(None),
+        )
+    )).all()
+    rewarded: list[tuple[int, str, int]] = []
+    for user in users:
+        if not user.birth_date:
+            continue
+        if (user.birth_date.month, user.birth_date.day) != (today.month, today.day):
+            continue
+        if user.birthday_reward_year == today.year:
+            continue
+        await add_xp(
+            session,
+            user,
+            birthday_xp,
+            "Подарунок АМП до дня народження 🎂",
+            category="birthday",
+        )
+        user.birthday_reward_year = today.year
+        first_name = participant_first_name(user)
+        rewarded.append((user.tg_id, first_name, birthday_xp))
+    return rewarded
+
+
+async def seed_activity_types(session: AsyncSession) -> None:
+    """Seed missing balanced activity types without overwriting admin edits."""
+    for order, item in enumerate(CLAIMABLE_ACTIVITY_CATALOG, start=10):
+        row = await session.scalar(select(ActivityType).where(ActivityType.code == item["code"]))
+        if row:
+            continue
+        try:
+            async with session.begin_nested():
+                session.add(ActivityType(
+                    code=item["code"], title=item["title"], category=item["category"],
+                    description=item["description"], instructions=item["instructions"],
+                    xp_reward=int(item["xp"]), hours_reward=float(item["hours"]),
+                    active=True, sort_order=order,
+                ))
+                await session.flush()
+        except IntegrityError:
+            pass
+
+
+async def complete_activity_application(
+    session: AsyncSession, application: ActivityApplication, admin_user: User | None = None
+) -> tuple[User, int, str, bool] | None:
+    """Complete an approved/submitted application and award its snapshotted XP exactly once."""
+    if application.status == "activity_completed":
+        return None
+    if application.status not in {"activity_approved", "activity_submitted"}:
+        return None
+    user = await session.get(User, application.user_id)
+    activity = await session.get(ActivityType, application.activity_type_id)
+    if not user or not activity:
+        return None
+    result = await add_xp(
+        session, user, int(application.xp_reward or activity.xp_reward),
+        f"Активність «{activity.title}»", category="activity",
+        created_by=admin_user.id if admin_user else None,
+    )
+    user.volunteer_hours += float(application.hours_reward or activity.hours_reward or 0)
+    application.status = "activity_completed"
+    application.completed_at = datetime.utcnow()
+    application.completed_by = admin_user.id if admin_user else None
+    await evaluate_automatic_badges(session, user)
+    return (user, *result)
+
+
+async def seed_badges(session: AsyncSession) -> None:
+    defaults = [
+        ("Перший крок", "🚀", "Перша підтверджена активність", "xp_transactions", 1),
+        ("Прокачаний", "🎓", "10 підтверджених активностей", "xp_transactions", 10),
+        ("Серце команди", "❤️", "50 волонтерських годин", "volunteer_hours", 50),
+        ("100 годин для АМП", "⏱", "100 волонтерських годин", "volunteer_hours", 100),
+        ("Магніт", "👥", "3 успішно залучені нові учасники", "referrals", 3),
+        ("Квестер", "🎯", "5 підтверджених квестів", "quests", 5),
+        ("АМПасадор", "🔥", "Досягнення 300 XP", "xp_total", 300),
+        ("Лідер АМП", "🛰️", "Досягнення 800 XP", "xp_total", 800),
+        ("Легенда АМП", "🏆", "Досягнення 1200 XP", "xp_total", 1200),
+    ]
+    for name, icon, desc, criteria_type, criteria_value in defaults:
+        badge = await session.scalar(select(Badge).where(Badge.name == name))
+        if not badge:
+            try:
+                async with session.begin_nested():
+                    session.add(Badge(
+                        name=name,
+                        icon=icon,
+                        description=desc,
+                        criteria_type=criteria_type,
+                        criteria_value=criteria_value,
+                        automatic=True,
+                    ))
+                    await session.flush()
+            except IntegrityError:
+                pass
+            badge = await session.scalar(select(Badge).where(Badge.name == name))
+        if badge:
+            badge.icon = icon
+            badge.description = desc
+            badge.criteria_type = criteria_type
+            badge.criteria_value = criteria_value
+            badge.automatic = True
+
+    # Manual / thematic badges remain available to admins.
+    manual = [
+        ("Чистий старт", "🧹", "Участь у толоках та благоустрої"),
+        ("Голос АМП", "🎤", "Проведення власної активності"),
+        ("Контент-мейкер", "📸", "Внесок у комунікації та медіа"),
+        ("Нетворкер", "🤝", "Залучення партнерів"),
+        ("Ідейник", "💡", "Реалізовані ідеї"),
+        ("Ментор", "🧑‍🏫", "Допомога новим учасникам"),
+        ("Запускаю зміни", "🚀", "Реалізація власного мініпроєкту"),
+    ]
+    for name, icon, desc in manual:
+        badge = await session.scalar(select(Badge).where(Badge.name == name))
+        if not badge:
+            try:
+                async with session.begin_nested():
+                    session.add(Badge(name=name, icon=icon, description=desc, automatic=False))
+                    await session.flush()
+            except IntegrityError:
+                pass
+
+
+async def _metric_value(session: AsyncSession, user: User, criteria_type: str) -> int:
+    if criteria_type == "xp_total":
+        return await xp_total(session, user.id)
+    if criteria_type == "volunteer_hours":
+        return int(user.volunteer_hours or 0)
+    if criteria_type == "xp_transactions":
+        return int(await session.scalar(select(func.count(XPTransaction.id)).where(XPTransaction.user_id == user.id)) or 0)
+    if criteria_type == "referrals":
+        return int(await session.scalar(select(func.count(Referral.id)).where(Referral.inviter_user_id == user.id, Referral.status == "rewarded")) or 0)
+    if criteria_type == "quests":
+        return int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.user_id == user.id, QuestParticipation.status == "approved")) or 0)
+    if criteria_type == "events":
+        return int(await session.scalar(select(func.count(EventRegistration.id)).where(EventRegistration.user_id == user.id, EventRegistration.status == "attended")) or 0)
+    if criteria_type == "activities":
+        return int(await session.scalar(select(func.count(ActivityApplication.id)).where(ActivityApplication.user_id == user.id, ActivityApplication.status == "activity_completed")) or 0)
+    if criteria_type == "ideas":
+        return int(await session.scalar(select(func.count(Idea.id)).where(Idea.user_id == user.id, Idea.status == "implemented")) or 0)
+    if criteria_type == "tasks":
+        return int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.user_id == user.id, VolunteerTaskParticipation.status == "approved")) or 0)
+    if criteria_type == "surveys":
+        return int(await session.scalar(select(func.count(SurveyResponse.id)).where(SurveyResponse.user_id == user.id)) or 0)
+    if criteria_type in {"weekly_streak", "event_streak"}:
+        streak = await session.scalar(select(ParticipationStreak).where(ParticipationStreak.user_id == user.id))
+        return int(getattr(streak, criteria_type, 0) or 0) if streak else 0
+    return 0
+
+
+async def evaluate_automatic_badges(session: AsyncSession, user: User) -> list[Badge]:
+    badges = (await session.scalars(select(Badge).where(Badge.active == True, Badge.automatic == True))).all()  # noqa: E712
+    awarded: list[Badge] = []
+    for badge in badges:
+        if badge.badge_type == "ambassador" and user.role not in {"ambassador","coordinator","admin","superadmin"}:
+            continue
+        if not badge.criteria_type or badge.criteria_value is None:
+            continue
+        exists = await session.scalar(select(UserBadge).where(UserBadge.user_id == user.id, UserBadge.badge_id == badge.id))
+        if exists:
+            continue
+        if badge.criteria_type in {"donation_first", "donation_single", "donation_total_over"}:
+            # Donation badges have slightly different semantics from ordinary >= metrics:
+            # first/single use the largest qualifying donation, while cumulative badges
+            # are intentionally strict "more than" thresholds.
+            from .donations import donation_totals_for_user
+            donation_total, donation_largest, donation_count = await donation_totals_for_user(session, user.id)
+            if badge.criteria_type in {"donation_first", "donation_single"}:
+                qualifies = donation_count > 0 and donation_largest >= int(badge.criteria_value)
+            else:
+                qualifies = donation_total > int(badge.criteria_value)
+        else:
+            value = await _metric_value(session, user, badge.criteria_type)
+            qualifies = value >= badge.criteria_value
+        if qualifies:
+            session.add(UserBadge(user_id=user.id, badge_id=badge.id, awarded_by=None))
+            awarded.append(badge)
+    if awarded:
+        await session.flush()
+    return awarded
+
+
+async def seed_streak_restore_reward(session: AsyncSession) -> None:
+    existing = await session.scalar(select(Reward).where(Reward.reward_type == "streak_restore"))
+    cost = await get_runtime_int(session, "xp.streak_restore_cost")
+    if existing:
+        existing.min_xp = cost
+        return
+    session.add(Reward(
+        title="Повернути суперсерію",
+        description="Відновлює останню втрачену суперсерію відвідування подій. Працює лише якщо є серія, доступна для відновлення.",
+        min_xp=cost,
+        stock=None,
+        active=True,
+        reward_type="streak_restore",
+    ))
+
+
+async def seed_default_space_rewards(session: AsyncSession) -> None:
+    """Add the v1.7.4.1 default reward catalog without overwriting admin edits."""
+    for title, description, cost in DEFAULT_SPACE_REWARDS:
+        existing = await session.scalar(select(Reward).where(Reward.title == title))
+        if existing:
+            continue
+        session.add(Reward(title=title, description=description, min_xp=cost, stock=None, active=True, reward_type="service"))
+
+

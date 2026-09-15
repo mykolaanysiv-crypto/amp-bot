@@ -11,11 +11,11 @@ def text(rel: str) -> str:
 
 
 def test_v1110_version_schema_and_assets():
-    assert text("VERSION.txt").strip() == "1.11.1"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
+    assert text("VERSION.txt").strip() == "1.12.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
     assert len(Base.metadata.tables) == 53
     assert "registration_journeys" in Base.metadata.tables
-    assert "/static/admin.css?v=1.11.1" in text("app/web/templates/base.html")
+    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
 
 
 def test_registration_progress_and_encrypted_resume_draft():
@@ -44,7 +44,7 @@ def test_registration_ux_has_resume_buttons_autocomplete_and_validation():
 def test_registration_funnel_is_wired_through_approval_and_first_activity():
     ux = text("app/registration_ux.py")
     users = text("app/web/routes/users.py")
-    services = text("app/services.py")
+    services = text("app/domain_services/gamification.py")
     dashboard = text("app/web/routes/dashboard.py")
     for stage in ["start", "consent", "profile", "submit", "approved", "first_activity"]:
         assert f'"{stage}"' in ux
@@ -65,7 +65,7 @@ def test_requested_telegram_main_menu_order_and_contextual_home():
     positions = [kb.index(row) for row in expected]
     assert positions == sorted(positions)
     assert 'rows.append([KeyboardButton(text="🛠 Адмін-панель")])' in kb
-    home = text("app/handlers/participant.py")
+    home = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert "Швидкі дії" not in home
     assert "Наступний крок" in home
     assert "pending_feedback" in home and "today_event" in home and "near_goal" in home
@@ -116,7 +116,7 @@ def test_monobank_and_sensitive_data_hardening():
     tpl = text("app/web/templates/donations.html")
     assert "exc.read()" not in donations
     assert 'state.jar_account_id = None' in donations
-    assert 'User-Agent": "AMPasadors/1.11.1"' in donations
+    assert 'User-Agent": f"AMPasadors/{APP_VERSION}"' in donations
     assert 'monobank_token: str = field(default="", repr=False)' in config
     assert 'web_session_secret: str = field(repr=False)' in config
     assert 'cache-control", b"no-store, private"' in middleware

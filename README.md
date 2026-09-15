@@ -1,3 +1,24 @@
+# AMP XP / «АМПасадори» v1.12.0 — 🏗 Production Engineering & Gamification 2.0
+
+v1.12.0 — технічний production-реліз поверх v1.11.1. Зовнішня поведінка основних participant/admin workflow збережена; головна зміна — архітектура, надійність production та аналітика гейміфікації.
+
+## Що нового у v1.12.0
+
+- `app/services.py` став backward-compatible facade; доменна реалізація винесена в `app/domain_services/`.
+- Великі Telegram `admin.py` і `participant.py` розбиті на тематичні модулі, старі import paths збережені.
+- Додано **Alembic baseline** для поступового переходу від custom schema upgrades. Schema залишається **53 таблиці**.
+- Heroku розділено на `web: python run_web.py` і `worker: python run.py`; Telegram polling/schedulers більше не живуть в одному процесі з FastAPI.
+- Додано GitHub CI на push/PR: compile, regressions, PostgreSQL 16 integration tests, release/Alembic smoke.
+- Додано structured JSON logging, request-id, secret redaction і optional Sentry без default PII.
+- Failed Notification Center deliveries та stale/missing backup marker дають rate-limited direct alert суперадмінам.
+- Додано helper `scripts/heroku_capture_verified_backup.sh` та відображення verified backup age у System Health.
+- **🧠 Гейміфікація 2.0** аналізує league transitions, retention, XP/rewards, Smart Opportunities і referral conversion.
+- При першому запуску фіксується clean-data baseline; до 4 тижнів XP не рекомендується змінювати, 4–8 тижнів — лише preliminary review, після 8 тижнів — ручний review. **Автоматичного rebalance немає.**
+
+Деталі: `SERVER_UPDATE_V1120.md`. Команди: `COMMANDS_V1120.txt`. QA: `TEST_REPORT_V1120.txt`.
+
+---
+
 # AMP XP / «АМПасадори» v1.11.1 — 🎛 Event Operations & Reporting 2.0
 
 v1.11.1 — операційний і звітний реліз поверх v1.11.0. Основний фокус: керування всією участю в події з одного екрану та звітність, у якій чітко розділено потік за період і стан бази на конкретну дату.

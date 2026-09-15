@@ -10,9 +10,9 @@ def text(path: str) -> str:
 
 
 def test_v1111_version_and_cache_bust():
-    assert text("VERSION.txt").strip() == "1.11.1"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
-    assert "/static/admin.css?v=1.11.1" in text("app/web/templates/base.html")
+    assert text("VERSION.txt").strip() == "1.12.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
+    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
 
 
 def test_event_operations_cockpit_is_single_page_workflow():
@@ -36,7 +36,7 @@ def test_event_operations_cockpit_is_single_page_workflow():
 
 def test_event_operations_routes_are_scoped_and_audited():
     routes = text("app/web/routes/events.py")
-    services = text("app/services.py")
+    services = text("app/domain_services/events.py")
     assert '/admin/events/{event_id}/operations/refresh-queue' in routes
     assert '/admin/events/{event_id}/operations/mark-no-show' in routes
     assert "process_event_operations(session, event_id=event.id)" in routes

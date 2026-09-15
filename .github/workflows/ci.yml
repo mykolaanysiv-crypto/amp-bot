@@ -1,0 +1,52 @@
+name: AMP CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: amp
+          POSTGRES_PASSWORD: amp
+          POSTGRES_DB: amp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amp -d amp_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      BOT_TOKEN: 123456789:TEST_TOKEN_FOR_CI_ONLY_ABCDEFGHIJKLMNOPQRSTUVWXYZ
+      WEB_SESSION_SECRET: ci-session-secret-ci-session-secret-1234567890
+      DATABASE_URL: sqlite+aiosqlite:///./ci_amp.db
+      TEST_DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
+      TIMEZONE: Europe/Kyiv
+      APP_ENV: test
+      LOG_FORMAT: text
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Compile Python
+        run: python -m compileall -q app scripts migrations tests
+      - name: Production preflight
+        run: python -m scripts.production_preflight
+      - name: Unit and regression tests
+        run: pytest -q --ignore=tests/integration
+      - name: PostgreSQL integration tests
+        run: pytest -q tests/integration
+      - name: Alembic baseline smoke
+        run: python -m scripts.heroku_release
+      - name: Verify migration head
+        run: alembic current

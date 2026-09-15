@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Гейміфікація 2.0 — АМПасадори{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Гейміфікація 2.0</b></div>
+  <div class="page-heading-row"><div><h1>🧠 Гейміфікація 2.0</h1><p class="muted">Аналітика без автоматичного підкручування XP: ліги, утримання, винагороди, розумні можливості та запрошення.</p></div><a class="soft-button" href="/admin/gamification/insights">↻ Оновити</a></div>
+
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Готовність даних</h2><p>{{ insights.readiness_label }}</p></div><span class="status-pill {{ 'status-open' if insights.readiness == 'ready' else 'status-muted' }}">{{ insights.observation_days }} дн.</span></div>
+    <div class="health-kpi-grid">
+      <div class="health-kpi"><span>Початок чистої бази</span><b>{{ insights.baseline.strftime('%d.%m.%Y') }}</b><small>Фіксується з v1.12.0</small></div>
+      <div class="health-kpi"><span>Активних профілів</span><b>{{ insights.active_users }}</b><small>Поточний стан</small></div>
+      <div class="health-kpi"><span>Повторна участь</span><b>{{ insights.retention.repeat_rate }}%</b><small>{{ insights.retention.repeat_users }} учасників із ≥2 днями XP-дій</small></div>
+      <div class="health-kpi"><span>Повернення після 28 днів</span><b>{{ insights.retention.rate_28 }}%</b><small>{{ insights.retention.returned_28 }} із {{ insights.retention.eligible_28 }} доступних когорт</small></div>
+    </div>
+  </section>
+
+  <section class="panel"><div class="panel-heading"><div><h2>Переходи між лігами</h2><p>Фактичні перетини XP-порогів у поточному сезоні.</p></div></div>
+    <div class="health-kpi-grid">{% for row in insights.league_rows %}<div class="health-kpi"><span>{{ row.icon }} {{ row.title }}</span><b>{{ row.count }}</b><small>учасників зараз</small></div>{% endfor %}</div>
+    <div class="table-wrap"><table class="admin-table"><thead><tr><th>Перехід</th><th>Учасників</th><th>Медіана днів</th></tr></thead><tbody>{% for row in insights.transitions %}<tr><td>{{ row.from }} → {{ row.to }}</td><td>{{ row.count }}</td><td>{{ row.median_days if row.median_days is not none else '—' }}</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  <section class="panel"><div class="panel-heading"><div><h2>Ефективність XP та винагород</h2><p>Показує, звідки приходить XP і чи використовується XP-гаманець.</p></div></div>
+    <div class="health-kpi-grid">
+      <div class="health-kpi"><span>Позитивного XP</span><b>{{ insights.xp.positive_xp }}</b><small>{{ insights.xp.actions }} дій</small></div>
+      <div class="health-kpi"><span>Середній XP / дія</span><b>{{ insights.xp.avg_per_action }}</b><small>без штрафів/списань</small></div>
+      <div class="health-kpi"><span>Виконано винагород</span><b>{{ insights.rewards.fulfilled }}</b><small>{{ insights.rewards.fulfillment_rate }}% від заявок</small></div>
+      <div class="health-kpi"><span>XP витрачено / зароблено</span><b>{{ insights.rewards.spend_to_earned_rate }}%</b><small>{{ insights.rewards.xp_spent }} XP витрачено</small></div>
+    </div>
+    {% if insights.xp.categories %}<div class="table-wrap"><table class="admin-table"><thead><tr><th>Категорія</th><th>XP</th><th>Дій</th><th>Частка XP</th><th>XP / дія</th></tr></thead><tbody>{% for row in insights.xp.categories %}<tr><td>{{ label(row.category) }}</td><td>{{ row.xp }}</td><td>{{ row.actions }}</td><td>{{ row.share }}%</td><td>{{ row.avg_xp }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+  </section>
+
+  <section class="panel"><div class="panel-heading"><div><h2>Розумні функції</h2><p>Конверсії розумних можливостей та запрошень без автоматичної зміни ваг.</p></div></div>
+    <div class="health-kpi-grid">
+      <div class="health-kpi"><span>Збігів можливостей</span><b>{{ insights.opportunities.matches }}</b><small>{{ insights.opportunities.notified }} повідомлено</small></div>
+      <div class="health-kpi"><span>Сповіщення → інтерес</span><b>{{ insights.opportunities.notify_to_interest_rate }}%</b><small>{{ insights.opportunities.interests }} зафіксованих інтересів</small></div>
+      <div class="health-kpi"><span>Запрошень</span><b>{{ insights.referrals.total }}</b><small>{{ insights.referrals.rewarded }} винагороджено</small></div>
+      <div class="health-kpi"><span>Запрошення → перша активність</span><b>{{ insights.referrals.first_activity_rate }}%</b><small>{{ insights.referrals.first_activity }} дійшли до активності</small></div>
+    </div>
+  </section>
+
+  <section class="panel"><div class="panel-heading"><div><h2>Рекомендації системи</h2><p>Це аналітичні сигнали. v1.12.0 <b>ніколи не змінює XP, пороги ліг чи винагороди автоматично</b>.</p></div></div>
+    <div class="attention-list">{% for item in insights.recommendations %}<div class="attention-item"><div><b>{{ item.title }}</b><span>{{ item.text }}</span></div></div>{% endfor %}</div>
+  </section>
+</div>
+{% endblock %}

@@ -1,3 +1,18 @@
+# v1.12.0 — Codebase Refactor, Production Engineering & Gamification 2.0
+
+- Services moved to `app/domain_services` behind a compatibility facade.
+- Telegram admin/participant handlers split into smaller domain modules.
+- Alembic baseline adopted; legacy upgrader remains transitional only for pre-v1.12 compatibility.
+- Heroku web/worker process separation.
+- GitHub CI + PostgreSQL integration test + release preflight.
+- Structured JSON logs, request IDs, secret redaction, optional Sentry.
+- Failed Notification Center and stale-backup superadmin alerts.
+- Verified backup helper/marker.
+- Gamification 2.0 analytics with a persisted clean-data baseline and no automatic XP balancing.
+- Schema unchanged from v1.11.1: 53 tables.
+
+---
+
 # v1.11.1 — 🎛 Event Operations Cockpit & Reporting 2.0
 
 - На сторінці кожної події додано **Операційний центр події**: `зареєстровані → черга/резерв → відмітка → підтверджено → XP → зворотний зв’язок` в одному робочому екрані.

@@ -8,14 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v192_version_schema_and_cache():
-    assert (ROOT / "VERSION.txt").read_text().strip() == "1.11.1"
-    assert (ROOT / "VERSION_CHECK.txt").read_text().strip() == "1.11.1"
+    assert (ROOT / "VERSION.txt").read_text().strip() == "1.12.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text().strip() == "1.12.0"
     assert len(Base.metadata.tables) == 53
     assert "opportunity_matches" in Base.metadata.tables
     assert {"finalized_at", "history_json"} <= {c.name for c in Season.__table__.columns}
     assert "opportunity_interests_json" in {c.name for c in User.__table__.columns}
     assert "target_settlements" in {c.name for c in Opportunity.__table__.columns}
-    assert "/static/admin.css?v=1.11.1" in (ROOT / "app/web/templates/base.html").read_text()
+    assert "/static/admin.css?v=1.12.0" in (ROOT / "app/web/templates/base.html").read_text()
 
 
 def test_matching_uses_explicit_interests_age_settlement_format_deadline_not_vulnerability():
@@ -38,7 +38,7 @@ def test_matching_requires_explicit_interest_for_auto_notification():
 
 
 def test_telegram_and_web_smart_opportunity_ui_present():
-    participant = (ROOT / "app/handlers/participant.py").read_text()
+    participant = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['participant.py', 'participant_common.py', 'participant_home.py', 'participant_requests.py', 'participant_opportunities.py', 'participant_activities.py', 'participant_tasks.py'])
     matching = (ROOT / "app/opportunity_matching.py").read_text()
     route = (ROOT / "app/web/routes/opportunities.py").read_text()
     tpl = (ROOT / "app/web/templates/opportunities.html").read_text()
@@ -81,7 +81,7 @@ def test_season_history_snapshot_and_profile_history():
 
 
 def test_startup_does_not_resurrect_finalized_season():
-    services = (ROOT / "app/services.py").read_text()
+    services = (ROOT / "app/domain_services/gamification.py").read_text()
     assert "without re-activating archived history" in services
     assert "if not season.finalized_at" in services
     assert "season.active = True" in services

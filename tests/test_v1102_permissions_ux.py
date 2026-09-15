@@ -12,8 +12,8 @@ def text(rel: str) -> str:
 
 
 def test_version_and_schema_stay_additive():
-    assert text("VERSION.txt").strip() == "1.11.1"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
+    assert text("VERSION.txt").strip() == "1.12.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
     assert len(Base.metadata.tables) == 53
     assert "staff_permissions_json" in Base.metadata.tables["users"].c
     assert "permissions_json" in Base.metadata.tables["web_staff_accounts"].c
@@ -65,7 +65,7 @@ def test_security_page_can_manage_web_and_telegram_permissions():
 
 def test_telegram_admin_menu_is_permission_driven():
     kb = text("app/keyboards.py")
-    admin = text("app/handlers/admin.py")
+    admin = (text("app/handlers/admin.py") + text("app/handlers/admin_common.py") + text("app/handlers/admin_core.py") + text("app/handlers/admin_events.py") + text("app/handlers/admin_quests_rewards.py") + text("app/handlers/admin_activities_tasks.py") + text("app/handlers/admin_opportunities.py") + text("app/handlers/admin_moderation.py"))
     for perm in [
         "events.create", "events.edit", "participants.approve", "moderation.manage",
         "xp.award", "reports.basic_export", "broadcast.send", "analytics.view",
@@ -77,7 +77,7 @@ def test_telegram_admin_menu_is_permission_driven():
 
 def test_main_menu_surfaces_invite_and_requests_and_uses_first_name():
     kb = text("app/keyboards.py")
-    participant = text("app/handlers/participant.py")
+    participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     for row in [
         '[KeyboardButton(text="🏠 Головна"), KeyboardButton(text="👤 Мій профіль")]',
         '[KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="🌍 Можливості")]',
@@ -100,7 +100,7 @@ def test_main_menu_surfaces_invite_and_requests_and_uses_first_name():
 
 
 def test_role_change_and_admin_callbacks_use_granular_permissions():
-    admin = text("app/handlers/admin.py")
+    admin = (text("app/handlers/admin.py") + text("app/handlers/admin_common.py") + text("app/handlers/admin_core.py") + text("app/handlers/admin_events.py") + text("app/handlers/admin_quests_rewards.py") + text("app/handlers/admin_activities_tasks.py") + text("app/handlers/admin_opportunities.py") + text("app/handlers/admin_moderation.py"))
     assert 'has_permission(admin.role, admin.staff_permissions_json, "security.manage")' in admin
     assert 'AdminCallbackPermissionMiddleware' in admin
     assert '"participants.approve"' in admin
@@ -109,7 +109,7 @@ def test_role_change_and_admin_callbacks_use_granular_permissions():
 
 
 def test_home_progress_uses_real_level_thresholds():
-    participant = text("app/handlers/participant.py")
+    participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert "from ..gamification import LEVELS" in participant
     assert "current_threshold = max((threshold for threshold, _ in LEVELS if threshold <= xp)" in participant
 
@@ -149,7 +149,7 @@ def test_legacy_names_address_participants_by_first_name():
     assert last == "Прохоренко"
     first, last = split_display_name("Кумеда Данило", None, None)
     assert first == "Данило"
-    participant = text("app/handlers/participant.py")
+    participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert "participant_first_name(user)" in participant
 
 
@@ -168,6 +168,6 @@ def test_sensitive_event_exports_follow_the_granular_permission():
 
 
 def test_telegram_role_change_clears_stale_custom_acl():
-    admin = text("app/handlers/admin.py")
+    admin = (text("app/handlers/admin.py") + text("app/handlers/admin_common.py") + text("app/handlers/admin_core.py") + text("app/handlers/admin_events.py") + text("app/handlers/admin_quests_rewards.py") + text("app/handlers/admin_activities_tasks.py") + text("app/handlers/admin_opportunities.py") + text("app/handlers/admin_moderation.py"))
     assert "user.staff_permissions_json = None" in admin
     assert '"telegram_user_role_change"' in admin

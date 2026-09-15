@@ -26,10 +26,10 @@ def test_calendar_uses_entries_not_dict_items_attribute():
 
 def test_telegram_qr_scanner_flow_is_wired():
     keyboard = (ROOT / "app/keyboards.py").read_text(encoding="utf-8")
-    admin = (ROOT / "app/handlers/admin.py").read_text(encoding="utf-8")
+    admin = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
     start = (ROOT / "app/handlers/start.py").read_text(encoding="utf-8")
     states = (ROOT / "app/states.py").read_text(encoding="utf-8")
-    services = (ROOT / "app/services.py").read_text(encoding="utf-8")
+    services = (ROOT / "app/domain_services/events.py").read_text(encoding="utf-8")
     assert '("📷 QR-сканер", "admin:event_scanner")' in keyboard
     assert "AdminEventScannerState" in states
     assert 'F.data == "admin:event_scanner"' in admin
@@ -52,7 +52,7 @@ def test_web_scanner_has_cross_browser_telegram_path_and_no_duplicate_title_scri
 
 
 def test_v1823_version():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.12.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.12.0"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.1" in base
+    assert "/static/admin.css?v=1.12.0" in base

@@ -490,3 +490,18 @@ async def season_create(request:Request,name:str=Form(...),starts_at:str=Form(..
         await log_audit(session,"web_season_create",actor_label=request.session.get("admin_name","web"),entity_type="season",entity_id=season.id,details=f"{start}..{end}"); await session.commit()
     return RedirectResponse("/admin/seasons",303)
 
+
+@router.get("/admin/gamification/insights", response_class=HTMLResponse)
+async def gamification_insights_page(request: Request):
+    if r := guard(request):
+        return r
+    if not (has_web_permission(request, "analytics.view") or has_web_permission(request, "gamification.manage")):
+        return HTMLResponse("<h1>403</h1><p>Недостатньо прав для аналітики гейміфікації.</p>", status_code=403)
+    from app.gamification_insights import build_gamification_insights
+    async with db.session_factory() as session:
+        insights = await build_gamification_insights(session)
+        await session.commit()
+    return templates.TemplateResponse(
+        request=request, name="gamification_insights.html",
+        context=ctx(request, insights=insights),
+    )

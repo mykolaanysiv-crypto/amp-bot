@@ -8,9 +8,9 @@ def text(rel: str) -> str:
 
 
 def test_v1100_version_and_cache():
-    assert text("VERSION.txt").strip() == "1.11.1"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
-    assert "/static/admin.css?v=1.11.1" in text("app/web/templates/base.html")
+    assert text("VERSION.txt").strip() == "1.12.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
+    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
 
 
 def test_compact_telegram_main_menu_and_hubs():
@@ -29,7 +29,7 @@ def test_compact_telegram_main_menu_and_hubs():
 
 
 def test_my_amp_today_dashboard_exists():
-    participant = text("app/handlers/participant.py")
+    participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert 'F.text.in_({"🏠 Головна", "🏠 Огляд"})' in participant
     for token in ["Привіт", "До наступного рівня", "Найближче", "Квест", "персональних можливостей"]:
         assert token in participant
@@ -63,7 +63,7 @@ def test_runtime_settings_are_editable_and_used():
     assert "guard_permission" in settings_route
     assert "settings.manage" in settings_route
     usages = "\n".join(text(p) for p in [
-        "app/services.py", "app/workflows.py", "app/leagues.py", "app/main.py",
+        "app/services.py", "app/domain_services/gamification.py", "app/domain_services/referrals.py", "app/domain_services/events.py", "app/workflows.py", "app/leagues.py", "app/main.py",
         "app/analytics.py", "app/reports.py", "app/web/routes/gamification.py",
     ])
     for key in [

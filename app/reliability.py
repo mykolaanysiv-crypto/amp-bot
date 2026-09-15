@@ -423,3 +423,124 @@ async def reliability_counts(session) -> dict[str, int]:
     pending_notifications = int(await session.scalar(select(func.count(Notification.id)).where(Notification.status.in_(["queued", "retry"]))) or 0)
     failed_notifications = int(await session.scalar(select(func.count(Notification.id)).where(Notification.status == "failed")) or 0)
     return {"pending_notifications": pending_notifications, "failed_notifications": failed_notifications}
+
+
+async def notification_failure_alert(bot, db, settings, *, lookback_minutes: int = 30) -> dict[str, int]:
+    """Alert superadmins about newly failed Notification Center deliveries.
+
+    Alerts bypass the outbox deliberately: when the outbox itself is unhealthy,
+    routing its alert through the same queue would hide the incident. Only
+    aggregate counts and notification ids are sent; message bodies/contacts are
+    never included.
+    """
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=max(5, int(lookback_minutes)))
+    async with db.session_factory() as session:
+        marker = await session.get(SystemSetting, "monitor.notifications.last_failed_id")
+        try:
+            last_id = int(marker.value) if marker and marker.value else 0
+        except ValueError:
+            last_id = 0
+        rows = list((await session.scalars(
+            select(Notification).where(
+                Notification.status == "failed",
+                Notification.id > last_id,
+                Notification.updated_at >= cutoff,
+            ).order_by(Notification.id.asc()).limit(100)
+        )).all())
+        if not rows:
+            return {"new_failed": 0, "alerted": 0}
+        max_id = max(row.id for row in rows)
+        types: dict[str, int] = {}
+        for row in rows:
+            types[row.type or "system"] = types.get(row.type or "system", 0) + 1
+        if marker:
+            marker.value = str(max_id); marker.updated_at = now
+        else:
+            session.add(SystemSetting(key="monitor.notifications.last_failed_id", value=str(max_id), updated_at=now))
+        await session.commit()
+
+    summary = ", ".join(f"{key}: {value}" for key, value in sorted(types.items()))
+    text = (
+        "🚨 <b>Notification Center: помилки доставки</b>\n\n"
+        f"Нових failed: <b>{len(rows)}</b>\n"
+        f"Типи: {summary or 'system'}\n"
+        f"Діапазон ID: {rows[0].id}–{max_id}\n\n"
+        "Перевірте 🩺 Стан системи → невдалі сповіщення."
+    )
+    alerted = 0
+    for tg_id in sorted(settings.superadmin_ids):
+        try:
+            await bot.send_message(tg_id, text)
+            alerted += 1
+        except Exception:
+            log.exception("Не вдалося надіслати superadmin alert про Notification Center")
+    return {"new_failed": len(rows), "alerted": alerted}
+
+
+async def backup_verification_status(session, *, max_age_hours: int = 168) -> dict[str, object]:
+    """Return the last externally verified backup marker.
+
+    PostgreSQL backups are created outside the dyno. After a successful Heroku
+    backup command, ``scripts.mark_backup_verified`` records a marker here.
+    """
+    row = await session.get(SystemSetting, "last_backup_at")
+    if not row or not row.value:
+        return {"ok": False, "status": "unknown", "verified_at": None, "label": "", "age_hours": None}
+    raw, _, label = row.value.partition("|")
+    try:
+        verified_at = datetime.fromisoformat(raw)
+    except ValueError:
+        return {"ok": False, "status": "invalid", "verified_at": None, "label": label, "age_hours": None}
+    age = max(0.0, (datetime.utcnow() - verified_at).total_seconds() / 3600)
+    return {
+        "ok": age <= max_age_hours,
+        "status": "ok" if age <= max_age_hours else "stale",
+        "verified_at": verified_at,
+        "label": label,
+        "age_hours": round(age, 1),
+    }
+
+async def backup_health_alert(bot, db, settings, *, max_age_hours: int = 168, repeat_hours: int = 24) -> dict[str, object]:
+    """Warn superadmins when the externally verified backup is missing/stale.
+
+    The check never invokes Heroku or reads backup contents from the dyno.  A
+    successful external backup is recorded by ``scripts.mark_backup_verified``.
+    Alerts contain only age/status metadata and are rate-limited in SystemSetting.
+    """
+    now = datetime.utcnow()
+    async with db.session_factory() as session:
+        status = await backup_verification_status(session, max_age_hours=max_age_hours)
+        if status.get("ok"):
+            return {"alerted": 0, **status}
+        marker = await session.get(SystemSetting, "monitor.backup.last_alert_at")
+        if marker and marker.value:
+            try:
+                last_alert = datetime.fromisoformat(marker.value)
+            except ValueError:
+                last_alert = None
+            if last_alert and now - last_alert < timedelta(hours=max(1, repeat_hours)):
+                return {"alerted": 0, **status}
+        if marker:
+            marker.value = now.isoformat(); marker.updated_at = now
+        else:
+            session.add(SystemSetting(key="monitor.backup.last_alert_at", value=now.isoformat(), updated_at=now))
+        await session.commit()
+
+    age = status.get("age_hours")
+    age_text = f"{age} год" if age is not None else "немає підтвердженої копії"
+    text = (
+        "⚠️ <b>Резервна копія потребує перевірки</b>\n\n"
+        f"Стан: <b>{status.get('status', 'unknown')}</b>\n"
+        f"Вік останньої підтвердженої копії: <b>{age_text}</b>\n\n"
+        "Створіть/перевірте Heroku PGBackup і після успіху зафіксуйте його в АМП."
+    )
+    alerted = 0
+    for tg_id in sorted(settings.superadmin_ids):
+        try:
+            await bot.send_message(tg_id, text)
+            alerted += 1
+        except Exception:
+            log.exception("Не вдалося надіслати superadmin alert про резервну копію")
+    return {"alerted": alerted, **status}
+

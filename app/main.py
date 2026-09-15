@@ -15,13 +15,13 @@ from sqlalchemy import select
 
 from .config import get_settings
 from .db import Database
-from .engagement import process_goal_rewards
+from .engagement import process_goal_rewards, process_expired_content
 from .leagues import refresh_all_streaks
 from .handlers import admin, donations, events, feedback, participant, quests, start, surveys, v11
 from .models import User, Event, EventFeedback, EventRegistration, Notification, QuestParticipation, VolunteerTaskParticipation, ActivityApplication, SurveyResponse, Idea, SystemSetting, UserStatus, Season
 from .keyboards import MAIN_MENU_TEXTS
-from .services import bootstrap_defaults, get_user_by_tg, process_birthdays, process_expired_bans, log_audit, revoke_referral_reward_if_inactive
-from .reliability import job_lock, process_due_telegram_deliveries, queue_telegram_delivery, queue_notification
+from .services import bootstrap_defaults, get_user_by_tg, process_birthdays, process_expired_bans, process_event_operations, log_audit, revoke_referral_reward_if_inactive
+from .reliability import job_lock, process_due_telegram_deliveries, queue_telegram_delivery, queue_notification, notification_failure_alert, backup_health_alert
 from .opportunity_matching import queue_pending_match_digests
 from .donations import sync_monobank_donations
 from .season_history import finalize_season
@@ -620,11 +620,67 @@ async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
         await asyncio.sleep(300)
 
 
+async def _notification_health_scheduler(bot: Bot, db: Database, settings) -> None:
+    log = logging.getLogger("amp.notification_health")
+    while True:
+        try:
+            async with job_lock(db, "notification_failure_alert", ttl_seconds=240) as acquired:
+                if acquired:
+                    await notification_failure_alert(bot, db, settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Помилка моніторингу failed Notification Center")
+        await asyncio.sleep(300)
+
+
+async def _backup_health_scheduler(bot: Bot, db: Database, settings) -> None:
+    """Verify the externally recorded backup marker and alert at most daily."""
+    log = logging.getLogger("amp.backup_health")
+    while True:
+        try:
+            async with job_lock(db, "backup_health_alert", ttl_seconds=240) as acquired:
+                if acquired:
+                    await backup_health_alert(bot, db, settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Помилка перевірки резервних копій")
+        await asyncio.sleep(6 * 3600)
+
+
+async def _content_lifecycle_scheduler(db: Database) -> None:
+    """Move deadline/status housekeeping to the worker process.
+
+    Web requests still perform a lightweight refresh when relevant pages are
+    opened, preserving v1.11 behavior if the worker is temporarily unavailable.
+    """
+    log = logging.getLogger("amp.content_lifecycle")
+    while True:
+        try:
+            async with job_lock(db, "content_lifecycle", ttl_seconds=240) as acquired:
+                if acquired:
+                    async with db.session_factory() as session:
+                        changed = await process_expired_content(session)
+                        event_ops = await process_event_operations(session)
+                        combined = dict(changed)
+                        for key, value in event_ops.items():
+                            if value:
+                                combined[key] = combined.get(key, 0) + int(value)
+                        if combined:
+                            await log_audit(
+                                session, "system_auto_complete", actor_label="Система АМП",
+                                entity_type="system", details=str(combined),
+                            )
+                            await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Помилка автоматичного оновлення статусів контенту")
+        await asyncio.sleep(300)
+
+
 async def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
     settings = get_settings()
 
     # Keep SQLite data directory available when using the default URL.
@@ -788,6 +844,9 @@ async def main() -> None:
     smart_opportunities_task = asyncio.create_task(_smart_opportunities_scheduler(bot, db), name="smart_opportunities_scheduler")
     season_history_task = asyncio.create_task(_season_history_scheduler(bot, db), name="season_history_scheduler")
     donation_sync_task = asyncio.create_task(_donation_sync_scheduler(bot, db, settings), name="donation_sync_scheduler")
+    notification_health_task = asyncio.create_task(_notification_health_scheduler(bot, db, settings), name="notification_health_scheduler")
+    backup_health_task = asyncio.create_task(_backup_health_scheduler(bot, db, settings), name="backup_health_scheduler")
+    content_lifecycle_task = asyncio.create_task(_content_lifecycle_scheduler(db), name="content_lifecycle_scheduler")
     try:
         await dp.start_polling(bot, db=db, settings=settings)
     finally:
@@ -801,7 +860,15 @@ async def main() -> None:
         smart_opportunities_task.cancel()
         season_history_task.cancel()
         donation_sync_task.cancel()
-        await asyncio.gather(birthday_task, event_reminder_task, event_feedback_task, goal_reward_task, streak_task, notification_retry_task, inactivity_task, smart_opportunities_task, season_history_task, donation_sync_task, return_exceptions=True)
+        notification_health_task.cancel()
+        backup_health_task.cancel()
+        content_lifecycle_task.cancel()
+        await asyncio.gather(
+            birthday_task, event_reminder_task, event_feedback_task, goal_reward_task, streak_task,
+            notification_retry_task, inactivity_task, smart_opportunities_task, season_history_task,
+            donation_sync_task, notification_health_task, backup_health_task, content_lifecycle_task,
+            return_exceptions=True,
+        )
         await db.close()
 
 

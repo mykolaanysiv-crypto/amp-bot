@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v191_version_and_cache_buster():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.12.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.12.0"
     base=(ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.1" in base
+    assert "/static/admin.css?v=1.12.0" in base
 
 
 def test_advanced_analytics_metrics_exist():

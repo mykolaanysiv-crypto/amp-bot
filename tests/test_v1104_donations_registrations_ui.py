@@ -8,9 +8,9 @@ def text(rel: str) -> str:
 
 
 def test_v1104_version_and_css_cache():
-    assert text("VERSION.txt").strip() == "1.11.1"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
-    assert "/static/admin.css?v=1.11.1" in text("app/web/templates/base.html")
+    assert text("VERSION.txt").strip() == "1.12.0"
+    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
+    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
 
 
 def test_donation_models_permissions_and_sidebar_exist():
@@ -77,7 +77,7 @@ def test_opportunities_support_photos_in_web_and_telegram():
     model = text("app/models.py")
     route = text("app/web/routes/opportunities.py")
     tpl = text("app/web/templates/opportunities.html")
-    tg = text("app/handlers/participant.py")
+    tg = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert "class Opportunity" in model and "image_path" in model
     assert 'photo: UploadFile | None = File(None)' in route
     assert 'enctype="multipart/form-data"' in tpl
@@ -160,7 +160,7 @@ def test_donation_badges_have_ukrainian_labels_and_protected_rules():
 
 def test_support_copy_uses_amp_code_not_english_id_label():
     handler = text("app/handlers/donations.py")
-    participant = text("app/handlers/participant.py")
+    participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     assert "свій АМП-код" in handler
     assert "ID АМП" not in participant
     assert "АМП-код:" in participant
@@ -171,4 +171,4 @@ def test_login_assets_use_current_release_cache_version():
         src = text(path)
         assert "?v=1.7.3" not in src
         assert "?v=1.8.0" not in src
-        assert "?v=1.11.1" in src
+        assert "?v=1.12.0" in src

@@ -33,7 +33,7 @@ def test_telegram_webapp_init_data_signature():
 
 
 def test_scanner_is_telegram_miniapp_and_continuous():
-    admin = (ROOT / "app/handlers/admin.py").read_text(encoding="utf-8")
+    admin = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
     routes = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
     template = (ROOT / "app/web/templates/telegram_event_scanner.html").read_text(encoding="utf-8")
     assert "WebAppInfo" in admin
@@ -54,7 +54,7 @@ def test_version_broadcast_has_distributed_startup_lock():
 
 
 def test_v1824_version():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.12.0"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.12.0"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.1" in base
+    assert "/static/admin.css?v=1.12.0" in base

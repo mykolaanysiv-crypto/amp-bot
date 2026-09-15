@@ -1,41 +1,40 @@
-АМП XP / «АМПасадори» v1.11.1
-=================================
+АМП XP / «АМПасадори» v1.12.0
+================================
 
 ПОЧНІТЬ З ЦЬОГО
 
-Поточний реліз: v1.11.1 — Event Operations Cockpit & Reporting 2.0.
-База: v1.11.0 — UX & Conversion.
+Поточний реліз: v1.12.0 — Codebase Refactor, Production Engineering & Gamification 2.0.
+База: v1.11.1 — Event Operations Cockpit & Reporting 2.0.
+
+ГОЛОВНА ІДЕЯ
+------------
+v1.12.0 не додає хаотично нові participant-функції. Реліз робить систему технічно готовою до подальшого росту: менші модулі, Alembic, CI, PostgreSQL integration tests, observability, окремі web/worker процеси, backup verification і аналітика гейміфікації без автоматичного підкручування XP.
 
 КЛЮЧОВІ ЗМІНИ
----------------
-1. Event Operations Cockpit: одна сторінка події для зареєстрованих, черги/резерву, check-in, attended, XP і feedback.
-2. Тут же: стан QR-сканера, check-in window, остання дія сканера та оператор.
-3. Масові дії: оновити чергу/резерви, підтвердити всіх відмічених, після закриття вікна — масово «Не прийшов».
-4. Reporting 2.0: точний timestamp Europe/Kyiv, потокові KPI та моментні KPI окремо.
-5. Воронки реєстрації й участі, Data Quality і визначення показників у PDF/XLSX.
-6. Звіт за ISO-тиждень; динаміка автоматично по днях/тижнях/місяцях.
-7. Одна точка даних = KPI замість беззмістовного line chart.
-8. Майбутні події не входять у фактичну attendance-аналітику навіть за помилкового legacy status.
-9. Журнал доступу: колонка «Хто» більше не розриває слова.
-10. Схема БД: 53 таблиці, без нової schema migration відносно v1.11.0.
-
-HEROKU UPDATE
 -------------
-Рекомендований сценарій без локального запуску:
-  SERVER_UPDATE_V1111.md
+1. `services.py` став compatibility facade; реалізація розкладена в `app/domain_services/`.
+2. Великі Telegram `admin.py` / `participant.py` розбиті на тематичні handler modules.
+3. Додано Alembic baseline; schema v1.12.0 = 53 таблиці, як у v1.11.1.
+4. Heroku: `web` і `worker` — окремі process types.
+5. GitHub CI: compile + regression + PostgreSQL integration + Alembic/release smoke.
+6. JSON structured logs, request-id, secret redaction, optional Sentry без default PII.
+7. Failed Notification Center -> direct aggregate alert суперадмінам.
+8. Backup verification marker + stale backup alert.
+9. 🧠 Гейміфікація 2.0: league transitions, retention, XP/rewards, Smart Opportunities, referral.
+10. Clean-data guardrail: 4 тижні мінімум, 8 тижнів для повного review; автоматичного rebalance немає.
 
-Команди одним списком:
-  COMMANDS_V1111.txt
+HEROKU
+------
+Повні команди:
+  COMMANDS_V1120.txt
+
+Опис релізу:
+  SERVER_UPDATE_V1120.md
 
 ВАЖЛИВО
 -------
-- Перед deploy зробіть Heroku PostgreSQL backup.
-- Не копіюйте .env у Git/ZIP.
-- MONOBANK_TOKEN залишається тільки в Heroku Config Vars / локальному .env.
-- WEB_SESSION_SECRET не змінюйте без потреби.
-- Не очищайте production PostgreSQL: v1.11.1 працює поверх існуючої БД.
-- Після deploy перевірте /health, Операційний центр події, звіт за тиждень/місяць і Журнал доступу.
-
-QA
---
-Див. TEST_REPORT_V1111.txt.
+- Перед deploy зробіть PostgreSQL backup.
+- Після deploy обов'язково запустіть `web=1 worker=1`.
+- Не змінюйте `WEB_SESSION_SECRET` без потреби.
+- Не додавайте `.env`/секрети в Git.
+- Gamification 2.0 не змінює XP автоматично — лише накопичує й аналізує дані.

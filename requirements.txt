@@ -16,3 +16,5 @@ itsdangerous>=2.2
 
 matplotlib>=3.9,<4
 cryptography>=43,<47
+alembic>=1.13,<2
+sentry-sdk[fastapi]>=2.14,<3

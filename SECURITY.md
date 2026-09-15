@@ -80,3 +80,15 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - На `/admin` застосовується `Cache-Control: no-store, private` і `Pragma: no-cache`, щоб чутливі сторінки не кешувалися браузером/proxy.
 - Ім’я/опис платника, receipt/comment та інші donor-sensitive поля в web маскуються для всіх ролей, крім `superadmin`; операційні суми, дати та AMP-ID залишаються доступними відповідно до прав.
 - Registration funnel і feedback conversion зберігають/показують агреговані operational metrics, а не окремий новий профіль чутливих категорій.
+
+---
+
+## v1.12.0 — production security / observability hardening
+
+- Heroku web і Telegram worker розділені на окремі процеси, тому аварія polling worker не повинна завершувати web dyno.
+- Structured logs проходять через `SensitiveDataFilter`: значення `BOT_TOKEN`, `MONOBANK_TOKEN`, `DATABASE_URL`, `WEB_SESSION_SECRET`, `SENTRY_DSN`, `HEROKU_API_KEY` редагуються перед виводом.
+- Web отримує correlation `X-Request-ID`; request body не записується middleware.
+- Optional Sentry працює з `send_default_pii=False`; cookies, Authorization, X-Token, email/IP/username видаляються через `before_send`.
+- Notification Center failure alert надсилає лише агреговані counts/types/ID range і не містить body повідомлень або контактів.
+- Backup warning містить лише стан/вік verified marker; backup data не копіюються у Telegram.
+- `Gamification 2.0` є read/analysis-only: модуль не викликає `add_xp`, не змінює league thresholds і rewards.
