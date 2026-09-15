@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_v11212_release_version_and_static_cache_are_in_sync():
     version = (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip()
-    assert version == "1.12.1.2"
+    assert version.startswith("1.12.1")
     assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == version
     for rel in (
         "app/web/templates/base.html",

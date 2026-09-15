@@ -95,7 +95,7 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
 
     Notification Center provides durable Telegram delivery and deduplication.
     """
-    from .reliability import queue_telegram_delivery
+    from ..reliability import queue_telegram_delivery
 
     explicit_now = now
     now = now or datetime.utcnow()

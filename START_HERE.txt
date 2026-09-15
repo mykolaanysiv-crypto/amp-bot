@@ -1,7 +1,5 @@
-АМП XP / «АМПасадори» v1.12.1.2
+АМП XP / «АМПасадори» v1.12.1.3
 
-Поточний production candidate: v1.12.1.2 — CI Compatibility & Emergency Alert Hotfix поверх v1.12.1.1.
-
-Головна production-модель: GitHub main -> Production Gate (PostgreSQL 16) -> Heroku deploy. Не використовуйте прямий `git push heroku` для звичайних релізів.
-
-Цей hotfix не змінює продуктову поведінку або схему БД. Він прибирає застарілі hardcoded version assertions із historical tests, синхронізує cache-buster та формально дозволяє runtime-health emergency alert тільки для суперадмінів.
+Поточний production candidate: v1.12.1.3 — Domain Import Startup Hotfix поверх v1.12.1.2.
+Основний шлях deploy: git push origin main -> GitHub Production Gate -> Heroku.
+Не робіть Re-run старого failed workflow: потрібен новий commit з v1.12.1.3.

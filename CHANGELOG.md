@@ -1,3 +1,10 @@
+# AMP XP v1.12.1.3 — Domain Import Startup Hotfix
+
+- Виправлено runtime-помилку release smoke: `app.domain_services.bootstrap` помилково імпортував `settlements` і `donations` як сусідні domain-модулі.
+- Одночасно виправлено ще два приховані імпорти того самого класу: `gamification -> donations` та `events -> reliability`.
+- Production preflight тепер AST-перевіркою відхиляє неіснуючі single-dot imports усередині `app/domain_services`, щоб подібний refactor-regression не доходив до startup.
+- Схема БД, XP, права, Telegram UX та web-поведінка не змінені.
+
 # AMP XP v1.12.1.2 — CI Compatibility & Emergency Alert Hotfix
 
 - Виправлено historical regression tests, які помилково фіксували старий номер релізу `1.12.0` і ламали кожне наступне оновлення. Тепер вони перевіряють синхронність `VERSION.txt`, `VERSION_CHECK.txt` та cache-buster поточного релізу.

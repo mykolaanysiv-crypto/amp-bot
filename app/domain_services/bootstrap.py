@@ -108,8 +108,8 @@ async def bootstrap_defaults(db, settings: Settings) -> None:
     """
     async with _bootstrap_lock:
         async with db.session_factory() as session:
-            from .settlements import ensure_settlement_directory
-            from .donations import ensure_donation_badges
+            from ..settlements import ensure_settlement_directory
+            from ..donations import ensure_donation_badges
             await ensure_runtime_defaults(session)
             await ensure_settlement_directory(session)
             await ensure_superadmins(session, settings.superadmin_ids)

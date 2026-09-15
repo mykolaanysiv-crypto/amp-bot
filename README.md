@@ -1,4 +1,4 @@
-# AMP XP / «АМПасадори» v1.12.1.2 — 🛡️ Production Stability Gate Hotfix
+# AMP XP / «АМПасадори» v1.12.1.3 — 🛡️ Production Stability Gate Hotfix
 
 v1.12.1.1 — hotfix поверх v1.12.1. Production Stability Gate збережено; додатково виправлено regression каталогу стандартних винагород після refactor. Головний фокус: реальний release/startup smoke на PostgreSQL 16, CI gate перед рекомендованим deploy, health/readiness, heartbeat worker/schedulers і явні PostgreSQL pool limits.
 

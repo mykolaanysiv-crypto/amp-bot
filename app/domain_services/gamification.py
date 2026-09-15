@@ -290,7 +290,7 @@ async def evaluate_automatic_badges(session: AsyncSession, user: User) -> list[B
             # Donation badges have slightly different semantics from ordinary >= metrics:
             # first/single use the largest qualifying donation, while cumulative badges
             # are intentionally strict "more than" thresholds.
-            from .donations import donation_totals_for_user
+            from ..donations import donation_totals_for_user
             donation_total, donation_largest, donation_count = await donation_totals_for_user(session, user.id)
             if badge.criteria_type in {"donation_first", "donation_single"}:
                 qualifies = donation_count > 0 and donation_largest >= int(badge.criteria_value)
