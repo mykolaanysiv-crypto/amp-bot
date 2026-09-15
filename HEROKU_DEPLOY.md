@@ -1,12 +1,16 @@
-# Heroku deployment — АМПасадори v1.12.0
+# Heroku deployment — АМПасадори v1.12.1.1
 
-v1.12.0 використовує окремі process types:
+> **Production Stability Gate:** рекомендований production deploy тепер проходить через GitHub Actions. PostgreSQL 16 CI виконує compile, tests, integration tests і реальний release/startup smoke; deploy job стартує лише після PASS.
+
+Process types:
 
 ```text
 release: python -m scripts.heroku_release
 web: python run_web.py
 worker: python run.py
 ```
+
+Release phase реально проходить `db.init() → bootstrap_defaults() → Alembic upgrade head → FastAPI lifespan`. Якщо startup падає, Heroku не промотує новий реліз.
 
 ## Перед deploy
 
@@ -21,11 +25,15 @@ worker: python run.py
 
 ## Deploy
 
-```bash
-git add -A
-git commit -m "Upgrade AMP to v1.12.0 production engineering"
-git push heroku HEAD:main
-```
+Рекомендовано: push/merge у GitHub `main`. Workflow `.github/workflows/ci.yml` запускає job **Production gate**, а `deploy` має `needs: test`.
+
+Для GitHub repository secrets задайте:
+
+- `HEROKU_API_KEY`
+- `HEROKU_APP_NAME=amp-bot-ver-1-5-0`
+
+Прямий `git push heroku HEAD:main` залишайте тільки як emergency path: він технічно обходить GitHub CI, якщо доступ до Heroku Git не обмежено зовнішніми налаштуваннями.
+
 
 Release phase виконує:
 

@@ -22,7 +22,22 @@ _db_init_lock = asyncio.Lock()
 class Database:
     def __init__(self, settings: Settings):
         _backup_sqlite_before_start(settings)
-        self.engine: AsyncEngine = create_async_engine(settings.database_url, echo=False, future=True, pool_pre_ping=True)
+        self.settings = settings
+        engine_kwargs = {
+            "echo": False,
+            "future": True,
+            "pool_pre_ping": True,
+        }
+        if settings.database_url.startswith("postgresql+asyncpg://"):
+            # v1.12.1: bound every dyno to a predictable PostgreSQL connection budget.
+            # web, worker and release dynos each own a separate SQLAlchemy pool.
+            engine_kwargs.update(
+                pool_size=settings.db_pool_size,
+                max_overflow=settings.db_max_overflow,
+                pool_timeout=settings.db_pool_timeout,
+                pool_recycle=settings.db_pool_recycle,
+            )
+        self.engine: AsyncEngine = create_async_engine(settings.database_url, **engine_kwargs)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 
     async def init(self) -> None:
@@ -126,6 +141,38 @@ class Database:
 
     async def close(self) -> None:
         await self.engine.dispose()
+
+    def pool_status(self) -> dict[str, int | str | None]:
+        """Return non-sensitive SQLAlchemy pool telemetry for health endpoints."""
+        pool = self.engine.pool
+        data: dict[str, int | str | float | None] = {
+            "backend": self.engine.url.get_backend_name(),
+            "size": None,
+            "checked_in": None,
+            "checked_out": None,
+            "overflow": None,
+            "configured_pool_size": self.settings.db_pool_size if self.engine.url.get_backend_name() == "postgresql" else None,
+            "configured_max_overflow": self.settings.db_max_overflow if self.engine.url.get_backend_name() == "postgresql" else None,
+            "max_capacity": (self.settings.db_pool_size + self.settings.db_max_overflow) if self.engine.url.get_backend_name() == "postgresql" else None,
+            "utilization_pct": None,
+        }
+        for key, method_name in (
+            ("size", "size"),
+            ("checked_in", "checkedin"),
+            ("checked_out", "checkedout"),
+            ("overflow", "overflow"),
+        ):
+            method = getattr(pool, method_name, None)
+            if callable(method):
+                try:
+                    data[key] = int(method())
+                except Exception:
+                    data[key] = None
+        max_capacity = data.get("max_capacity")
+        checked_out = data.get("checked_out")
+        if isinstance(max_capacity, int) and max_capacity > 0 and isinstance(checked_out, int):
+            data["utilization_pct"] = round(checked_out * 100 / max_capacity, 1)
+        return data
 
 
 def _backup_sqlite_before_start(settings: Settings) -> None:

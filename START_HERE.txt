@@ -1,14 +1,14 @@
-АМП XP / «АМПасадори» v1.12.0
+АМП XP / «АМПасадори» v1.12.0.1
 ================================
 
 ПОЧНІТЬ З ЦЬОГО
 
-Поточний реліз: v1.12.0 — Codebase Refactor, Production Engineering & Gamification 2.0.
+Поточний реліз: v1.12.0.1 — Startup Bootstrap Hotfix поверх v1.12.0.
 База: v1.11.1 — Event Operations Cockpit & Reporting 2.0.
 
 ГОЛОВНА ІДЕЯ
 ------------
-v1.12.0 не додає хаотично нові participant-функції. Реліз робить систему технічно готовою до подальшого росту: менші модулі, Alembic, CI, PostgreSQL integration tests, observability, окремі web/worker процеси, backup verification і аналітика гейміфікації без автоматичного підкручування XP.
+v1.12.0.1 виправляє release blocker `_bootstrap_lock`; функціонально зберігає можливості v1.12.0. v1.12.0 не додає хаотично нові participant-функції. Реліз робить систему технічно готовою до подальшого росту: менші модулі, Alembic, CI, PostgreSQL integration tests, observability, окремі web/worker процеси, backup verification і аналітика гейміфікації без автоматичного підкручування XP.
 
 КЛЮЧОВІ ЗМІНИ
 -------------

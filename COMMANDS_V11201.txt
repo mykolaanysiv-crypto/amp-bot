@@ -1,0 +1,30 @@
+АМПасадори v1.12.0.1 — HOTFIX HEROKU
+
+1. Перейдіть у робочу Git-папку:
+cd ~/Downloads/amp_bot_v1103
+
+2. Backup PostgreSQL:
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+3. Розпакуйте hotfix:
+rm -rf /tmp/amp_bot_v11201
+mkdir -p /tmp/amp_bot_v11201
+unzip -q ~/Downloads/amp_bot_v11201.zip -d /tmp/amp_bot_v11201
+
+4. Накладіть поверх робочої папки:
+rsync -av --delete --exclude='.git' --exclude='.env' --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' /tmp/amp_bot_v11201/amp_bot_v11201/ ./
+
+5. Перевірте:
+cat VERSION.txt
+grep -n "_bootstrap_lock" app/domain_services/bootstrap.py
+cat Procfile
+
+6. Commit + deploy:
+git add -A
+git commit -m "Hotfix AMP v1.12.0.1 bootstrap lock"
+git push heroku HEAD:main
+
+7. Після УСПІШНОГО release:
+heroku ps:scale web=1 worker=1 -a amp-bot-ver-1-5-0
+heroku ps -a amp-bot-ver-1-5-0
+heroku logs --tail -a amp-bot-ver-1-5-0

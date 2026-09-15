@@ -1,0 +1,12 @@
+AMP XP / «АМПасадори» v1.12.1.1 — QA REPORT
+
+Причина hotfix: GitHub full regression suite виявив NameError DEFAULT_SPACE_REWARDS після domain refactor.
+
+Перевірено у build sandbox:
+- compileall app/scripts/tests: PASS
+- import `DEFAULT_SPACE_REWARDS`: PASS
+- 9 reward entries: PASS
+- XP costs: 5,15,45,50,50,75,100,100,150: PASS
+- fast no-DB regression test v1.12.1.1: PASS
+
+Повний DB regression suite у sandbox не запускався через відсутній aiosqlite. GitHub Actions є authoritative gate і запускає повний suite з dependencies та PostgreSQL 16 до deploy.

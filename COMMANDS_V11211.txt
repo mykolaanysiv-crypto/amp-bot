@@ -1,0 +1,14 @@
+АМПасадори v1.12.1.1 — GitHub CI hotfix deploy
+
+1. Накласти пакет v1.12.1.1 поверх поточної робочої Git-папки, не копіюючи .git/.env/.venv.
+2. Перевірити: cat VERSION.txt -> 1.12.1.1
+3. git status --short
+4. git add -A
+5. git commit -m "Hotfix AMP v1.12.1.1 reward catalog"
+6. git push origin main
+7. У GitHub Actions відкрити AMP CI і дочекатися зеленого job `test`.
+8. Лише після PASS автоматичний deploy job відправить протестований commit у Heroku.
+9. Перевірити: heroku ps -a amp-bot-ver-1-5-0
+10. Перевірити: curl https://amp-bot-ver-1-5-0.herokuapp.com/health/ready
+
+Не використовуйте прямий `git push heroku` для звичайного релізу — інакше CI gate можна обійти.

@@ -1,3 +1,30 @@
+# AMP XP v1.12.1.1 — Reward Catalog Refactor Hotfix
+
+- Виправлено regression після розбиття `services.py`: каталог `DEFAULT_SPACE_REWARDS` не був перенесений у `app/domain_services/gamification.py`, через що повний GitHub CI падав у `test_default_space_rewards_seeded_as_repeatable_services`.
+- Відновлено 9 стандартних винагород АМП із незмінними назвами, описами та XP-вартістю.
+- Додано швидкий regression test каталогу, який не потребує БД, на додачу до наявного DB-test.
+- Схема БД та зовнішня поведінка не змінені. Production Stability Gate спрацював правильно: дефект був заблокований до deploy.
+
+---
+
+# AMP XP v1.12.1 — Production Stability Gate
+
+- Real release/startup lifecycle smoke: `db.init → bootstrap_defaults → Alembic → FastAPI lifespan`, plus worker import.
+- PostgreSQL 16 CI integration/release smoke and deploy job gated by successful CI.
+- New `/health/live`, `/health/ready`, `/health/dependencies`.
+- Explicit PostgreSQL per-dyno pool limits and pool telemetry.
+- Persistent web/worker/scheduler heartbeat, scheduler supervisor/restart and rate-limited superadmin alarms for stale/dead background processes.
+- No schema delta: 53 tables; runtime markers use `system_settings`.
+
+---
+
+# v1.12.0.1 — Startup Bootstrap Hotfix
+
+- Fixed production release failure `NameError: _bootstrap_lock is not defined` introduced by the v1.12.0 domain-service refactor.
+- Restored the process-local `asyncio.Lock()` used to serialize startup seeding.
+- No database schema changes; external bot/web behaviour is unchanged.
+- Added regression coverage for release bootstrap.
+
 # v1.12.0 — Codebase Refactor, Production Engineering & Gamification 2.0
 
 - Services moved to `app/domain_services` behind a compatibility facade.

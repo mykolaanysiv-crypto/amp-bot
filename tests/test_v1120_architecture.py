@@ -62,6 +62,8 @@ def test_gamification_20_is_analysis_only_and_uses_clean_baseline():
 
 def test_release_phase_runs_migrations_and_preflight():
     release = Path("scripts/heroku_release.py").read_text()
-    assert "upgrade_head" in release
+    smoke = Path("scripts/startup_smoke.py").read_text()
+    assert "startup_smoke()" in release
+    assert "upgrade_head" in smoke
     assert "production_preflight" in release
     assert Path("scripts/heroku_capture_verified_backup.sh").exists()

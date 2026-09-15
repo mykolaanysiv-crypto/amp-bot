@@ -1,0 +1,34 @@
+AMP XP / «АМПасадори» v1.12.1 — QA REPORT
+==========================================
+
+Scope: Production Stability Gate.
+
+Implemented:
+- real release/startup smoke: db.init -> bootstrap_defaults -> Alembic upgrade head -> FastAPI lifespan -> worker import;
+- PostgreSQL 16 CI service and deploy job gated by test job;
+- /health/live, /health/ready, /health/dependencies;
+- explicit PostgreSQL pool limits + non-sensitive pool telemetry;
+- worker heartbeat;
+- scheduler heartbeat, supervisor, restart and direct superadmin alert;
+- web-side stale worker/scheduler monitor;
+- no schema delta; runtime markers use existing system_settings.
+
+Local/sandbox checks performed:
+- python -m compileall -q app scripts migrations tests: PASS
+- python -m scripts.production_preflight: PASS
+- v1.12.1 + preserved v1.12.0/v1.12.0.1 architecture tests: 20/20 PASS
+
+Important environment limitation:
+The sandbox used to assemble this release does not have aiogram, aiosqlite or asyncpg installed, so the exact PostgreSQL 16 lifecycle smoke cannot be executed locally here. The repository CI is intentionally configured to install production/test dependencies and execute that real smoke against PostgreSQL 16 before the recommended deploy job.
+
+CI production gate sequence:
+1. compile
+2. production preflight
+3. unit/regression tests
+4. PostgreSQL integration tests
+5. python -m scripts.heroku_release on PostgreSQL 16
+6. alembic current
+7. deploy only if job 1-6 PASS
+
+Note on mandatory CI:
+Repository code can gate the included GitHub deployment job with `needs: test`. A user with direct Heroku Git access can still bypass GitHub by manually pushing to Heroku. To make CI organizationally mandatory, use GitHub branch protection/required status checks and do not use direct Heroku Git except emergency recovery.

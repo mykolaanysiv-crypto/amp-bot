@@ -1,0 +1,16 @@
+АМПасадори v1.12.0.1 — QA REPORT
+
+Причина hotfix:
+- Heroku release phase v1.12.0 падав у app/domain_services/bootstrap.py з NameError: _bootstrap_lock is not defined.
+- Під час refactor lock із legacy services.py не був перенесений у domain bootstrap module.
+
+Виправлення:
+- Відновлено process-local `_bootstrap_lock = asyncio.Lock()` у app/domain_services/bootstrap.py.
+- Зовнішня поведінка та schema БД не змінені.
+
+Перевірки:
+- python compileall: PASS
+- tests/test_v1120_architecture.py + tests/test_v11201_bootstrap_hotfix.py: 11/11 PASS
+- runtime import app.domain_services.bootstrap: PASS; `_bootstrap_lock` = asyncio.Lock
+- Procfile: release/web/worker збережені
+- VERSION.txt/VERSION_CHECK.txt: 1.12.0.1

@@ -3,6 +3,12 @@ from .gamification import ensure_default_season, seed_activity_types, seed_badge
 from .teams import add_active_users_to_default_team
 from .users import ensure_user_tokens, get_user_by_tg
 
+
+# Serialize startup seeding within a single process. In v1.12.0 this lock
+# was accidentally dropped while splitting services.py into domain modules.
+# Cross-process safety is still provided by idempotent DB operations/constraints.
+_bootstrap_lock = asyncio.Lock()
+
 async def ensure_superadmins(session: AsyncSession, ids: set[int]) -> None:
     """Ensure configured Telegram IDs exist and have superadmin rights.
 

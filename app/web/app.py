@@ -5,6 +5,7 @@ import asyncio
 import logging
 import json
 import hashlib
+import os
 from datetime import datetime, date, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -14,7 +15,7 @@ from urllib.parse import quote
 from html import escape as html_escape
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PIL import Image, ImageOps
@@ -53,6 +54,10 @@ from ..engagement import GOAL_METRIC_LABELS, goal_progress, process_expired_cont
 from ..leagues import LEAGUES, MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_counts, league_for_xp, refresh_all_streaks, refresh_user_streak, season_leaderboard_rows, streak_freeze_summary
 from ..version import APP_VERSION
 from ..reliability import job_lock, latest_local_backup, reliability_counts, queue_telegram_delivery
+from ..runtime_health import (
+    alembic_revision_status, database_probe, expected_alembic_head, heartbeat_loop,
+    runtime_health_alert, runtime_health_snapshot, scheduler_heartbeat,
+)
 from ..survey_exports import build_survey_stats, survey_excel, survey_pdf, survey_question_png
 from ..workflows import approve_quest_participation, approve_volunteer_task_participation, award_idea_approval_once
 from ..services import (
@@ -86,23 +91,67 @@ async def _refresh_lifecycle(session) -> dict[str, int]:
     return combined
 
 
+async def _runtime_health_monitor_loop(bot: Bot) -> None:
+    # Give the worker enough time to boot after a deploy before declaring it
+    # missing. Subsequent checks run from web, so a dead worker can still raise
+    # a direct Telegram alarm to superadmins.
+    await asyncio.sleep(settings.health_startup_grace_seconds)
+    while True:
+        try:
+            await runtime_health_alert(
+                bot, db, settings,
+                repeat_seconds=settings.scheduler_alert_repeat_seconds,
+                worker_stale_seconds=settings.worker_stale_seconds,
+                startup_grace_seconds=settings.health_startup_grace_seconds,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.getLogger("amp.runtime_health").exception("Помилка runtime health monitor")
+        await asyncio.sleep(60)
+
+
 async def lifespan(app: FastAPI):
+    smoke_mode = os.getenv("AMP_STARTUP_SMOKE", "").strip() == "1"
+    app.state.startup_complete = False
     await db.init()
     await bootstrap_defaults(db, settings)
-    await _retire_legacy_version_broadcasts()
-    await _recover_pending_broadcasts()
-    await _announce_version_update()
-    # Deadline/status background housekeeping is owned by the dedicated worker
-    # in v1.12. Web pages still call _refresh_lifecycle() on relevant requests.
-    broadcast_retry_task = asyncio.create_task(_broadcast_retry_scheduler(), name="broadcast_retry_scheduler")
-    yield
-    broadcast_retry_task.cancel()
-    await asyncio.gather(broadcast_retry_task, return_exceptions=True)
-    for task in list(_broadcast_tasks):
-        task.cancel()
-    if _broadcast_tasks:
-        await asyncio.gather(*list(_broadcast_tasks), return_exceptions=True)
-    await db.close()
+
+    background_tasks: list[asyncio.Task] = []
+    health_bot: Bot | None = None
+    if not smoke_mode:
+        await _retire_legacy_version_broadcasts()
+        await _recover_pending_broadcasts()
+        await _announce_version_update()
+        # Deadline/status housekeeping belongs to worker. The web process keeps
+        # only broadcast recovery plus production health monitoring.
+        background_tasks.append(asyncio.create_task(_broadcast_retry_scheduler(), name="broadcast_retry_scheduler"))
+        background_tasks.append(asyncio.create_task(
+            heartbeat_loop(db, "web", interval_seconds=settings.worker_heartbeat_seconds),
+            name="web_heartbeat",
+        ))
+        if settings.bot_token and settings.superadmin_ids:
+            health_bot = Bot(settings.bot_token)
+            background_tasks.append(asyncio.create_task(
+                _runtime_health_monitor_loop(health_bot), name="runtime_health_monitor"
+            ))
+
+    app.state.startup_complete = True
+    try:
+        yield
+    finally:
+        app.state.startup_complete = False
+        for task in background_tasks:
+            task.cancel()
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+        for task in list(_broadcast_tasks):
+            task.cancel()
+        if _broadcast_tasks:
+            await asyncio.gather(*list(_broadcast_tasks), return_exceptions=True)
+        if health_bot is not None:
+            await health_bot.session.close()
+        await db.close()
 
 
 
@@ -117,9 +166,78 @@ app.add_middleware(SecurityHeadersMiddleware, hsts=settings.cookie_secure)
 app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
 
+def _health_response(payload: dict, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(payload, status_code=status_code, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/health/live")
+async def health_live():
+    """Process liveness only; never contacts external dependencies."""
+    return _health_response({"status": "ok", "service": "web", "version": APP_VERSION})
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """Web readiness: startup completed, PostgreSQL answers and Alembic is at head."""
+    startup_complete = bool(getattr(app.state, "startup_complete", False))
+    db_status = await database_probe(db, timeout_seconds=settings.health_probe_timeout_seconds)
+    migration = {"ok": False, "current": None, "expected": expected_alembic_head()}
+    if db_status["ok"]:
+        migration = await alembic_revision_status(db, expected_head=migration["expected"] or "")
+    ready = bool(startup_complete and db_status["ok"] and migration.get("ok"))
+    return _health_response(
+        {
+            "status": "ready" if ready else "not_ready",
+            "version": APP_VERSION,
+            "startup_complete": startup_complete,
+            "database": db_status,
+            "alembic": migration,
+        },
+        200 if ready else 503,
+    )
+
+
+@app.get("/health/dependencies")
+async def health_dependencies():
+    """Full system dependency status for external monitoring and diagnostics."""
+    db_status = await database_probe(db, timeout_seconds=settings.health_probe_timeout_seconds)
+    expected_head = expected_alembic_head()
+    migration = {"ok": False, "current": None, "expected": expected_head}
+    runtime = {"ok": False, "worker_ok": False, "schedulers_ok": False, "worker": {}, "schedulers": []}
+    if db_status["ok"]:
+        migration = await alembic_revision_status(db, expected_head=expected_head)
+        try:
+            async with db.session_factory() as session:
+                runtime = await runtime_health_snapshot(
+                    session,
+                    worker_stale_seconds=settings.worker_stale_seconds,
+                    startup_grace_seconds=settings.health_startup_grace_seconds,
+                )
+        except Exception as exc:
+            runtime = {
+                "ok": False, "worker_ok": False, "schedulers_ok": False,
+                "worker": {}, "schedulers": [], "error": type(exc).__name__,
+            }
+    overall = bool(db_status["ok"] and migration.get("ok") and runtime.get("ok"))
+    return _health_response(
+        {
+            "status": "ok" if overall else "degraded",
+            "version": APP_VERSION,
+            "database": db_status,
+            "pool": db.pool_status(),
+            "alembic": migration,
+            "worker": runtime.get("worker", {}),
+            "schedulers_ok": runtime.get("schedulers_ok", False),
+            "schedulers": runtime.get("schedulers", []),
+        },
+        200 if overall else 503,
+    )
+
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": APP_VERSION}
+    """Backward-compatible lightweight liveness endpoint."""
+    return _health_response({"status": "ok", "version": APP_VERSION})
 
 
 def logged_in(request: Request) -> bool:

@@ -74,6 +74,19 @@ def _as_bool(raw: str | None, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} має бути цілим числом") from exc
+    if not minimum <= value <= maximum:
+        raise RuntimeError(f"{name} має бути в межах {minimum}..{maximum}")
+    return value
+
+
 def _data_dir() -> Path:
     """Version-independent storage for local use and temporary server files.
 
@@ -157,6 +170,17 @@ class Settings:
     season_end: date
     donation_jar_url: str = "https://send.monobank.ua/jar/5S531LWQuc"
     monobank_token: str = field(default="", repr=False)
+    # v1.12.1 production stability: small explicit per-dyno PostgreSQL pools.
+    # web + worker + temporary release dyno must stay below the provider limit.
+    db_pool_size: int = 3
+    db_max_overflow: int = 2
+    db_pool_timeout: int = 10
+    db_pool_recycle: int = 300
+    worker_heartbeat_seconds: int = 30
+    worker_stale_seconds: int = 120
+    health_probe_timeout_seconds: int = 3
+    health_startup_grace_seconds: int = 180
+    scheduler_alert_repeat_seconds: int = 3600
 
 
 def get_settings(require_bot_token: bool = True) -> Settings:
@@ -208,4 +232,13 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         season_end=_parse_date(os.getenv("SEASON_END"), date(2027, 8, 31)),
         donation_jar_url=os.getenv("DONATION_JAR_URL", "https://send.monobank.ua/jar/5S531LWQuc").strip(),
         monobank_token=os.getenv("MONOBANK_TOKEN", "").strip(),
+        db_pool_size=_env_int("DB_POOL_SIZE", 3, minimum=1, maximum=20),
+        db_max_overflow=_env_int("DB_MAX_OVERFLOW", 2, minimum=0, maximum=20),
+        db_pool_timeout=_env_int("DB_POOL_TIMEOUT", 10, minimum=1, maximum=120),
+        db_pool_recycle=_env_int("DB_POOL_RECYCLE", 300, minimum=30, maximum=3600),
+        worker_heartbeat_seconds=_env_int("WORKER_HEARTBEAT_SECONDS", 30, minimum=5, maximum=300),
+        worker_stale_seconds=_env_int("WORKER_STALE_SECONDS", 120, minimum=30, maximum=3600),
+        health_probe_timeout_seconds=_env_int("HEALTH_PROBE_TIMEOUT_SECONDS", 3, minimum=1, maximum=30),
+        health_startup_grace_seconds=_env_int("HEALTH_STARTUP_GRACE_SECONDS", 180, minimum=30, maximum=1800),
+        scheduler_alert_repeat_seconds=_env_int("SCHEDULER_ALERT_REPEAT_SECONDS", 3600, minimum=300, maximum=86400),
     )

@@ -1,21 +1,18 @@
-# AMP XP / «АМПасадори» v1.12.0 — 🏗 Production Engineering & Gamification 2.0
+# AMP XP / «АМПасадори» v1.12.1.1 — 🛡️ Production Stability Gate Hotfix
 
-v1.12.0 — технічний production-реліз поверх v1.11.1. Зовнішня поведінка основних participant/admin workflow збережена; головна зміна — архітектура, надійність production та аналітика гейміфікації.
+v1.12.1.1 — hotfix поверх v1.12.1. Production Stability Gate збережено; додатково виправлено regression каталогу стандартних винагород після refactor. Головний фокус: реальний release/startup smoke на PostgreSQL 16, CI gate перед рекомендованим deploy, health/readiness, heartbeat worker/schedulers і явні PostgreSQL pool limits.
 
-## Що нового у v1.12.0
+## Що нового у v1.12.1
 
-- `app/services.py` став backward-compatible facade; доменна реалізація винесена в `app/domain_services/`.
-- Великі Telegram `admin.py` і `participant.py` розбиті на тематичні модулі, старі import paths збережені.
-- Додано **Alembic baseline** для поступового переходу від custom schema upgrades. Schema залишається **53 таблиці**.
-- Heroku розділено на `web: python run_web.py` і `worker: python run.py`; Telegram polling/schedulers більше не живуть в одному процесі з FastAPI.
-- Додано GitHub CI на push/PR: compile, regressions, PostgreSQL 16 integration tests, release/Alembic smoke.
-- Додано structured JSON logging, request-id, secret redaction і optional Sentry без default PII.
-- Failed Notification Center deliveries та stale/missing backup marker дають rate-limited direct alert суперадмінам.
-- Додано helper `scripts/heroku_capture_verified_backup.sh` та відображення verified backup age у System Health.
-- **🧠 Гейміфікація 2.0** аналізує league transitions, retention, XP/rewards, Smart Opportunities і referral conversion.
-- При першому запуску фіксується clean-data baseline; до 4 тижнів XP не рекомендується змінювати, 4–8 тижнів — лише preliminary review, після 8 тижнів — ручний review. **Автоматичного rebalance немає.**
+- Release phase реально виконує `db.init() → bootstrap_defaults() → Alembic upgrade head → FastAPI lifespan` і імпортує worker до promotion релізу.
+- GitHub Actions використовує PostgreSQL 16 і запускає regression/integration/release smoke; production deploy job має `needs: test`.
+- Додано `/health/live`, `/health/ready`, `/health/dependencies` з HTTP 503 для неготового/degraded стану.
+- Додано `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_POOL_TIMEOUT`, `DB_POOL_RECYCLE` і telemetry pool у dependency health.
+- Worker та кожний scheduler пишуть heartbeat; web monitor виявляє dead/stale background process.
+- Scheduler supervisor фіксує failure, надсилає alarm суперадміну і автоматично перезапускає задачу.
+- Schema залишається 53 таблиці; heartbeat використовує існуючу `system_settings`.
 
-Деталі: `SERVER_UPDATE_V1120.md`. Команди: `COMMANDS_V1120.txt`. QA: `TEST_REPORT_V1120.txt`.
+Деталі: `SERVER_UPDATE_V1121.md`. Команди: `COMMANDS_V1121.txt`.
 
 ---
 

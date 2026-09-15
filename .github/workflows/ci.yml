@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    name: Production gate
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -27,26 +28,75 @@ jobs:
       WEB_SESSION_SECRET: ci-session-secret-ci-session-secret-1234567890
       DATABASE_URL: sqlite+aiosqlite:///./ci_amp.db
       TEST_DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
+      POSTGRES_SMOKE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
       TIMEZONE: Europe/Kyiv
       APP_ENV: test
       LOG_FORMAT: text
+      SUPERADMIN_IDS: ""
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: pip
+
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
       - name: Compile Python
         run: python -m compileall -q app scripts migrations tests
+
       - name: Production preflight
         run: python -m scripts.production_preflight
+
       - name: Unit and regression tests
         run: pytest -q --ignore=tests/integration
+
       - name: PostgreSQL integration tests
         run: pytest -q tests/integration
-      - name: Alembic baseline smoke
+
+      - name: Real release/startup smoke on PostgreSQL 16
+        env:
+          DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
+          AMP_STARTUP_SMOKE: "1"
         run: python -m scripts.heroku_release
-      - name: Verify migration head
+
+      - name: Verify Alembic head on PostgreSQL 16
+        env:
+          DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
         run: alembic current
+
+  deploy:
+    name: Deploy to Heroku after CI
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require Heroku deployment secrets
+        shell: bash
+        run: |
+          test -n "$HEROKU_API_KEY" || { echo "HEROKU_API_KEY secret is required"; exit 1; }
+          test -n "$HEROKU_APP_NAME" || { echo "HEROKU_APP_NAME secret is required"; exit 1; }
+
+      - name: Deploy tested commit to Heroku
+        shell: bash
+        run: |
+          cat > "$HOME/.netrc" <<EOF
+          machine git.heroku.com
+            login _
+            password $HEROKU_API_KEY
+          EOF
+          chmod 600 "$HOME/.netrc"
+          git remote add heroku "https://git.heroku.com/${HEROKU_APP_NAME}.git"
+          # Heroku is a deployment target, not the source-of-truth repository.
+          # Force updates only the code ref and never touches PostgreSQL data.
+          git push heroku HEAD:main --force

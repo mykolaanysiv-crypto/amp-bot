@@ -22,6 +22,7 @@ from .models import User, Event, EventFeedback, EventRegistration, Notification,
 from .keyboards import MAIN_MENU_TEXTS
 from .services import bootstrap_defaults, get_user_by_tg, process_birthdays, process_expired_bans, process_event_operations, log_audit, revoke_referral_reward_if_inactive
 from .reliability import job_lock, process_due_telegram_deliveries, queue_telegram_delivery, queue_notification, notification_failure_alert, backup_health_alert
+from .runtime_health import heartbeat_loop, scheduler_heartbeat, supervise_scheduler
 from .opportunity_matching import queue_pending_match_digests
 from .donations import sync_monobank_donations
 from .season_history import finalize_season
@@ -139,6 +140,7 @@ async def _birthday_scheduler(bot: Bot, db: Database, settings) -> None:
     log = logging.getLogger("amp.birthdays")
     tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
     while True:
+        await scheduler_heartbeat(db, "birthday_scheduler")
         now = datetime.now(tz)
         today_nine = now.replace(hour=9, minute=0, second=0, microsecond=0)
         if now < today_nine:
@@ -175,6 +177,7 @@ async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
     log = logging.getLogger("amp.event_reminders")
     tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
     while True:
+        await scheduler_heartbeat(db, "event_reminder_scheduler")
         try:
             async with job_lock(db, "event_reminders", ttl_seconds=240) as acquired:
                 if acquired:
@@ -227,6 +230,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
     """
     log = logging.getLogger("amp.event_feedback")
     while True:
+        await scheduler_heartbeat(db, "event_feedback_scheduler")
         try:
             async with job_lock(db, "event_feedback_scheduler", ttl_seconds=600) as acquired:
                 if acquired:
@@ -342,6 +346,7 @@ async def _streak_scheduler(bot: Bot, db: Database) -> None:
     """Refresh streak state once per lease and queue earned-badge notices."""
     log = logging.getLogger("amp.streaks")
     while True:
+        await scheduler_heartbeat(db, "streak_scheduler")
         try:
             async with job_lock(db, "streak_refresh", ttl_seconds=840) as acquired:
                 if acquired:
@@ -371,6 +376,7 @@ async def _goal_reward_scheduler(bot: Bot, db: Database) -> None:
     """Award configured mission XP once and queue reliable notifications."""
     log = logging.getLogger("amp.goal_rewards")
     while True:
+        await scheduler_heartbeat(db, "goal_reward_scheduler")
         try:
             async with job_lock(db, "goal_rewards", ttl_seconds=240) as acquired:
                 if acquired:
@@ -405,6 +411,7 @@ async def _inactivity_scheduler(bot: Bot, db: Database) -> None:
     """
     log = logging.getLogger("amp.inactivity")
     while True:
+        await scheduler_heartbeat(db, "participant_inactivity_scheduler")
         try:
             async with job_lock(db, "participant_inactivity", ttl_seconds=3300) as acquired:
                 if acquired:
@@ -520,6 +527,7 @@ async def _smart_opportunities_scheduler(bot: Bot, db: Database) -> None:
     """Create compact personalized opportunity digests without profiling vulnerability data."""
     log = logging.getLogger("amp.smart_opportunities")
     while True:
+        await scheduler_heartbeat(db, "smart_opportunities_scheduler")
         try:
             async with job_lock(db, "smart_opportunities", ttl_seconds=840) as acquired:
                 if acquired:
@@ -539,6 +547,7 @@ async def _season_history_scheduler(bot: Bot, db: Database) -> None:
     """Freeze ended seasons into immutable-ish history snapshots."""
     log = logging.getLogger("amp.season_history")
     while True:
+        await scheduler_heartbeat(db, "season_history_scheduler")
         try:
             async with job_lock(db, "season_history_finalize", ttl_seconds=3300) as acquired:
                 if acquired:
@@ -564,6 +573,7 @@ async def _notification_retry_scheduler(bot: Bot, db: Database) -> None:
     """Drain the durable Telegram outbox every minute."""
     log = logging.getLogger("amp.notification_retry")
     while True:
+        await scheduler_heartbeat(db, "notification_retry_scheduler")
         try:
             summary = await process_due_telegram_deliveries(bot, db, limit=80)
             if summary["processed"]:
@@ -587,6 +597,7 @@ async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
     """
     log = logging.getLogger("amp.donations")
     while True:
+        await scheduler_heartbeat(db, "donation_sync_scheduler")
         try:
             if settings.monobank_token:
                 async with job_lock(db, "monobank_donations_sync", ttl_seconds=240) as acquired:
@@ -623,6 +634,7 @@ async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
 async def _notification_health_scheduler(bot: Bot, db: Database, settings) -> None:
     log = logging.getLogger("amp.notification_health")
     while True:
+        await scheduler_heartbeat(db, "notification_health_scheduler")
         try:
             async with job_lock(db, "notification_failure_alert", ttl_seconds=240) as acquired:
                 if acquired:
@@ -638,6 +650,7 @@ async def _backup_health_scheduler(bot: Bot, db: Database, settings) -> None:
     """Verify the externally recorded backup marker and alert at most daily."""
     log = logging.getLogger("amp.backup_health")
     while True:
+        await scheduler_heartbeat(db, "backup_health_scheduler")
         try:
             async with job_lock(db, "backup_health_alert", ttl_seconds=240) as acquired:
                 if acquired:
@@ -657,6 +670,7 @@ async def _content_lifecycle_scheduler(db: Database) -> None:
     """
     log = logging.getLogger("amp.content_lifecycle")
     while True:
+        await scheduler_heartbeat(db, "content_lifecycle_scheduler")
         try:
             async with job_lock(db, "content_lifecycle", ttl_seconds=240) as acquired:
                 if acquired:
@@ -834,41 +848,44 @@ async def main() -> None:
     async def noop(call: CallbackQuery) -> None:
         await call.answer()
 
-    birthday_task = asyncio.create_task(_birthday_scheduler(bot, db, settings), name="birthday_scheduler")
-    event_reminder_task = asyncio.create_task(_event_reminder_scheduler(bot, db, settings), name="event_reminder_scheduler")
-    event_feedback_task = asyncio.create_task(_event_feedback_scheduler(bot, db), name="event_feedback_scheduler")
-    goal_reward_task = asyncio.create_task(_goal_reward_scheduler(bot, db), name="goal_reward_scheduler")
-    streak_task = asyncio.create_task(_streak_scheduler(bot, db), name="streak_scheduler")
-    notification_retry_task = asyncio.create_task(_notification_retry_scheduler(bot, db), name="notification_retry_scheduler")
-    inactivity_task = asyncio.create_task(_inactivity_scheduler(bot, db), name="participant_inactivity_scheduler")
-    smart_opportunities_task = asyncio.create_task(_smart_opportunities_scheduler(bot, db), name="smart_opportunities_scheduler")
-    season_history_task = asyncio.create_task(_season_history_scheduler(bot, db), name="season_history_scheduler")
-    donation_sync_task = asyncio.create_task(_donation_sync_scheduler(bot, db, settings), name="donation_sync_scheduler")
-    notification_health_task = asyncio.create_task(_notification_health_scheduler(bot, db, settings), name="notification_health_scheduler")
-    backup_health_task = asyncio.create_task(_backup_health_scheduler(bot, db, settings), name="backup_health_scheduler")
-    content_lifecycle_task = asyncio.create_task(_content_lifecycle_scheduler(db), name="content_lifecycle_scheduler")
+    # v1.12.1: each scheduler runs behind a supervisor. If an infinite
+    # scheduler exits unexpectedly, the supervisor records the failure, alerts
+    # superadmins directly and restarts it after a short delay. A separate
+    # worker heartbeat lets the web process/external monitors detect a dead
+    # worker even when Telegram polling itself is no longer running.
+    worker_heartbeat_task = asyncio.create_task(
+        heartbeat_loop(db, "worker", interval_seconds=settings.worker_heartbeat_seconds, initial_status="running"),
+        name="worker_heartbeat",
+    )
+    scheduler_factories = {
+        "birthday_scheduler": lambda: _birthday_scheduler(bot, db, settings),
+        "event_reminder_scheduler": lambda: _event_reminder_scheduler(bot, db, settings),
+        "event_feedback_scheduler": lambda: _event_feedback_scheduler(bot, db),
+        "goal_reward_scheduler": lambda: _goal_reward_scheduler(bot, db),
+        "streak_scheduler": lambda: _streak_scheduler(bot, db),
+        "notification_retry_scheduler": lambda: _notification_retry_scheduler(bot, db),
+        "participant_inactivity_scheduler": lambda: _inactivity_scheduler(bot, db),
+        "smart_opportunities_scheduler": lambda: _smart_opportunities_scheduler(bot, db),
+        "season_history_scheduler": lambda: _season_history_scheduler(bot, db),
+        "donation_sync_scheduler": lambda: _donation_sync_scheduler(bot, db, settings),
+        "notification_health_scheduler": lambda: _notification_health_scheduler(bot, db, settings),
+        "backup_health_scheduler": lambda: _backup_health_scheduler(bot, db, settings),
+        "content_lifecycle_scheduler": lambda: _content_lifecycle_scheduler(db),
+    }
+    scheduler_tasks = [
+        asyncio.create_task(
+            supervise_scheduler(name, factory, db=db, bot=bot, settings=settings),
+            name=f"supervisor:{name}",
+        )
+        for name, factory in scheduler_factories.items()
+    ]
     try:
         await dp.start_polling(bot, db=db, settings=settings)
     finally:
-        birthday_task.cancel()
-        event_reminder_task.cancel()
-        event_feedback_task.cancel()
-        goal_reward_task.cancel()
-        streak_task.cancel()
-        notification_retry_task.cancel()
-        inactivity_task.cancel()
-        smart_opportunities_task.cancel()
-        season_history_task.cancel()
-        donation_sync_task.cancel()
-        notification_health_task.cancel()
-        backup_health_task.cancel()
-        content_lifecycle_task.cancel()
-        await asyncio.gather(
-            birthday_task, event_reminder_task, event_feedback_task, goal_reward_task, streak_task,
-            notification_retry_task, inactivity_task, smart_opportunities_task, season_history_task,
-            donation_sync_task, notification_health_task, backup_health_task, content_lifecycle_task,
-            return_exceptions=True,
-        )
+        worker_heartbeat_task.cancel()
+        for task in scheduler_tasks:
+            task.cancel()
+        await asyncio.gather(worker_heartbeat_task, *scheduler_tasks, return_exceptions=True)
         await db.close()
 
 
