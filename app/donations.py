@@ -96,7 +96,7 @@ def _jar_send_id(jar_url: str) -> str:
 def _api_get(path: str, token: str) -> Any:
     req = Request(
         f"{MONOBANK_API}{path}",
-        headers={"X-Token": token, "User-Agent": "AMPasadors/1.11.0"},
+        headers={"X-Token": token, "User-Agent": "AMPasadors/1.11.1"},
         method="GET",
     )
     try:

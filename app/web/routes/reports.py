@@ -17,12 +17,13 @@ async def reports_page(request: Request):
 
 @router.get("/admin/reports/download")
 async def reports_download(
-    request: Request, period_type: str = "month", year: int = 2026, month: int = 1,
+    request: Request, period_type: str = "month", year: int = 2026, month: int = 1, week: int = 1,
     start_month: int = 1, end_month: int = 12, quarter: int = 1, format: str = "pdf",
 ):
     if r := guard(request): return r
     try:
-        start, end, period_label = resolve_report_period(period_type, year=year, month=month, start_month=start_month, end_month=end_month, quarter=quarter)
+        period_month = week if period_type == "week" else month
+        start, end, period_label = resolve_report_period(period_type, year=year, month=period_month, start_month=start_month, end_month=end_month, quarter=quarter)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     async with db.session_factory() as session:

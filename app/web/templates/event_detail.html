@@ -48,6 +48,60 @@
   </section>
 </div>
 
+<section class="card event-operations-cockpit" id="event-operations">
+  <div class="section-title event-ops-title">
+    <div>
+      <span class="eyebrow">ОПЕРАЦІЙНИЙ ЦЕНТР</span>
+      <h2>🎛 Подія від реєстрації до зворотного зв’язку</h2>
+      <p class="muted">Усі ключові етапи, QR-сканер і масові дії зібрані на одній сторінці.</p>
+    </div>
+    {% if attendance_window.state == 'open' %}<span class="tag active">Відмітка відкрита</span>{% elif attendance_window.state == 'too_early' %}<span class="tag pending">Відмітка ще не відкрита</span>{% else %}<span class="tag inactive">Відмітка закрита</span>{% endif %}
+  </div>
+
+  <div class="event-ops-funnel" aria-label="Воронка участі у події">
+    {% for step in operation_funnel %}
+      <div class="event-ops-step {{step.key}}">
+        <span class="event-ops-step-index">{{ loop.index }}</span>
+        <b>{{ step.label }}</b>
+        <strong>{{ step.value }}</strong>
+      </div>
+      {% if not loop.last %}<span class="event-ops-arrow" aria-hidden="true">→</span>{% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="event-ops-grid">
+    <div class="event-ops-panel">
+      <h3>📷 Стан сканера</h3>
+      <div class="event-ops-status-row"><span>Доступність</span><b>{% if scanner_status.available %}✅ Доступний{% else %}⛔ Недоступний{% endif %}</b></div>
+      <div class="event-ops-status-row"><span>Вікно відмітки</span><b>{% if attendance_window.state == 'open' %}Відкрито{% elif attendance_window.state == 'too_early' %}Ще не відкрито{% else %}Закрито{% endif %}</b></div>
+      <div class="event-ops-status-row"><span>Останнє сканування</span><b>{% if scanner_status.last_scan_at %}{{ scanner_status.last_scan_at.strftime('%d.%m.%Y %H:%M') }}{% else %}Ще не було{% endif %}</b></div>
+      {% if scanner_status.last_scan_actor %}<small class="muted">Оператор: {{scanner_status.last_scan_actor}}</small>{% endif %}
+      {% if scanner_status.available %}<div class="event-ops-inline-actions"><a class="primary" href="#event-scanner">📷 Сканер на сторінці</a><a class="soft-button" href="/admin/events/{{event.id}}/scanner/telegram">📲 Сканер у Telegram</a></div>{% endif %}
+    </div>
+
+    <div class="event-ops-panel">
+      <h3>⚡ Масові дії</h3>
+      <form method="post" action="/admin/events/{{event.id}}/operations/refresh-queue">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="soft-button event-ops-full" type="submit">🔄 Оновити чергу та резерви</button>
+      </form>
+      {% if counts.checked_in > 0 %}
+      <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}>
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value="">
+        <button class="primary event-ops-full" type="submit">✅ Підтвердити всіх відмічених ({{counts.checked_in}})</button>
+      </form>
+      {% endif %}
+      {% if attendance_window.state == 'closed' and (counts.registered + counts.reserved) > 0 %}
+      <form method="post" action="/admin/events/{{event.id}}/operations/mark-no-show" onsubmit="return confirm('Позначити всіх зареєстрованих без відмітки як «Не прийшов»?');">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="soft-button event-ops-full" type="submit">🚫 Позначити «Не прийшов» ({{counts.registered + counts.reserved}})</button>
+      </form>
+      {% endif %}
+      <small class="muted">Масові дії застосовуються лише до цієї події та журналюються.</small>
+    </div>
+  </div>
+</section>
+
 <section class="card event-share-card">
   <div class="section-title"><div><h2>📤 Поділитися подією</h2><p class="muted">Публічне посилання не містить QR для відмітки присутності та персональних даних учасників.</p></div></div>
   {% if share_url %}
@@ -78,7 +132,7 @@
     </div>
   </section>
 
-  <section class="card event-scanner-card">
+  <section class="card event-scanner-card" id="event-scanner">
     <div class="section-title"><div><h2>📷 QR-сканер</h2><p class="muted">Основний режим працює через Telegram і не залежить від підтримки QR у браузері конкретним браузером. Камера браузера залишається додатковим варіантом.</p></div></div>
     <div class="qr-actions scanner-launch-actions">
       <a class="primary link-button" href="/admin/events/{{event.id}}/scanner/telegram">📲 Відкрити QR-сканер у Telegram</a>
@@ -124,13 +178,6 @@
     <div class="kpi"><span>Повернуться</span><strong>{{ feedback_stats.would_return }}%</strong></div>
   </div>
 </section>
-
-{% if counts.present > counts.confirmed %}
-<section class="card event-bulk-attendance">
-  <div><h2>✅ Очікують підтвердження</h2><p class="muted">Відмічено через QR події або вручну: <b>{{counts.present-counts.confirmed}}</b>.</p></div>
-  <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"><input type="hidden" name="_csrf" value="{{ csrf_token }}">{% if attendance_window.state != 'open' %}<label>Причина ручного підтвердження<textarea name="override_reason" minlength="5" maxlength="700" required placeholder="Наприклад: виправлення помилки координатора"></textarea></label>{% endif %}<button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Виняток: підтвердити відмічених{% else %}✅ Підтвердити всіх відмічених{% endif %}</button></form>
-</section>
-{% endif %}
 
 <section class="card entity-danger-zone">
   <div class="section-title"><div><h2>⚙️ Керування подією</h2><p class="muted">Для скасування або видалення обов’язково вкажіть причину. Зареєстровані учасники автоматично отримають повідомлення в Telegram.</p></div></div>
@@ -197,7 +244,7 @@
   </div>
   <p class="muted event-export-note">Базові Excel/PDF містять лише ПІБ, вік, статус участі та АМП-код. {% if has_permission("reports.sensitive_export") %}Розширені Excel/PDF додатково містять стать, соціальний статус, електронну пошту, телефон і згоду на фото/відеозйомку; доступ журналюється.{% endif %}</p>
   <table>
-    <thead><tr><th>Учасник</th><th>АМП-код</th><th>Статус</th><th>Час відмітки</th><th>Код підтвердження</th><th>Дії</th></tr></thead>
+    <thead><tr><th>Учасник</th><th>АМП-код</th><th>Статус</th><th>Час відмітки</th><th>XP</th><th>Відгук</th><th>Код підтвердження</th><th>Дії</th></tr></thead>
     <tbody>
     {% for reg,u in registrations %}
       <tr>
@@ -205,6 +252,8 @@
         <td><code>АМП-{{'%04d'|format(u.id)}}</code></td>
         <td><span class="tag {{reg.status}}">{{event_registration_status_label(reg.status)}}</span></td>
         <td>{% if reg.checkin_at %}{{reg.checkin_at.strftime('%d.%m.%Y %H:%M')}}{% elif reg.status == 'reserved' and reg.reservation_expires_at %}<span class="muted">Резерв до {{reg.reservation_expires_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'waitlisted' and reg.waitlisted_at %}<span class="muted">Черга з {{reg.waitlisted_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'no_show' %}<span class="muted">Не відмічався</span>{% else %}<span class="muted">Ще не відмічено</span>{% endif %}</td>
+        <td>{% if xp_by_user.get(u.id) %}<span class="tag active">+{{xp_by_user.get(u.id)}} XP</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% set fb = feedback_by_user.get(u.id) %}{% if fb and fb.status == 'completed' %}<span class="tag active">✅ Завершено</span>{% elif fb and fb.prompted_at %}<span class="tag pending">⏳ Очікується</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>{% if reg.attendance_signature %}<code title="{{reg.attendance_signature}}">{{reg.attendance_signature[:12]}}…</code>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>
           {% if event.cancelled_at or event.status == 'cancelled' %}
@@ -235,7 +284,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="muted">На подію ще ніхто не зареєструвався.</td></tr>
+      <tr><td colspan="8" class="muted">На подію ще ніхто не зареєструвався.</td></tr>
     {% endfor %}
     </tbody>
   </table>

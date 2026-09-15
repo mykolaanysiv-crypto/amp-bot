@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v182_version_and_css_cache_buster():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.0"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.0"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.0" in base
+    assert "/static/admin.css?v=1.11.1" in base
 
 
 def test_participant360_quests_and_activities_are_separate_tabs():

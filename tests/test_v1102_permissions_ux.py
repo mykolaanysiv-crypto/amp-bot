@@ -12,8 +12,8 @@ def text(rel: str) -> str:
 
 
 def test_version_and_schema_stay_additive():
-    assert text("VERSION.txt").strip() == "1.11.0"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.0"
+    assert text("VERSION.txt").strip() == "1.11.1"
+    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
     assert len(Base.metadata.tables) == 53
     assert "staff_permissions_json" in Base.metadata.tables["users"].c
     assert "permissions_json" in Base.metadata.tables["web_staff_accounts"].c

@@ -52,7 +52,7 @@ def test_web_scanner_has_cross_browser_telegram_path_and_no_duplicate_title_scri
 
 
 def test_v1823_version():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.0"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.0"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "/static/admin.css?v=1.11.0" in base
+    assert "/static/admin.css?v=1.11.1" in base

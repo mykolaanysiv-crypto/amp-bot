@@ -11,11 +11,11 @@ def text(rel: str) -> str:
 
 
 def test_v1110_version_schema_and_assets():
-    assert text("VERSION.txt").strip() == "1.11.0"
-    assert text("VERSION_CHECK.txt").strip() == "1.11.0"
+    assert text("VERSION.txt").strip() == "1.11.1"
+    assert text("VERSION_CHECK.txt").strip() == "1.11.1"
     assert len(Base.metadata.tables) == 53
     assert "registration_journeys" in Base.metadata.tables
-    assert "/static/admin.css?v=1.11.0" in text("app/web/templates/base.html")
+    assert "/static/admin.css?v=1.11.1" in text("app/web/templates/base.html")
 
 
 def test_registration_progress_and_encrypted_resume_draft():
@@ -116,7 +116,7 @@ def test_monobank_and_sensitive_data_hardening():
     tpl = text("app/web/templates/donations.html")
     assert "exc.read()" not in donations
     assert 'state.jar_account_id = None' in donations
-    assert 'User-Agent": "AMPasadors/1.11.0"' in donations
+    assert 'User-Agent": "AMPasadors/1.11.1"' in donations
     assert 'monobank_token: str = field(default="", repr=False)' in config
     assert 'web_session_secret: str = field(repr=False)' in config
     assert 'cache-control", b"no-store, private"' in middleware

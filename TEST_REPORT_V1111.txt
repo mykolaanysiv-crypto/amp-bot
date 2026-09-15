@@ -1,0 +1,56 @@
+АМП XP / «АМПасадори» v1.11.1 — TEST REPORT
+================================================
+
+Дата збірки: 15.09.2026
+Реліз: 1.11.1
+База: v1.11.0
+
+РЕЗУЛЬТАТ
+---------
+✅ Targeted regression suite: 100 / 100 PASS
+✅ Focused v1.11.1 suite: 6 / 6 PASS (входить у 100 тестів вище)
+✅ compileall: PASS
+✅ AST parse: 106 Python-файлів у release tree / 0 помилок
+✅ Jinja: 50 шаблонів / 0 помилок
+✅ Web route scan: 183 маршрути / 0 дублів method+path
+✅ SQLAlchemy schema metadata: 53 таблиці
+✅ Reporting 2.0 PDF smoke: PASS — 17 сторінок, render verification PASS
+✅ Reporting 2.0 XLSX smoke: PASS — 14 аркушів
+✅ One-point dynamics smoke: PASS — line chart не будується; замість нього KPI у PDF/XLSX
+✅ Access Log «Хто»: CSS regression перевіряє достатню ширину й заборону розриву слів
+
+ЩО ПОКРИТО У v1.11.1
+---------------------
+- Event Operations Cockpit на сторінці події.
+- Єдина воронка: зареєстровані → черга/резерв → відмітка → підтверджено → XP → зворотний зв’язок.
+- Scanner status, check-in window, остання дія сканера й оператор.
+- Масове оновлення черги лише для поточної події.
+- Масове підтвердження відмічених та масове «Не прийшов» після закриття check-in window.
+- Reporting 2.0 timestamp `Europe/Kyiv`.
+- Потокові KPI окремо від моментних KPI.
+- Registration funnel та event participation funnel.
+- Data Quality block та визначення показників.
+- ISO-week reports і адаптивна денна/тижнева/місячна динаміка.
+- Future-event integrity: майбутня подія не входить у фактичні attendance KPI навіть за legacy status `completed`.
+- Журнал доступу: колонка «Хто» не розриває слова.
+
+ПРИМІТКА ПРО TEST ENVIRONMENT
+-----------------------------
+У sandbox відсутні runtime-пакети `aiogram`, `aiosqlite`, `asyncpg`, а мережевого доступу для їх встановлення немає.
+
+Через відсутній `aiosqlite` 9 DB-integration тестів v1.10.3 у розширеному запуску не могли стартувати. Це обмеження тестового середовища, а не assertion failure коду. Повний pytest без реальних production dependencies тут НЕ заявляється як виконаний.
+
+У `requirements.txt` релізу присутні реальні production-залежності `aiogram`, `aiosqlite`, `asyncpg`, `cryptography` та інші. На Heroku вони встановлюються під час build:
+
+    pip install -r requirements.txt
+
+ПЕРЕД PRODUCTION DEPLOY
+-----------------------
+1. Зробити Heroku PostgreSQL backup.
+2. Перевірити, що `.env` не staged.
+3. Не змінювати `WEB_SESSION_SECRET` під час звичайного update.
+4. `MONOBANK_TOKEN` залишити в Heroku Config Vars; повторно вводити його не потрібно.
+5. Після deploy перевірити `/health == 1.11.1`.
+6. Відкрити подію й перевірити Операційний центр, QR-сканер і масові дії.
+7. Сформувати PDF/XLSX за ISO-тиждень і місяць.
+8. Перевірити Журнал доступу → колонку «Хто».

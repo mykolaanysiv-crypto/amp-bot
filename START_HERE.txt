@@ -1,40 +1,41 @@
-АМП XP / «АМПасадори» v1.11.0
+АМП XP / «АМПасадори» v1.11.1
 =================================
 
 ПОЧНІТЬ З ЦЬОГО
 
-Поточний реліз: v1.11.0 — UX & Conversion.
-База: v1.10.4.1 Monobank Jar Sync Hotfix.
+Поточний реліз: v1.11.1 — Event Operations Cockpit & Reporting 2.0.
+База: v1.11.0 — UX & Conversion.
 
 КЛЮЧОВІ ЗМІНИ
 ---------------
-1. Реєстрація: progress, resume/restart, кнопкові відповіді, autocomplete населеного пункту, людські validation errors.
-2. Воронка: start → consent → profile → submit → approved → first activity.
-3. Чернетки незавершеної реєстрації шифруються через Fernet-ключ, похідний від WEB_SESSION_SECRET.
-4. Feedback 2.0: micro-feedback + одне нагадування + conversion/response rate.
-5. Telegram Home: Next Best Action замість блоку «Швидкі дії».
-6. Новий порядок Telegram-меню; «Адмін-панель» — окремий нижній ряд лише за наявності доступу.
-7. Operations Dashboard: сьогодні, увага, SLA, failed notifications, pending registrations, check-ins, no-show, feedback, funnel, data quality.
-8. Monobank/sensitive hardening: no-store для /admin, безпечні помилки API, маскування донорських деталей не-superadmin користувачам.
-9. Схема БД: 53 таблиці.
+1. Event Operations Cockpit: одна сторінка події для зареєстрованих, черги/резерву, check-in, attended, XP і feedback.
+2. Тут же: стан QR-сканера, check-in window, остання дія сканера та оператор.
+3. Масові дії: оновити чергу/резерви, підтвердити всіх відмічених, після закриття вікна — масово «Не прийшов».
+4. Reporting 2.0: точний timestamp Europe/Kyiv, потокові KPI та моментні KPI окремо.
+5. Воронки реєстрації й участі, Data Quality і визначення показників у PDF/XLSX.
+6. Звіт за ISO-тиждень; динаміка автоматично по днях/тижнях/місяцях.
+7. Одна точка даних = KPI замість беззмістовного line chart.
+8. Майбутні події не входять у фактичну attendance-аналітику навіть за помилкового legacy status.
+9. Журнал доступу: колонка «Хто» більше не розриває слова.
+10. Схема БД: 53 таблиці, без нової schema migration відносно v1.11.0.
 
 HEROKU UPDATE
 -------------
 Рекомендований сценарій без локального запуску:
-  SERVER_UPDATE_V1110.md
+  SERVER_UPDATE_V1111.md
 
 Команди одним списком:
-  COMMANDS_V1110.txt
+  COMMANDS_V1111.txt
 
 ВАЖЛИВО
 -------
 - Перед deploy зробіть Heroku PostgreSQL backup.
 - Не копіюйте .env у Git/ZIP.
 - MONOBANK_TOKEN залишається тільки в Heroku Config Vars / локальному .env.
-- WEB_SESSION_SECRET не змінюйте без потреби: він використовується для захисту сесій і шифрування нових registration checkpoints.
-- Release phase запускає штатний db.init/bootstrap; нові additive-поля/таблиці створюються автоматично.
-- Після deploy перевірте /health, Telegram-реєстрацію, Feedback 2.0, Operations Dashboard та Monobank sync.
+- WEB_SESSION_SECRET не змінюйте без потреби.
+- Не очищайте production PostgreSQL: v1.11.1 працює поверх існуючої БД.
+- Після deploy перевірте /health, Операційний центр події, звіт за тиждень/місяць і Журнал доступу.
 
 QA
 --
-Див. TEST_REPORT_V1110.txt.
+Див. TEST_REPORT_V1111.txt.

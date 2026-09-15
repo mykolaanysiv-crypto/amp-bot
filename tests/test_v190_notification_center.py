@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v190_version_and_schema():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.0"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.0"
+    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.11.1"
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.11.1"
     assert len(Base.metadata.tables) == 53
     ncols = {c.name for c in Notification.__table__.columns}
     assert {
@@ -31,7 +31,7 @@ def test_notification_center_web_and_retry():
     for label in ["Системні", "Події", "Розсилки", "Кейси", "Streak", "Опитування"]:
         assert label in route
     assert "🔔 Сповіщення" in base
-    assert "/static/admin.css?v=1.11.0" in base
+    assert "/static/admin.css?v=1.11.1" in base
 
 
 def test_all_proactive_telegram_delivery_uses_canonical_center():

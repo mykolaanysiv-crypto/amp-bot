@@ -8,14 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v192_version_schema_and_cache():
-    assert (ROOT / "VERSION.txt").read_text().strip() == "1.11.0"
-    assert (ROOT / "VERSION_CHECK.txt").read_text().strip() == "1.11.0"
+    assert (ROOT / "VERSION.txt").read_text().strip() == "1.11.1"
+    assert (ROOT / "VERSION_CHECK.txt").read_text().strip() == "1.11.1"
     assert len(Base.metadata.tables) == 53
     assert "opportunity_matches" in Base.metadata.tables
     assert {"finalized_at", "history_json"} <= {c.name for c in Season.__table__.columns}
     assert "opportunity_interests_json" in {c.name for c in User.__table__.columns}
     assert "target_settlements" in {c.name for c in Opportunity.__table__.columns}
-    assert "/static/admin.css?v=1.11.0" in (ROOT / "app/web/templates/base.html").read_text()
+    assert "/static/admin.css?v=1.11.1" in (ROOT / "app/web/templates/base.html").read_text()
 
 
 def test_matching_uses_explicit_interests_age_settlement_format_deadline_not_vulnerability():

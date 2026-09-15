@@ -216,8 +216,11 @@ async def event_detail(request: Request, event_id: int):
         )).all()
         counts = {
             "roster": len(registrations),
+            "registered": sum(1 for reg, _ in registrations if reg.status == "registered"),
+            "reserved": sum(1 for reg, _ in registrations if reg.status == "reserved"),
             "all": sum(1 for reg, _ in registrations if reg.status in {"registered", "reserved", "checked_in", "attended"}),
             "waitlisted": sum(1 for reg, _ in registrations if reg.status == "waitlisted"),
+            "checked_in": sum(1 for reg, _ in registrations if reg.status == "checked_in"),
             "cancelled": sum(1 for reg, _ in registrations if reg.status == "cancelled"),
             "present": sum(1 for reg, _ in registrations if reg.status in {"checked_in", "attended"}),
             "confirmed": sum(1 for reg, _ in registrations if reg.status == "attended"),
@@ -243,10 +246,48 @@ async def event_detail(request: Request, event_id: int):
             "would_return": pct("would_return"),
         }
         attendance_window = await event_checkin_window(session, event)
+
+        xp_rows = list((await session.scalars(
+            select(XPTransaction).where(
+                XPTransaction.event_id == event.id,
+                XPTransaction.category == "event",
+                XPTransaction.amount > 0,
+            )
+        )).all())
+        xp_by_user = {}
+        for row in xp_rows:
+            xp_by_user[row.user_id] = xp_by_user.get(row.user_id, 0) + int(row.amount or 0)
+        feedback_by_user = {row.user_id: row for row in all_feedback_rows}
+        counts["xp_awarded"] = len(xp_by_user)
+        counts["feedback_completed"] = len(feedback_rows)
+
+        scanner_actions = {"web_event_qr_scanner_attendance", "telegram_miniapp_qr_scanner_attendance"}
+        last_scanner_audit = await session.scalar(
+            select(AuditLog).where(
+                AuditLog.entity_type == "event",
+                AuditLog.entity_id == event.id,
+                AuditLog.action.in_(scanner_actions),
+            ).order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(1)
+        )
+        scanner_status = {
+            "available": bool(not event.cancelled_at and event.status not in {"cancelled", "draft", "completed"}),
+            "window_state": attendance_window["state"],
+            "last_scan_at": last_scanner_audit.created_at if last_scanner_audit else None,
+            "last_scan_actor": last_scanner_audit.actor_label if last_scanner_audit else "",
+        }
+        operation_funnel = [
+            {"key": "registered", "label": "Зареєстровані", "value": counts["registered"] + counts["reserved"] + counts["checked_in"] + counts["confirmed"] + counts["no_show"]},
+            {"key": "waitlist", "label": "Черга / резерв", "value": counts["waitlisted"] + counts["reserved"]},
+            {"key": "checkin", "label": "Відмітка", "value": counts["checked_in"] + counts["confirmed"]},
+            {"key": "attended", "label": "Підтверджено", "value": counts["confirmed"]},
+            {"key": "xp", "label": "XP нараховано", "value": counts["xp_awarded"]},
+            {"key": "feedback", "label": "Відгук", "value": counts["feedback_completed"]},
+        ]
         return templates.TemplateResponse(
             request=request, name="event_detail.html",
             context=ctx(
                 request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
+                xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel,
                 share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token else "",
             )
         )
@@ -821,6 +862,53 @@ async def web_confirm_attendance(request: Request, event_id: int, override_reaso
         await log_audit(session, "web_event_attendance", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=event.id, details=f"Підтверджено присутніх: {count}")
         await session.commit()
     return RedirectResponse(f"/admin/events/{event_id}", 303)
+
+
+@router.post("/admin/events/{event_id}/operations/refresh-queue")
+async def event_operations_refresh_queue(request: Request, event_id: int):
+    if r := guard(request): return r
+    async with db.session_factory() as session:
+        event = await session.get(Event, event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="Подію не знайдено")
+        changed = await process_event_operations(session, event_id=event.id)
+        await log_audit(
+            session, "web_event_operations_refresh_queue",
+            actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=event.id,
+            details=f"Оновлено чергу події; зміни={changed}",
+        )
+        await session.commit()
+    return RedirectResponse(f"/admin/events/{event_id}#event-operations", 303)
+
+
+@router.post("/admin/events/{event_id}/operations/mark-no-show")
+async def event_operations_mark_no_show(request: Request, event_id: int):
+    if r := guard(request): return r
+    async with db.session_factory() as session:
+        event = await session.get(Event, event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="Подію не знайдено")
+        window = await event_checkin_window(session, event)
+        if window["state"] != "closed":
+            raise HTTPException(status_code=409, detail="Масове позначення «Не прийшов» доступне лише після закриття вікна відмітки.")
+        rows = list((await session.scalars(
+            select(EventRegistration).where(
+                EventRegistration.event_id == event.id,
+                EventRegistration.status.in_(["registered", "reserved"]),
+            )
+        )).all())
+        now = event_local_now()
+        for reg in rows:
+            reg.status = "no_show"
+            reg.no_show_at = now
+            reg.reservation_expires_at = None
+        await log_audit(
+            session, "web_event_operations_bulk_no_show",
+            actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=event.id,
+            details=f"Масово позначено «Не прийшов»: {len(rows)}",
+        )
+        await session.commit()
+    return RedirectResponse(f"/admin/events/{event_id}#event-operations", 303)
 
 
 @router.post("/admin/events/create")

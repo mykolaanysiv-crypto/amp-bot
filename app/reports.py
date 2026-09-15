@@ -10,14 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
-    ActivityApplication, Event, EventRegistration, EventFeedback, Idea, OpportunityInterest, ParticipationStreak, Quest,
+    ActivityApplication, Event, EventRegistration, EventFeedback, Idea, OpportunityInterest, ParticipationStreak, Quest, RegistrationJourney,
     QuestParticipation, RequestCase, Season, StreakFreeze, Survey, SurveyResponse, User, UserBadge, VolunteerTask, VolunteerTaskParticipation,
     XPTransaction,
 )
 from .profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
 from .leagues import LEAGUES, league_for_xp
 from .runtime_config import get_runtime_int
-from .settlements import canonicalize_settlement_text
+from .settlements import canonicalize_settlement_text, settlement_quality_report
 from .time_utils import event_local_now
 
 MONTHS_UA = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"]
@@ -31,6 +31,15 @@ def resolve_report_period(period_type: str, *, year: int, month: int | None = No
     year = int(year)
     if not 2020 <= year <= 2100:
         raise ValueError("Некоректний рік")
+    if period_type == "week":
+        week = int(month or 1)
+        if not 1 <= week <= 53: raise ValueError("Некоректний номер тижня")
+        try:
+            start_day = date.fromisocalendar(year, week, 1)
+        except ValueError as exc:
+            raise ValueError("Некоректний ISO-тиждень") from exc
+        start_dt = datetime.combine(start_day, datetime.min.time())
+        return start_dt, start_dt + timedelta(days=7), f"{week} тиждень {year}"
     if period_type == "month":
         m = int(month or 1)
         if not 1 <= m <= 12: raise ValueError("Некоректний місяць")
@@ -75,8 +84,12 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     users=list((await session.scalars(select(User))).all())
     events=list((await session.scalars(select(Event).where(Event.starts_at>=start, Event.starts_at<end))).all())
     report_events=[e for e in events if e.status not in {"cancelled","draft"} and not e.cancelled_at]
-    completed_events=[e for e in report_events if e.status == "completed" or e.starts_at + timedelta(minutes=checkin_close_minutes) < generated_at]
     upcoming_events=[e for e in report_events if e.starts_at > generated_at]
+    completed_events=[
+        e for e in report_events
+        if e.starts_at <= generated_at
+        and (e.status == "completed" or e.starts_at + timedelta(minutes=checkin_close_minutes) < generated_at)
+    ]
     in_progress_events=[e for e in report_events if e not in completed_events and e not in upcoming_events]
     completed_event_ids={e.id for e in completed_events}
     event_ids=[e.id for e in report_events]
@@ -169,6 +182,50 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
             "badges":sum(1 for r in user_badges if ms<=r.awarded_at<me),
         })
         y,m=ny,nm
+
+    # Reporting 2.0: choose a meaningful granularity instead of plotting a
+    # one-point monthly line for short periods. Up to 31 days -> daily, up to
+    # 120 days -> weekly, otherwise monthly.
+    span_days = max(1, int((end - start).total_seconds() // 86400))
+    if span_days <= 31:
+        trend_granularity = "day"
+        trend_granularity_label = "по днях"
+        buckets=[]
+        cursor=start
+        while cursor < end:
+            bucket_end=min(cursor+timedelta(days=1), end)
+            buckets.append((cursor,bucket_end,cursor.strftime("%d.%m")))
+            cursor=bucket_end
+    elif span_days <= 120:
+        trend_granularity = "week"
+        trend_granularity_label = "по тижнях"
+        buckets=[]
+        cursor=start
+        while cursor < end:
+            bucket_end=min(cursor+timedelta(days=7), end)
+            buckets.append((cursor,bucket_end,f"{cursor.strftime('%d.%m')}–{(bucket_end-timedelta(seconds=1)).strftime('%d.%m')}"))
+            cursor=bucket_end
+    else:
+        trend_granularity = "month"
+        trend_granularity_label = "по місяцях"
+        buckets=[]
+        y,m=start.year,start.month
+        while datetime(y,m,1)<end:
+            ny,nm=_next_month(y,m); bs=max(start,datetime(y,m,1)); be=min(end,datetime(ny,nm,1))
+            buckets.append((bs,be,f"{m:02d}.{y}")); y,m=ny,nm
+
+    trend=[]
+    for bs,be,bucket_label in buckets:
+        trend.append({
+            "label":bucket_label,
+            "events":sum(1 for e in completed_events if bs<=e.starts_at<be),
+            "planned_events":sum(1 for e in report_events if bs<=e.starts_at<be),
+            "visits":sum(1 for r in attended if (event_by.get(r.event_id) and bs<=event_by[r.event_id].starts_at<be)),
+            "new_users":sum(1 for u in new_users if bs<=u.created_at<be),
+            "xp":sum(max(0,int(t.amount or 0)) for t in txs if bs<=t.created_at<be),
+            "survey_responses":sum(1 for r in survey_responses if bs<=r.completed_at<be),
+            "badges":sum(1 for r in user_badges if bs<=r.awarded_at<be),
+        })
 
     positive_xp=sum(int(t.amount or 0) for t in txs if int(t.amount or 0)>0)
 
@@ -293,6 +350,58 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     heat_stamps.extend(i.created_at for i in all_ideas if i.created_at)
     for stamp in heat_stamps: heatmap[stamp.weekday()][stamp.hour]+=1
 
+    # Reporting 2.0 conversion funnels. Registration funnel is cohort-based:
+    # only journeys started in the selected period are included, and later
+    # stages are counted only when they occurred before the report cut-off.
+    cutoff=min(end, generated_at + timedelta(microseconds=1))
+    journey_rows=list((await session.scalars(
+        select(RegistrationJourney).where(RegistrationJourney.started_at>=start, RegistrationJourney.started_at<end)
+    )).all())
+    registration_funnel={
+        "start":len(journey_rows),
+        "consent":sum(1 for r in journey_rows if r.consent_at and r.consent_at < cutoff),
+        "profile":sum(1 for r in journey_rows if r.profile_at and r.profile_at < cutoff),
+        "submit":sum(1 for r in journey_rows if r.submitted_at and r.submitted_at < cutoff),
+        "approved":sum(1 for r in journey_rows if r.approved_at and r.approved_at < cutoff),
+        "first_activity":sum(1 for r in journey_rows if r.first_activity_at and r.first_activity_at < cutoff),
+    }
+    completed_regs=[r for r in regs if r.event_id in completed_event_ids]
+    event_feedback_for_period=list((await session.scalars(
+        select(EventFeedback).where(EventFeedback.event_id.in_(completed_event_ids) if completed_event_ids else EventFeedback.id==-1)
+    )).all())
+    event_xp_rows=list((await session.scalars(
+        select(XPTransaction).where(
+            XPTransaction.event_id.in_(completed_event_ids) if completed_event_ids else XPTransaction.id==-1,
+            XPTransaction.category=="event", XPTransaction.amount>0,
+        )
+    )).all())
+    event_conversion={
+        "registered":sum(1 for r in completed_regs if r.status != "cancelled"),
+        "checkin":sum(1 for r in completed_regs if r.checkin_at is not None or r.status in {"checked_in","attended"}),
+        "attended":len(attended),
+        "xp":len({r.user_id for r in event_xp_rows}),
+        "feedback":sum(1 for r in event_feedback_for_period if r.status=="completed"),
+    }
+
+    settlement_quality=await settlement_quality_report(session)
+    data_quality={
+        "settlement_duplicate_groups":int(settlement_quality.get("duplicate_count",0)),
+        "settlement_noncanonical":int(settlement_quality.get("noncanonical_count",0)),
+        "profiles_without_settlement":sum(1 for u in users if not canonicalize_settlement_text(u.settlement)),
+        "future_attendance_anomalies":future_attendance_anomalies,
+    }
+    data_quality["total_issues"] = sum(int(v or 0) for v in data_quality.values())
+
+    indicator_definitions=[
+        ("Завершені події","Події вибраного періоду, для яких завершилося операційне вікно або встановлено статус «Завершено»."),
+        ("Унікальні залучені","Унікальні люди, які виконали хоча б одну підтверджену дію участі у вибраному періоді; сама реєстрація профілю не рахується."),
+        ("Підтверджені відвідування","Лише підтверджена присутність на фактично завершених подіях; майбутні події не збільшують показник."),
+        ("Потокові показники","Дії, що відбулися всередині вибраного періоду: відвідування, XP, квести, звернення, опитування тощо."),
+        ("Моментні показники","Стан системи на момент формування звіту: активні/неактивні профілі, запити на відновлення та інші моментні значення."),
+        ("Конверсія реєстрації","Когорта людей, які почали реєстрацію у вибраному періоді: старт → згода → профіль → надсилання → схвалення → перша активність."),
+        ("Конверсія подій","Сукупний шлях реєстрацій на події періоду: заявка → відмітка → підтверджена участь → XP → завершений відгук."),
+    ]
+
     summary={
         "events":len(completed_events),
         "events_planned":len(report_events),
@@ -347,7 +456,7 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     period_summary={k:v for k,v in summary.items() if k not in snapshot_keys}
     snapshot_summary={k:summary[k] for k in snapshot_keys}
     snapshot_summary["settlement_directory_profiles"] = sum(1 for u in users if canonicalize_settlement_text(u.settlement))
-    return {"label":label,"start":start,"end":end,"generated_at":generated_at,"as_of":generated_at,"summary":summary,"period_summary":period_summary,"snapshot_summary":snapshot_summary,"outcomes":outcomes,"events":event_rows,"monthly":monthly,"age":age,"gender":gender,"settlement":settlement,"vulnerability":vuln,"vulnerability_display":vuln_display,"badge_weekly":badge_weekly,"league_distribution":league_distribution,"streak_snapshot":streak_snapshot,"cohort_funnel":cohort_funnel,"retention":retention,"engagement":engagement,"heatmap":heatmap,"heatmap_days":["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],"privacy_note":(
+    return {"label":label,"start":start,"end":end,"generated_at":generated_at,"as_of":generated_at,"timezone":"Europe/Kyiv","summary":summary,"period_summary":period_summary,"snapshot_summary":snapshot_summary,"outcomes":outcomes,"events":event_rows,"monthly":monthly,"trend":trend,"trend_granularity":trend_granularity,"trend_granularity_label":trend_granularity_label,"registration_funnel":registration_funnel,"event_conversion":event_conversion,"data_quality":data_quality,"indicator_definitions":indicator_definitions,"age":age,"gender":gender,"settlement":settlement,"vulnerability":vuln,"vulnerability_display":vuln_display,"badge_weekly":badge_weekly,"league_distribution":league_distribution,"streak_snapshot":streak_snapshot,"cohort_funnel":cohort_funnel,"retention":retention,"engagement":engagement,"heatmap":heatmap,"heatmap_days":["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],"privacy_note":(
         "Категорії вразливості подаються лише агреговано. Суперадміністратор бачить точні агреговані значення; ПІБ, контакти й списки конкретних осіб не формуються."
         if reveal_sensitive_counts else
         f"Категорії вразливості подаються лише агреговано. Значення 1–{privacy_threshold - 1} приховуються як <{privacy_threshold}; ПІБ, контакти й списки конкретних осіб не формуються."
@@ -401,11 +510,11 @@ def report_excel(data: dict[str, Any]) -> bytes:
     from openpyxl.utils import get_column_letter
     wb=Workbook(); ws=wb.active; ws.title="Зведення"
     ws.append(["АМПасадори — автоматичний звіт",""])
-    ws.append(["Період",data["label"]]); ws.append(["Сформовано",data["generated_at"].strftime("%d.%m.%Y %H:%M")]); ws.append(["Примітка",data["privacy_note"]]); ws.append([])
+    ws.append(["Період",data["label"]]); ws.append(["Дані станом на",f"{data['generated_at'].strftime('%d.%m.%Y %H:%M')} {data.get('timezone','Europe/Kyiv')}"]); ws.append(["Примітка",data["privacy_note"]]); ws.append([])
     labels={"events":"Завершені події","events_planned":"Усього заплановано подій","events_upcoming":"Майбутні події","events_in_progress":"Події у поточному вікні","unique_participants":"Унікальні залучені учасники","visits":"Підтверджені відвідування","avg_attendance":"Середня відвідуваність","volunteer_hours":"Волонтерські години","tasks_completed":"Виконані волонтерські задачі","quests_completed":"Підтверджені квести","activities_completed":"Підтверджені активності","ideas_submitted":"Подані ідеї","ideas_implemented":"Реалізовані ідеї","requests":"Звернення","requests_resolved":"Вирішені звернення","new_participants":"Нові учасники","xp_awarded":"Нараховано XP","opportunity_interests":"Позначки «Мені цікаво»","surveys_published":"Опубліковані опитування","survey_responses":"Проходження опитувань","badges_awarded":"Отримані бейджі","streak_freeze_days":"Днів заморозки серій","active_profiles":"Активні профілі","inactive_profiles":"Неактивні профілі","deleted_profiles":"Видалені профілі","deleted_permanent_profiles":"Видалені без відновлення","restoration_requests_pending":"Запити на відновлення","probation_profiles":"На 14-денному випробувальному строку","restored_profiles":"Відновлені профілі","restoration_rejected":"Відхилені запити на відновлення","participation_actions":"Дій участі","avg_xp_per_engaged":"Середній XP на залученого","future_attendance_anomalies":"Некоректні підтвердження участі поза завершеними подіями","settlement_directory_profiles":"Профілі з канонічним населеним пунктом","feedback_responses":"Зворотний зв’язок — відповідей","feedback_avg_rating":"Зворотний зв’язок — середня оцінка","feedback_high_rating_pct":"Висока оцінка 4–5, %","feedback_useful_pct":"Було корисно, %","feedback_new_knowledge_pct":"Нові знання, %","feedback_safe_pct":"Почувалися безпечно, %","feedback_return_pct":"Хочуть прийти ще, %","cohort_first_visit":"Когорта — прийшли 1 раз","cohort_returned":"Когорта — повернулися","cohort_regular":"Когорта — регулярні","cohort_ambassadors":"Когорта — АМПасадори","retention_30_pct":"Повернення за 30 днів, %","retention_90_pct":"Повернення за 90 днів, %","engagement_average":"Середній індекс залученості","engagement_high":"Залученість 75–100"}
-    ws.append(["ЗА ПЕРІОД", ""]); ws.append(["Показник","Значення"])
+    ws.append(["ПОТОКОВІ ПОКАЗНИКИ ЗА ПЕРІОД", ""]); ws.append(["Показник","Значення"])
     for k,v in data.get("period_summary", data["summary"]).items(): ws.append([labels.get(k,k),v])
-    ws.append([]); ws.append(["СТАНОМ НА ДАТУ ФОРМУВАННЯ", data["generated_at"].strftime("%d.%m.%Y %H:%M")]); ws.append(["Показник","Значення"])
+    ws.append([]); ws.append(["МОМЕНТНІ ПОКАЗНИКИ СТАНОМ НА ДАТУ", f"{data['generated_at'].strftime('%d.%m.%Y %H:%M')} {data.get('timezone','Europe/Kyiv')}"]); ws.append(["Показник","Значення"])
     for k,v in data.get("snapshot_summary", {}).items(): ws.append([labels.get(k,k),v])
     ws.column_dimensions["A"].width=44; ws.column_dimensions["B"].width=24; _style_excel(ws)
 
@@ -414,11 +523,37 @@ def report_excel(data: dict[str, Any]) -> bytes:
     for i,w in enumerate([42,20,26,18,16,16,14],1): ew.column_dimensions[get_column_letter(i)].width=w
     _style_excel(ew)
 
-    mw=wb.create_sheet("Динаміка"); mw.append(["Місяць","Завершені події","Заплановані події","Відвідування","Нові учасники","XP","Опитування — відповіді","Отримані бейджі"])
-    for r in data["monthly"]: mw.append([r["label"],r["events"],r.get("planned_events",r["events"]),r["visits"],r["new_users"],r["xp"],r.get("survey_responses",0),r.get("badges",0)])
-    if data["monthly"]:
-        chart=LineChart(); chart.title="Динаміка відвідувань"; chart.add_data(Reference(mw,min_col=4,min_row=1,max_row=mw.max_row),titles_from_data=True); chart.set_categories(Reference(mw,min_col=1,min_row=2,max_row=mw.max_row)); mw.add_chart(chart,"G2")
+    mw=wb.create_sheet("Динаміка"); mw.append([f"Період ({data.get('trend_granularity_label','')})","Завершені події","Заплановані події","Відвідування","Нові учасники","XP","Опитування — відповіді","Отримані бейджі"])
+    trend_rows=data.get("trend",data.get("monthly",[]))
+    for r in trend_rows: mw.append([r["label"],r["events"],r.get("planned_events",r["events"]),r["visits"],r["new_users"],r["xp"],r.get("survey_responses",0),r.get("badges",0)])
+    if len(trend_rows)>1:
+        chart=LineChart(); chart.title=f"Динаміка відвідувань {data.get('trend_granularity_label','')}"; chart.add_data(Reference(mw,min_col=4,min_row=1,max_row=mw.max_row),titles_from_data=True); chart.set_categories(Reference(mw,min_col=1,min_row=2,max_row=mw.max_row)); mw.add_chart(chart,"J2")
+    elif len(trend_rows)==1:
+        mw["J2"]="Одна точка даних — лінійний графік не будується."
+        mw["J3"]="Відвідування"; mw["K3"]=trend_rows[0]["visits"]
+        mw["J4"]="Нові учасники"; mw["K4"]=trend_rows[0]["new_users"]
+        mw["J5"]="XP"; mw["K5"]=trend_rows[0]["xp"]
     _style_excel(mw)
+
+    fw=wb.create_sheet("Воронки")
+    fw.append(["Конверсія реєстрації", "Кількість"]); fw.append(["Етап","Кількість"])
+    reg_labels={"start":"Старт","consent":"Згода","profile":"Профіль","submit":"Надсилання","approved":"Схвалення","first_activity":"Перша активність"}
+    for key in ["start","consent","profile","submit","approved","first_activity"]: fw.append([reg_labels[key],data.get("registration_funnel",{}).get(key,0)])
+    fw.append([]); fw.append(["Конверсія участі у подіях", "Кількість"]); fw.append(["Етап","Кількість"])
+    event_labels={"registered":"Заявки / реєстрації","checkin":"Відмітка","attended":"Підтверджена участь","xp":"XP нараховано","feedback":"Завершений відгук"}
+    for key in ["registered","checkin","attended","xp","feedback"]: fw.append([event_labels[key],data.get("event_conversion",{}).get(key,0)])
+    fw.column_dimensions["A"].width=34; fw.column_dimensions["B"].width=18; _style_excel(fw)
+
+    dqw=wb.create_sheet("Якість даних")
+    dqw.append(["Якість даних", "Кількість"]); dqw.append(["Показник","Значення"])
+    dq=data.get("data_quality",{})
+    for title,key in [("Групи дублів населених пунктів","settlement_duplicate_groups"),("Неканонічні населені пункти","settlement_noncanonical"),("Профілі без населеного пункту","profiles_without_settlement"),("Аномалії майбутньої відвідуваності","future_attendance_anomalies"),("Усього проблем","total_issues")]: dqw.append([title,dq.get(key,0)])
+    dqw.column_dimensions["A"].width=44; dqw.column_dimensions["B"].width=18; _style_excel(dqw)
+
+    dw=wb.create_sheet("Визначення")
+    dw.append(["Показник","Визначення"])
+    for title,description in data.get("indicator_definitions",[]): dw.append([title,description])
+    dw.column_dimensions["A"].width=30; dw.column_dimensions["B"].width=95; _style_excel(dw)
 
     for title,key in [("Вік","age"),("Стать","gender"),("Населені пункти","settlement"),("Вразливість агреговано","vulnerability")]:
         sh=wb.create_sheet(title[:31]); sh.append(["Категорія","Кількість"])
@@ -473,8 +608,10 @@ def report_excel(data: dict[str, Any]) -> bytes:
     bw=wb.create_sheet("Бейджі по тижнях"); bw.append(["Тиждень","Отримані бейджі"])
     for row in data["badge_weekly"]: bw.append([row["label"],row["value"]])
     bw.column_dimensions["A"].width=22; bw.column_dimensions["B"].width=20
-    if bw.max_row>1:
+    if bw.max_row>2:
         chart=LineChart(); chart.title="Отримані бейджі по тижнях"; chart.add_data(Reference(bw,min_col=2,min_row=1,max_row=bw.max_row),titles_from_data=True); chart.set_categories(Reference(bw,min_col=1,min_row=2,max_row=bw.max_row)); chart.height=8; chart.width=15; bw.add_chart(chart,"D2")
+    elif bw.max_row==2:
+        chart=BarChart(); chart.title="Отримані бейджі"; chart.add_data(Reference(bw,min_col=2,min_row=1,max_row=2),titles_from_data=True); chart.set_categories(Reference(bw,min_col=1,min_row=2,max_row=2)); chart.height=7; chart.width=12; bw.add_chart(chart,"D2")
     _style_excel(bw)
 
     bio=BytesIO(); wb.save(bio); return bio.getvalue()
@@ -520,7 +657,7 @@ def report_pdf(data: dict[str, Any]) -> bytes:
             fig.text(.225,.925,"АМПасадори",fontsize=24,weight="bold",color="white",va="center")
             fig.text(.225,.875,"Автоматичний звіт АМП",fontsize=16,weight="bold",color="#DDF8FA",va="center")
             fig.text(.07,.765,f"Період: {data['label']}",fontsize=12.5,weight="bold",color=ink)
-            fig.text(.07,.735,f"Сформовано: {data['generated_at'].strftime('%d.%m.%Y %H:%M')}",fontsize=8.8,color=muted)
+            fig.text(.07,.735,f"Дані станом на {data['generated_at'].strftime('%d.%m.%Y %H:%M')} {data.get('timezone','Europe/Kyiv')}",fontsize=8.8,color=muted)
             fig.text(.07,.695,wrap_words(data["privacy_note"],105),fontsize=8.2,color=muted)
             top=.58
         else:
@@ -541,14 +678,46 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         pdf.savefig(fig); plt.close(fig)
 
     with PdfPages(bio) as pdf:
-        period_labels=[("Завершені події","events"),("Усього заплановано","events_planned"),("Майбутні події","events_upcoming"),("Унікальні залучені","unique_participants"),("Підтверджені відвідування","visits"),("Середня відвідуваність","avg_attendance"),("Волонтерські години","volunteer_hours"),("Квести","quests_completed"),("Активності","activities_completed"),("Реалізовані ідеї","ideas_implemented"),("Звернення","requests"),("Нові учасники","new_participants"),("Нараховано XP","xp_awarded"),("Опитування","surveys_published"),("Відповіді на опитування","survey_responses"),("Отримані бейджі","badges_awarded"),("Дій участі","participation_actions"),("Середній XP/залученого","avg_xp_per_engaged"),("⚠ Attendance anomalies","future_attendance_anomalies")]
+        period_labels=[("Завершені події","events"),("Усього заплановано","events_planned"),("Майбутні події","events_upcoming"),("Унікальні залучені","unique_participants"),("Підтверджені відвідування","visits"),("Середня відвідуваність","avg_attendance"),("Волонтерські години","volunteer_hours"),("Квести","quests_completed"),("Активності","activities_completed"),("Реалізовані ідеї","ideas_implemented"),("Звернення","requests"),("Нові учасники","new_participants"),("Нараховано XP","xp_awarded"),("Опитування","surveys_published"),("Відповіді на опитування","survey_responses"),("Отримані бейджі","badges_awarded"),("Дій участі","participation_actions"),("Середній XP/залученого","avg_xp_per_engaged"),("⚠ Аномалії відвідуваності","future_attendance_anomalies")]
         cards=[(title,data["period_summary"].get(key,0)) for title,key in period_labels]
         for idx in range(0,len(cards),12):
-            kpi_page(pdf,cards[idx:idx+12],title="Показники за період",subtitle="Лише фактично завершені події враховуються у показниках відвідуваності" if idx==0 else "Продовження показників за період",first=(idx==0))
+            kpi_page(pdf,cards[idx:idx+12],title="Потокові показники за період",subtitle="Потокові KPI: лише дії у вибраному періоді; у відвідуваності враховуються фактично завершені події" if idx==0 else "Продовження потокових показників",first=(idx==0))
 
         snapshot_labels=[("Активні профілі","active_profiles"),("Неактивні профілі","inactive_profiles"),("Видалені профілі","deleted_profiles"),("Видалені без відновлення","deleted_permanent_profiles"),("Запити на відновлення","restoration_requests_pending"),("На випробувальному строку","probation_profiles"),("Відновлені профілі","restored_profiles"),("Відхилені відновлення","restoration_rejected"),("Профілі з населеним пунктом","settlement_directory_profiles")]
         snapshot_cards=[(title,data["snapshot_summary"].get(key,0)) for title,key in snapshot_labels]
-        kpi_page(pdf,snapshot_cards,title="Станом на дату формування",subtitle=data["generated_at"].strftime("%d.%m.%Y %H:%M"))
+        kpi_page(pdf,snapshot_cards,title="Моментні показники станом на дату",subtitle=f"Дані станом на {data['generated_at'].strftime('%d.%m.%Y %H:%M')} {data.get('timezone','Europe/Kyiv')}")
+
+        # Reporting 2.0 — conversion funnels.
+        fig,axes=plt.subplots(1,2,figsize=(11.69,8.27)); fig.suptitle("Конверсійні воронки",fontsize=18,weight="bold")
+        reg_order=[("Старт","start"),("Згода","consent"),("Профіль","profile"),("Надсилання","submit"),("Схвалення","approved"),("Перша активність","first_activity")]
+        reg_vals=[data.get("registration_funnel",{}).get(key,0) for _,key in reg_order]
+        axes[0].barh(range(len(reg_order)),reg_vals); axes[0].set_yticks(range(len(reg_order))); axes[0].set_yticklabels([x[0] for x in reg_order]); axes[0].invert_yaxis(); axes[0].set_title("Реєстрація"); axes[0].grid(axis="x",alpha=.2)
+        event_order=[("Заявки","registered"),("Відмітка","checkin"),("Підтверджено","attended"),("XP","xp"),("Відгук","feedback")]
+        event_vals=[data.get("event_conversion",{}).get(key,0) for _,key in event_order]
+        axes[1].barh(range(len(event_order)),event_vals); axes[1].set_yticks(range(len(event_order))); axes[1].set_yticklabels([x[0] for x in event_order]); axes[1].invert_yaxis(); axes[1].set_title("Участь у подіях"); axes[1].grid(axis="x",alpha=.2)
+        fig.text(.06,.04,"Воронка реєстрації — когорта, що стартувала у вибраному періоді. Воронка подій — реєстрації на події вибраного періоду.",fontsize=8.5,color=muted)
+        fig.tight_layout(rect=[0,.07,1,.92]); pdf.savefig(fig); plt.close(fig)
+
+        dq=data.get("data_quality",{})
+        quality_cards=[
+            ("Групи дублів населених пунктів",dq.get("settlement_duplicate_groups",0)),
+            ("Неканонічні населені пункти",dq.get("settlement_noncanonical",0)),
+            ("Профілі без населеного пункту",dq.get("profiles_without_settlement",0)),
+            ("Аномалії майбутньої відвідуваності",dq.get("future_attendance_anomalies",0)),
+            ("Усього проблем",dq.get("total_issues",0)),
+        ]
+        kpi_page(pdf,quality_cards,title="Якість даних",subtitle="Блок якості даних: проблеми, які можуть спотворювати сегментацію або звітність")
+
+        fig=plt.figure(figsize=(8.27,11.69)); fig.patch.set_facecolor("white")
+        fig.text(.07,.93,"Визначення показників",fontsize=22,weight="bold",color=brand)
+        fig.text(.07,.89,"Що саме означають основні KPI цього звіту",fontsize=10,color=muted)
+        y=.83
+        for title_text,description in data.get("indicator_definitions",[]):
+            fig.text(.08,y,title_text,fontsize=10.5,weight="bold",color=ink,va="top")
+            y-=.028
+            fig.text(.08,y,wrap_words(description,100),fontsize=8.7,color=muted,va="top",linespacing=1.35)
+            y-=.075
+        footer(fig); pdf.savefig(fig); plt.close(fig)
 
         advanced=[
             ("Прийшли 1 раз",data["cohort_funnel"]["first_visit"]),
@@ -583,10 +752,10 @@ def report_pdf(data: dict[str, Any]) -> bytes:
                 fig.text(.08,y,wrap_words(title,48),fontsize=11,color=ink,va="center")
                 fig.text(.88,y,value,fontsize=15,weight="bold",color=brand,ha="right",va="center")
                 y-=.085
-            fig.text(.08,.25,f"Завершених feedback-анкет: {o.get('responses',0)}",fontsize=10,color=muted)
+            fig.text(.08,.25,f"Завершених анкет зворотного зв’язку: {o.get('responses',0)}",fontsize=10,color=muted)
         else:
             fig.text(.07,.78,"У вибраному періоді завершених feedback-анкет ще немає.",fontsize=14,color=muted)
-        fig.text(.07,.15,wrap_words("Outcomes доповнюють кількісні KPI та показують сприйняту користь, навчальний результат, безпеку й намір повернутися.",105),fontsize=9,color=muted)
+        fig.text(.07,.15,wrap_words("Показники впливу доповнюють кількісні дані та показують сприйняту користь, навчальний результат, безпеку й намір повернутися.",105),fontsize=9,color=muted)
         footer(fig); pdf.savefig(fig); plt.close(fig)
 
         # Activity heatmap.
@@ -598,12 +767,20 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         fig.colorbar(im,ax=ax,fraction=.025,pad=.02,label="Кількість дій")
         fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
 
-        # Monthly dynamics.
-        fig,ax=plt.subplots(figsize=(11.69,8.27)); rows=data["monthly"]
-        if rows:
-            x=range(len(rows)); ax.plot(x,[r["visits"] for r in rows],marker="o",label="Відвідування",color=brand,linewidth=2.2); ax.plot(x,[r["new_users"] for r in rows],marker="o",label="Нові учасники",color=accent,linewidth=2.2); ax.set_xticks(list(x)); ax.set_xticklabels([r["label"] for r in rows],rotation=35,ha="right"); ax.legend(); ax.grid(axis="y",alpha=.2)
-        else: ax.text(.5,.5,"Даних немає",ha="center",va="center")
-        ax.set_title("Динаміка за період",fontsize=16,weight="bold"); fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+        # Reporting 2.0 dynamics: daily for short periods, weekly for medium
+        # periods, monthly for long periods. Never draw a meaningless one-point line.
+        rows=data.get("trend",data.get("monthly",[]))
+        if len(rows)>1:
+            fig,ax=plt.subplots(figsize=(11.69,8.27)); x=range(len(rows))
+            ax.plot(x,[r["visits"] for r in rows],marker="o",label="Відвідування",color=brand,linewidth=2.2)
+            ax.plot(x,[r["new_users"] for r in rows],marker="o",label="Нові учасники",color=accent,linewidth=2.2)
+            ax.set_xticks(list(x)); ax.set_xticklabels([r["label"] for r in rows],rotation=35,ha="right"); ax.legend(); ax.grid(axis="y",alpha=.2)
+            ax.set_title(f"Динаміка за період {data.get('trend_granularity_label','')}",fontsize=16,weight="bold"); fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+        elif len(rows)==1:
+            r=rows[0]
+            kpi_page(pdf,[("Відвідування",r["visits"]),("Нові учасники",r["new_users"]),("Завершені події",r["events"]),("Нараховано XP",r["xp"]),("Отримані бейджі",r.get("badges",0))],title="Динаміка за період",subtitle="Є лише одна точка даних — замість лінійного графіка показано KPI.")
+        else:
+            kpi_page(pdf,[("Відвідування",0),("Нові учасники",0),("Завершені події",0),("Нараховано XP",0)],title="Динаміка за період",subtitle="У вибраному періоді немає даних для побудови динаміки.")
 
         # Events: all rows, paginated without truncation.
         event_rows=data["events"]
@@ -635,8 +812,10 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         ss=data["streak_snapshot"]; streak_items=[("Тижнева",ss["weekly_active"]),("Суперсерія",ss["super_active"]),("Можна відновити",ss["recoverable"])]; axes[1].bar([x[0] for x in streak_items],[x[1] for x in streak_items]); axes[1].set_title("Серії участі"); axes[1].tick_params(axis="x",rotation=20); axes[1].grid(axis="y",alpha=.2); fig.text(.06,.04,f"Заморозка серій у періоді: {data['summary']['streak_freeze_days']} дн.",fontsize=9); fig.tight_layout(rect=[0,.06,1,.93]); pdf.savefig(fig); plt.close(fig)
 
         fig,ax=plt.subplots(figsize=(11.69,8.27)); rows=data["badge_weekly"]
-        if rows:
+        if len(rows)>1:
             x=range(len(rows)); ax.plot(x,[r["value"] for r in rows],marker="o"); ax.set_xticks(list(x)); ax.set_xticklabels([r["label"] for r in rows],rotation=35,ha="right"); ax.grid(axis="y",alpha=.2)
+        elif len(rows)==1:
+            ax.bar([rows[0]["label"]],[rows[0]["value"]]); ax.grid(axis="y",alpha=.2)
         else: ax.text(.5,.5,"У вибраному періоді бейджів не видавали",ha="center",va="center")
         ax.set_title("Отримані бейджі по тижнях",fontsize=16,weight="bold"); fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
     return bio.getvalue()

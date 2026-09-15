@@ -369,7 +369,7 @@ async def accept_event_reservation(session: AsyncSession, user_id: int, event_id
     return reg, "accepted"
 
 
-async def process_event_operations(session: AsyncSession, *, now: datetime | None = None) -> dict[str, int]:
+async def process_event_operations(session: AsyncSession, *, now: datetime | None = None, event_id: int | None = None) -> dict[str, int]:
     """Maintain waitlist reservations and attendance terminal states.
 
     - Expired two-hour reservations return to the end of the queue.
@@ -385,13 +385,14 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
     event_now = explicit_now or event_local_now()
     changed = {"expired_reservations": 0, "promoted_waitlist": 0, "cancelled_waitlist": 0, "no_show": 0}
 
-    expired = list((await session.scalars(
-        select(EventRegistration).where(
-            EventRegistration.status == "reserved",
-            EventRegistration.reservation_expires_at.is_not(None),
-            EventRegistration.reservation_expires_at <= now,
-        )
-    )).all())
+    expired_stmt = select(EventRegistration).where(
+        EventRegistration.status == "reserved",
+        EventRegistration.reservation_expires_at.is_not(None),
+        EventRegistration.reservation_expires_at <= now,
+    )
+    if event_id is not None:
+        expired_stmt = expired_stmt.where(EventRegistration.event_id == int(event_id))
+    expired = list((await session.scalars(expired_stmt)).all())
     for reg in expired:
         reg.status = "waitlisted"
         reg.waitlisted_at = now
@@ -408,10 +409,12 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
                 dedupe_key=f"event_waitlist_expired:{event.id}:{reg.id}:{int(now.timestamp())//7200}",
             )
 
-    events = list((await session.scalars(
-        select(Event).where(Event.capacity.is_not(None), Event.capacity > 0, Event.status.in_(["open", "closed", "postponed"]))
-        .order_by(Event.starts_at.asc())
-    )).all())
+    events_stmt = select(Event).where(
+        Event.capacity.is_not(None), Event.capacity > 0, Event.status.in_(["open", "closed", "postponed"])
+    )
+    if event_id is not None:
+        events_stmt = events_stmt.where(Event.id == int(event_id))
+    events = list((await session.scalars(events_stmt.order_by(Event.starts_at.asc()))).all())
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
     for event in events:
         # Do not promote people after the configured operational window has ended.
@@ -453,7 +456,10 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
                 callback_data=f"event_reserve_accept:{event.id}",
             )
 
-    completed_events = list((await session.scalars(select(Event.id).where(Event.status == "completed"))).all())
+    completed_stmt = select(Event.id).where(Event.status == "completed")
+    if event_id is not None:
+        completed_stmt = completed_stmt.where(Event.id == int(event_id))
+    completed_events = list((await session.scalars(completed_stmt)).all())
     if completed_events:
         regs = list((await session.scalars(
             select(EventRegistration).where(
