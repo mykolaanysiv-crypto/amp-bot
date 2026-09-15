@@ -1,0 +1,11 @@
+АМПасадори v1.12.1.2 — GitHub Production Gate hotfix
+
+1. Накласти пакет поверх поточної Git-папки, не копіюючи .git/.env/.venv.
+2. Перевірити: cat VERSION.txt -> 1.12.1.2
+3. git status --short
+4. git add -A
+5. git commit -m "Hotfix AMP v1.12.1.2 CI compatibility"
+6. git push origin main
+7. GitHub -> Actions -> AMP CI: Production gate має пройти до Heroku deploy.
+8. Після deploy: heroku ps -a amp-bot-ver-1-5-0
+9. Перевірити /health/live, /health/ready, /health/dependencies.

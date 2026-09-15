@@ -1,4 +1,4 @@
-# Heroku deployment — АМПасадори v1.12.1.1
+# Heroku deployment — АМПасадори v1.12.1.2
 
 > **Production Stability Gate:** рекомендований production deploy тепер проходить через GitHub Actions. PostgreSQL 16 CI виконує compile, tests, integration tests і реальний release/startup smoke; deploy job стартує лише після PASS.
 

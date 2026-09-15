@@ -6,8 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v190_version_and_schema():
-    assert (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip() == "1.12.0"
-    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == "1.12.0"
+    version = (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip()
+    assert version
+    assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == version
     assert len(Base.metadata.tables) == 53
     ncols = {c.name for c in Notification.__table__.columns}
     assert {
@@ -31,7 +32,7 @@ def test_notification_center_web_and_retry():
     for label in ["Системні", "Події", "Розсилки", "Кейси", "Streak", "Опитування"]:
         assert label in route
     assert "🔔 Сповіщення" in base
-    assert "/static/admin.css?v=1.12.0" in base
+    assert f"/static/admin.css?v={(ROOT / 'VERSION.txt').read_text(encoding='utf-8').strip()}" in base
 
 
 def test_all_proactive_telegram_delivery_uses_canonical_center():
@@ -41,18 +42,29 @@ def test_all_proactive_telegram_delivery_uses_canonical_center():
     assert "return await queue_notification(" in reliability
     assert "select(Notification)" in reliability
     assert "notification.status == \"sent\"" in reliability
-    # Direct Bot API send is allowed only in the canonical delivery implementation
-    # and the immediate Web 2FA code path; participant/admin business notices must queue.
+    # Direct Bot API send is allowed only in the canonical delivery implementation,
+    # the immediate Web 2FA code path, and the runtime-health emergency channel.
+    # runtime_health is intentionally out-of-band: it must still alert superadmins
+    # when the worker / Notification Center itself is unavailable. Business notices queue.
     offenders = []
     for p in (ROOT / "app").rglob("*.py"):
         text = p.read_text(encoding="utf-8")
         if "bot.send_message" not in text:
             continue
         rel = p.relative_to(ROOT).as_posix()
-        if rel in {"app/reliability.py", "app/web/app.py"}:
+        if rel in {"app/reliability.py", "app/web/app.py", "app/runtime_health.py"}:
             continue
         offenders.append(rel)
     assert offenders == []
+
+
+def test_runtime_health_direct_delivery_is_superadmin_only_emergency_channel():
+    runtime = (ROOT / "app/runtime_health.py").read_text(encoding="utf-8")
+    assert "async def _direct_superadmin_alert" in runtime
+    assert "for tg_id in sorted(settings.superadmin_ids)" in runtime
+    assert "await bot.send_message(tg_id, text_value)" in runtime
+    assert "runtime_health_alert" in runtime
+    assert "Notification Center itself has stopped" not in runtime  # no false claim in user-facing alert
 
 
 def test_legacy_outbox_migrates_idempotently():

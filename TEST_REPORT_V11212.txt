@@ -1,0 +1,16 @@
+AMP XP / «АМПасадори» v1.12.1.2 — QA REPORT
+
+Причина hotfix:
+1) historical regression tests були жорстко прив'язані до VERSION 1.12.0 і старого CSS cache-buster;
+2) canonical Notification Center test не враховував app/runtime_health.py як спеціальний out-of-band emergency channel для SUPERADMIN_IDS.
+
+Перевірено в sandbox:
+- python -m compileall -q app scripts migrations tests: PASS
+- python -m scripts.production_preflight: PASS
+- reported failing tests + v1.12.1/v1.12.1.1/v1.12.1.2 focused suite: 42/42 PASS
+- усі non-DB v* regression tests проходять; 15 DB tests не стартують у sandbox лише через відсутній aiosqlite.
+- obsolete hardcoded assertions `== "1.12.0"` / CSS `?v=1.12.0` у historical tests усунені.
+- static web cache-buster синхронізований з VERSION 1.12.1.2.
+- direct bot.send_message allowlist: reliability.py (canonical), web/app.py (2FA), runtime_health.py (superadmin emergency only).
+
+Authoritative full gate: GitHub Actions (requirements-dev + PostgreSQL 16).

@@ -1,40 +1,7 @@
-АМП XP / «АМПасадори» v1.12.0.1
-================================
+АМП XP / «АМПасадори» v1.12.1.2
 
-ПОЧНІТЬ З ЦЬОГО
+Поточний production candidate: v1.12.1.2 — CI Compatibility & Emergency Alert Hotfix поверх v1.12.1.1.
 
-Поточний реліз: v1.12.0.1 — Startup Bootstrap Hotfix поверх v1.12.0.
-База: v1.11.1 — Event Operations Cockpit & Reporting 2.0.
+Головна production-модель: GitHub main -> Production Gate (PostgreSQL 16) -> Heroku deploy. Не використовуйте прямий `git push heroku` для звичайних релізів.
 
-ГОЛОВНА ІДЕЯ
-------------
-v1.12.0.1 виправляє release blocker `_bootstrap_lock`; функціонально зберігає можливості v1.12.0. v1.12.0 не додає хаотично нові participant-функції. Реліз робить систему технічно готовою до подальшого росту: менші модулі, Alembic, CI, PostgreSQL integration tests, observability, окремі web/worker процеси, backup verification і аналітика гейміфікації без автоматичного підкручування XP.
-
-КЛЮЧОВІ ЗМІНИ
--------------
-1. `services.py` став compatibility facade; реалізація розкладена в `app/domain_services/`.
-2. Великі Telegram `admin.py` / `participant.py` розбиті на тематичні handler modules.
-3. Додано Alembic baseline; schema v1.12.0 = 53 таблиці, як у v1.11.1.
-4. Heroku: `web` і `worker` — окремі process types.
-5. GitHub CI: compile + regression + PostgreSQL integration + Alembic/release smoke.
-6. JSON structured logs, request-id, secret redaction, optional Sentry без default PII.
-7. Failed Notification Center -> direct aggregate alert суперадмінам.
-8. Backup verification marker + stale backup alert.
-9. 🧠 Гейміфікація 2.0: league transitions, retention, XP/rewards, Smart Opportunities, referral.
-10. Clean-data guardrail: 4 тижні мінімум, 8 тижнів для повного review; автоматичного rebalance немає.
-
-HEROKU
-------
-Повні команди:
-  COMMANDS_V1120.txt
-
-Опис релізу:
-  SERVER_UPDATE_V1120.md
-
-ВАЖЛИВО
--------
-- Перед deploy зробіть PostgreSQL backup.
-- Після deploy обов'язково запустіть `web=1 worker=1`.
-- Не змінюйте `WEB_SESSION_SECRET` без потреби.
-- Не додавайте `.env`/секрети в Git.
-- Gamification 2.0 не змінює XP автоматично — лише накопичує й аналізує дані.
+Цей hotfix не змінює продуктову поведінку або схему БД. Він прибирає застарілі hardcoded version assertions із historical tests, синхронізує cache-buster та формально дозволяє runtime-health emergency alert тільки для суперадмінів.

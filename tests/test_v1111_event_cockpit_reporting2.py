@@ -10,9 +10,10 @@ def text(path: str) -> str:
 
 
 def test_v1111_version_and_cache_bust():
-    assert text("VERSION.txt").strip() == "1.12.0"
-    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
-    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
+    version = text("VERSION.txt").strip()
+    assert version
+    assert text("VERSION_CHECK.txt").strip() == version
+    assert f"/static/admin.css?v={text('VERSION.txt').strip()}" in text("app/web/templates/base.html")
 
 
 def test_event_operations_cockpit_is_single_page_workflow():

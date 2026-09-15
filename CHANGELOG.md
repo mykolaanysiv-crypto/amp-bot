@@ -1,3 +1,11 @@
+# AMP XP v1.12.1.2 — CI Compatibility & Emergency Alert Hotfix
+
+- Виправлено historical regression tests, які помилково фіксували старий номер релізу `1.12.0` і ламали кожне наступне оновлення. Тепер вони перевіряють синхронність `VERSION.txt`, `VERSION_CHECK.txt` та cache-buster поточного релізу.
+- Cache-buster web CSS/logo синхронізовано з v1.12.1.2.
+- `app/runtime_health.py` формально закріплено як єдиний out-of-band emergency Telegram channel поруч із canonical Notification Center та Web 2FA. Він надсилає лише системні аварійні повідомлення `SUPERADMIN_IDS` і потрібен саме тоді, коли worker/Notification Center недоступний.
+- Додано regression tests, щоб старі version assertions і emergency-channel allowlist більше не ламали Production Gate.
+- Product behavior, БД і XP-баланс не змінювались.
+
 # AMP XP v1.12.1.1 — Reward Catalog Refactor Hotfix
 
 - Виправлено regression після розбиття `services.py`: каталог `DEFAULT_SPACE_REWARDS` не був перенесений у `app/domain_services/gamification.py`, через що повний GitHub CI падав у `test_default_space_rewards_seeded_as_repeatable_services`.

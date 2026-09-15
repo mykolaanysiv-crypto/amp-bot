@@ -8,9 +8,10 @@ def text(rel: str) -> str:
 
 
 def test_v1100_version_and_cache():
-    assert text("VERSION.txt").strip() == "1.12.0"
-    assert text("VERSION_CHECK.txt").strip() == "1.12.0"
-    assert "/static/admin.css?v=1.12.0" in text("app/web/templates/base.html")
+    version = text("VERSION.txt").strip()
+    assert version
+    assert text("VERSION_CHECK.txt").strip() == version
+    assert f"/static/admin.css?v={text('VERSION.txt').strip()}" in text("app/web/templates/base.html")
 
 
 def test_compact_telegram_main_menu_and_hubs():
