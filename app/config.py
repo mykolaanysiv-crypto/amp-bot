@@ -181,6 +181,9 @@ class Settings:
     health_probe_timeout_seconds: int = 3
     health_startup_grace_seconds: int = 180
     scheduler_alert_repeat_seconds: int = 3600
+    # Grace period before alerting about a never-confirmed external PostgreSQL backup.
+    # GitHub/Heroku backup automation should normally verify a backup before this expires.
+    backup_unknown_grace_hours: int = 24
 
 
 def get_settings(require_bot_token: bool = True) -> Settings:
@@ -241,4 +244,5 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         health_probe_timeout_seconds=_env_int("HEALTH_PROBE_TIMEOUT_SECONDS", 3, minimum=1, maximum=30),
         health_startup_grace_seconds=_env_int("HEALTH_STARTUP_GRACE_SECONDS", 180, minimum=30, maximum=1800),
         scheduler_alert_repeat_seconds=_env_int("SCHEDULER_ALERT_REPEAT_SECONDS", 3600, minimum=300, maximum=86400),
+        backup_unknown_grace_hours=_env_int("BACKUP_UNKNOWN_GRACE_HOURS", 24, minimum=1, maximum=168),
     )

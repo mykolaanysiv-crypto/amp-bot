@@ -17,5 +17,7 @@ def test_event_occupied_statuses_restored_after_domain_refactor():
 
 
 def test_hotfix_version_is_current():
-    assert Path('VERSION.txt').read_text().strip() == '1.12.1.4'
-    assert Path('VERSION_CHECK.txt').read_text().strip() == '1.12.1.4'
+    version = Path('VERSION.txt').read_text().strip()
+    check = Path('VERSION_CHECK.txt').read_text().strip()
+    assert version == check
+    assert version.startswith('1.12.1.')

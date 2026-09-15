@@ -1,0 +1,45 @@
+name: AMP Verified Backup
+
+on:
+  schedule:
+    # 01:20 UTC = 04:20 Kyiv in summer / 03:20 in winter.
+    - cron: '20 1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: amp-verified-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Verified Heroku PostgreSQL backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+    steps:
+      - name: Require Heroku backup secrets
+        shell: bash
+        run: |
+          test -n "$HEROKU_API_KEY" || { echo "HEROKU_API_KEY secret is required"; exit 1; }
+          test -n "$HEROKU_APP_NAME" || { echo "HEROKU_APP_NAME secret is required"; exit 1; }
+
+      - name: Install Heroku CLI
+        shell: bash
+        run: curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Capture PostgreSQL backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          heroku pg:backups:capture -a "$HEROKU_APP_NAME"
+          heroku pg:backups -a "$HEROKU_APP_NAME" | sed -n '1,14p'
+
+      - name: Record and verify AMP backup marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          LABEL="GitHub scheduled PGBackup ${GITHUB_RUN_ID} $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.mark_backup_verified "$LABEL"
+          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.verify_backup_marker

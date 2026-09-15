@@ -118,7 +118,9 @@ async def system_health(request: Request):
                 except ValueError:
                     backup_at = None
                 backup_label = raw[1] if len(raw) > 1 else "Зафіксована резервна копія"
-            backup_status = await backup_verification_status(session)
+            backup_status = await backup_verification_status(
+                session, unknown_grace_hours=settings.backup_unknown_grace_hours
+            )
     except Exception as exc:
         db_ok = False
         db_error = str(exc)[:300]

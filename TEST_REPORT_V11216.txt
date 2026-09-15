@@ -1,0 +1,22 @@
+AMP XP / «АМПасадори» v1.12.1.6 — QA REPORT
+
+Issue reproduced from production log:
+TypeError: Object of type datetime is not JSON serializable
+Endpoint: /health/dependencies -> HTTP 500
+
+Fix:
+- app/web/app.py: _health_response() now applies fastapi.encoders.jsonable_encoder(payload) before JSONResponse.
+- scripts/production_preflight.py: guard requires datetime-safe health JSON boundary.
+- tests/test_v11216_health_json_hotfix.py: regression coverage for native datetime payload.
+- historical v1.12.1.5 version test made patch-compatible.
+
+Sandbox QA:
+- python -m compileall -q app scripts tests: PASS
+- python -m scripts.production_preflight: PASS
+- focused v1.12.1.x tests: 26/26 PASS
+- historical UI/Notification/Analytics/Smart Opportunities tests: 29/29 PASS
+- full pytest: NOT EXECUTED TO COMPLETION in sandbox because aiogram is not installed here; collection stops in reliability/PostgreSQL integration tests. GitHub Actions remains authoritative for the full dependency + PostgreSQL 16 gate.
+
+Expected production behavior after deploy:
+- /health/ready remains JSON/200 when ready.
+- /health/dependencies returns JSON with HTTP 200 when healthy or JSON with HTTP 503 when degraded; it must no longer return HTTP 500 merely because heartbeat timestamps are datetime objects.

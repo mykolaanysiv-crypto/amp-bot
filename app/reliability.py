@@ -407,6 +407,12 @@ async def latest_local_backup(data_dir: str) -> tuple[str | None, datetime | Non
 
 
 async def record_backup_marker(db, *, label: str) -> None:
+    """Record an externally verified backup and reset bootstrap alert state.
+
+    The marker is written only after the external backup command has completed
+    successfully.  Any initial ``unknown`` grace marker is cleared so the UI and
+    monitor immediately switch to a verified state.
+    """
     now = datetime.utcnow()
     async with db.session_factory() as session:
         row = await session.get(SystemSetting, "last_backup_at")
@@ -416,6 +422,10 @@ async def record_backup_marker(db, *, label: str) -> None:
             row.updated_at = now
         else:
             session.add(SystemSetting(key="last_backup_at", value=value, updated_at=now))
+        for key in ("monitor.backup.unknown_since", "monitor.backup.last_alert_at"):
+            marker = await session.get(SystemSetting, key)
+            if marker:
+                await session.delete(marker)
         await session.commit()
 
 
@@ -478,20 +488,60 @@ async def notification_failure_alert(bot, db, settings, *, lookback_minutes: int
     return {"new_failed": len(rows), "alerted": alerted}
 
 
-async def backup_verification_status(session, *, max_age_hours: int = 168) -> dict[str, object]:
-    """Return the last externally verified backup marker.
+async def backup_verification_status(
+    session,
+    *,
+    max_age_hours: int = 168,
+    unknown_grace_hours: int = 24,
+) -> dict[str, object]:
+    """Return the externally verified PostgreSQL backup state.
 
-    PostgreSQL backups are created outside the dyno. After a successful Heroku
-    backup command, ``scripts.mark_backup_verified`` records a marker here.
+    ``unknown`` means no verified external backup marker exists yet.  During the
+    initial grace window the state is exposed as ``initializing`` instead of
+    immediately paging the superadmin.  A successful Heroku/GitHub backup must
+    still call ``record_backup_marker``; the grace period never pretends that a
+    backup exists.
     """
     row = await session.get(SystemSetting, "last_backup_at")
     if not row or not row.value:
-        return {"ok": False, "status": "unknown", "verified_at": None, "label": "", "age_hours": None}
+        unknown_row = await session.get(SystemSetting, "monitor.backup.unknown_since")
+        if unknown_row and unknown_row.value:
+            try:
+                unknown_since = datetime.fromisoformat(unknown_row.value)
+            except ValueError:
+                unknown_since = None
+            if unknown_since is not None:
+                age = max(0.0, (datetime.utcnow() - unknown_since).total_seconds() / 3600)
+                if age < max(1, int(unknown_grace_hours)):
+                    remaining = max(0.0, float(unknown_grace_hours) - age)
+                    return {
+                        "ok": False,
+                        "status": "initializing",
+                        "verified_at": None,
+                        "label": "Очікує першої автоматично підтвердженої копії",
+                        "age_hours": None,
+                        "grace_remaining_hours": round(remaining, 1),
+                    }
+        return {
+            "ok": False,
+            "status": "unknown",
+            "verified_at": None,
+            "label": "",
+            "age_hours": None,
+            "grace_remaining_hours": 0.0,
+        }
     raw, _, label = row.value.partition("|")
     try:
         verified_at = datetime.fromisoformat(raw)
     except ValueError:
-        return {"ok": False, "status": "invalid", "verified_at": None, "label": label, "age_hours": None}
+        return {
+            "ok": False,
+            "status": "invalid",
+            "verified_at": None,
+            "label": label,
+            "age_hours": None,
+            "grace_remaining_hours": 0.0,
+        }
     age = max(0.0, (datetime.utcnow() - verified_at).total_seconds() / 3600)
     return {
         "ok": age <= max_age_hours,
@@ -499,20 +549,66 @@ async def backup_verification_status(session, *, max_age_hours: int = 168) -> di
         "verified_at": verified_at,
         "label": label,
         "age_hours": round(age, 1),
+        "grace_remaining_hours": 0.0,
     }
 
-async def backup_health_alert(bot, db, settings, *, max_age_hours: int = 168, repeat_hours: int = 24) -> dict[str, object]:
-    """Warn superadmins when the externally verified backup is missing/stale.
 
-    The check never invokes Heroku or reads backup contents from the dyno.  A
-    successful external backup is recorded by ``scripts.mark_backup_verified``.
-    Alerts contain only age/status metadata and are rate-limited in SystemSetting.
+async def backup_health_alert(
+    bot,
+    db,
+    settings,
+    *,
+    max_age_hours: int = 168,
+    repeat_hours: int = 24,
+    unknown_grace_hours: int | None = None,
+) -> dict[str, object]:
+    """Warn superadmins only for a genuinely missing/stale verified backup.
+
+    A fresh deployment without a ``last_backup_at`` marker gets an initial grace
+    window instead of an immediate false-positive alarm.  The monitor records
+    when the unknown state started; if no verified backup appears before the
+    grace expires, the normal alert is sent.  Stale/invalid verified markers are
+    never suppressed by this bootstrap grace.
     """
     now = datetime.utcnow()
+    grace_hours = int(unknown_grace_hours or getattr(settings, "backup_unknown_grace_hours", 24))
     async with db.session_factory() as session:
-        status = await backup_verification_status(session, max_age_hours=max_age_hours)
+        status = await backup_verification_status(
+            session,
+            max_age_hours=max_age_hours,
+            unknown_grace_hours=grace_hours,
+        )
         if status.get("ok"):
             return {"alerted": 0, **status}
+
+        # First run on an existing deployment with no verification marker: start
+        # a grace window, but do not claim that a backup exists and do not page.
+        if status.get("status") == "unknown":
+            unknown_row = await session.get(SystemSetting, "monitor.backup.unknown_since")
+            if not unknown_row or not unknown_row.value:
+                if unknown_row:
+                    unknown_row.value = now.isoformat()
+                    unknown_row.updated_at = now
+                else:
+                    session.add(SystemSetting(
+                        key="monitor.backup.unknown_since",
+                        value=now.isoformat(),
+                        updated_at=now,
+                    ))
+                await session.commit()
+                return {
+                    "alerted": 0,
+                    "ok": False,
+                    "status": "initializing",
+                    "verified_at": None,
+                    "label": "Очікує першої автоматично підтвердженої копії",
+                    "age_hours": None,
+                    "grace_remaining_hours": float(grace_hours),
+                }
+
+        if status.get("status") == "initializing":
+            return {"alerted": 0, **status}
+
         marker = await session.get(SystemSetting, "monitor.backup.last_alert_at")
         if marker and marker.value:
             try:
@@ -529,11 +625,18 @@ async def backup_health_alert(bot, db, settings, *, max_age_hours: int = 168, re
 
     age = status.get("age_hours")
     age_text = f"{age} год" if age is not None else "немає підтвердженої копії"
+    state_labels = {
+        "unknown": "немає підтвердженої копії",
+        "stale": "підтверджена копія застаріла",
+        "invalid": "пошкоджений маркер перевірки",
+    }
+    state_text = state_labels.get(str(status.get("status")), "потребує перевірки")
     text = (
         "⚠️ <b>Резервна копія потребує перевірки</b>\n\n"
-        f"Стан: <b>{status.get('status', 'unknown')}</b>\n"
+        f"Стан: <b>{state_text}</b>\n"
         f"Вік останньої підтвердженої копії: <b>{age_text}</b>\n\n"
-        "Створіть/перевірте Heroku PGBackup і після успіху зафіксуйте його в АМП."
+        "Автоматичний GitHub backup має створити Heroku PGBackup і зафіксувати його в АМП. "
+        "Якщо автоматизація не спрацювала — запустіть workflow «AMP Verified Backup» вручну."
     )
     alerted = 0
     for tg_id in sorted(settings.superadmin_ids):
@@ -543,4 +646,3 @@ async def backup_health_alert(bot, db, settings, *, max_age_hours: int = 168, re
         except Exception:
             log.exception("Не вдалося надіслати superadmin alert про резервну копію")
     return {"alerted": alerted, **status}
-

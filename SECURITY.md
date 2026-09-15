@@ -92,3 +92,8 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - Notification Center failure alert надсилає лише агреговані counts/types/ID range і не містить body повідомлень або контактів.
 - Backup warning містить лише стан/вік verified marker; backup data не копіюються у Telegram.
 - `Gamification 2.0` є read/analysis-only: модуль не викликає `add_xp`, не змінює league thresholds і rewards.
+
+## Backup verification automation (v1.12.1.5)
+- Heroku API key залишається тільки в GitHub Actions Secrets; застосунок не отримує його у Config Vars.
+- AMP зберігає лише timestamp/label підтвердженої копії, а не backup-файл чи Heroku credential.
+- Initial grace не підміняє backup: статус лишається непідтвердженим, просто без негайного false-positive paging.

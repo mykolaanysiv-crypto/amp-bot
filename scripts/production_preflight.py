@@ -60,6 +60,8 @@ def main() -> None:
     for endpoint in ("/health/live", "/health/ready", "/health/dependencies"):
         if endpoint not in web_source:
             raise SystemExit(f"Health preflight failed: {endpoint} missing")
+    if "from fastapi.encoders import jsonable_encoder" not in web_source or "JSONResponse(jsonable_encoder(payload)" not in web_source:
+        raise SystemExit("Health preflight failed: JSON boundary must encode datetime-safe payloads")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

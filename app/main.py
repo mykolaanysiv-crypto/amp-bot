@@ -654,7 +654,10 @@ async def _backup_health_scheduler(bot: Bot, db: Database, settings) -> None:
         try:
             async with job_lock(db, "backup_health_alert", ttl_seconds=240) as acquired:
                 if acquired:
-                    await backup_health_alert(bot, db, settings)
+                    await backup_health_alert(
+                        bot, db, settings,
+                        unknown_grace_hours=settings.backup_unknown_grace_hours,
+                    )
         except asyncio.CancelledError:
             raise
         except Exception:

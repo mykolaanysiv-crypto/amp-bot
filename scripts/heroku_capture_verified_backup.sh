@@ -13,4 +13,6 @@ heroku pg:backups -a "${APP}" | sed -n '1,14p'
 echo "[3/3] Recording verified marker in AMP system health..."
 heroku run -a "${APP}" -- python -m scripts.mark_backup_verified "${LABEL}"
 
+heroku run -a "${APP}" -- python -m scripts.verify_backup_marker
+
 echo "✅ Backup capture completed and verification marker recorded."

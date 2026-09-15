@@ -15,6 +15,7 @@ from urllib.parse import quote
 from html import escape as html_escape
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -167,7 +168,10 @@ app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
 
 def _health_response(payload: dict, status_code: int = 200) -> JSONResponse:
-    return JSONResponse(payload, status_code=status_code, headers={"Cache-Control": "no-store"})
+    # runtime health snapshots intentionally keep native datetime objects for
+    # internal/admin consumers. Encode only at the HTTP boundary so health
+    # endpoints can always return valid JSON instead of raising TypeError.
+    return JSONResponse(jsonable_encoder(payload), status_code=status_code, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/health/live")

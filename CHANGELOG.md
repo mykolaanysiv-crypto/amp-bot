@@ -1,3 +1,30 @@
+# AMP XP v1.12.1.6 — Health JSON Serialization Hotfix
+
+## Виправлено
+- `/health/dependencies` більше не повертає HTTP 500, коли runtime heartbeat містить `datetime`.
+- HTTP health-відповіді проходять через FastAPI `jsonable_encoder` перед `JSONResponse`.
+- Внутрішній runtime snapshot зберігає native `datetime`, тому адмін-логіка та внутрішні споживачі не змінені.
+- Production preflight тепер перевіряє наявність datetime-safe JSON boundary.
+- Historical v1.12.1.5 regression test зроблено сумісним із наступними patch-релізами.
+
+## Без змін
+- Схема БД, XP, Telegram UX, scheduler cadence та backup automation не змінювалися.
+
+---
+
+# AMP XP v1.12.1.5 — Backup Verification Automation Hotfix
+
+## Виправлено
+- новий production release без `last_backup_at` більше не надсилає false-positive backup alert одразу: діє 24-годинне initial grace window;
+- статус `unknown` під час grace відображається як «очікує першої автоматичної перевірки», але система не видає його за справжню резервну копію;
+- успішне підтвердження backup очищає bootstrap/alert markers;
+- GitHub production deploy перед відправкою нового коду автоматично створює Heroku PGBackup, фіксує marker у AMP і перевіряє його;
+- додано окремий GitHub Actions workflow `AMP Verified Backup` для щоденного та ручного verified backup;
+- ручний helper `scripts/heroku_capture_verified_backup.sh` тепер також перевіряє marker після запису.
+
+## Без змін
+- схема БД, XP, Telegram UX і бізнес-логіка не змінені.
+
 # AMP XP v1.12.1.4 — Domain Import Startup Hotfix
 
 - Виправлено runtime-помилку release smoke: `app.domain_services.bootstrap` помилково імпортував `settlements` і `donations` як сусідні domain-модулі.
