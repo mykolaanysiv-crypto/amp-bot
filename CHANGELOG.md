@@ -1,4 +1,4 @@
-# AMP XP v1.12.1.3 — Domain Import Startup Hotfix
+# AMP XP v1.12.1.4 — Domain Import Startup Hotfix
 
 - Виправлено runtime-помилку release smoke: `app.domain_services.bootstrap` помилково імпортував `settlements` і `donations` як сусідні domain-модулі.
 - Одночасно виправлено ще два приховані імпорти того самого класу: `gamification -> donations` та `events -> reliability`.

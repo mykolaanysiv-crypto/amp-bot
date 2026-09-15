@@ -1,5 +1,5 @@
-АМП XP / «АМПасадори» v1.12.1.3
+АМП XP / «АМПасадори» v1.12.1.4
 
-Поточний production candidate: v1.12.1.3 — Domain Import Startup Hotfix поверх v1.12.1.2.
+Поточний production candidate: v1.12.1.4 — Domain Import Startup Hotfix поверх v1.12.1.2.
 Основний шлях deploy: git push origin main -> GitHub Production Gate -> Heroku.
-Не робіть Re-run старого failed workflow: потрібен новий commit з v1.12.1.3.
+Не робіть Re-run старого failed workflow: потрібен новий commit з v1.12.1.4.

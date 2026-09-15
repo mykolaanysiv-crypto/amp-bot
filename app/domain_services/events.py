@@ -1,6 +1,10 @@
 from .common import *  # noqa: F401,F403
 from .gamification import add_xp, evaluate_automatic_badges
 
+# Registration states that consume event capacity.
+# Kept explicit here so the event domain does not depend on legacy wildcard exports.
+EVENT_OCCUPIED_STATUSES = {"registered", "reserved", "checked_in", "attended"}
+
 async def create_event(
     session: AsyncSession,
     title: str,
