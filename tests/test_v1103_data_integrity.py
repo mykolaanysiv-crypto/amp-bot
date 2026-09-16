@@ -16,6 +16,7 @@ from app.services import (
 )
 from app.settlements import ensure_settlement_directory, settlement_quality_report
 from tests.conftest import create_user
+from tests.source_layout import event_routes_source
 
 
 async def _event(session, admin, *, starts_at: datetime, title: str = "P0 подія"):
@@ -207,7 +208,7 @@ async def test_settlement_directory_normalizes_known_aliases(db):
 
 def test_web_manual_override_requires_reason_and_writes_audit():
     from pathlib import Path
-    source = (Path(__file__).resolve().parents[1] / "app/web/routes/events.py").read_text(encoding="utf-8")
+    source = event_routes_source()
     template = (Path(__file__).resolve().parents[1] / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
 
     assert 'len(reason) < 5' in source

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.models import Base, EventRegistration
+from tests.source_layout import event_routes_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,7 +26,7 @@ def test_calendar_has_day_week_month_and_all_requested_sources():
 
 
 def test_qr_scanner_is_on_event_page_and_camera_is_allowed_for_self():
-    route = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
+    route = event_routes_source()
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
     middleware = (ROOT / "app/web/security_middleware.py").read_text(encoding="utf-8")
     assert '@router.post("/admin/events/{event_id}/scanner")' in route
@@ -61,7 +62,7 @@ def test_waitlist_schema_and_two_hour_reservation_flow_exist():
 def test_attendance_workflow_has_clear_statuses():
     labels = (ROOT / "app/ui_labels.py").read_text(encoding="utf-8")
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
-    route = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
+    route = event_routes_source()
     for status, ua in [
         ("registered", "Зареєстрований"),
         ("cancelled", "Скасував"),

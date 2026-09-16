@@ -1,8 +1,16 @@
-# AMP XP / «АМПасадори» v1.13.0 — Architecture Completion
+# AMP XP / «АМПасадори» v1.13.0.1 — Architecture CI Compatibility Hotfix
 
-v1.13.0 завершує основний архітектурний refactor, розпочатий у v1.12.x. Реліз не змінює функціональні правила для учасників і не змінює production schema: фокус — розділення великих модулів, явні залежності та стабільні composition roots.
+v1.13.0.1 — малий patch-реліз поверх Architecture Completion. Він не повертає старі моноліти і не змінює бізнес-логіку: оновлено regression suite, щоб historical safety/UX checks читали canonical source modules після split-архітектури v1.13.0.
 
-## Що нового у v1.13.0
+## Що виправлено у v1.13.0.1
+- Додано централізований `tests/source_layout.py` для source-inspection regression tests.
+- 32 CI failures після v1.13.0 переведені зі старих facade paths на canonical implementations.
+- Scanner regression перевіряє `app/web/event_routes/operations.py`; body-param guard охоплює обидва route packages.
+- Web 2FA direct Telegram path allowlisted у `app/web/auth_routes.py`; Notification Center invariant для business notices збережений.
+- Version announcement tests переведені на `app/web/broadcast_runtime.py` і `app/web/lifespan.py`.
+- PostgreSQL schema без змін: **54 таблиці**, Alembic head — `20260915_0002`.
+
+## Базова архітектура v1.13.0
 - `app/web/app.py` перетворено на малий compatibility facade; canonical FastAPI composition тепер у `app/web/factory.py` через `create_app()`.
 - `run_web.py` запускає Uvicorn напряму в factory mode: `app.web.factory:create_app`.
 - Shared web dependencies/helpers винесені в `app/web/dependencies.py`; health, auth, media, lifespan і broadcast runtime — у окремі модулі.

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tests.source_layout import broadcast_runtime_source
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -12,13 +14,14 @@ def test_v1825_version_and_css_cache():
 
 
 def test_version_notice_uses_unique_per_user_outbox_dedupe():
-    source = (ROOT / "app/web/app.py").read_text(encoding="utf-8")
+    source = broadcast_runtime_source()
     announce = source[source.index("async def _announce_version_update_locked"):source.index("async def _recover_pending_broadcasts")]
     assert 'dedupe_key=f"system_version_update:{APP_VERSION}:user:{user.id}"' in announce
     assert 'source="system_version_update"' in announce
     assert "_queue_system_broadcast(" not in announce
     assert "_retire_legacy_version_broadcasts()" in source
-    assert source.index("await _retire_legacy_version_broadcasts()") < source.index("await _recover_pending_broadcasts()")
+    lifespan = (ROOT / "app/web/lifespan.py").read_text(encoding="utf-8")
+    assert lifespan.index("await _retire_legacy_version_broadcasts()") < lifespan.index("await _recover_pending_broadcasts()")
 
 
 def test_outbox_dedupe_is_race_safe_and_job_lock_not_reentrant():

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tests.source_layout import analytics_source, reports_source
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -12,7 +14,7 @@ def test_v191_version_and_cache_buster():
 
 
 def test_advanced_analytics_metrics_exist():
-    text=(ROOT / "app/analytics.py").read_text(encoding="utf-8")
+    text=analytics_source()
     for key in ["cohort_funnel","retention","engagement_score","activity_heatmap"]:
         assert f'"{key}"' in text
     assert "retention_30_pct" in text
@@ -22,7 +24,7 @@ def test_advanced_analytics_metrics_exist():
 
 
 def test_heatmap_rendering_web_and_exports():
-    analytics=(ROOT / "app/analytics.py").read_text(encoding="utf-8")
+    analytics=analytics_source()
     tpl=(ROOT / "app/web/templates/analytics.html").read_text(encoding="utf-8")
     detail=(ROOT / "app/web/templates/analytics_detail.html").read_text(encoding="utf-8")
     assert 'metric["kind"] == "heatmap"' in analytics
@@ -33,7 +35,7 @@ def test_heatmap_rendering_web_and_exports():
 
 
 def test_report_pdf_is_paginated_without_silent_truncation():
-    reports=(ROOT / "app/reports.py").read_text(encoding="utf-8")
+    reports=reports_source()
     assert "for idx in range(0,len(cards),12)" in reports
     assert "for page_no,start in enumerate(range(0,len(event_rows),20),1)" in reports
     assert "[:25]" not in reports

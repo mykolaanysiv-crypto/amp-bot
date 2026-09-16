@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.models import Base
 from app.registration_ux import decrypt_draft, encrypt_draft, registration_progress
+from tests.source_layout import event_routes_source, main_source, models_source, start_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,7 +32,7 @@ def test_registration_progress_and_encrypted_resume_draft():
 
 
 def test_registration_ux_has_resume_buttons_autocomplete_and_validation():
-    src = text("app/handlers/start.py")
+    src = start_source()
     for token in [
         "reg:resume", "reg:restart", "registration_progress", "_settlement_keyboard",
         "reg:settlement:", "_vulnerability_keyboard", "reg:vuln:",
@@ -39,7 +40,7 @@ def test_registration_ux_has_resume_buttons_autocomplete_and_validation():
         "Дата народження не може бути в майбутньому",
     ]:
         assert token in src
-    assert "draft_ciphertext" in text("app/models.py")
+    assert "draft_ciphertext" in models_source()
 
 
 def test_registration_funnel_is_wired_through_approval_and_first_activity():
@@ -75,7 +76,7 @@ def test_requested_telegram_main_menu_order_and_contextual_home():
 
 def test_feedback_20_is_micro_and_has_one_deduped_reminder():
     feedback = text("app/handlers/feedback.py")
-    main = text("app/main.py")
+    main = main_source()
     runtime = text("app/runtime_config.py")
     assert "_replace_question" in feedback
     assert "Додати коментар" in feedback
@@ -88,7 +89,7 @@ def test_feedback_20_is_micro_and_has_one_deduped_reminder():
 
 
 def test_feedback_conversion_is_visible_per_event_and_overall():
-    route = text("app/web/routes/events.py")
+    route = event_routes_source()
     event_tpl = text("app/web/templates/event_detail.html")
     dash_route = text("app/web/routes/dashboard.py")
     dash_tpl = text("app/web/templates/dashboard.html")
@@ -126,7 +127,7 @@ def test_monobank_and_sensitive_data_hardening():
 
 
 def test_registration_draft_sensitive_answers_are_not_plaintext_funnel_columns():
-    model = text("app/models.py")
+    model = models_source()
     block = model[model.index("class RegistrationJourney"):model.index("class BanRecord")]
     assert "draft_ciphertext" in block
     for field in ["phone", "email", "settlement", "birth_date", "gender", "vulnerability"]:

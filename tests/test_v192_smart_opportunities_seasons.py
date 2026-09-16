@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.models import Base, Opportunity, OpportunityMatch, Season, User
 from app.opportunity_matching import match_opportunity, set_user_interests
+from tests.source_layout import main_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,7 +54,7 @@ def test_telegram_and_web_smart_opportunity_ui_present():
 
 
 def test_smart_opportunities_scheduler_and_notification_digest():
-    main = (ROOT / "app/main.py").read_text()
+    main = main_source()
     matching = (ROOT / "app/opportunity_matching.py").read_text()
     assert "_smart_opportunities_scheduler" in main
     assert "queue_pending_match_digests" in main

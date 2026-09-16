@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.reports import resolve_report_period
+from tests.source_layout import event_routes_source, reports_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,7 +19,7 @@ def test_v1111_version_and_cache_bust():
 
 def test_event_operations_cockpit_is_single_page_workflow():
     tpl = text("app/web/templates/event_detail.html")
-    routes = text("app/web/routes/events.py")
+    routes = event_routes_source()
     for phrase in [
         "ОПЕРАЦІЙНИЙ ЦЕНТР",
         "Стан сканера",
@@ -36,7 +37,7 @@ def test_event_operations_cockpit_is_single_page_workflow():
 
 
 def test_event_operations_routes_are_scoped_and_audited():
-    routes = text("app/web/routes/events.py")
+    routes = event_routes_source()
     services = text("app/domain_services/events.py")
     assert '/admin/events/{event_id}/operations/refresh-queue' in routes
     assert '/admin/events/{event_id}/operations/mark-no-show' in routes
@@ -53,7 +54,7 @@ def test_reporting_2_supports_iso_week_and_dynamic_granularity():
     assert (end - start).days == 7
     assert start.isocalendar().week == 38
     assert "38 тиждень 2026" == label
-    source = text("app/reports.py")
+    source = reports_source()
     assert 'trend_granularity = "day"' in source
     assert 'trend_granularity = "week"' in source
     assert 'trend_granularity = "month"' in source
@@ -62,7 +63,7 @@ def test_reporting_2_supports_iso_week_and_dynamic_granularity():
 
 
 def test_reporting_2_has_flow_snapshot_funnels_quality_and_definitions():
-    source = text("app/reports.py")
+    source = reports_source()
     for phrase in [
         "ПОТОКОВІ ПОКАЗНИКИ ЗА ПЕРІОД",
         "МОМЕНТНІ ПОКАЗНИКИ СТАНОМ НА ДАТУ",

@@ -1,15 +1,14 @@
-АМП XP / «АМПасадори» v1.13.0
+АМП XP / «АМПасадори» v1.13.0.1
 
-Поточний production candidate: v1.13.0 — Architecture Completion.
+Поточний production candidate: v1.13.0.1 — Architecture CI Compatibility Hotfix.
 
 Основне:
-- FastAPI через canonical create_app() factory;
-- web dependencies/health/auth/media/lifespan розділені;
-- events/analytics/reports/models/start/main розбиті на domain modules;
-- усі 13 scheduler перенесені в app/jobs/;
-- app/main.py став orchestration entry point;
-- у app/ немає import *;
-- compatibility facades залишені на 1–2 релізи;
-- schema без змін: 54 таблиці, Alembic head 20260915_0002.
+- архітектура v1.13.0 збережена без rollback;
+- historical regression tests переведені на canonical split modules;
+- додано tests/source_layout.py як єдину карту source layout для тестів;
+- виправлено scanner/version-broadcast/Notification Center CI assumptions;
+- runtime business logic і schema не змінюються;
+- 54 таблиці, Alembic head 20260915_0002;
+- compatibility facades лишаються на 1–2 релізи.
 
-Почніть із SERVER_UPDATE_V1130.md та COMMANDS_V1130.txt.
+Почніть із SERVER_UPDATE_V11301.md та COMMANDS_V11301.txt.

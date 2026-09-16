@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tests.source_layout import analytics_source, main_source, reports_source
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -24,7 +26,7 @@ def test_compact_telegram_main_menu_and_hubs():
         "ux:more:rules", "ux:more:help",
     ]:
         assert callback in kb
-    main = text("app/main.py")
+    main = main_source()
     assert 'F.data.startswith("ux:")' in main
     assert '"ux:mine:seasons"' in main
 
@@ -64,9 +66,9 @@ def test_runtime_settings_are_editable_and_used():
     assert "guard_permission" in settings_route
     assert "settings.manage" in settings_route
     usages = "\n".join(text(p) for p in [
-        "app/services.py", "app/domain_services/gamification.py", "app/domain_services/referrals.py", "app/domain_services/events.py", "app/workflows.py", "app/leagues.py", "app/main.py",
-        "app/analytics.py", "app/reports.py", "app/web/routes/gamification.py",
-    ])
+        "app/services.py", "app/domain_services/gamification.py", "app/domain_services/referrals.py", "app/domain_services/events.py", "app/workflows.py", "app/leagues.py",
+        "app/web/routes/gamification.py",
+    ]) + "\n" + main_source() + "\n" + analytics_source() + "\n" + reports_source()
     for key in [
         "xp.birthday", "xp.idea_approved", "xp.referral_max", "xp.streak_restore_cost",
         "streak.freeze_limit_quarter", "streak.super_total_misses", "streak.badge_days",
@@ -77,8 +79,8 @@ def test_runtime_settings_are_editable_and_used():
 
 
 def test_privacy_threshold_is_not_hardcoded_in_analytics_exports():
-    analytics = text("app/analytics.py")
-    reports = text("app/reports.py")
+    analytics = analytics_source()
+    reports = reports_source()
     assert 'get_runtime_int(session, "privacy.suppression_threshold")' in analytics
     assert 'get_runtime_int(session, "privacy.suppression_threshold")' in reports
     assert 'f"<{privacy_threshold}"' in analytics

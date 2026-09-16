@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tests.source_layout import analytics_source, models_source, reports_source
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -15,7 +17,7 @@ def test_v1104_version_and_css_cache():
 
 
 def test_donation_models_permissions_and_sidebar_exist():
-    models = text("app/models.py")
+    models = models_source()
     for name in ("DonationJarState", "DonationTransaction", "DonationReport", "SupportPageView"):
         assert f"class {name}" in models
     assert '"donations.manage"' in text("app/permissions.py")
@@ -75,7 +77,7 @@ def test_registrations_are_separate_intake_queue():
 
 
 def test_opportunities_support_photos_in_web_and_telegram():
-    model = text("app/models.py")
+    model = models_source()
     route = text("app/web/routes/opportunities.py")
     tpl = text("app/web/templates/opportunities.html")
     tg = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
@@ -87,7 +89,7 @@ def test_opportunities_support_photos_in_web_and_telegram():
 
 
 def test_superadmin_can_see_unsuppressed_aggregate_analytics():
-    analytics = text("app/analytics.py")
+    analytics = analytics_source()
     route = text("app/web/routes/analytics.py")
     tpl = text("app/web/templates/analytics.html")
     assert "reveal_sensitive_counts" in analytics
@@ -130,7 +132,7 @@ def test_dashboard_data_quality_text_is_ukrainian():
 
 
 def test_superadmin_reports_can_use_exact_aggregate_counts():
-    reports = text("app/reports.py")
+    reports = reports_source()
     route = text("app/web/routes/reports.py")
     assert "reveal_sensitive_counts: bool = False" in reports
     assert "not reveal_sensitive_counts" in reports

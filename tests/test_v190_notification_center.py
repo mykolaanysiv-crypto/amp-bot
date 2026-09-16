@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.models import Base, EventFeedback, Notification
+from tests.source_layout import analytics_source, event_routes_source, main_source, reports_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,7 +53,7 @@ def test_all_proactive_telegram_delivery_uses_canonical_center():
         if "bot.send_message" not in text:
             continue
         rel = p.relative_to(ROOT).as_posix()
-        if rel in {"app/reliability.py", "app/web/app.py", "app/runtime_health.py"}:
+        if rel in {"app/reliability.py", "app/web/auth_routes.py", "app/runtime_health.py"}:
             continue
         offenders.append(rel)
     assert offenders == []
@@ -76,7 +77,7 @@ def test_legacy_outbox_migrates_idempotently():
 
 
 def test_feedback_scheduler_and_telegram_flow():
-    main = (ROOT / "app/main.py").read_text(encoding="utf-8")
+    main = main_source()
     handler = (ROOT / "app/handlers/feedback.py").read_text(encoding="utf-8")
     reliability = (ROOT / "app/reliability.py").read_text(encoding="utf-8")
     assert "_event_feedback_scheduler" in main
@@ -92,10 +93,10 @@ def test_feedback_scheduler_and_telegram_flow():
 
 
 def test_feedback_analytics_and_donor_reporting():
-    events = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
+    events = event_routes_source()
     event_tpl = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
-    analytics = (ROOT / "app/analytics.py").read_text(encoding="utf-8")
-    reports = (ROOT / "app/reports.py").read_text(encoding="utf-8")
+    analytics = analytics_source()
+    reports = reports_source()
     assert "feedback_stats" in events
     assert "Зворотний зв’язок та вплив" in event_tpl
     assert "Середня оцінка" in event_tpl

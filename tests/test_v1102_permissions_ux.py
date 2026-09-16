@@ -3,6 +3,7 @@ from pathlib import Path
 from app.models import Base, UserRole
 from app.permissions import ALL_PERMISSIONS, effective_permissions, has_permission, required_web_permission, required_web_any_permissions
 from app.profile_data import split_display_name
+from tests.source_layout import event_routes_source, web_app_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,7 +53,7 @@ def test_web_permission_safety_net_maps_sensitive_actions():
 
 
 def test_security_page_can_manage_web_and_telegram_permissions():
-    app = text("app/web/app.py")
+    app = web_app_source()
     tpl = text("app/web/templates/security_accounts.html")
     middleware = text("app/web/security_middleware.py")
     assert '/admin/security/accounts/{account_id}/permissions' in app
@@ -161,7 +162,7 @@ def test_role_change_resets_custom_telegram_permissions():
 
 
 def test_sensitive_event_exports_follow_the_granular_permission():
-    events = text("app/web/routes/events.py")
+    events = event_routes_source()
     tpl = text("app/web/templates/event_detail.html")
     assert 'guard_permission(request, "reports.sensitive_export")' in events
     assert 'include_sensitive = has_web_permission(request, "reports.sensitive_export")' in events

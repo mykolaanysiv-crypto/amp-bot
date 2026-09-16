@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.models import Base, User, UserStatus
+from tests.source_layout import analytics_source, event_routes_source, main_source, reports_source, start_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,8 +29,8 @@ def test_deleted_statuses_are_not_manual_web_status_options():
 
 
 def test_restoration_flow_and_probation_exist():
-    start = (ROOT / "app/handlers/start.py").read_text(encoding="utf-8")
-    main = (ROOT / "app/main.py").read_text(encoding="utf-8")
+    start = start_source()
+    main = main_source()
     assert 'callback_data="restore:start"' in start
     assert "RestorationState.reason" in start
     assert "14-денний випробувальний строк" in start
@@ -47,15 +48,14 @@ def test_participant_360_and_health_label():
 
 
 def test_auto_notifications_for_new_content_are_wired():
-    files = [
-        ROOT / "app/web/routes/events.py",
-        ROOT / "app/web/routes/quests.py",
-        ROOT / "app/web/routes/tasks.py",
-        ROOT / "app/web/routes/activities.py",
-        ROOT / "app/web/routes/opportunities.py",
-        ROOT / "app/web/routes/surveys.py",
-    ]
-    text = "\n".join(p.read_text(encoding="utf-8") for p in files)
+    text = "\n".join([
+        event_routes_source(),
+        (ROOT / "app/web/routes/quests.py").read_text(encoding="utf-8"),
+        (ROOT / "app/web/routes/tasks.py").read_text(encoding="utf-8"),
+        (ROOT / "app/web/routes/activities.py").read_text(encoding="utf-8"),
+        (ROOT / "app/web/routes/opportunities.py").read_text(encoding="utf-8"),
+        (ROOT / "app/web/routes/surveys.py").read_text(encoding="utf-8"),
+    ])
     for code in ["event_created", "quest_created", "task_created", "activity_created", "survey_published"]:
         assert code in text
     # Since v1.9.2 opportunities are personalized instead of mass-broadcast.
@@ -66,8 +66,8 @@ def test_auto_notifications_for_new_content_are_wired():
 
 
 def test_analytics_has_v181_lifecycle_metrics():
-    analytics = (ROOT / "app/analytics.py").read_text(encoding="utf-8")
-    reports = (ROOT / "app/reports.py").read_text(encoding="utf-8")
+    analytics = analytics_source()
+    reports = reports_source()
     assert '"lifecycle"' in analytics
     assert '"participation_mix"' in analytics
     assert '"restoration"' in analytics

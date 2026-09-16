@@ -1,0 +1,89 @@
+АМПасадори v1.13.0.1 — Architecture CI Compatibility Hotfix
+
+1. Перейти у локальний Git-репозиторій:
+   cd ~/Downloads/amp_bot_v1103
+
+2. Рекомендований ручний backup перед production deploy:
+   heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+3. Розпакувати build:
+   rm -rf /tmp/amp_bot_v11301
+   mkdir -p /tmp/amp_bot_v11301
+   unzip -q ~/Downloads/amp_bot_v11301.zip -d /tmp/amp_bot_v11301
+
+4. Накласти build поверх репозиторію, зберігши Git/local environment:
+   rsync -av \
+     --exclude='.git' \
+     --exclude='.env' \
+     --exclude='.venv' \
+     --exclude='__pycache__' \
+     --exclude='.pytest_cache' \
+     /tmp/amp_bot_v11301/amp_bot_v11301/ \
+     ./
+
+5. Перевірити версію:
+   cat VERSION.txt
+   # очікується 1.13.0.1
+
+6. Локальні перевірки:
+   python -m compileall -q app scripts tests migrations
+   python -m scripts.production_preflight
+   pytest -q tests/test_v11301_ci_compat_hotfix.py tests/test_v1130_architecture_completion.py
+
+7. Додатково перевірити source-layout regressions, які падали в GitHub:
+   pytest -q \
+     tests/test_v1100_major_ux.py \
+     tests/test_v1102_permissions_ux.py \
+     tests/test_v1104_donations_registrations_ui.py \
+     tests/test_v1110_ux_conversion.py \
+     tests/test_v1111_event_cockpit_reporting2.py \
+     tests/test_v181_features.py \
+     tests/test_v1821_calendar_event_ops.py \
+     tests/test_v1822_startup_hotfix.py \
+     tests/test_v1824_telegram_scanner.py \
+     tests/test_v1825_admin_menu_version_dedupe.py \
+     tests/test_v190_notification_center.py \
+     tests/test_v191_advanced_analytics.py \
+     tests/test_v192_smart_opportunities_seasons.py
+
+   Примітка: локальна машина повинна мати dependencies з requirements-dev.txt.
+
+8. Перевірити зміни перед commit:
+   git status --short
+
+9. Commit + GitHub Production Gate:
+   git add -A
+   git commit -m "Hotfix AMP v1.13.0.1 architecture CI compatibility"
+   git push origin main
+
+10. Дочекатися зеленого GitHub Actions / deploy і перевірити formation:
+    heroku ps -a amp-bot-ver-1-5-0
+    # очікується web.1: up, worker.1: up
+
+11. Alembic head (schema не змінюється):
+    heroku run -a amp-bot-ver-1-5-0 -- alembic current
+    # очікується 20260915_0002 (head)
+
+12. Health:
+    curl -sS https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/ready | python3 -m json.tool
+    curl -sS -o /tmp/amp_dependencies.json -w 'HTTP %{http_code}\n' https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/dependencies
+    cat /tmp/amp_dependencies.json | python3 -m json.tool
+
+13. Worker log:
+    heroku logs --dyno worker -n 180 -a amp-bot-ver-1-5-0
+
+14. Ручний smoke:
+    - Telegram: /start, /menu, Події, Квести, Волонтерство, Можливості.
+    - Web: login + 2FA, Dashboard.
+    - Event Operations Cockpit + scanner/check-in.
+    - Analytics та Reports.
+    - Стан системи: worker та всі 13 scheduler healthy.
+    - Notification Center працює.
+    - Повідомлення про v1.13.0.1 приходить один раз на користувача.
+
+Примітка:
+- production PostgreSQL НЕ очищати і НЕ створювати заново;
+- нової migration у v1.13.0.1 немає;
+- compatibility facades залишаються на 1–2 релізи;
+- не повертати дубльовану реалізацію у facade лише для проходження tests;
+- authoritative full integration gate — GitHub Actions із requirements-dev.txt + PostgreSQL 16.

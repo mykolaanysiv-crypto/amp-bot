@@ -1,3 +1,21 @@
+# AMP XP v1.13.0.1 — Architecture CI Compatibility Hotfix
+
+## CI / regression compatibility
+- Додано `tests/source_layout.py` — єдина карта canonical source locations після Architecture Completion. Старі source-inspection regression tests більше не вимагають, щоб реалізація фізично залишалась у compatibility facades.
+- Оновлено 32 regression checks, які після v1.13.0 помилково читали `app/main.py`, `app/models.py`, `app/web/app.py`, `app/web/routes/events.py`, `app/analytics.py`, `app/reports.py` або `app/handlers/start.py` замість нових domain modules.
+- Event scanner AST regression тепер перевіряє canonical `app/web/event_routes/operations.py`; загальний FastAPI body-param guard сканує і `app/web/routes/`, і `app/web/event_routes/`.
+- Notification Center regression allowlist оновлено для легітимного immediate Web 2FA path у `app/web/auth_routes.py`; business notifications і надалі повинні йти через canonical outbox.
+- Version announcement regressions переведено на `app/web/broadcast_runtime.py` + lifespan ordering, а не на старий `app/web/app.py`.
+- Historical v1.13.0 architecture test більше не exact-pin-ить patch version і перевіряє continuity всієї гілки `1.13.x`.
+
+## Runtime / schema
+- Runtime business logic не змінюється; hotfix виправляє CI assumptions після refactor.
+- PostgreSQL schema: 54 таблиці, без змін.
+- Alembic head: `20260915_0002`.
+- Compatibility facades залишаються на заплановані 1–2 релізи; до них не повертається дубльована реалізація лише заради тестів.
+
+---
+
 # AMP XP v1.13.0 — Architecture Completion
 
 ## Composition roots

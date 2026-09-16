@@ -13,8 +13,9 @@ def read(rel: str) -> str:
 
 
 def test_v1130_version_manifest_and_schema_continuity():
-    assert read("VERSION.txt").strip() == "1.13.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.13.0"
+    version = read("VERSION.txt").strip()
+    assert version.startswith("1.13.")
+    assert read("VERSION_CHECK.txt").strip() == version
     assert len(Base.metadata.tables) == 54
     assert "content_views" in Base.metadata.tables
     versions = sorted(path.name for path in (ROOT / "migrations" / "versions").glob("*.py"))

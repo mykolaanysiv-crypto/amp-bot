@@ -5,6 +5,8 @@ import hmac
 import json
 import time
 from pathlib import Path
+
+from tests.source_layout import broadcast_runtime_source, event_routes_source
 from urllib.parse import urlencode
 
 from app.telegram_webapp import validate_webapp_init_data
@@ -34,7 +36,7 @@ def test_telegram_webapp_init_data_signature():
 
 def test_scanner_is_telegram_miniapp_and_continuous():
     admin = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
-    routes = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
+    routes = event_routes_source()
     template = (ROOT / "app/web/templates/telegram_event_scanner.html").read_text(encoding="utf-8")
     assert "WebAppInfo" in admin
     assert 'web_app=WebAppInfo(url=f"{base}/tg/event-scanner/{event.id}")' in admin
@@ -48,7 +50,7 @@ def test_scanner_is_telegram_miniapp_and_continuous():
 
 
 def test_version_broadcast_has_distributed_startup_lock():
-    source = (ROOT / "app/web/app.py").read_text(encoding="utf-8")
+    source = broadcast_runtime_source()
     assert 'job_lock(db, f"version_announce:{APP_VERSION}"' in source
     assert "_announce_version_update_locked" in source
 
