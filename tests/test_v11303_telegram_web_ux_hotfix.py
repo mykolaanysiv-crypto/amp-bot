@@ -10,9 +10,10 @@ def read(rel: str) -> str:
 
 
 def test_v11303_version_is_synchronized():
-    assert read("VERSION.txt").strip() == "1.13.0.3"
-    assert read("VERSION_CHECK.txt").strip() == "1.13.0.3"
-    assert '"1.13.0.3"' in read("app/version.py")
+    version = read("VERSION.txt").strip()
+    assert version.startswith("1.13.0.")
+    assert read("VERSION_CHECK.txt").strip() == version
+    assert f'"{version}"' in read("app/version.py")
 
 
 def test_start_and_menu_active_user_lazy_import_points_to_handlers_participant():

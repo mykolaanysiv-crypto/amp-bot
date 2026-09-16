@@ -1,4 +1,18 @@
-# AMP XP / «АМПасадори» v1.13.0.3 — Telegram Navigation & Web Localization Hotfix
+# AMP XP / «АМПасадори» v1.13.0.4 — CI Localization & Test Time Hotfix
+
+v1.13.0.4 — мінімальний CI hotfix поверх v1.13.0.3. Виправлено historical regression assertion, який після української локалізації Notification Center усе ще очікував англійське `Streak`, а також прибрано `datetime.utcnow()` з Smart Opportunities regression test для Python 3.13. Production-код, схема БД та користувацький UX не змінюються.
+
+## Що виправлено у v1.13.0.4
+
+- `tests/test_v190_notification_center.py` тепер перевіряє канонічну українську назву `Серії участі`.
+- `tests/test_v11303_telegram_web_ux_hotfix.py` більше не pin-ить точний patch `1.13.0.3`, а валідно працює для наступних `1.13.0.x` hotfix-релізів.
+- `tests/test_v192_smart_opportunities_seasons.py` використовує project `Clock`: `clock.storage_utc()` та `clock.today_local()` замість deprecated `datetime.utcnow()` / прямого `date.today()` у відповідному тесті.
+- Версію і cache-busting tokens синхронізовано до `1.13.0.4`.
+- Нової Alembic migration немає; head залишається `20260915_0002`.
+
+---
+
+## Історія: AMP XP / «АМПасадори» v1.13.0.3 — Telegram Navigation & Web Localization Hotfix
 
 v1.13.0.3 — user-facing patch поверх v1.13.0.2. Виправлено `/start`/`/menu` для активних користувачів після Architecture Completion, додано повноцінну `/smart`, відновлено примусове оновлення актуальної reply-клавіатури, прибрано програмне обрізання назв винагород і локалізовано відомі англомовні labels у web-панелі.
 

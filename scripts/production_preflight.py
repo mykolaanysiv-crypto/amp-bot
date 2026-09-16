@@ -207,6 +207,16 @@ def main() -> None:
             )
 
 
+    # v1.13.0.4 CI/localization guard. Historical source-inspection tests must
+    # follow the canonical Ukrainian Notification Center label and the Smart
+    # Opportunities regression must not reintroduce Python 3.13 utcnow warnings.
+    notification_regression = (root / "tests" / "test_v190_notification_center.py").read_text(encoding="utf-8")
+    if '"Streak"' in notification_regression or '"Серії участі"' not in notification_regression:
+        raise SystemExit("CI localization preflight failed: Notification Center historical test label is stale")
+    smart_regression = (root / "tests" / "test_v192_smart_opportunities_seasons.py").read_text(encoding="utf-8")
+    if "datetime.utcnow()" in smart_regression or "clock.storage_utc()" not in smart_regression:
+        raise SystemExit("CI time preflight failed: Smart Opportunities test must use project Clock")
+
     # v1.13.0.3 Telegram/Web UX regression guards.  Architecture Completion
     # moved the participant router one package higher; /start and /menu for an
     # active user must resolve that facade correctly.  Keep /smart and full

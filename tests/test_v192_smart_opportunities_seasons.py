@@ -1,8 +1,9 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 from app.models import Base, Opportunity, OpportunityMatch, Season, User
 from app.opportunity_matching import match_opportunity, set_user_interests
+from app.time_utils import clock
 from tests.source_layout import main_source
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,9 +22,9 @@ def test_v192_version_schema_and_cache():
 
 
 def test_matching_uses_explicit_interests_age_settlement_format_deadline_not_vulnerability():
-    user = User(tg_id=1, full_name="Тест Учасник", settlement="Анисів", birth_date=date.today().replace(year=date.today().year-20), vulnerability_categories='["anything"]')
+    user = User(tg_id=1, full_name="Тест Учасник", settlement="Анисів", birth_date=clock.today_local().replace(year=clock.today_local().year-20), vulnerability_categories='["anything"]')
     set_user_interests(user, ["IT", "Освіта"])
-    item = Opportunity(title="IT школа", kind="Освіта", direction="IT", format="Офлайн", age_min=18, age_max=30, target_settlements="Анисів, Іванівка", deadline=datetime.utcnow()+timedelta(days=10), active=True)
+    item = Opportunity(title="IT школа", kind="Освіта", direction="IT", format="Офлайн", age_min=18, age_max=30, target_settlements="Анисів, Іванівка", deadline=clock.storage_utc()+timedelta(days=10), active=True)
     result = match_opportunity(user, item)
     assert result is not None and result[0] >= 70
     score = result[0]

@@ -30,7 +30,7 @@ def test_notification_center_web_and_retry():
     assert 'Notification.status == "failed"' in route
     assert "🔁 Повторити невдалі" in tpl
     assert "В черзі" in tpl and "Надіслано" in tpl and "Помилки" in tpl
-    for label in ["Системні", "Події", "Розсилки", "Кейси", "Streak", "Опитування"]:
+    for label in ["Системні", "Події", "Розсилки", "Кейси", "Серії участі", "Опитування"]:
         assert label in route
     assert "🔔 Сповіщення" in base
     assert f"/static/admin.css?v={(ROOT / 'VERSION.txt').read_text(encoding='utf-8').strip()}" in base

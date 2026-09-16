@@ -1,3 +1,11 @@
+# AMP XP v1.13.0.4 — CI Localization & Test Time Hotfix
+
+- Виправлено застарілий regression assertion Notification Center: `Streak` → `Серії участі`.
+- Historical v1.13.0.3 version test зроблено patch-compatible для наступних `1.13.0.x`.
+- Smart Opportunities regression test переведено з deprecated `datetime.utcnow()` на project `Clock` storage boundary.
+- Синхронізовано `VERSION.txt`, `VERSION_CHECK.txt`, `app/version.py` та static asset cache tokens.
+- Production code/schema unchanged; Alembic head `20260915_0002`.
+
 # AMP XP v1.13.0.3 — Telegram Navigation & Web Localization Hotfix
 
 ## Виправлено
