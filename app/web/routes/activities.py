@@ -3,14 +3,26 @@ from __future__ import annotations
 from app.time_utils import clock
 
 from fastapi import APIRouter
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    AUTOMATIC_XP_GUIDE, ActivityApplication, ActivityType, File, Form, HTMLResponse, HTTPException, RedirectResponse, Request, UploadFile, User, UserStatus, activity_status_label, complete_activity_application, ctx, db, delete_image, func, guard, log_audit, notify_telegram, or_, save_image, select, templates, timedelta, uuid4
+)
 from app.content_views import content_view_stats
-from app.web.app import (
-    _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
+from app.web.dependencies import _refresh_lifecycle
+from app.web.broadcast_runtime import (
+    _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 
 router = APIRouter()
+
+ACTIVITY_APPLICATION_STATUSES = (
+    "activity_requested",
+    "activity_approved",
+    "activity_submitted",
+    "activity_completed",
+    "activity_rejected",
+)
+
 
 @router.get("/admin/activities", response_class=HTMLResponse)
 async def activities_page(request: Request, status: str = "attention", q: str = "", period: str = "", type: str = "", sort: str = "newest"):

@@ -95,12 +95,74 @@ def main() -> None:
         if token not in observability_source:
             raise SystemExit(f"Observability preflight failed: {token} missing")
 
-    web_source = (root / "app" / "web" / "app.py").read_text(encoding="utf-8")
+    # v1.13.0 architecture completion gates.  The old monolith modules remain
+    # only as explicit compatibility facades; canonical implementation lives in
+    # focused packages/modules.
+    factory_source = (root / "app" / "web" / "factory.py").read_text(encoding="utf-8")
+    web_facade_source = (root / "app" / "web" / "app.py").read_text(encoding="utf-8")
+    run_web_source = (root / "run_web.py").read_text(encoding="utf-8")
+    if "def create_app()" not in factory_source:
+        raise SystemExit("Architecture preflight failed: app.web.factory.create_app missing")
+    if "from .factory import create_app" not in web_facade_source or "app = create_app()" not in web_facade_source:
+        raise SystemExit("Architecture preflight failed: app.web.app compatibility facade is not factory-backed")
+    if '"app.web.factory:create_app"' not in run_web_source or "factory=True" not in run_web_source:
+        raise SystemExit("Architecture preflight failed: web runtime does not start through create_app factory mode")
+
+    health_source = (root / "app" / "web" / "health_routes.py").read_text(encoding="utf-8")
     for endpoint in ("/health/live", "/health/ready", "/health/dependencies"):
-        if endpoint not in web_source:
+        if endpoint not in health_source:
             raise SystemExit(f"Health preflight failed: {endpoint} missing")
-    if "from fastapi.encoders import jsonable_encoder" not in web_source or "JSONResponse(jsonable_encoder(payload)" not in web_source:
+    if "from fastapi.encoders import jsonable_encoder" not in health_source or "JSONResponse(jsonable_encoder(payload)" not in health_source:
         raise SystemExit("Health preflight failed: JSON boundary must encode datetime-safe payloads")
+
+    architecture_paths = (
+        root / "app" / "web" / "dependencies.py",
+        root / "app" / "web" / "event_routes",
+        root / "app" / "analytics_modules",
+        root / "app" / "reporting",
+        root / "app" / "model_domains",
+        root / "app" / "handlers" / "start_flow",
+        root / "app" / "jobs",
+        root / "app" / "bot_runtime.py",
+    )
+    missing_architecture = [str(path.relative_to(root)) for path in architecture_paths if not path.exists()]
+    if missing_architecture:
+        raise SystemExit(f"Architecture preflight failed: missing split components {missing_architecture}")
+
+    facade_limits = {
+        root / "app" / "web" / "app.py": 80,
+        root / "app" / "analytics.py": 80,
+        root / "app" / "reports.py": 80,
+        root / "app" / "web" / "routes" / "events.py": 80,
+        root / "app" / "models.py": 180,
+        root / "app" / "handlers" / "start.py": 80,
+        root / "app" / "main.py": 140,
+    }
+    oversized_facades: list[str] = []
+    for path, max_lines in facade_limits.items():
+        line_count = len(path.read_text(encoding="utf-8").splitlines())
+        if line_count > max_lines:
+            oversized_facades.append(f"{path.relative_to(root)}={line_count}>{max_lines}")
+    if oversized_facades:
+        raise SystemExit("Architecture preflight failed: oversized compatibility/composition modules: " + ", ".join(oversized_facades))
+
+    wildcard_imports: list[str] = []
+    for path in (root / "app").rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and any(alias.name == "*" for alias in node.names):
+                wildcard_imports.append(f"{path.relative_to(root)}:{node.lineno}")
+    if wildcard_imports:
+        raise SystemExit("Architecture preflight failed: wildcard imports remain at " + ", ".join(wildcard_imports))
+
+    # Schema continuity: the architecture release must not silently alter the
+    # v1.12.1.7/v1.12.2 production schema or Alembic head.
+    models_source = (root / "app" / "models.py").read_text(encoding="utf-8")
+    if "model_domains" not in models_source or "Compatibility facade" not in models_source:
+        raise SystemExit("Architecture preflight failed: app.models is not the explicit compatibility facade")
+    migration_source = (root / "migrations" / "versions" / "20260915_0002_content_views.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260915_0002"' not in migration_source:
+        raise SystemExit("Alembic preflight failed: expected production head 20260915_0002 missing")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

@@ -8,7 +8,9 @@ import calendar as pycalendar
 
 from fastapi import APIRouter, Query
 from sqlalchemy import and_
-from app.web.app import *  # noqa: F401,F403 - shared web dependencies
+from app.web.dependencies import (
+    ActivityType, Event, HTMLResponse, Idea, Opportunity, Quest, RedirectResponse, Request, RequestCase, StreakFreeze, Survey, User, VolunteerTask, ctx, db, guard, guard_permission, idea_status_label, is_superadmin, label, lifecycle_status_label, log_audit, or_, request_status_label, select, templates, web_permissions
+)
 from app.runtime_config import RULE_SPECS, SECTIONS, get_runtime_values, set_runtime_values
 
 router = APIRouter()

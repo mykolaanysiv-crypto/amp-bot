@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .admin_common import *  # noqa: F401,F403
+from .admin_common import (
+    AdminOpportunityState, Bot, BufferedInputFile, CallbackQuery, Command, Database, F, FSMContext, Message, Opportunity, Settings, User, UserRole, _admin, _queue_user_notice, _require_admin, _require_permission, datetime, export_excel, has_permission, label, log_audit, refresh_matches_for_opportunity, router
+)
 
 @router.callback_query(F.data == "admin:create_opportunity")
 async def opp_start(call: CallbackQuery, state: FSMContext, db: Database) -> None:

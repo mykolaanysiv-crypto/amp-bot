@@ -4,10 +4,13 @@ from app.time_utils import clock
 
 from fastapi import APIRouter
 import os
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    APP_VERSION, AuditLog, Bot, BroadcastCampaign, BroadcastRecipient, BytesIO, HTMLResponse, MediaAsset, Notification, RedirectResponse, Referral, Request, ScheduledJob, StreamingResponse, SystemSetting, User, asyncio, ctx, datetime, db, export_basic_excel, export_excel, func, guard, guard_permission, latest_local_backup, log_audit, reliability_counts, select, settings, templates, timedelta
+)
 from app.reliability import backup_verification_status
-from app.web.app import (
-    _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
+from app.web.dependencies import _refresh_lifecycle
+from app.web.broadcast_runtime import (
+    _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 

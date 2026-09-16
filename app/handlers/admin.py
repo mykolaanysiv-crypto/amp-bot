@@ -1,8 +1,11 @@
-"""Compatibility facade for split admin handlers (v1.12)."""
+"""Compatibility facade for admin Telegram handlers without wildcard imports."""
 from .admin_common import router
-from .admin_core import *  # noqa: F401,F403
-from .admin_events import *  # noqa: F401,F403
-from .admin_quests_rewards import *  # noqa: F401,F403
-from .admin_activities_tasks import *  # noqa: F401,F403
-from .admin_opportunities import *  # noqa: F401,F403
-from .admin_moderation import *  # noqa: F401,F403
+from .admin_core import admin_panel
+# Import focused modules for decorator registration on the shared router.
+from . import admin_events as _admin_events
+from . import admin_quests_rewards as _admin_quests_rewards
+from . import admin_activities_tasks as _admin_activities_tasks
+from . import admin_opportunities as _admin_opportunities
+from . import admin_moderation as _admin_moderation
+
+__all__ = ["router", "admin_panel"]

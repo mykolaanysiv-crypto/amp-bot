@@ -6,7 +6,9 @@ from fastapi import APIRouter, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, or_, select
 
-from app.web.app import *  # noqa: F401,F403
+from app.web.dependencies import (
+    HTMLResponse, Notification, Request, User, ctx, db, guard, log_audit, templates
+)
 
 router = APIRouter()
 

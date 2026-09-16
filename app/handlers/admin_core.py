@@ -1,5 +1,16 @@
 from ..time_utils import clock
-from .admin_common import *  # noqa: F401,F403
+from .admin_common import (
+    AdminXPState, Bot, CallbackQuery, ConsentHistory, Database, F, FSMContext, InlineKeyboardBuilder, Message, Settings, User, UserStatus, _admin, _queue_user_notice, _require_admin, _require_permission, _staff_permissions, add_active_users_to_default_team, add_xp, admin_menu, admin_section_menu, analytics_bot_text, build_analytics, log_audit, normalize_manual_xp, pending_user_keyboard, reward_referral_if_ready, router, select
+)
+
+_ADMIN_SECTION_TITLES = {
+    "events": "📅 Події",
+    "activities": "🎯 Активності",
+    "gamification": "🏆 XP та винагороди",
+    "people": "👥 Учасники",
+    "data": "📊 Аналітика й комунікація",
+}
+
 
 @router.message(F.text == "🛠 Адмін-панель")
 async def admin_panel(message: Message, db: Database) -> None:

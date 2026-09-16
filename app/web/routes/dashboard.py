@@ -3,12 +3,15 @@ from __future__ import annotations
 from app.time_utils import clock
 
 from fastapi import APIRouter
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    ActivityApplication, AuditLog, Event, EventFeedback, EventRegistration, HTMLResponse, Idea, Notification, QuestParticipation, RedirectResponse, Request, RequestCase, RewardClaim, User, UserRole, UserStatus, VolunteerTask, XPTransaction, ctx, current_season, db, func, guard, guard_permission, has_web_permission, is_superadmin, log_audit, or_, select, sql_case, templates, timedelta
+)
 from app.settlements import ensure_settlement_directory, settlement_quality_report
 from app.registration_ux import registration_funnel_counts
 from app.runtime_config import get_runtime_int
-from app.web.app import (
-    _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
+from app.web.dependencies import _refresh_lifecycle
+from app.web.broadcast_runtime import (
+    _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 

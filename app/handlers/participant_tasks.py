@@ -2,7 +2,9 @@ from ..observability import log_extra
 from ..time_utils import clock
 import logging
 
-from .participant_common import *  # noqa: F401,F403
+from .participant_common import (
+    ActivityApplication, ActivityType, CallbackQuery, Database, F, Idea, InlineKeyboardBuilder, Message, Opportunity, RequestCase, UserStatus, VolunteerTask, VolunteerTaskParticipation, activity_status_label, content_view_stat, current_season, entity_button_text, escape, func, get_user_by_tg, idea_status_label, label, league_for_xp, league_leaderboard_rows, process_expired_content, record_content_view, request_status_label, router, season_leaderboard_rows, season_xp, select, telegram_photo_input
+)
 
 @router.message(F.text.in_({"✅ Волонтерство", "✅ Волонтерські задачі"}))
 async def tasks(message: Message, db: Database) -> None:

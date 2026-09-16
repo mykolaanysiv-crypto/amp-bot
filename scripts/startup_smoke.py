@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Production lifecycle smoke for v1.12.1.
+"""Production lifecycle smoke for AMP production releases (v1.13.0 factory-aware).
 
 This script deliberately executes the same critical sequence used during a
 release:
@@ -50,10 +50,15 @@ async def _legacy_bootstrap_phase() -> None:
 
 
 async def _web_startup_phase() -> None:
-    # Import only after Alembic so module-level web objects are created against
-    # the schema that the release will actually expose to the web dyno.
-    web_module = importlib.import_module("app.web.app")
-    app = web_module.app
+    # Import only after Alembic so web objects are created against the schema
+    # the release will actually expose. v1.13.0 exercises the canonical factory
+    # directly and then imports the compatibility facade as an import-regression
+    # check for the planned 1–2 release transition window.
+    factory_module = importlib.import_module("app.web.factory")
+    app = factory_module.create_app()
+    compatibility_module = importlib.import_module("app.web.app")
+    if not hasattr(compatibility_module, "app"):
+        raise RuntimeError("app.web.app compatibility facade missing module-level app")
     async with app.router.lifespan_context(app):
         if not bool(getattr(app.state, "startup_complete", False)):
             raise RuntimeError("FastAPI lifespan entered without startup_complete")

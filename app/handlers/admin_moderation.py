@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .admin_common import *  # noqa: F401,F403
+from .admin_common import (
+    AdminBanState, BanRecord, Bot, CallbackQuery, Command, Database, F, FSMContext, InlineKeyboardBuilder, Message, User, UserRole, UserStatus, _admin, _queue_user_notice, _require_permission, func, log_audit, router, select, timedelta
+)
 
 @router.callback_query(F.data == "admin:moderation")
 async def moderation_panel(call: CallbackQuery, db: Database) -> None:
@@ -60,7 +62,7 @@ async def moderation_new_user(message: Message, state: FSMContext, db: Database)
 
 
 @router.message(AdminBanState.days)
-async def moderation_new_days(message: Message, state: FSMContext) -> None:
+async def moderation_new_days(message: Message, state: FSMContext, db: Database) -> None:
     if not await _require_permission(message, db, "moderation.manage"):
         await state.clear()
         return

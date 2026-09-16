@@ -3,10 +3,13 @@ from __future__ import annotations
 from app.time_utils import clock
 
 from fastapi import APIRouter
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    File, Form, HTMLResponse, HTTPException, Quest, QuestParticipation, RedirectResponse, Request, TeamQuestContribution, UploadFile, User, UserStatus, approve_quest_participation, complete_team_quest, compose_optional_datetime_fields, ctx, db, delete, delete_image, func, guard, guard_permission, log_audit, normalize_quest_xp, notify_telegram, or_, save_image, seed_default_team, select, templates, timedelta
+)
 from app.content_views import content_view_stat, content_view_stats
-from app.web.app import (
-    _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
+from app.web.dependencies import _refresh_lifecycle
+from app.web.broadcast_runtime import (
+    _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 

@@ -10,11 +10,14 @@ from sqlalchemy.orm import selectinload
 from app.services import revoke_referral_reward_if_inactive
 from app.profile_data import split_display_name
 from app.season_history import user_season_history
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    ActivityApplication, Badge, BanRecord, ConsentHistory, EventRegistration, File, Form, GENDER_OPTIONS, HTMLResponse, HTTPException, Idea, MEDIA_CONSENT_VERSION, MediaAsset, Path, QuestParticipation, RedirectResponse, Referral, Request, Response, SurveyResponse, UploadFile, User, UserBadge, UserRole, UserStatus, UserStatusChangeRequest, VULNERABILITY_OPTIONS, VolunteerTaskParticipation, XPTransaction, add_active_users_to_default_team, add_xp, age_on, ctx, current_season, datetime, db, delete_stored_image, dump_vulnerabilities, func, gender_label, get_level, guard, guard_permission, guard_superadmin, has_web_permission, html_escape, is_superadmin, label, league_for_xp, load_vulnerabilities, log_audit, mask_email, mask_phone, media_consent_label, normalize_manual_xp, notify_telegram, or_, process_expired_bans, queue_telegram_delivery, refresh_user_streak, reward_referral_if_ready, save_document, season_xp, select, settings, templates, timedelta, update, vulnerability_labels, xp_total
+)
 from app.settlements import resolve_canonical_settlement
 from app.registration_ux import mark_registration_approved
-from app.web.app import (
-    _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
+from app.web.dependencies import _refresh_lifecycle
+from app.web.broadcast_runtime import (
+    _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 

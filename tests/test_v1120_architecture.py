@@ -10,8 +10,8 @@ def test_procfile_splits_web_and_worker():
 
 def test_services_is_compatibility_facade():
     text = Path("app/services.py").read_text()
-    assert "from .domain_services import *" in text
-    assert len(text.splitlines()) < 20
+    assert "Compatibility" in text or "compatib" in text.lower()
+    assert "import *" not in text
     expected = {"users.py", "events.py", "gamification.py", "referrals.py", "exports.py", "bootstrap.py"}
     assert expected.issubset({p.name for p in Path("app/domain_services").glob("*.py")})
 
@@ -41,13 +41,15 @@ def test_production_observability_and_backup_checks_present():
     obs = Path("app/observability.py").read_text()
     reliability = Path("app/reliability.py").read_text()
     main = Path("app/main.py").read_text()
+    jobs = Path("app/jobs/delivery.py").read_text()
     assert "JsonLogFormatter" in obs
     assert "SensitiveDataFilter" in obs
     assert "SENTRY_DSN" in obs
     assert "notification_failure_alert" in reliability
     assert "backup_health_alert" in reliability
-    assert "_notification_health_scheduler" in main
-    assert "_backup_health_scheduler" in main
+    assert "_notification_health_scheduler" in jobs
+    assert "_backup_health_scheduler" in jobs
+    assert "scheduler_factories" in main
 
 
 def test_gamification_20_is_analysis_only_and_uses_clean_baseline():

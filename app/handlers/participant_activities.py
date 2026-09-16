@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .participant_common import *  # noqa: F401,F403
+from .participant_common import (
+    ActivityApplication, ActivityApplicationState, ActivityType, Bot, CallbackQuery, Database, F, FSMContext, InlineKeyboardBuilder, Message, UserStatus, activity_category_label, activity_status_label, compact_button_text, content_view_stat, entity_button_text, escape, get_user_by_tg, record_content_view, router, save_telegram_photo, select, telegram_photo_input
+)
 
 @router.message(F.text == "⚡ Активності")
 async def activity_catalog(message: Message, db: Database) -> None:

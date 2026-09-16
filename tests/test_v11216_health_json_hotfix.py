@@ -15,7 +15,7 @@ def test_v11216_or_newer_and_version_files_match():
 
 
 def test_health_response_encodes_native_datetime_before_jsonresponse():
-    source = Path("app/web/app.py").read_text(encoding="utf-8")
+    source = Path("app/web/health_routes.py").read_text(encoding="utf-8")
     assert "from fastapi.encoders import jsonable_encoder" in source
     assert "JSONResponse(jsonable_encoder(payload)" in source
 
@@ -34,7 +34,7 @@ def test_health_response_encodes_native_datetime_before_jsonresponse():
 
 
 def test_health_dependency_endpoint_still_returns_degraded_instead_of_crashing():
-    source = Path("app/web/app.py").read_text(encoding="utf-8")
-    assert '@app.get("/health/dependencies")' in source
+    source = Path("app/web/health_routes.py").read_text(encoding="utf-8")
+    assert '@router.get("/health/dependencies")' in source
     assert '"status": "ok" if overall else "degraded"' in source
     assert "200 if overall else 503" in source

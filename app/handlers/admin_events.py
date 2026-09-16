@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .admin_common import *  # noqa: F401,F403
+from .admin_common import (
+    AdminEventScannerState, AdminEventState, Bot, BufferedInputFile, BytesIO, CallbackQuery, Database, Event, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, Message, Settings, User, WebAppInfo, _admin, _single_button, _two_buttons, _queue_new_entity_notice, _queue_user_notice, _require_admin, _require_permission, admin_scan_event_participant, compact_button_text, confirm_event_attendance, create_event, datetime, event_checkin_window, func, log_audit, log_extra, logging, normalize_event_xp, parse_qs, qrcode, queue_telegram_delivery, quote, re, router, select, timedelta, urlparse
+)
 
 @router.callback_query(F.data == "admin:create_event")
 async def create_event_start(call: CallbackQuery, state: FSMContext, db: Database) -> None:
@@ -478,18 +480,6 @@ async def attendance_events(call: CallbackQuery, db: Database) -> None:
             )
         await call.answer()
 
-
-def _single_button(text: str, data: str):
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=compact_button_text(text), callback_data=data)]])
-
-
-def _two_buttons(text1: str, data1: str, text2: str, data2: str):
-    b = InlineKeyboardBuilder()
-    b.button(text=compact_button_text(text1), callback_data=data1)
-    b.button(text=compact_button_text(text2), callback_data=data2)
-    b.adjust(1)
-    return b.as_markup()
 
 
 @router.callback_query(F.data.startswith("admin:confirm_event:"))

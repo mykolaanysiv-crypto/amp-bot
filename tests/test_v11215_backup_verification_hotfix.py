@@ -11,11 +11,11 @@ def test_version_11215_or_newer():
 def test_backup_unknown_grace_is_configurable_and_used():
     config = Path("app/config.py").read_text()
     reliability = Path("app/reliability.py").read_text()
-    main = Path("app/main.py").read_text()
+    delivery = Path("app/jobs/delivery.py").read_text()
     assert "BACKUP_UNKNOWN_GRACE_HOURS" in config
     assert "monitor.backup.unknown_since" in reliability
     assert 'status": "initializing"' in reliability
-    assert "unknown_grace_hours=settings.backup_unknown_grace_hours" in main
+    assert "unknown_grace_hours=settings.backup_unknown_grace_hours" in delivery
 
 
 def test_verified_backup_resets_initial_unknown_state():

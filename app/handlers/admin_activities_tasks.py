@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .admin_common import *  # noqa: F401,F403
+from .admin_common import (
+    ActivityApplication, ActivityType, AdminTaskState, Bot, CallbackQuery, Database, F, FSMContext, InlineKeyboardBuilder, Message, User, VolunteerTask, VolunteerTaskParticipation, _admin, _single_button, _queue_new_entity_notice, _queue_user_notice, _require_admin, _require_permission, activity_status_label, add_xp, complete_activity_application, datetime, evaluate_automatic_badges, log_audit, normalize_task_xp, router, select
+)
 
 @router.callback_query(F.data == "admin:activity_apps")
 async def admin_activity_apps(call: CallbackQuery, db: Database) -> None:

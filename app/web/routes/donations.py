@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 
 from app.donations import award_donation_badges, sync_monobank_donations
 from app.models import DonationJarState, DonationReport, DonationTransaction, SupportPageView, User, UserStatus
-from app.web.app import (
+from app.web.dependencies import (
     ctx, db, delete_image, guard_permission, is_superadmin, log_audit, notify_telegram,
     save_document, settings, templates,
 )

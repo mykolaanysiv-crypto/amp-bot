@@ -76,6 +76,20 @@ from ..states import (
 router = Router(name="admin")
 
 
+def _single_button(text: str, data: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text=compact_button_text(text), callback_data=data)]]
+    )
+
+
+def _two_buttons(text1: str, data1: str, text2: str, data2: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=compact_button_text(text1), callback_data=data1)
+    builder.button(text=compact_button_text(text2), callback_data=data2)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def _callback_permission(data: str | None) -> str | None:
     value = str(data or "")
     rules = (

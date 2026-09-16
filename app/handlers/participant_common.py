@@ -34,6 +34,7 @@ from ..models import (
     RewardClaim,
     User,
     UserBadge,
+    UserRole,
     UserStatus,
     VolunteerTask, VolunteerTaskParticipation,
     XPTransaction,
@@ -55,6 +56,13 @@ from ..observability import log_extra
 from ..time_utils import event_local_now
 
 router = Router(name="participant")
+
+AMBASSADOR_BADGE_ROLES = {
+    UserRole.AMBASSADOR.value,
+    UserRole.COORDINATOR.value,
+    UserRole.ADMIN.value,
+    UserRole.SUPERADMIN.value,
+}
 
 
 async def _active_user(message_or_cb, db: Database):

@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .common import *  # noqa: F401,F403
+from .common import (
+    AsyncSession, BanRecord, User, UserStatus, datetime, select
+)
 from .audit import log_audit
 
 async def process_expired_bans(session: AsyncSession, now: datetime | None = None) -> int:

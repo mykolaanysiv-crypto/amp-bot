@@ -1,3 +1,27 @@
+# AMP XP v1.13.0 — Architecture Completion
+
+## Composition roots
+- FastAPI web composition переведено на `app.web.factory.create_app()`; `run_web.py` використовує Uvicorn factory mode.
+- `app/web/app.py` лишився тільки compatibility facade на перехідні 1–2 релізи.
+- Web dependencies, lifespan, health/auth/media routes та broadcast runtime винесені з моноліту в окремі модулі.
+
+## Domain split
+- `app/web/routes/events.py` → `app/web/event_routes/*`.
+- `app/analytics.py` → `app/analytics_modules/{core,exports}.py`.
+- `app/reports.py` → `app/reporting/{periods,builder,exports}.py`.
+- `app/models.py` → `app/model_domains/*` із явним facade export; SQLAlchemy metadata залишилась ідентичною — 54 таблиці.
+- `app/handlers/start.py` → `app/handlers/start_flow/*`.
+- `app/main.py` → orchestration entry point; dispatcher/profile middleware винесені в `app/bot_runtime.py` / `app/telegram_middleware.py`; усі 13 scheduler — у `app/jobs/*`.
+
+## Import hygiene / production guard
+- У `app/` більше немає `import *`.
+- Compatibility facades використовують explicit public exports.
+- `production_preflight` перевіряє factory composition, split packages, facade-size limits, wildcard-import guard та Alembic/schema continuity.
+- Startup smoke створює web app через canonical factory і додатково перевіряє legacy facade import.
+- Schema migration у v1.13.0 відсутня; production Alembic head лишається `20260915_0002`.
+
+---
+
 # AMP XP v1.12.2 — Error & Time Hardening
 
 ## Час і DST

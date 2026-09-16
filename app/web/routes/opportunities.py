@@ -3,7 +3,9 @@ from __future__ import annotations
 from app.time_utils import clock
 
 from fastapi import APIRouter
-from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.web.dependencies import (
+    File, Form, HTMLResponse, HTTPException, Opportunity, OpportunityInterest, RedirectResponse, Request, UploadFile, ctx, datetime, db, delete, delete_image, func, guard, log_audit, or_, save_image, select, templates, timedelta
+)
 from app.opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_opportunity
 from app.models import OpportunityMatch
 from app.content_views import content_view_stats

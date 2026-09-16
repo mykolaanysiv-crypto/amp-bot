@@ -54,7 +54,7 @@ def test_procfile_keeps_separate_release_web_worker():
 
 
 def test_health_endpoints_are_split_by_semantics():
-    src = read("app/web/app.py")
+    src = read("app/web/health_routes.py")
     for endpoint in ("/health/live", "/health/ready", "/health/dependencies"):
         assert endpoint in src
     assert "database_probe" in src
@@ -80,12 +80,14 @@ def test_postgres_pool_limits_are_explicit_and_configurable():
 def test_worker_and_scheduler_heartbeats_are_supervised():
     runtime = read("app/runtime_health.py")
     main = read("app/main.py")
+    registry = read("app/jobs/registry.py")
     assert "async def heartbeat_loop" in runtime
     assert "async def supervise_scheduler" in runtime
     assert "SCHEDULER_MAX_SILENCE_SECONDS" in runtime
     assert "_direct_superadmin_alert" in runtime
-    assert 'heartbeat_loop(db, "worker"' in main
+    assert "heartbeat_loop(" in main and '"worker"' in main
     assert "supervise_scheduler(" in main
+    assert "scheduler_factories" in registry
 
 
 def test_postgres_integration_test_is_real_db_test():

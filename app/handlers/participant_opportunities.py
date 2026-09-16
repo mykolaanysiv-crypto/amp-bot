@@ -1,5 +1,7 @@
 from ..time_utils import clock
-from .participant_common import *  # noqa: F401,F403
+from .participant_common import (
+    CallbackQuery, Database, F, InlineKeyboardBuilder, Message, OPPORTUNITY_INTERESTS, Opportunity, OpportunityInterest, OpportunityMatch, UserStatus, active_month_streak, content_view_stat, datetime, entity_button_text, escape, get_user_by_tg, goals_for_user, log_extra, logging, record_content_view, refresh_matches_for_user, router, select, set_user_interests, telegram_photo_input, user_interests
+)
 
 @router.message(F.text.in_({"📰 Можливості", "🌍 Можливості"}))
 async def opportunities(message: Message, db: Database) -> None:

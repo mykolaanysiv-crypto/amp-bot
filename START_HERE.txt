@@ -1,13 +1,15 @@
-АМП XP / «АМПасадори» v1.12.2
+АМП XP / «АМПасадори» v1.13.0
 
-Поточний production candidate: v1.12.2 — Error & Time Hardening.
+Поточний production candidate: v1.13.0 — Architecture Completion.
 
 Основне:
-- один Clock/time boundary для application business time;
-- timezone-aware UTC для бізнес-рішень із Europe/Kyiv local-calendar conversion;
-- DST-safe scheduler/check-in/reports/midnight boundaries;
-- без silent `except Exception: pass`;
-- structured logs з `error_code` + `context` і secret-aware redaction;
+- FastAPI через canonical create_app() factory;
+- web dependencies/health/auth/media/lifespan розділені;
+- events/analytics/reports/models/start/main розбиті на domain modules;
+- усі 13 scheduler перенесені в app/jobs/;
+- app/main.py став orchestration entry point;
+- у app/ немає import *;
+- compatibility facades залишені на 1–2 релізи;
 - schema без змін: 54 таблиці, Alembic head 20260915_0002.
 
-Почніть із SERVER_UPDATE_V1122.md та COMMANDS_V1122.txt.
+Почніть із SERVER_UPDATE_V1130.md та COMMANDS_V1130.txt.

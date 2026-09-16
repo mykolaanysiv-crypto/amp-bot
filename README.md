@@ -1,3 +1,32 @@
+# AMP XP / «АМПасадори» v1.13.0 — Architecture Completion
+
+v1.13.0 завершує основний архітектурний refactor, розпочатий у v1.12.x. Реліз не змінює функціональні правила для учасників і не змінює production schema: фокус — розділення великих модулів, явні залежності та стабільні composition roots.
+
+## Що нового у v1.13.0
+- `app/web/app.py` перетворено на малий compatibility facade; canonical FastAPI composition тепер у `app/web/factory.py` через `create_app()`.
+- `run_web.py` запускає Uvicorn напряму в factory mode: `app.web.factory:create_app`.
+- Shared web dependencies/helpers винесені в `app/web/dependencies.py`; health, auth, media, lifespan і broadcast runtime — у окремі модулі.
+- Великий `app/web/routes/events.py` розділено на `app/web/event_routes/`: overview, participants, operations, mutations, scanners і public routes. Старий import path тимчасово збережений facade-модулем.
+- `app/analytics.py` розділено на `app/analytics_modules/core.py` та `exports.py`; `app/reports.py` — на `app/reporting/periods.py`, `builder.py`, `exports.py`.
+- SQLAlchemy models розділено за доменами у `app/model_domains/`; `app/models.py` лишився явним compatibility facade. Metadata повністю збережена: **54 таблиці**.
+- `/start` / registration flow розділено на `app/handlers/start_flow/`; `app/handlers/start.py` лишився facade.
+- Telegram middleware та dispatcher composition винесені з `app/main.py` у `app/telegram_middleware.py` і `app/bot_runtime.py`.
+- Усі 13 scheduler перенесені в `app/jobs/` з єдиним `scheduler_factories()` registry; `app/main.py` тепер лише orchestration entry point.
+- Прибрано **всі `import *` у `app/`**; compatibility modules використовують тільки explicit imports/exports.
+- Production preflight отримав Architecture Completion gates: factory mode, наявність split packages, facade-size limits, заборона wildcard imports та continuity Alembic/schema.
+- Startup smoke тепер тестує canonical `create_app()` і окремо перевіряє import compatibility facade.
+- Compatibility facades залишаються на **1–2 релізи** для безпечного переходу; після міграції внутрішніх/зовнішніх import paths вони мають бути видалені окремим cleanup-релізом.
+
+## Сумісність
+- PostgreSQL schema: **без змін**, 54 таблиці.
+- Alembic head: `20260915_0002`.
+- XP, Notification Center, Content Views, Clock/time hardening, security/ACL, backup та worker/scheduler supervision не змінюють контракт.
+- `app.models`, `app.analytics`, `app.reports`, `app.web.app`, `app.web.routes.events`, `app.handlers.start` залишаються доступними на перехідний період.
+
+Деталі: `SERVER_UPDATE_V1130.md`. Команди: `COMMANDS_V1130.txt`. QA: `TEST_REPORT_V1130.txt`.
+
+---
+
 # AMP XP / «АМПасадори» v1.12.2 — Error & Time Hardening
 
 v1.12.2 — reliability/hardening реліз поверх v1.12.1.7. Основний фокус: один часовий boundary через `Clock`, timezone-aware UTC для бізнес-рішень, DST-safe local-calendar періоди та machine-searchable error logs без silent broad exceptions.
