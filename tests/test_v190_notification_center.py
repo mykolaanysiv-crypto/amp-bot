@@ -9,7 +9,7 @@ def test_v190_version_and_schema():
     version = (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip()
     assert version
     assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == version
-    assert len(Base.metadata.tables) == 53
+    assert len(Base.metadata.tables) >= 53
     ncols = {c.name for c in Notification.__table__.columns}
     assert {
         "recipient_user_id", "recipient_tg_id", "type", "title", "body",

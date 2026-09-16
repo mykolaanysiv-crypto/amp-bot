@@ -10,6 +10,7 @@ from app.event_documents import fill_registration_template
 from app.telegram_webapp import validate_webapp_init_data
 from app.services import admin_scan_event_participant, event_checkin_window
 from app.time_utils import event_local_now
+from app.content_views import content_view_stat, content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -197,7 +198,8 @@ async def events(request: Request, q: str = "", status: str = "", period: str = 
         if period in cutoff_map: stmt = stmt.where(Event.starts_at >= now - timedelta(days=cutoff_map[period]), Event.starts_at <= now + timedelta(days=cutoff_map[period]))
         order_map = {"oldest": Event.starts_at.asc(), "title": Event.title.asc(), "newest": Event.starts_at.desc()}
         rows=(await session.scalars(stmt.order_by(order_map.get(sort, Event.starts_at.desc())).limit(250))).all()
-        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
+        view_stats = await content_view_stats(session, "event", [row.id for row in rows])
+        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
 
 
 @router.get("/admin/events/{event_id}", response_class=HTMLResponse)
@@ -275,6 +277,7 @@ async def event_detail(request: Request, event_id: int):
             "last_scan_at": last_scanner_audit.created_at if last_scanner_audit else None,
             "last_scan_actor": last_scanner_audit.actor_label if last_scanner_audit else "",
         }
+        view_stat = await content_view_stat(session, "event", event.id)
         operation_funnel = [
             {"key": "registered", "label": "Зареєстровані", "value": counts["registered"] + counts["reserved"] + counts["checked_in"] + counts["confirmed"] + counts["no_show"]},
             {"key": "waitlist", "label": "Черга / резерв", "value": counts["waitlisted"] + counts["reserved"]},
@@ -287,7 +290,7 @@ async def event_detail(request: Request, event_id: int):
             request=request, name="event_detail.html",
             context=ctx(
                 request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
-                xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel,
+                xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat,
                 share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token else "",
             )
         )

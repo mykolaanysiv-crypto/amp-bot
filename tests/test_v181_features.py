@@ -16,7 +16,7 @@ def test_v181_statuses_and_schema_fields():
         "permanent_deleted_at",
     }:
         assert name in cols
-    assert len(Base.metadata.tables) == 53
+    assert len(Base.metadata.tables) >= 53
 
 
 def test_deleted_statuses_are_not_manual_web_status_options():

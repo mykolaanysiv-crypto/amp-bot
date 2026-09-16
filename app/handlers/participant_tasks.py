@@ -1,3 +1,5 @@
+import logging
+
 from .participant_common import *  # noqa: F401,F403
 
 @router.message(F.text.in_({"✅ Волонтерство", "✅ Волонтерські задачі"}))
@@ -73,12 +75,17 @@ async def tasks(message: Message, db: Database) -> None:
         )
 
 
-@router.callback_query(F.data.startswith("task:"))
+@router.callback_query(F.data.regexp(r"^task:\d+$"))
 async def task_detail(call: CallbackQuery, db: Database) -> None:
     task_id = int(call.data.split(":")[1])
     async with db.session_factory() as session:
-        changed = await process_expired_content(session)
-        if changed: await session.commit()
+        try:
+            changed = await process_expired_content(session)
+            if changed:
+                await session.commit()
+        except Exception:
+            await session.rollback()
+            logging.getLogger("amp.volunteer_tasks").exception("Lifecycle refresh failed while opening task %s", task_id)
         user = await get_user_by_tg(session, call.from_user.id)
         task = await session.get(VolunteerTask, task_id)
         if not user or not task:
@@ -90,6 +97,9 @@ async def task_detail(call: CallbackQuery, db: Database) -> None:
                 VolunteerTaskParticipation.user_id == user.id,
             )
         )
+        await record_content_view(session, "volunteer_task", task.id, user=user)
+        await session.flush()
+        view_stat = await content_view_stat(session, "volunteer_task", task.id)
         count = await session.scalar(
             select(func.count(VolunteerTaskParticipation.id)).where(
                 VolunteerTaskParticipation.task_id == task.id,
@@ -113,21 +123,28 @@ async def task_detail(call: CallbackQuery, db: Database) -> None:
                 b.button(text="❌ Скасувати участь", callback_data=f"task_cancel_join:{task.id}")
         b.button(text="⬅️ Назад", callback_data="nav:tasks")
         b.adjust(1)
+        await session.commit()
+        safe_title = escape(task.title or "Волонтерська задача")
+        safe_description = escape(task.description or "Без додаткового опису.")
         text = (
-            f"🧰 <b>{task.title}</b>\n"
+            f"🧰 <b>{safe_title}</b>\n"
             f"📆 Дедлайн: {deadline}\n"
             f"👥 Учасники: <b>{count}/{maximum}</b>\n"
-            f"⚡ {task.xp_reward} XP • ⏱ {task.hours_reward:g} год.\n\n"
-            f"{task.description or 'Без додаткового опису.'}"
+            f"⚡ {task.xp_reward} XP • ⏱ {task.hours_reward:g} год.\n"
+            f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
+            f"{safe_description}"
         )
         if mine:
             status_names = {"joined":"Виконується", "returned":"Повернуто на доопрацювання", "submitted":"На перевірці", "approved":"Підтверджено"}
             text += f"\n\nВаш статус: <b>{status_names.get(mine.status, mine.status)}</b>"
             if mine.admin_note:
-                text += f"\n💬 Коментар координатора: {mine.admin_note}"
+                text += f"\n💬 Коментар координатора: {escape(mine.admin_note)}"
         photo = await telegram_photo_input(db, task.image_path)
-        if photo:
+        if photo and len(text) <= 950:
             await call.message.answer_photo(photo, caption=text, reply_markup=b.as_markup() if b.buttons else None)
+        elif photo:
+            await call.message.answer_photo(photo, caption=f"🧰 <b>{safe_title}</b>\n👁 {view_stat['views']} переглядів")
+            await call.message.answer(text, reply_markup=b.as_markup() if b.buttons else None)
         else:
             await call.message.answer(text, reply_markup=b.as_markup() if b.buttons else None)
         await call.answer()

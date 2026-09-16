@@ -58,6 +58,7 @@
         <span>⚡ {{e.xp_reward}} XP</span>
         <span>⏱ {{e.volunteer_hours}} год.</span>
         <span>👥 {{e.capacity or '∞'}}</span>
+        <span>👁 {{view_stats.get(e.id, {}).get('views', 0)}} перегл.</span>
       </div>
       {% if e.cancelled_at or e.status == 'cancelled' %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{e.cancellation_reason or 'не зазначено'}}</p>{% elif e.description %}<p class="event-card-description">{{e.description[:180]}}{{'…' if e.description|length > 180 else ''}}</p>{% endif %}
       <div class="card-actions event-card-actions-v2">

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from html import escape
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -15,6 +16,7 @@ from ..media import telegram_photo_input
 from ..services import get_user_by_tg
 from ..workflows import complete_survey_once
 from ..states import SurveyState
+from ..content_views import content_view_stat, record_content_view
 
 router = Router(name="surveys")
 
@@ -85,6 +87,13 @@ async def survey_view(call: CallbackQuery, db: Database, state: FSMContext) -> N
         survey = await session.get(Survey, survey_id)
         existing = None if not user else await session.scalar(select(SurveyResponse).where(SurveyResponse.survey_id == survey_id, SurveyResponse.user_id == user.id))
         questions_count = int(await session.scalar(select(func.count(SurveyQuestion.id)).where(SurveyQuestion.survey_id == survey_id)) or 0)
+        if user and _survey_available(survey):
+            await record_content_view(session, "survey", survey_id, user=user)
+            await session.flush()
+            view_stat = await content_view_stat(session, "survey", survey_id)
+            await session.commit()
+        else:
+            view_stat = {"views": 0, "unique": 0}
     if not user or not _survey_available(survey):
         await call.answer("Опитування недоступне або його термін завершився", show_alert=True)
         return
@@ -96,9 +105,12 @@ async def survey_view(call: CallbackQuery, db: Database, state: FSMContext) -> N
     b.button(text="⬅️ До опитувань", callback_data="survey:list")
     b.adjust(1)
     deadline = survey.ends_at.strftime("%d.%m.%Y %H:%M") if survey.ends_at else "без дедлайну"
+    safe_title = escape(survey.title or "Опитування")
+    safe_description = escape(survey.description or "Без додаткового опису.")
     await call.message.answer(
-        f"📋 <b>{survey.title}</b>\n\n{survey.description or 'Без додаткового опису.'}\n\n"
-        f"❓ Питань: <b>{questions_count}</b>\n🎁 Нагорода: <b>{survey.xp_reward} XP</b>\n⏳ Дедлайн: <b>{deadline}</b>",
+        f"📋 <b>{safe_title}</b>\n\n{safe_description}\n\n"
+        f"❓ Питань: <b>{questions_count}</b>\n🎁 Нагорода: <b>{survey.xp_reward} XP</b>\n"
+        f"👁 Переглядів: <b>{view_stat['views']}</b>\n⏳ Дедлайн: <b>{deadline}</b>",
         reply_markup=b.as_markup(),
     )
     await call.answer()

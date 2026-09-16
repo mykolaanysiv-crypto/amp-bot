@@ -101,7 +101,7 @@ async def opportunity_preferences_done(call: CallbackQuery, db: Database) -> Non
     await call.answer()
 
 
-@router.callback_query(F.data.startswith("opp:"))
+@router.callback_query(F.data.regexp(r"^opp:\d+$"))
 async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
     opportunity_id = int(call.data.split(":", 1)[1])
     async with db.session_factory() as session:
@@ -110,20 +110,26 @@ async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
         if not user or not item or not item.active or (item.deadline and item.deadline < datetime.utcnow()):
             await call.answer("Можливість уже неактуальна", show_alert=True)
             return
+        await record_content_view(session, "opportunity", item.id, user=user)
+        await session.flush()
+        view_stat = await content_view_stat(session, "opportunity", item.id)
         interest = await session.scalar(select(OpportunityInterest).where(OpportunityInterest.opportunity_id == item.id, OpportunityInterest.user_id == user.id))
         match = await session.scalar(select(OpportunityMatch).where(OpportunityMatch.opportunity_id == item.id, OpportunityMatch.user_id == user.id))
+        await session.commit()
         age_text = ""
         if item.age_min is not None or item.age_max is not None:
             age_text = f"\n🎂 Вік: {item.age_min if item.age_min is not None else '—'}–{item.age_max if item.age_max is not None else '—'}"
         deadline = item.deadline.strftime("%d.%m.%Y %H:%M") if item.deadline else "без дедлайну"
-        link = f"\n🔗 {item.url}" if item.url else ""
+        link = f"\n🔗 {escape(item.url)}" if item.url else ""
         match_text = f"\n✨ Персональний збіг: <b>{match.score}%</b>" if match else ""
         place_text = f"\n📍 Для: {escape(item.target_settlements)}" if item.target_settlements else ""
+        safe_title = escape(item.title or "Можливість")
         text = (
-            f"🌍 <b>{item.title}</b>\n"
-            f"🏷 {item.kind} • {item.direction}\n"
-            f"💻 Формат: {item.format}{age_text}{place_text}{match_text}\n"
-            f"📆 Дедлайн: {deadline}\n\n{item.description}{link}"
+            f"🌍 <b>{safe_title}</b>\n"
+            f"🏷 {escape(item.kind or 'можливість')} • {escape(item.direction or 'Інше')}\n"
+            f"💻 Формат: {escape(item.format or 'Онлайн/офлайн')}{age_text}{place_text}{match_text}\n"
+            f"📆 Дедлайн: {deadline}\n"
+            f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n{escape(item.description or 'Без додаткового опису.')}{link}"
         )
         b = InlineKeyboardBuilder()
         if interest and interest.status == "interested":
@@ -138,7 +144,7 @@ async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
             if len(text) <= 950:
                 await call.message.answer_photo(photo, caption=text, reply_markup=b.as_markup())
             else:
-                await call.message.answer_photo(photo, caption=f"🌍 <b>{escape(item.title)}</b>")
+                await call.message.answer_photo(photo, caption=f"🌍 <b>{safe_title}</b>\n👁 {view_stat['views']} переглядів")
                 await call.message.answer(text, reply_markup=b.as_markup())
         else:
             await call.message.answer(text, reply_markup=b.as_markup())

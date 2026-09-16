@@ -45,7 +45,7 @@
       </div>
       <h3>{{q.title}}</h3>
       <div class="entity-card-info">
-        <span>⚡ {{q.xp_reward}} XP</span><span>👥 {{participant_counts.get(q.id,0)}} уч.</span><span>✅ {{completed_counts.get(q.id,0)}} виконали</span>
+        <span>⚡ {{q.xp_reward}} XP</span><span>👥 {{participant_counts.get(q.id,0)}} уч.</span><span>✅ {{completed_counts.get(q.id,0)}} виконали</span><span>👁 {{view_stats.get(q.id, {}).get('views', 0)}} перегл.</span>
         {% if q.quest_type=='team' %}<span>🎯 {{q.progress_value}} / {{q.target_value}}</span>{% endif %}
       </div>
       {% if q.cancelled_at %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{q.cancellation_reason or 'не зазначено'}}</p>{% elif q.description %}<p class="entity-card-description">{{q.description[:180]}}{{'…' if q.description|length > 180 else ''}}</p>{% endif %}

@@ -52,7 +52,7 @@
     <span>🧭 {{item.direction or 'Інше'}}</span><span>💻 {{item.format or '—'}}</span>
     <span>🎂 {% if item.age_min or item.age_max %}{{item.age_min or '—'}}–{{item.age_max or '—'}}{% else %}без обмежень{% endif %}</span>
     <span>📍 {{item.target_settlements or 'усі населені пункти'}}</span>
-    <span>✨ {{match_counts.get(item.id,0)}} збігів</span><span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span>
+    <span>✨ {{match_counts.get(item.id,0)}} збігів</span><span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span><span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span>
   </div>
   <p>{{item.description or 'Без опису.'}}</p>
   {% if item.url %}<p><a class="soft-button" target="_blank" rel="noopener" href="{{item.url}}">🔗 Відкрити посилання</a></p>{% endif %}

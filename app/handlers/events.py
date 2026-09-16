@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from html import escape
 from urllib.parse import quote
 
@@ -16,6 +17,7 @@ from ..models import Event, EventRegistration, UserStatus
 from ..services import accept_event_reservation, get_user_by_tg, join_event_waitlist, process_event_operations, register_for_event
 from ..ui_labels import lifecycle_status_label
 from ..engagement import process_expired_content
+from ..content_views import content_view_stat, record_content_view
 
 router = Router(name="events")
 
@@ -48,29 +50,53 @@ async def nav_events(call: CallbackQuery, db: Database) -> None:
     await call.answer()
 
 
-@router.callback_query(F.data.startswith("event:"))
+@router.callback_query(F.data.regexp(r"^event:\d+$"))
 async def event_detail(call: CallbackQuery, db: Database, settings: Settings) -> None:
-    event_id = int(call.data.split(":")[1])
+    try:
+        event_id = int(call.data.split(":", 1)[1])
+    except (TypeError, ValueError, IndexError):
+        await call.answer("Некоректна подія", show_alert=True)
+        return
+
     async with db.session_factory() as session:
-        changed = await process_expired_content(session)
-        if changed: await session.commit()
+        # Opening a card must not be blocked by an unrelated lifecycle job.
+        # A scheduler regression used to make event buttons appear dead because
+        # this call raised before the detail card was rendered.
+        try:
+            changed = await process_expired_content(session)
+            if changed:
+                await session.commit()
+        except Exception:
+            await session.rollback()
+            logging.getLogger("amp.events").exception("Lifecycle refresh failed while opening event %s", event_id)
+
         user = await get_user_by_tg(session, call.from_user.id)
         event = await session.get(Event, event_id)
         if not user or not event:
             await call.answer("Не знайдено", show_alert=True)
             return
+
         reg = await session.scalar(
             select(EventRegistration).where(EventRegistration.event_id == event.id, EventRegistration.user_id == user.id)
         )
+        await record_content_view(session, "event", event.id, user=user)
+        await session.flush()
+        view_stat = await content_view_stat(session, "event", event.id)
+        await session.commit()
+
         date_text = event.starts_at.strftime("%d.%m.%Y %H:%M")
+        safe_title = escape(event.title or "Подія")
+        safe_location = escape(event.location or "АМП")
+        safe_description = escape(event.description or "Без додаткового опису.")
         text = (
-            f"📅 <b>{event.title}</b>\n"
+            f"📅 <b>{safe_title}</b>\n"
             f"🕒 {date_text}\n"
-            f"📍 {event.location}\n"
-            f"📌 Статус: {lifecycle_status_label(event.status)}\n"
+            f"📍 {safe_location}\n"
+            f"📌 Статус: {escape(lifecycle_status_label(event.status))}\n"
             f"⚡ {event.xp_reward} XP\n"
-            f"⏱ {event.volunteer_hours:g} волонтерських годин\n\n"
-            f"{event.description}"
+            f"⏱ {event.volunteer_hours:g} волонтерських годин\n"
+            f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
+            f"{safe_description}"
         )
         photo = await telegram_photo_input(db, event.image_path)
         registered = bool(reg and reg.status != "cancelled")
@@ -87,8 +113,18 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
                 keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None)
             elif event.status == "closed" and registered:
                 keyboard = event_detail_keyboard(event.id, True, share_button_url, reg.status if reg else None)
-        if photo:
+
+        # Telegram media captions are substantially shorter than ordinary
+        # messages.  Long event descriptions used to make the callback fail
+        # silently for cards with a photo.
+        if photo and len(text) <= 950:
             await call.message.answer_photo(photo, caption=text, reply_markup=keyboard)
+        elif photo:
+            await call.message.answer_photo(
+                photo,
+                caption=f"📅 <b>{safe_title}</b>\n🕒 {date_text}\n👁 {view_stat['views']} переглядів",
+            )
+            await call.message.answer(text, reply_markup=keyboard)
         else:
             await call.message.answer(text, reply_markup=keyboard)
         await call.answer()

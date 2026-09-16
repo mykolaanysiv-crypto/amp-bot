@@ -73,6 +73,9 @@ async def activity_detail(call: CallbackQuery, db: Database) -> None:
         if not user or not item or not item.active:
             await call.answer("Активність недоступна", show_alert=True)
             return
+        await record_content_view(session, "activity", item.id, user=user)
+        await session.flush()
+        view_stat = await content_view_stat(session, "activity", item.id)
         active_app = await session.scalar(
             select(ActivityApplication).where(
                 ActivityApplication.user_id == user.id,
@@ -87,12 +90,14 @@ async def activity_detail(call: CallbackQuery, db: Database) -> None:
             b.button(text="🙋 Подати заявку", callback_data=f"activity_apply:{item.id}")
         b.button(text="⬅️ Назад", callback_data="nav:activities")
         b.adjust(1)
+        await session.commit()
         await call.message.answer(
-            f"⚡ <b>{item.title}</b>\n"
-            f"🏷 Категорія: <b>{activity_category_label(item.category)}</b>\n"
-            f"🎁 <b>{item.xp_reward} XP</b> • ⏱ <b>{item.hours_reward:g} год.</b>\n\n"
-            f"{item.description}\n\n"
-            f"<b>Що написати в заявці:</b>\n{item.instructions}",
+            f"⚡ <b>{escape(item.title)}</b>\n"
+            f"🏷 Категорія: <b>{escape(activity_category_label(item.category))}</b>\n"
+            f"🎁 <b>{item.xp_reward} XP</b> • ⏱ <b>{item.hours_reward:g} год.</b>\n"
+            f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
+            f"{escape(item.description or 'Без додаткового опису.')}\n\n"
+            f"<b>Що написати в заявці:</b>\n{escape(item.instructions or 'Опишіть свій план виконання.')}",
             reply_markup=b.as_markup(),
         )
     await call.answer()

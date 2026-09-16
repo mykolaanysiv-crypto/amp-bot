@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.content_views import content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -32,7 +33,8 @@ async def activities_page(request: Request, status: str = "attention", q: str = 
         rows = (await session.execute(stmt.order_by(order_map.get(sort, ActivityApplication.requested_at.desc())).limit(400))).all()
         counts = {st: int(await session.scalar(select(func.count(ActivityApplication.id)).where(ActivityApplication.status == st)) or 0) for st in ACTIVITY_APPLICATION_STATUSES}
         categories = sorted({a.category for a in (await session.scalars(select(ActivityType))).all() if a.category})
-        return templates.TemplateResponse(request=request,name="activities.html",context=ctx(request,catalog=catalog,rows=rows,counts=counts,selected=status,statuses=ACTIVITY_APPLICATION_STATUSES,automatic_guide=AUTOMATIC_XP_GUIDE,q=q,period=period,type=type,sort=sort,categories=categories))
+        view_stats = await content_view_stats(session, "activity", [item.id for item in catalog])
+        return templates.TemplateResponse(request=request,name="activities.html",context=ctx(request,catalog=catalog,rows=rows,counts=counts,selected=status,statuses=ACTIVITY_APPLICATION_STATUSES,automatic_guide=AUTOMATIC_XP_GUIDE,q=q,period=period,type=type,sort=sort,categories=categories,view_stats=view_stats))
 
 
 @router.post("/admin/activities/create")

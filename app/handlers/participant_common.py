@@ -49,6 +49,7 @@ from ..states import ActivityApplicationState, IdeaState, RequestState, StreakFr
 from ..opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_user, set_user_interests, user_interests
 from ..runtime_config import get_runtime_int
 from ..registration_ux import get_registration_journey
+from ..content_views import content_view_stat, record_content_view
 from ..time_utils import event_local_now
 
 router = Router(name="participant")

@@ -1,0 +1,22 @@
+AMP XP / «АМПасадори» v1.12.1.7 — QA REPORT
+
+PASS
+- python -m compileall -q app scripts tests migrations
+- python -m scripts.production_preflight
+- focused v1.12.1.7 + v1.12.1.6 + v1.12.1.5 + v1.12.1.4 + Event Cockpit + Smart Opportunities: 30/30 PASS
+- all executable tests/test_v*.py in this sandbox: no assertion failures; 15 DB tests could not start because the sandbox does not have the declared `aiosqlite` dependency.
+- pytest collection: 166 v* tests total; 15 blocked locally by missing aiosqlite, remaining 151 completed without failures.
+
+LOCAL ENVIRONMENT LIMITS
+- `aiosqlite` is declared in requirements.txt but is not installed in this sandbox; package installation is unavailable because the sandbox has no network access.
+- `aiogram` is also not installed here, so runtime Telegram import smoke cannot be executed locally.
+- GitHub Actions / PostgreSQL 16 Production Gate remains authoritative for DB lifecycle, Alembic and Telegram application startup.
+
+RELEASE-SPECIFIC CHECKS
+- metadata contains `content_views`; total SQLAlchemy tables: 54
+- Alembic revision `20260915_0002` present over `20260915_0001`
+- exact event callback `event:<id>` and non-blocking lifecycle refresh present
+- Telegram HTML escaping and long-caption fallback present
+- view tracking wired for event / quest / volunteer_task / opportunity / activity / survey
+- admin list/detail templates expose view metrics
+- Event Operations Cockpit spacing/alignment + responsive CSS present

@@ -15,9 +15,10 @@
   </div>
 </div>
 
-<div class="kpis four survey-kpis">
+<div class="kpis survey-kpis">
   <div class="kpi"><span>Питань</span><strong>{{questions|length}}</strong></div>
   <div class="kpi"><span>Відповідей</span><strong>{{responses|length}}</strong></div>
+  <div class="kpi"><span>Переглядів</span><strong>{{view_stat.views}}</strong><small>{{view_stat.unique}} унікальних</small></div>
   <div class="kpi"><span>XP</span><strong>{{survey.xp_reward}}</strong></div>
   <div class="kpi"><span>Дедлайн</span><strong class="survey-kpi-date">{{survey.ends_at.strftime('%d.%m') if survey.ends_at else '∞'}}</strong></div>
 </div>

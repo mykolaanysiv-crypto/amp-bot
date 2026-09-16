@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.content_views import content_view_stat, content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -28,7 +29,8 @@ async def quests(request: Request, q: str = "", status: str = "", period: str = 
         for row in rows:
             participant_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id)) or 0)
             completed_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id, QuestParticipation.status == "approved")) or 0)
-        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,participant_counts=participant_counts,completed_counts=completed_counts,today=date.today(),q=q,status=status,period=period,type=type,sort=sort,review=review))
+        view_stats = await content_view_stats(session, "quest", [row.id for row in rows])
+        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,participant_counts=participant_counts,completed_counts=completed_counts,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort,review=review))
 
 
 @router.get("/admin/quests/{quest_id}", response_class=HTMLResponse)
@@ -45,9 +47,10 @@ async def quest_detail_web(request: Request, quest_id: int):
             .where(QuestParticipation.quest_id == q.id)
             .order_by(QuestParticipation.joined_at.asc())
         )).all()
+        view_stat = await content_view_stat(session, "quest", q.id)
         return templates.TemplateResponse(
             request=request, name="quest_detail.html",
-            context=ctx(request, q=q, participants=participants, today=date.today()),
+            context=ctx(request, q=q, participants=participants, view_stat=view_stat, today=date.today()),
         )
 
 

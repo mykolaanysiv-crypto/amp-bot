@@ -693,6 +693,26 @@ class SupportPageView(Base):
     viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
+class ContentView(Base):
+    """Aggregated Telegram detail views for participant-facing content.
+
+    One row is kept per Telegram viewer and entity.  ``view_count`` stores
+    repeated opens while the row itself provides the unique-viewer count.
+    Admin/web page opens are intentionally not counted.
+    """
+    __tablename__ = "content_views"
+    __table_args__ = (UniqueConstraint("entity_type", "entity_id", "tg_id", name="uq_content_view_entity_tg"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(32), index=True)
+    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    view_count: Mapped[int] = mapped_column(Integer, default=1)
+    first_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    last_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class Goal(Base):
     __tablename__ = "goals"
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.content_views import content_view_stat, content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -28,7 +29,8 @@ async def tasks(request: Request, q: str = "", status: str = "", period: str = "
             participant_counts[task.id] = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.task_id == task.id, VolunteerTaskParticipation.status != "cancelled")) or 0)
             submitted_counts[task.id] = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.task_id == task.id, VolunteerTaskParticipation.status == "submitted")) or 0)
             approved_counts[task.id] = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.task_id == task.id, VolunteerTaskParticipation.status == "approved")) or 0)
-        return templates.TemplateResponse(request=request,name="tasks.html",context=ctx(request,rows=rows,participant_counts=participant_counts,submitted_counts=submitted_counts,approved_counts=approved_counts,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
+        view_stats = await content_view_stats(session, "volunteer_task", [task.id for task in rows])
+        return templates.TemplateResponse(request=request,name="tasks.html",context=ctx(request,rows=rows,participant_counts=participant_counts,submitted_counts=submitted_counts,approved_counts=approved_counts,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
 
 
 @router.get("/admin/tasks/{task_id}", response_class=HTMLResponse)
@@ -46,9 +48,10 @@ async def task_detail_web(request: Request, task_id: int):
             .order_by(VolunteerTaskParticipation.joined_at.asc())
         )).all()
         active_count = sum(1 for part, _user in participants if part.status != "cancelled")
+        view_stat = await content_view_stat(session, "volunteer_task", task.id)
         return templates.TemplateResponse(
             request=request, name="task_detail.html",
-            context=ctx(request, task=task, participants=participants, active_count=active_count, today=date.today()),
+            context=ctx(request, task=task, participants=participants, active_count=active_count, view_stat=view_stat, today=date.today()),
         )
 
 

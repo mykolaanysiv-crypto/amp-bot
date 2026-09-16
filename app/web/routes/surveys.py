@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
+from app.content_views import content_view_stat, content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -25,7 +26,8 @@ async def surveys_page(request: Request, q: str = "", status: str = "", period: 
         rows=list((await session.scalars(stmt.order_by(order_map.get(sort,Survey.created_at.desc())))).all())
         counts = {sid: int(c or 0) for sid, c in (await session.execute(select(SurveyResponse.survey_id, func.count(SurveyResponse.id)).group_by(SurveyResponse.survey_id))).all()}
         qcounts = {sid: int(c or 0) for sid, c in (await session.execute(select(SurveyQuestion.survey_id, func.count(SurveyQuestion.id)).group_by(SurveyQuestion.survey_id))).all()}
-    return templates.TemplateResponse(request=request,name="surveys.html",context=ctx(request,rows=rows,counts=counts,qcounts=qcounts,q=q,status=status,period=period,type=type,sort=sort))
+        view_stats = await content_view_stats(session, "survey", [item.id for item in rows])
+    return templates.TemplateResponse(request=request,name="surveys.html",context=ctx(request,rows=rows,counts=counts,qcounts=qcounts,view_stats=view_stats,q=q,status=status,period=period,type=type,sort=sort))
 
 
 @router.post("/admin/surveys/create")
@@ -52,9 +54,10 @@ async def survey_detail(request: Request, survey_id: int):
         questions=list((await session.scalars(select(SurveyQuestion).where(SurveyQuestion.survey_id==survey_id).order_by(SurveyQuestion.sort_order,SurveyQuestion.id))).all())
         responses=(await session.execute(select(SurveyResponse,User).join(User,User.id==SurveyResponse.user_id).where(SurveyResponse.survey_id==survey_id).order_by(SurveyResponse.completed_at.desc()))).all()
         stats, decoded_answers = build_survey_stats(questions, responses)
+        view_stat = await content_view_stat(session, "survey", survey.id)
     return templates.TemplateResponse(
         request=request, name="survey_detail.html",
-        context=ctx(request, survey=survey, questions=questions, responses=responses, stats=stats, decoded_answers=decoded_answers),
+        context=ctx(request, survey=survey, questions=questions, responses=responses, stats=stats, decoded_answers=decoded_answers, view_stat=view_stat),
     )
 
 

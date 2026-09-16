@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_opportunity
 from app.models import OpportunityMatch
+from app.content_views import content_view_stats
 
 router = APIRouter()
 
@@ -28,9 +29,10 @@ async def opportunities_page(request: Request, q: str = "", status: str = "", pe
         items = list((await session.scalars(stmt.order_by(order_map.get(sort, Opportunity.deadline.asc().nullslast())))).all())
         counts = dict((await session.execute(select(OpportunityInterest.opportunity_id, func.count(OpportunityInterest.id)).where(OpportunityInterest.status == "interested").group_by(OpportunityInterest.opportunity_id))).all())
         match_counts = dict((await session.execute(select(OpportunityMatch.opportunity_id, func.count(OpportunityMatch.id)).where(OpportunityMatch.status.in_(["matched", "notified"])).group_by(OpportunityMatch.opportunity_id))).all())
+        view_stats = await content_view_stats(session, "opportunity", [item.id for item in items])
         kinds = sorted(set((await session.scalars(select(Opportunity.kind).distinct())).all()))
         return templates.TemplateResponse(request=request, name="opportunities.html", context=ctx(
-            request, items=items, interest_counts=counts, match_counts=match_counts,
+            request, items=items, interest_counts=counts, match_counts=match_counts, view_stats=view_stats,
             q=q, status=status, period=period, type=type, sort=sort, kinds=kinds,
             opportunity_interests=OPPORTUNITY_INTERESTS,
         ))

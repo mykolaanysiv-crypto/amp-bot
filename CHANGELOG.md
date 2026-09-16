@@ -1,3 +1,17 @@
+# AMP XP v1.12.1.7 — Event Open + Content Views + Cockpit UX
+
+## Додано
+- Generic `content_views`: загальні та унікальні Telegram-перегляди для подій, квестів, волонтерських задач, можливостей, активностей та опитувань.
+- Alembic revision `20260915_0002`; metadata тепер 54 таблиці.
+- Лічильники переглядів у web-картках та detail-екранах.
+
+## Виправлено
+- Відкриття події не падає через lifecycle-refresh, HTML parse mode або довгий photo caption.
+- Квести й волонтерські задачі отримали такий самий lifecycle isolation під час відкриття.
+- Event Operations Cockpit вирівняно за зовнішніми/внутрішніми відступами, висотою панелей, сіткою дій та mobile layout.
+
+---
+
 # AMP XP v1.12.1.6 — Health JSON Serialization Hotfix
 
 ## Виправлено

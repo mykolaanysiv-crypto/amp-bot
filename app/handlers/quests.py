@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from html import escape
 
 from aiogram import F, Router
@@ -13,6 +14,7 @@ from ..media import telegram_photo_input
 from ..models import Quest, QuestParticipation, UserStatus
 from ..services import get_user_by_tg
 from ..engagement import process_expired_content
+from ..content_views import content_view_stat, record_content_view
 
 router = Router(name="quests")
 
@@ -43,12 +45,21 @@ async def nav_quests(call: CallbackQuery, db: Database) -> None:
     await call.answer()
 
 
-@router.callback_query(F.data.startswith("quest:"))
+@router.callback_query(F.data.regexp(r"^quest:\d+$"))
 async def quest_detail(call: CallbackQuery, db: Database) -> None:
-    quest_id = int(call.data.split(":")[1])
+    try:
+        quest_id = int(call.data.split(":", 1)[1])
+    except (TypeError, ValueError, IndexError):
+        await call.answer("Некоректний квест", show_alert=True)
+        return
     async with db.session_factory() as session:
-        changed = await process_expired_content(session)
-        if changed: await session.commit()
+        try:
+            changed = await process_expired_content(session)
+            if changed:
+                await session.commit()
+        except Exception:
+            await session.rollback()
+            logging.getLogger("amp.quests").exception("Lifecycle refresh failed while opening quest %s", quest_id)
         user = await get_user_by_tg(session, call.from_user.id)
         quest = await session.get(Quest, quest_id)
         if not user or not quest:
@@ -57,21 +68,31 @@ async def quest_detail(call: CallbackQuery, db: Database) -> None:
         part = await session.scalar(
             select(QuestParticipation).where(QuestParticipation.quest_id == quest.id, QuestParticipation.user_id == user.id)
         )
+        await record_content_view(session, "quest", quest.id, user=user)
+        await session.flush()
+        view_stat = await content_view_stat(session, "quest", quest.id)
+        await session.commit()
         deadline = quest.ends_at.strftime("%d.%m.%Y") if quest.ends_at else "без дедлайну"
         progress = ""
         if quest.quest_type == "team":
             progress = f"\n👥 Командний прогрес: <b>{quest.progress_value}/{quest.target_value}</b>"
+        safe_title = escape(quest.title or "Квест")
+        safe_description = escape(quest.description or "Без додаткового опису.")
         text = (
-            f"{'👥' if quest.quest_type == 'team' else '🎯'} <b>{quest.title}</b>\n"
+            f"{'👥' if quest.quest_type == 'team' else '🎯'} <b>{safe_title}</b>\n"
             f"⚡ Нагорода: {quest.xp_reward} XP\n"
-            f"📆 Дедлайн: {deadline}{progress}\n\n"
-            f"{quest.description}"
+            f"📆 Дедлайн: {deadline}{progress}\n"
+            f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
+            f"{safe_description}"
         )
         is_available = quest.active and quest.status in {"open", "postponed"} and (quest.ends_at is None or quest.ends_at >= datetime.now())
         kb = quest_detail_keyboard(quest.id, part.status if part else None, quest.quest_type) if is_available else None
         photo = await telegram_photo_input(db, quest.image_path)
-        if photo:
+        if photo and len(text) <= 950:
             await call.message.answer_photo(photo, caption=text, reply_markup=kb)
+        elif photo:
+            await call.message.answer_photo(photo, caption=f"🎯 <b>{safe_title}</b>\n👁 {view_stat['views']} переглядів")
+            await call.message.answer(text, reply_markup=kb)
         else:
             await call.message.answer(text, reply_markup=kb)
         await call.answer()

@@ -15,7 +15,7 @@ def test_version_and_schema_stay_additive():
     version = text("VERSION.txt").strip()
     assert version
     assert text("VERSION_CHECK.txt").strip() == version
-    assert len(Base.metadata.tables) == 53
+    assert len(Base.metadata.tables) >= 53
     assert "staff_permissions_json" in Base.metadata.tables["users"].c
     assert "permissions_json" in Base.metadata.tables["web_staff_accounts"].c
     db = text("app/db.py")

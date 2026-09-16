@@ -1,7 +1,12 @@
-АМП XP / «АМПасадори» v1.12.1.6
+АМП XP / «АМПасадори» v1.12.1.7
 
-Поточний production candidate: v1.12.1.6 — Backup Verification Automation Hotfix поверх v1.12.1.4.
+Поточний production candidate: v1.12.1.7 — Event Open + Content Views + Cockpit UX.
 
-Оновлення відправляйте через GitHub: git push origin main. Production Gate автоматично створить verified Heroku PGBackup перед deploy.
-Для ручної копії: GitHub → Actions → AMP Verified Backup → Run workflow.
-Не робіть Re-run старого failed workflow: потрібен новий commit з v1.12.1.5.
+Основне:
+- надійне відкриття картки події в Telegram;
+- лічильники переглядів подій, квестів, волонтерських задач, можливостей, активностей і опитувань;
+- total + unique view metrics у web;
+- вирівняний Event Operations Cockpit;
+- additive Alembic migration 20260915_0002 (`content_views`).
+
+Почніть із SERVER_UPDATE_V11217.md та COMMANDS_V11217.txt.
