@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block title %}{{season.name}} • Сезони{% endblock %}{% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/seasons">Сезони</a><span>›</span><b>{{season.name}}</b></nav>
-<div class="page-head"><div><span class="eyebrow">ІСТОРІЯ СЕЗОНУ</span><h1>🏆 {{season.name}}</h1><p>{{season.starts_at.strftime('%d.%m.%Y')}} — {{season.ends_at.strftime('%d.%m.%Y')}} · {{'Активний сезон' if season.active else 'Завершений сезон'}}</p></div>{% if not season.active %}<form method="post" action="/admin/seasons/{{season.id}}/finalize"><input type="hidden" name="_csrf" value="{{csrf_token}}"><button class="soft-button">🔄 Перерахувати snapshot</button></form>{% endif %}</div>
+<div class="page-head"><div><span class="eyebrow">ІСТОРІЯ СЕЗОНУ</span><h1>🏆 {{season.name}}</h1><p>{{season.starts_at.strftime('%d.%m.%Y')}} — {{season.ends_at.strftime('%d.%m.%Y')}} · {{'Активний сезон' if season.active else 'Завершений сезон'}}</p></div>{% if not season.active %}<form method="post" action="/admin/seasons/{{season.id}}/finalize"><input type="hidden" name="_csrf" value="{{csrf_token}}"><button class="soft-button">🔄 Перерахувати підсумок</button></form>{% endif %}</div>
 {% if snapshot %}
 <section class="kpi-grid season-kpi-grid">
   <article class="kpi"><span>👥 Учасників</span><strong>{{snapshot.stats.participants}}</strong></article>
@@ -16,8 +16,8 @@
   <article class="kpi"><span>🔥 Рекорд серії</span><strong>{% if snapshot.records.streak %}{{snapshot.records.streak.weeks}} тиж.{% else %}0{% endif %}</strong><small>{% if snapshot.records.streak %}{{snapshot.records.streak.name}}{% endif %}</small></article>
   <article class="kpi"><span>⏱ Волонтерські години</span><strong>{% if snapshot.records.volunteer_hours %}{{snapshot.records.volunteer_hours.hours}}{% else %}0{% endif %}</strong><small>{% if snapshot.records.volunteer_hours %}{{snapshot.records.volunteer_hours.name}}{% endif %}</small></article>
 </div></section>
-<section class="card table-wrap"><h2>📊 Фінальний рейтинг</h2><table><thead><tr><th>#</th><th>Учасник</th><th>Роль</th><th>XP</th></tr></thead><tbody>{% for row in snapshot.leaderboard %}<tr><td>{{loop.index}}</td><td>{{row.name}}</td><td>{{row.role}}</td><td><b>{{row.xp}}</b></td></tr>{% else %}<tr><td colspan="4">Немає даних</td></tr>{% endfor %}</tbody></table></section>
+<section class="card table-wrap"><h2>📊 Фінальний рейтинг</h2><table><thead><tr><th>#</th><th>Учасник</th><th>Роль</th><th>XP</th></tr></thead><tbody>{% for row in snapshot.leaderboard %}<tr><td>{{loop.index}}</td><td>{{row.name}}</td><td>{{label(row.role)}}</td><td><b>{{row.xp}}</b></td></tr>{% else %}<tr><td colspan="4">Немає даних</td></tr>{% endfor %}</tbody></table></section>
 {% else %}
-<section class="card"><p class="empty">Сезон ще активний. Підсумковий історичний snapshot буде зафіксовано після завершення.</p></section>
+<section class="card"><p class="empty">Сезон ще активний. Підсумковий історичний знімок буде зафіксовано після завершення.</p></section>
 {% endif %}
 {% endblock %}

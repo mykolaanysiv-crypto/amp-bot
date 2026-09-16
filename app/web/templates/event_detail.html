@@ -222,7 +222,7 @@
         <p><b>Поточна форма:</b> стандартна форма АМПасадорів.</p>
       {% endif %}
       {% if has_permission("reports.basic_export") %}<a class="primary" href="/admin/events/{{event.id}}/registration-form">⬇ Завантажити заповнений список</a>{% endif %}
-      <p class="muted">{% if has_permission("reports.sensitive_export") %}Для цього акаунта дозволено розширені поля експорту відповідно до виданого granular permission.{% else %}Для захисту персональних даних експорт містить мінімізований набір; чутливі поля залишаються недоступними.{% endif %}</p>
+      <p class="muted">{% if has_permission("reports.sensitive_export") %}Для цього акаунта дозволено розширені поля експорту відповідно до виданого окремі права доступу.{% else %}Для захисту персональних даних експорт містить мінімізований набір; чутливі поля залишаються недоступними.{% endif %}</p>
     </div>
     <form method="post" action="/admin/events/{{event.id}}/registration-template" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label class="span2">Завантажити / замінити шаблон<input type="file" name="template_file" accept=".docx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><small>До 20 МБ. Найкраще автоматично розпізнаються таблиці з колонками «ПІБ», «Телефон», «Електронна пошта», «Населений пункт», «Статус», «Цифровий код підтвердження» тощо.</small></label>
@@ -294,7 +294,7 @@
 
 <script>
 function requireAttendanceOverride(form) {
-  const reason = window.prompt('Вкажіть причину ручного override (мінімум 5 символів). Дія буде записана в аудит:');
+  const reason = window.prompt('Вкажіть причину ручного винятку (мінімум 5 символів). Дія буде записана в аудит:');
   if (!reason || reason.trim().length < 5) {
     window.alert('Причина обов’язкова і має містити щонайменше 5 символів.');
     return false;

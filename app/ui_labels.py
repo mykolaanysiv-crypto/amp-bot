@@ -144,8 +144,18 @@ LABELS = {
     "export": "експорт даних",
     "broadcast_template": "шаблон розсилки",
     "broadcast": "розсилка",
-    "system": "система",
-    "survey": "опитування",
+    "system": "Системне",
+    "survey": "Опитування",
+    "notification": "сповіщення",
+    "streak": "Серії участі",
+    "case": "Звернення",
+    "gamification": "Гейміфікація",
+    "opportunity": "Можливість",
+    "opportunity_match": "Персональна можливість",
+    "queued": "У черзі",
+    "retry": "Повторна спроба",
+    "sent": "Надіслано",
+    "failed": "Помилка",
 }
 
 

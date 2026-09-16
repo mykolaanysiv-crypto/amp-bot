@@ -20,6 +20,7 @@ async def configure_bot_profile(bot: Bot) -> None:
         await bot.set_my_commands([
             BotCommand(command="start", description="Запустити бота / реєстрація"),
             BotCommand(command="menu", description="Головне меню"),
+            BotCommand(command="smart", description="Персональні можливості"),
             BotCommand(command="help", description="Довідка та QR"),
             BotCommand(command="myqr", description="Мій персональний QR-бейдж"),
             BotCommand(command="invite", description="Запросити друга"),

@@ -107,7 +107,7 @@ def test_operations_dashboard_has_requested_operational_signals():
         "upcoming_checkins", "today_no_show", "data_quality_issues",
     ]:
         assert token in route
-    for label in ["Сьогодні", "Операційний стан", "Воронка реєстрації", "SLA прострочено", "Проблеми якості даних"]:
+    for label in ["Сьогодні", "Операційний стан", "Воронка реєстрації", "Прострочено строк реагування", "Проблеми якості даних"]:
         assert label in tpl
 
 

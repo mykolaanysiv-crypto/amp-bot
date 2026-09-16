@@ -20,7 +20,7 @@ def test_calendar_has_day_week_month_and_all_requested_sources():
     assert '{"day", "week", "month"}' in route
     for model in ["Event", "Quest", "VolunteerTask", "Survey", "Opportunity", "RequestCase", "Idea", "StreakFreeze"]:
         assert model in route
-    for label in ["День", "Тиждень", "Місяць", "📅 Подія", "🎯 Квест", "✅ Задача", "📋 Опитування", "🌍 Можливість", "🆘 Кейс", "💡 Ідея", "❄️ Freeze"]:
+    for label in ["День", "Тиждень", "Місяць", "📅 Подія", "🎯 Квест", "✅ Задача", "📋 Опитування", "🌍 Можливість", "🆘 Кейс", "💡 Ідея", "❄️ Заморозка серії"]:
         assert label in template
     assert "calendar-chip {{item.css}}" in template
 

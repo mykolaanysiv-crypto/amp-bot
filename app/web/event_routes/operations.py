@@ -169,7 +169,7 @@ async def web_mark_present(request: Request, event_id: int, registration_id: int
             window = await event_checkin_window(session, event)
             reason = override_reason.strip()
             if window["state"] != "open" and len(reason) < 5:
-                raise HTTPException(status_code=409, detail="Поза check-in window потрібна причина ручного override (мінімум 5 символів).")
+                raise HTTPException(status_code=409, detail="Поза часовим вікном відмітки потрібна причина ручного підтвердження (мінімум 5 символів).")
             reg.status = "checked_in"
             reg.checkin_at = clock.storage_utc()
             reg.reservation_expires_at = None

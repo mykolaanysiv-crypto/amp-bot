@@ -25,10 +25,10 @@
     <tr>
       <td class="notification-time">{{ row.created_at.strftime('%d.%m.%Y %H:%M') if row.created_at else '—' }}</td>
       <td class="notification-recipient">{% set u=users.get(row.recipient_user_id) if row.recipient_user_id else None %}{{ u.full_name if u else row.recipient_tg_id }}</td>
-      <td class="notification-type"><span class="pill">{{ row.type }}</span></td>
+      <td class="notification-type"><span class="pill">{{ label(row.type) }}</span></td>
       <td><b>{{ row.title or 'Сповіщення' }}</b><div class="muted small">{{ row.body|striptags|truncate(120) }}</div></td>
-      <td class="notification-entity">{{ row.entity_type or '—' }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</td>
-      <td class="notification-status"><span class="status status-{{ row.status }}">{{ {'queued':'В черзі','retry':'Повтор','sent':'Надіслано','failed':'Помилка'}.get(row.status,row.status) }}</span></td>
+      <td class="notification-entity">{{ label(row.entity_type) if row.entity_type else '—' }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</td>
+      <td class="notification-status"><span class="status status-{{ row.status }}">{{ label(row.status) }}</span></td>
       <td class="notification-attempts">{{ row.retry_count or 0 }}</td>
       <td class="small">{{ row.error or '—' }}</td>
     </tr>

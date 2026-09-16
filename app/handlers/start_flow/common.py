@@ -255,7 +255,7 @@ async def _show_access(message: Message, user: User, db: Database | None = None)
     if db is not None:
         # Import lazily to avoid a router import cycle. Active participants land
         # directly on the useful "Мій АМП сьогодні" screen.
-        from . import participant
+        from .. import participant
         await participant.overview(message, db)
         return
     await message.answer(

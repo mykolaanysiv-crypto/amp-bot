@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block title %}Сезони • АМПасадори{% endblock %}{% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Сезони</b></nav>
-<div class="page-head"><div><span class="eyebrow">SEASONS & HISTORY</span><h1>🏆 Сезони та історія</h1><p>Новий сезон починає новий рейтинг. Завершений сезон зберігає фінальний ТОП, переможців ліг, рекорди й статистику.</p></div></div>
+<div class="page-head"><div><span class="eyebrow">СЕЗОНИ ТА ІСТОРІЯ</span><h1>🏆 Сезони та історія</h1><p>Новий сезон починає новий рейтинг. Завершений сезон зберігає фінальний ТОП, переможців ліг, рекорди й статистику.</p></div></div>
 <section class="card"><h2>➕ Почати новий сезон</h2><form method="post" action="/admin/seasons/create" class="form-grid three"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label>Назва<input name="name" placeholder="Сезон 2027/28" required></label><label>Початок<input name="starts_at" type="date" required></label><label>Завершення<input name="ends_at" type="date" required></label><button class="primary">Створити й активувати</button></form><p class="muted">Поточний активний сезон буде автоматично фіналізований і перенесений до історії.</p></section>
 <div class="work-cards-grid season-history-grid">
 {% for s in rows %}{% set summary=summaries.get(s.id) %}
@@ -12,7 +12,7 @@
     <span>👥 {{summary.stats.participants}} учасників</span><span>⚡ {{summary.stats.total_xp}} XP</span><span>🏅 {{summary.stats.badges_awarded}} бейджів</span>
   </div>
   {% if summary.top3 %}<p class="muted">🥇 {{summary.top3[0].name}} · {{summary.top3[0].xp}} XP</p>{% endif %}
-  {% else %}<p class="muted">Історичний snapshot буде сформовано після завершення сезону.</p>{% endif %}
+  {% else %}<p class="muted">Історичний підсумок буде сформовано після завершення сезону.</p>{% endif %}
   <a class="soft-button" href="/admin/seasons/{{s.id}}">📊 Деталі сезону</a>
 </article>
 {% else %}<section class="card"><p class="empty">Сезонів ще немає.</p></section>{% endfor %}

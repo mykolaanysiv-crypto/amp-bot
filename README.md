@@ -1,3 +1,21 @@
+# AMP XP / «АМПасадори» v1.13.0.3 — Telegram Navigation & Web Localization Hotfix
+
+v1.13.0.3 — user-facing patch поверх v1.13.0.2. Виправлено `/start`/`/menu` для активних користувачів після Architecture Completion, додано повноцінну `/smart`, відновлено примусове оновлення актуальної reply-клавіатури, прибрано програмне обрізання назв винагород і локалізовано відомі англомовні labels у web-панелі.
+
+## Що виправлено у v1.13.0.3
+
+- active `/start` і `/menu` більше не падають на lazy import `participant`; `/menu` знову показує «Головна» та встановлює актуальну reply-клавіатуру;
+- `/smart` додано в BotCommand menu, handler, FSM navigation і `/help`; перед показом можливостей matching оновлюється;
+- `rewards_keyboard()` більше не використовує 28-символьне обрізання — назва винагороди лишається повною;
+- web labels `Participant 360`, `Referrals`, `Timeline`, `SEASONS & HISTORY`, `Freeze`, `SLA`, `manual override/check-in window` локалізовано;
+- Notification Center показує локалізовані відомі internal type/entity/status замість raw codes;
+- preflight і regression tests блокують повернення цих помилок;
+- schema без змін: 54 таблиці, Alembic head `20260915_0002`.
+
+Деталі: `SERVER_UPDATE_V11303.md`. Команди: `COMMANDS_V11303.txt`. QA: `TEST_REPORT_V11303.txt`.
+
+---
+
 # AMP XP / «АМПасадори» v1.13.0.2 — Startup Import Hotfix
 
 v1.13.0.2 — patch-реліз поверх v1.13.0.1. Виправлено release/startup crash після Architecture Completion: модулі `app.handlers.start_flow` використовували неправильну глибину relative imports і намагалися імпортувати неіснуючі `app.handlers.time_utils`, `app.handlers.config` тощо. Додано generic preflight guard для всіх explicit relative module imports у `app/` та синхронізовано static asset cache-buster з поточною версією.

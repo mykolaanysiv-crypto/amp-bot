@@ -25,7 +25,7 @@
 </section>
 
 <section class="card participant360-card">
-  <div class="section-title participant360-title"><div><h2>👤 Participant 360</h2><p class="muted">Єдина картина учасника: прогрес, історія, активності та документи в одному місці.</p></div><div class="participant360-status"><span class="tag {{ user.status }}">{{ label(user.status) }}</span><span class="pill">{{ label(user.role) }}</span></div></div>
+  <div class="section-title participant360-title"><div><h2>👤 Профіль учасника 360°</h2><p class="muted">Єдина картина учасника: прогрес, історія, активності та документи в одному місці.</p></div><div class="participant360-status"><span class="tag {{ user.status }}">{{ label(user.status) }}</span><span class="pill">{{ label(user.role) }}</span></div></div>
   <div class="participant360-summary">
     <div><strong>{{ user.full_name }}</strong><code>АМП-{{ '%04d'|format(user.id) }}</code></div>
     <div><span>⚡ {{ total }} XP</span><span>{{ league.icon }} {{ league.title }}</span><span>🔥 {{ streak_row.weekly_streak }} тиж.</span><span>⏱ {{ user.volunteer_hours }} год</span></div>
@@ -34,7 +34,7 @@
     <div class="kpi"><span>📅 Подій</span><b>{{kpi360.events}}</b></div><div class="kpi"><span>🎯 Квестів</span><b>{{kpi360.quests}}</b></div>
     <div class="kpi"><span>✅ Задач</span><b>{{kpi360.tasks}}</b></div><div class="kpi"><span>⚡ Активностей</span><b>{{kpi360.activities}}</b></div>
     <div class="kpi"><span>📋 Опитувань</span><b>{{kpi360.surveys}}</b></div><div class="kpi"><span>💡 Ідей</span><b>{{kpi360.ideas}}</b></div>
-    <div class="kpi"><span>🏅 Бейджів</span><b>{{kpi360.badges}}</b></div><div class="kpi"><span>🤝 Referrals</span><b>{{kpi360.referrals}}</b></div>
+    <div class="kpi"><span>🏅 Бейджів</span><b>{{kpi360.badges}}</b></div><div class="kpi"><span>🤝 Запрошення друзів</span><b>{{kpi360.referrals}}</b></div>
   </div>
   <div class="p360-tabs" data-p360-tabs>
     <button type="button" class="active" data-tab="overview">🏠 Огляд</button>
@@ -49,7 +49,7 @@
     <button type="button" data-tab="seasons">🏆 Сезони</button>
     <button type="button" data-tab="documents">📄 Документи</button>
   </div>
-  <div class="p360-panel active" data-panel="overview"><h3>🕘 Timeline</h3><div class="timeline360">{% for item in timeline360 %}<div class="timeline360-row"><span>{{item.icon}}</span><time>{{item.at.strftime('%d.%m.%Y %H:%M')}}</time><div><b>{{item.title}}</b>{% if item.detail %}<small>{{item.detail}}</small>{% endif %}</div></div>{% else %}<p class="muted">Історії ще немає.</p>{% endfor %}</div></div>
+  <div class="p360-panel active" data-panel="overview"><h3>🕘 Хронологія</h3><div class="timeline360">{% for item in timeline360 %}<div class="timeline360-row"><span>{{item.icon}}</span><time>{{item.at.strftime('%d.%m.%Y %H:%M')}}</time><div><b>{{item.title}}</b>{% if item.detail %}<small>{{item.detail}}</small>{% endif %}</div></div>{% else %}<p class="muted">Історії ще немає.</p>{% endfor %}</div></div>
   <div class="p360-panel" data-panel="quests">
     <h3 class="p360-panel-title">🎯 Квести</h3>
     <div class="table-wrap p360-table-wrap"><table class="p360-data-table"><thead><tr><th>Квест</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in quest_rows360 %}<tr><td>{{r.quest.title if r.quest else ('#' ~ r.quest_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.approved_at or r.completed_at or r.joined_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає участі</td></tr>{% endfor %}</tbody></table></div>

@@ -209,7 +209,7 @@ async def calendar_page(request: Request, view: str = "month", date_value: str =
         freeze_end_day = min(freeze.ends_at.date(), period_end)
         while freeze_day <= freeze_end_day:
             add_item(
-                datetime.combine(freeze_day, datetime.min.time()), "❄️", f"{user.full_name} — заморозка серії", "Freeze",
+                datetime.combine(freeze_day, datetime.min.time()), "❄️", f"{user.full_name} — заморозка серії", "Заморозка серії",
                 "freeze", f"/admin/streaks/{user.id}",
                 f"{freeze.starts_at.strftime('%d.%m')}–{freeze.ends_at.strftime('%d.%m')} • {freeze.days} дн.",
             )

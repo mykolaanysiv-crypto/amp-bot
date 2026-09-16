@@ -1,14 +1,15 @@
-АМП XP / «АМПасадори» v1.13.0.2
+АМП XP / «АМПасадори» v1.13.0.3
 
-Поточний production candidate: v1.13.0.2 — Startup Import Hotfix.
+Поточний production candidate: v1.13.0.3 — Telegram Navigation & Web Localization Hotfix.
 
 Основне:
-- архітектура v1.13.0 збережена без rollback;
-- historical regression tests переведені на canonical split modules;
-- додано tests/source_layout.py як єдину карту source layout для тестів;
-- виправлено scanner/version-broadcast/Notification Center CI assumptions;
-- runtime business logic і schema не змінюються;
-- 54 таблиці, Alembic head 20260915_0002;
-- compatibility facades лишаються на 1–2 релізи.
+- виправлено активний /start та /menu після Architecture Completion;
+- /menu знову встановлює актуальну reply-клавіатуру бота;
+- додано /smart як повноцінну команду персональних можливостей;
+- винагороди показують повні назви без code-side truncation;
+- видимі англомовні службові labels web-панелі локалізовано українською;
+- Notification Center локалізує відомі внутрішні type/entity/status коди;
+- schema без змін: 54 таблиці, Alembic head 20260915_0002;
+- Architecture Completion і compatibility facades збережено.
 
-Почніть із SERVER_UPDATE_V11301.md та COMMANDS_V11301.txt.
+Почніть із SERVER_UPDATE_V11303.md та COMMANDS_V11303.txt.

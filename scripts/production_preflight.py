@@ -206,6 +206,42 @@ def main() -> None:
                 f"Release asset preflight failed: {template_rel} does not use current cache token {cache_token}"
             )
 
+
+    # v1.13.0.3 Telegram/Web UX regression guards.  Architecture Completion
+    # moved the participant router one package higher; /start and /menu for an
+    # active user must resolve that facade correctly.  Keep /smart and full
+    # participant-facing reward titles wired, and do not regress known English
+    # labels in the web admin UI.
+    start_common = (root / "app" / "handlers" / "start_flow" / "common.py").read_text(encoding="utf-8")
+    if "from .. import participant" not in start_common or "from . import participant" in start_common:
+        raise SystemExit("Telegram navigation preflight failed: start/menu participant lazy import is wrong")
+
+    bot_runtime_source = (root / "app" / "bot_runtime.py").read_text(encoding="utf-8")
+    opp_source = (root / "app" / "handlers" / "participant_opportunities.py").read_text(encoding="utf-8")
+    middleware_source = (root / "app" / "telegram_middleware.py").read_text(encoding="utf-8")
+    if 'BotCommand(command="smart", description="Персональні можливості")' not in bot_runtime_source:
+        raise SystemExit("Telegram command preflight failed: /smart missing from public bot commands")
+    if 'Command("smart")' not in opp_source or '"/smart"' not in middleware_source:
+        raise SystemExit("Telegram command preflight failed: /smart handler/FSM navigation wiring missing")
+
+    keyboard_source = (root / "app" / "keyboards.py").read_text(encoding="utf-8")
+    rewards_start = keyboard_source.find("def rewards_keyboard")
+    rewards_end = keyboard_source.find("def tasks_keyboard", rewards_start)
+    rewards_block = keyboard_source[rewards_start:rewards_end]
+    if "entity_button_text" not in rewards_block or "compact_button_text" in rewards_block:
+        raise SystemExit("Reward UX preflight failed: participant reward titles are being truncated")
+
+    visible_templates = "\n".join(
+        path.read_text(encoding="utf-8") for path in (root / "app" / "web" / "templates").glob("*.html")
+    )
+    forbidden_web_labels = (
+        "Participant 360", "Referrals", ">Timeline<", "SEASONS & HISTORY",
+        "❄️ Freeze", "SLA прострочено", "granular permission", "ручного override", ">Streak<",
+    )
+    leaking_labels = [token for token in forbidden_web_labels if token in visible_templates]
+    if leaking_labels:
+        raise SystemExit("Web localization preflight failed: visible English labels remain: " + ", ".join(leaking_labels))
+
     # Schema continuity: the architecture release must not silently alter the
     # v1.12.1.7/v1.12.2 production schema or Alembic head.
     models_source = (root / "app" / "models.py").read_text(encoding="utf-8")

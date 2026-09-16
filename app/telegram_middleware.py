@@ -38,7 +38,7 @@ class FSMNavigationMiddleware(BaseMiddleware):
                     reply_markup=b.as_markup(),
                 )
                 return None
-            is_command = text.startswith(("/start", "/menu", "/help", "/myqr", "/invite", "/cancel"))
+            is_command = text.startswith(("/start", "/menu", "/smart", "/help", "/myqr", "/invite", "/cancel"))
             if current_state and is_command:
                 await state.clear()
         return await handler(event, data)

@@ -1,3 +1,18 @@
+# AMP XP v1.13.0.3 — Telegram Navigation & Web Localization Hotfix
+
+## Виправлено
+- Активні `/start` і `/menu` після Architecture Completion: виправлено lazy relative import `participant`; `/menu` знову відкриває актуальну «Головна» та оновлює reply-клавіатуру.
+- Додано `/smart` як публічну Telegram-команду персональних можливостей із refresh matching.
+- Винагороди більше не обрізають назви через `compact_button_text`.
+- Локалізовано відомі англомовні назви web-панелі; Notification Center відображає відомі internal codes через українські labels.
+- Додано v1.13.0.3 production preflight/regression guards і синхронізовано historical UI assertions.
+
+## Сумісність
+- Без schema migration; 54 таблиці; Alembic head `20260915_0002`.
+- Architecture Completion v1.13.x зберігається без rollback.
+
+---
+
 # AMP XP v1.13.0.2 — Startup Import Hotfix
 
 - виправлено неправильну package depth у `app/handlers/start_flow/common.py` після split `handlers/start.py`;

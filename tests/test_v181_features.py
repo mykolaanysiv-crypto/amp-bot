@@ -41,7 +41,7 @@ def test_restoration_flow_and_probation_exist():
 def test_participant_360_and_health_label():
     template = (ROOT / "app/web/templates/user_detail.html").read_text(encoding="utf-8")
     base = (ROOT / "app/web/templates/base.html").read_text(encoding="utf-8")
-    assert "Participant 360" in template
+    assert "Профіль учасника 360°" in template
     for tab in ["Огляд", "Активність", "XP", "Події", "Волонтерство", "Ідеї", "Опитування", "Бейджі", "Документи"]:
         assert tab in template
     assert "🩺 Стан системи" in base

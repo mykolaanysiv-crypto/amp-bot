@@ -173,7 +173,7 @@ def quest_detail_keyboard(quest_id: int, status: str | None, quest_type: str = "
 def rewards_keyboard(rewards) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     for reward in rewards:
-        b.button(text=compact_button_text(f"🎁 {reward.title} · {reward.min_xp} XP"), callback_data=f"reward:{reward.id}")
+        b.button(text=entity_button_text(f"🎁 {reward.title} · {reward.min_xp} XP"), callback_data=f"reward:{reward.id}")
     b.adjust(1)
     return b.as_markup()
 

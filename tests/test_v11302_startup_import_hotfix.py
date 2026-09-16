@@ -35,8 +35,10 @@ def unresolved_relative_imports() -> list[str]:
 
 
 def test_v11302_version_and_schema_head_are_stable():
-    assert read("VERSION.txt").strip() == "1.13.0.2"
-    assert read("VERSION_CHECK.txt").strip() == "1.13.0.2"
+    version = read("VERSION.txt").strip()
+    check = read("VERSION_CHECK.txt").strip()
+    assert version == check
+    assert tuple(int(part) for part in version.split(".")) >= (1, 13, 0, 2)
     migration = read("migrations/versions/20260915_0002_content_views.py")
     assert 'revision: str = "20260915_0002"' in migration
 

@@ -17,7 +17,7 @@ NOTIFICATION_FILTERS = [
     ("event", "Події"),
     ("broadcast", "Розсилки"),
     ("case", "Кейси"),
-    ("streak", "Streak"),
+    ("streak", "Серії участі"),
     ("survey", "Опитування"),
 ]
 

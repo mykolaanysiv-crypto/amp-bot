@@ -79,7 +79,7 @@ def test_season_history_snapshot_and_profile_history():
     assert "Бейджі сезону" in detail_tpl
     assert "🕰 Історія сезонів" in participant
     assert 'data-tab="seasons"' in profile
-    assert "SEASONS & HISTORY" in seasons_tpl
+    assert "СЕЗОНИ ТА ІСТОРІЯ" in seasons_tpl
 
 
 def test_startup_does_not_resurrect_finalized_season():
