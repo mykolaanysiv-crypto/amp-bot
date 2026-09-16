@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from aiogram import BaseMiddleware, Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
@@ -27,6 +28,7 @@ from .opportunity_matching import queue_pending_match_digests
 from .donations import sync_monobank_donations
 from .season_history import finalize_season
 from .runtime_config import get_runtime_int
+from .observability import log_extra
 
 
 
@@ -128,29 +130,31 @@ class LastActivityMiddleware(BaseMiddleware):
                 async with db.session_factory() as session:
                     user = await session.scalar(select(User).where(User.tg_id == from_user.id))
                     if user and user.status == "active":
-                        user.last_activity_at = datetime.utcnow()
+                        user.last_activity_at = clock.storage_utc()
                         await session.commit()
-            except Exception:
-                logging.getLogger("amp.activity").exception("Не вдалося оновити last_activity_at")
+            except Exception as exc:
+                logging.getLogger("amp.activity").exception(
+                    "Не вдалося оновити last_activity_at",
+                    extra=log_extra("LAST_ACTIVITY_UPDATE_FAILED", tg_id=getattr(from_user, "id", None), exception_type=type(exc).__name__),
+                )
         return await handler(event, data)
 
 
 async def _birthday_scheduler(bot: Bot, db: Database, settings) -> None:
     """Award birthdays once and queue Telegram delivery with durable retry."""
     log = logging.getLogger("amp.birthdays")
-    tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
     while True:
         await scheduler_heartbeat(db, "birthday_scheduler")
-        now = datetime.now(tz)
+        now = clock.now_local()
         today_nine = now.replace(hour=9, minute=0, second=0, microsecond=0)
         if now < today_nine:
-            await asyncio.sleep(max(1, (today_nine - now).total_seconds()))
-            now = datetime.now(tz)
+            await asyncio.sleep(max(1, clock.seconds_until_local(hour=9, now_utc=clock.now_utc())))
+            now = clock.now_local()
         try:
             async with job_lock(db, "birthday_rewards", ttl_seconds=3300) as acquired:
                 if acquired:
                     async with db.session_factory() as session:
-                        await process_expired_bans(session, datetime.utcnow())
+                        await process_expired_bans(session, clock.storage_utc())
                         rewarded = await process_birthdays(session, now.date())
                         for tg_id, first_name, amount in rewarded:
                             await queue_telegram_delivery(
@@ -167,7 +171,7 @@ async def _birthday_scheduler(bot: Bot, db: Database, settings) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка перевірки днів народження: %s", exc)
+            log.exception("Помилка перевірки днів народження", extra=log_extra("SCHED_BIRTHDAY_FAILED", scheduler="birthday_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(3600)
 
 
@@ -175,13 +179,12 @@ async def _birthday_scheduler(bot: Bot, db: Database, settings) -> None:
 async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
     """Queue one reminder using the runtime-configured lead time."""
     log = logging.getLogger("amp.event_reminders")
-    tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
     while True:
         await scheduler_heartbeat(db, "event_reminder_scheduler")
         try:
             async with job_lock(db, "event_reminders", ttl_seconds=240) as acquired:
                 if acquired:
-                    local_now = datetime.now(tz).replace(tzinfo=None)
+                    local_now = clock.local_wall()
                     async with db.session_factory() as session:
                         reminder_minutes = await get_runtime_int(session, "events.reminder_minutes")
                         start = local_now + timedelta(minutes=max(0, reminder_minutes - 5))
@@ -211,13 +214,13 @@ async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
                             )
                             # Mark as queued. Delivery status is tracked separately
                             # and transient failures are retried by the outbox worker.
-                            reg.reminder_1h_sent_at = datetime.utcnow()
+                            reg.reminder_1h_sent_at = clock.storage_utc()
                         if rows:
                             await session.commit()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка планувальника нагадувань про події: %s", exc)
+            log.exception("Помилка планувальника нагадувань про події", extra=log_extra("SCHED_EVENT_REMINDER_FAILED", scheduler="event_reminder_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(300)
 
 
@@ -234,7 +237,9 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
         try:
             async with job_lock(db, "event_feedback_scheduler", ttl_seconds=600) as acquired:
                 if acquired:
-                    now = datetime.utcnow()
+                    now_utc = clock.now_utc()
+                    now = clock.storage_utc(now_utc)
+                    event_now = clock.local_wall(now_utc)
                     async with db.session_factory() as session:
                         feedback_delay_minutes = await get_runtime_int(session, "events.feedback_delay_minutes")
                         feedback_reminder_hours = await get_runtime_int(session, "events.feedback_reminder_hours")
@@ -245,16 +250,22 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                         else:
                             try:
                                 feature_started = datetime.fromisoformat(marker.value)
-                            except Exception:
-                                feature_started = now
+                                feature_started_utc = clock.from_storage_utc(feature_started) or now_utc
+                            except (TypeError, ValueError) as exc:
+                                feature_started_utc = now_utc
+                                log.warning(
+                                    "Некоректний marker старту feedback; використано поточний час",
+                                    extra=log_extra("EVENT_FEEDBACK_MARKER_INVALID", exception_type=type(exc).__name__),
+                                )
+                            feature_started_local = clock.local_wall(feature_started_utc)
                             rows = (await session.execute(
                                 select(EventRegistration, Event, User)
                                 .join(Event, Event.id == EventRegistration.event_id)
                                 .join(User, User.id == EventRegistration.user_id)
                                 .where(
                                     EventRegistration.status == "attended",
-                                    Event.starts_at >= feature_started - timedelta(hours=6),
-                                    Event.starts_at <= now,
+                                    Event.starts_at >= feature_started_local - timedelta(hours=6),
+                                    Event.starts_at <= event_now,
                                     User.status == UserStatus.ACTIVE.value,
                                 )
                                 .order_by(Event.starts_at.asc())
@@ -264,8 +275,11 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                                 # confirmed attendance (or event start when confirmation time
                                 # is unavailable). This keeps the questionnaire post-event and
                                 # avoids asking while a typical activity is still running.
-                                anchor = reg.confirmed_at or event.starts_at
-                                if not anchor or anchor + timedelta(minutes=feedback_delay_minutes) > now:
+                                if reg.confirmed_at:
+                                    anchor_utc = clock.from_storage_utc(reg.confirmed_at)
+                                else:
+                                    anchor_utc = clock.event_utc(event.starts_at)
+                                if not anchor_utc or anchor_utc + timedelta(minutes=feedback_delay_minutes) > now_utc:
                                     continue
                                 existing = await session.scalar(select(EventFeedback).where(EventFeedback.event_id == event.id, EventFeedback.user_id == user.id))
                                 if existing:
@@ -338,7 +352,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка планувальника зворотного зв’язку після подій: %s", exc)
+            log.exception("Помилка планувальника зворотного зв’язку після подій", extra=log_extra("SCHED_EVENT_FEEDBACK_FAILED", scheduler="event_feedback_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(900)
 
 
@@ -367,7 +381,7 @@ async def _streak_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка планувальника серій: %s", exc)
+            log.exception("Помилка планувальника серій", extra=log_extra("SCHED_STREAK_FAILED", scheduler="streak_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(900)
 
 
@@ -396,7 +410,7 @@ async def _goal_reward_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка планувальника цілей: %s", exc)
+            log.exception("Помилка планувальника цілей", extra=log_extra("SCHED_GOAL_REWARD_FAILED", scheduler="goal_reward_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(300)
 
 
@@ -415,7 +429,7 @@ async def _inactivity_scheduler(bot: Bot, db: Database) -> None:
         try:
             async with job_lock(db, "participant_inactivity", ttl_seconds=3300) as acquired:
                 if acquired:
-                    now = datetime.utcnow()
+                    now = clock.storage_utc()
                     cutoff_55 = now - timedelta(days=55)
                     cutoff_59 = now - timedelta(days=59)
                     cutoff_60 = now - timedelta(days=60)
@@ -519,7 +533,7 @@ async def _inactivity_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка планувальника неактивності: %s", exc)
+            log.exception("Помилка планувальника неактивності", extra=log_extra("SCHED_INACTIVITY_FAILED", scheduler="participant_inactivity_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(3600)
 
 
@@ -539,7 +553,7 @@ async def _smart_opportunities_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Smart opportunities scheduler failed: %s", exc)
+            log.exception("Smart opportunities scheduler failed", extra=log_extra("SCHED_SMART_OPPORTUNITIES_FAILED", scheduler="smart_opportunities_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(900)
 
 
@@ -551,7 +565,7 @@ async def _season_history_scheduler(bot: Bot, db: Database) -> None:
         try:
             async with job_lock(db, "season_history_finalize", ttl_seconds=3300) as acquired:
                 if acquired:
-                    today = datetime.utcnow().date()
+                    today = clock.today_local()
                     async with db.session_factory() as session:
                         ended = list((await session.scalars(select(Season).where(
                             Season.ends_at < today,
@@ -565,7 +579,7 @@ async def _season_history_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Season history scheduler failed: %s", exc)
+            log.exception("Season history scheduler failed", extra=log_extra("SCHED_SEASON_HISTORY_FAILED", scheduler="season_history_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(3600)
 
 
@@ -584,7 +598,7 @@ async def _notification_retry_scheduler(bot: Bot, db: Database) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка retry-планувальника Telegram: %s", exc)
+            log.exception("Помилка retry-планувальника Telegram", extra=log_extra("SCHED_NOTIFICATION_RETRY_FAILED", scheduler="notification_retry_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(15)
 
 
@@ -627,7 +641,7 @@ async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка синхронізації донатів: %s", exc)
+            log.exception("Помилка синхронізації донатів", extra=log_extra("SCHED_DONATION_SYNC_FAILED", scheduler="donation_sync_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(300)
 
 
@@ -641,8 +655,8 @@ async def _notification_health_scheduler(bot: Bot, db: Database, settings) -> No
                     await notification_failure_alert(bot, db, settings)
         except asyncio.CancelledError:
             raise
-        except Exception:
-            log.exception("Помилка моніторингу failed Notification Center")
+        except Exception as exc:
+            log.exception("Помилка моніторингу failed Notification Center", extra=log_extra("SCHED_NOTIFICATION_HEALTH_FAILED", scheduler="notification_health_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(300)
 
 
@@ -660,8 +674,8 @@ async def _backup_health_scheduler(bot: Bot, db: Database, settings) -> None:
                     )
         except asyncio.CancelledError:
             raise
-        except Exception:
-            log.exception("Помилка перевірки резервних копій")
+        except Exception as exc:
+            log.exception("Помилка перевірки резервних копій", extra=log_extra("SCHED_BACKUP_HEALTH_FAILED", scheduler="backup_health_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(6 * 3600)
 
 
@@ -692,8 +706,8 @@ async def _content_lifecycle_scheduler(db: Database) -> None:
                             await session.commit()
         except asyncio.CancelledError:
             raise
-        except Exception:
-            log.exception("Помилка автоматичного оновлення статусів контенту")
+        except Exception as exc:
+            log.exception("Помилка автоматичного оновлення статусів контенту", extra=log_extra("SCHED_CONTENT_LIFECYCLE_FAILED", scheduler="content_lifecycle_scheduler", exception_type=type(exc).__name__))
         await asyncio.sleep(300)
 
 
@@ -723,8 +737,11 @@ async def main() -> None:
             BotCommand(command="invite", description="Запросити друга"),
             BotCommand(command="cancel", description="Скасувати незавершену дію"),
         ])
-    except Exception:
-        logging.getLogger(__name__).warning("Не вдалося оновити публічний опис бота")
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "Не вдалося оновити публічний опис бота",
+            extra=log_extra("BOT_PUBLIC_PROFILE_UPDATE_FAILED", exception_type=type(exc).__name__),
+        )
     dp = Dispatcher()
     activity_tracker = LastActivityMiddleware()
     ban_guard = TemporaryBanMiddleware()
@@ -799,15 +816,21 @@ async def main() -> None:
             await call.answer("Продовжуємо заповнення")
             try:
                 await call.message.edit_text("↩️ Добре, продовжуємо заповнення поточної форми.")
-            except Exception:
-                pass
+            except Exception as exc:
+                logging.getLogger("amp.navigation").debug(
+                    "Не вдалося відредагувати повідомлення FSM navigation",
+                    extra=log_extra("TG_FSM_NAV_EDIT_FAILED", tg_id=call.from_user.id, action="stay", exception_type=type(exc).__name__),
+                )
             return
         await state.clear()
         await call.answer("Перехід підтверджено")
         try:
             await call.message.edit_text(f"✅ Перехід до «{target}» підтверджено.")
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger("amp.navigation").debug(
+                "Не вдалося відредагувати повідомлення FSM navigation",
+                extra=log_extra("TG_FSM_NAV_EDIT_FAILED", tg_id=call.from_user.id, action="confirm", target=target, exception_type=type(exc).__name__),
+            )
         if target:
             await _open_confirmed_navigation(call, target, state)
 

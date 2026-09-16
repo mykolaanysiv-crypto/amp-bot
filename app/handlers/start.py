@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from ..time_utils import clock
+
 from datetime import datetime, timedelta
+import logging
 import json
 from html import escape
 from urllib.parse import quote
@@ -14,6 +17,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import select
 
 from ..config import Settings
+from ..observability import log_extra
 from ..db import Database
 from ..keyboards import event_detail_keyboard, main_menu, registration_phone_keyboard
 from ..models import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
@@ -41,6 +45,16 @@ from ..registration_ux import (
 )
 
 router = Router(name="start")
+
+
+async def _safe_edit_reply_markup(call: CallbackQuery, reply_markup, *, error_code: str) -> None:
+    try:
+        await call.message.edit_reply_markup(reply_markup=reply_markup)
+    except Exception as exc:
+        logging.getLogger("amp.registration").debug(
+            "Не вдалося оновити inline markup під час реєстрації",
+            extra=log_extra(error_code, tg_id=call.from_user.id, exception_type=type(exc).__name__),
+        )
 
 ROLE_LABELS = {
     UserRole.PARTICIPANT.value: "Учасник",
@@ -330,7 +344,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                 full_name=message.from_user.full_name,
                 role=UserRole.SUPERADMIN.value,
                 status=UserStatus.ACTIVE.value,
-                last_activity_at=datetime.utcnow(),
+                last_activity_at=clock.storage_utc(),
             )
             session.add(user)
             await session.flush()
@@ -347,7 +361,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                 await state.clear()
                 if payload and not journey.start_payload:
                     journey.start_payload = payload[:180]
-                    journey.updated_at = datetime.utcnow()
+                    journey.updated_at = clock.storage_utc()
                     await session.commit()
                 await message.answer(
                     "👋 <b>Реєстрацію ще не завершено.</b>\n\n"
@@ -385,7 +399,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                 public_url = f"{settings.public_base_url}/event/{event.share_token}"
                 share_button_url = "https://t.me/share/url?url=" + quote(public_url, safe="") + "&text=" + quote(f"Подія АМП: {event.title}", safe="")
                 keyboard = None
-                if event.status in {"open", "postponed"} and event.starts_at >= datetime.now():
+                if event.status in {"open", "postponed"} and clock.event_utc(event.starts_at) >= clock.now_utc():
                     keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None)
                 elif event.status == "closed" and registered:
                     keyboard = event_detail_keyboard(event.id, True, share_button_url, reg.status if reg else None)
@@ -482,7 +496,7 @@ async def restoration_confirm(message: Message, state: FSMContext, db: Database,
         user=await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.DELETED.value:
             await state.clear(); await message.answer("Відновлення більше недоступне."); return
-        user.restoration_requested_at=datetime.utcnow()
+        user.restoration_requested_at=clock.storage_utc()
         user.restoration_request_status="pending"
         user.restoration_answers_json=json.dumps({"reason":data.get("reason",""),"future_activity":data.get("future_activity","")},ensure_ascii=False)
         await session.commit()
@@ -570,7 +584,7 @@ async def registration_restart(call: CallbackQuery, state: FSMContext, db: Datab
 
 
 async def _accept_privacy(message: Message, state: FSMContext, db: Database, settings: Settings) -> None:
-    await state.update_data(privacy_notice_version=PRIVACY_NOTICE_VERSION, privacy_acknowledged_at=datetime.utcnow().isoformat())
+    await state.update_data(privacy_notice_version=PRIVACY_NOTICE_VERSION, privacy_acknowledged_at=clock.storage_utc().isoformat())
     await _checkpoint(state, db, settings, message.from_user.id, "last_name", mark_consent=True)
     await state.set_state(RegistrationState.last_name)
     await _send_registration_prompt(message, "last_name", db)
@@ -585,7 +599,7 @@ async def reg_privacy_callback(call: CallbackQuery, state: FSMContext, db: Datab
             if row:
                 row.current_step = "declined"
                 row.draft_ciphertext = ""
-                row.updated_at = datetime.utcnow()
+                row.updated_at = clock.storage_utc()
                 await session.commit()
         await state.clear()
         await call.message.answer("Реєстрацію не продовжено. Ви можете повернутися пізніше командою /start.")
@@ -593,8 +607,7 @@ async def reg_privacy_callback(call: CallbackQuery, state: FSMContext, db: Datab
         return
     msg = call.message.model_copy(update={"from_user": call.from_user})
     await _accept_privacy(msg, state, db, settings)
-    try: await call.message.edit_reply_markup(reply_markup=None)
-    except Exception: pass
+    await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
     await call.answer()
 
 
@@ -605,7 +618,7 @@ async def reg_privacy_notice(message: Message, state: FSMContext, db: Database, 
         async with db.session_factory() as session:
             row = await get_registration_journey(session, message.from_user.id)
             if row:
-                row.current_step = "declined"; row.draft_ciphertext = ""; row.updated_at = datetime.utcnow()
+                row.current_step = "declined"; row.draft_ciphertext = ""; row.updated_at = clock.storage_utc()
                 await session.commit()
         await state.clear()
         await message.answer("Реєстрацію не продовжено. Ви можете повернутися пізніше командою /start.")
@@ -708,8 +721,7 @@ async def reg_settlement_callback(call: CallbackQuery, state: FSMContext, db: Da
         await call.answer("Цього варіанта вже немає у довіднику", show_alert=True); return
     msg = call.message.model_copy(update={"from_user": call.from_user})
     await _accept_settlement(msg, state, db, settings, row.canonical_name)
-    try: await call.message.edit_reply_markup(reply_markup=None)
-    except Exception: pass
+    await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
     await call.answer()
 
 
@@ -743,7 +755,7 @@ async def reg_birth_date(message: Message, state: FSMContext, db: Database, sett
     except ValueError:
         await message.answer("❌ Не вдалося прочитати дату. Використайте формат <b>ДД.ММ.РРРР</b>, наприклад <b>17.04.2010</b>.")
         return
-    today = datetime.now().date()
+    today = clock.today_local()
     if birth_date > today:
         await message.answer("❌ Дата народження не може бути в майбутньому. Перевірте день, місяць і рік.")
         return
@@ -770,8 +782,7 @@ async def reg_gender_callback(call: CallbackQuery, state: FSMContext, db: Databa
         await call.answer("Некоректний вибір", show_alert=True); return
     msg = call.message.model_copy(update={"from_user": call.from_user})
     await _accept_gender(msg, state, db, settings, value)
-    try: await call.message.edit_reply_markup(reply_markup=None)
-    except Exception: pass
+    await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
     await call.answer()
 
 
@@ -797,8 +808,7 @@ async def reg_vulnerabilities_callback(call: CallbackQuery, state: FSMContext, d
         msg = call.message.model_copy(update={"from_user": call.from_user})
         await _checkpoint(state, db, settings, call.from_user.id, "media_consent", mark_profile=True)
         await state.set_state(RegistrationState.media_consent)
-        try: await call.message.edit_reply_markup(reply_markup=None)
-        except Exception: pass
+        await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
         await _send_registration_prompt(msg, "media_consent", db)
         await call.answer("Збережено без зазначення категорії")
         return
@@ -808,8 +818,7 @@ async def reg_vulnerabilities_callback(call: CallbackQuery, state: FSMContext, d
             return
         needs_other = "other" in selected
         msg = call.message.model_copy(update={"from_user": call.from_user})
-        try: await call.message.edit_reply_markup(reply_markup=None)
-        except Exception: pass
+        await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
         if needs_other:
             await _checkpoint(state, db, settings, call.from_user.id, "vulnerability_other")
             await state.set_state(RegistrationState.vulnerability_other)
@@ -835,8 +844,7 @@ async def reg_vulnerabilities_callback(call: CallbackQuery, state: FSMContext, d
             selected.append(code)
     await state.update_data(vulnerability_codes=selected)
     await _checkpoint(state, db, settings, call.from_user.id, "vulnerabilities")
-    try: await call.message.edit_reply_markup(reply_markup=_vulnerability_keyboard(selected))
-    except Exception: pass
+    await _safe_edit_reply_markup(call, _vulnerability_keyboard(selected), error_code="TG_REG_VULNERABILITY_MARKUP_EDIT_FAILED")
     await call.answer("Позначено" if code in selected else "Знято")
 
 
@@ -884,8 +892,7 @@ async def reg_media_consent_callback(call: CallbackQuery, state: FSMContext, db:
         await call.answer("Некоректний вибір", show_alert=True); return
     msg = call.message.model_copy(update={"from_user": call.from_user})
     await _accept_media_consent(msg, state, db, settings, bot, value == "1")
-    try: await call.message.edit_reply_markup(reply_markup=None)
-    except Exception: pass
+    await _safe_edit_reply_markup(call, None, error_code="TG_REG_MARKUP_CLEAR_FAILED")
     await call.answer()
 
 
@@ -931,16 +938,16 @@ async def _complete_registration(message: Message, state: FSMContext, db: Databa
             media_consent=data.get("media_consent"),
             media_consent_status="granted" if data.get("media_consent") is True else "declined",
             media_consent_version=MEDIA_CONSENT_VERSION,
-            media_consent_recorded_at=datetime.utcnow(),
+            media_consent_recorded_at=clock.storage_utc(),
             privacy_notice_version=data.get("privacy_notice_version") or PRIVACY_NOTICE_VERSION,
-            privacy_acknowledged_at=datetime.fromisoformat(data["privacy_acknowledged_at"]) if data.get("privacy_acknowledged_at") else datetime.utcnow(),
+            privacy_acknowledged_at=datetime.fromisoformat(data["privacy_acknowledged_at"]) if data.get("privacy_acknowledged_at") else clock.storage_utc(),
             role=UserRole.PARTICIPANT.value,
             status=UserStatus.PENDING.value,
             registration_review_status="pending",
             parental_consent_required=minor,
             parental_consent_confirmed=False,
             parental_consent_status="pending" if minor else "not_required",
-            last_activity_at=datetime.utcnow(),
+            last_activity_at=clock.storage_utc(),
         )
         session.add(user)
         await session.flush()
@@ -950,7 +957,7 @@ async def _complete_registration(message: Message, state: FSMContext, db: Databa
             status=user.media_consent_status,
             version=user.media_consent_version,
             changed_by_label="Telegram registration",
-            changed_at=user.media_consent_recorded_at or datetime.utcnow(),
+            changed_at=user.media_consent_recorded_at or clock.storage_utc(),
         ))
         if minor:
             session.add(ConsentHistory(

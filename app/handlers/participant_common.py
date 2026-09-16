@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -50,6 +51,7 @@ from ..opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_us
 from ..runtime_config import get_runtime_int
 from ..registration_ux import get_registration_journey
 from ..content_views import content_view_stat, record_content_view
+from ..observability import log_extra
 from ..time_utils import event_local_now
 
 router = Router(name="participant")

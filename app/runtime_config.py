@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -56,7 +58,7 @@ def setting_key(key: str) -> str:
 
 async def ensure_runtime_defaults(session: AsyncSession) -> None:
     existing = set((await session.scalars(select(SystemSetting.key).where(SystemSetting.key.like("runtime.%")))).all())
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     for spec in RULE_SPECS:
         skey = setting_key(spec.key)
         if skey not in existing:
@@ -84,7 +86,7 @@ async def get_runtime_values(session: AsyncSession) -> dict[str, int]:
 
 
 async def set_runtime_values(session: AsyncSession, values: dict[str, Any]) -> dict[str, int]:
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     normalized: dict[str, int] = {}
     for spec in RULE_SPECS:
         raw = values.get(spec.key, spec.default)

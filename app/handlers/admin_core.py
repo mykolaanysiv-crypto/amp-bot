@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.message(F.text == "🛠 Адмін-панель")
@@ -105,7 +106,7 @@ async def confirm_consent(call: CallbackQuery, db: Database) -> None:
             return
         user.parental_consent_confirmed = True
         user.parental_consent_status = "received"
-        user.parental_consent_received_at = datetime.utcnow()
+        user.parental_consent_received_at = clock.storage_utc()
         session.add(ConsentHistory(
             user_id=user.id,
             consent_type="parental",
@@ -133,7 +134,7 @@ async def approve_user(call: CallbackQuery, db: Database, bot: Bot, settings: Se
             return
         user.status = UserStatus.ACTIVE.value
         user.registration_review_status = "approved"
-        user.registration_reviewed_at = datetime.utcnow()
+        user.registration_reviewed_at = clock.storage_utc()
         user.registration_reviewed_by = admin.full_name or f"Telegram:{admin.tg_id}"
         user.registration_rejection_reason = None
         await add_active_users_to_default_team(session)
@@ -163,7 +164,7 @@ async def block_user(call: CallbackQuery, db: Database, bot: Bot) -> None:
             await call.answer("Не знайдено", show_alert=True)
             return
         user.status = UserStatus.BLOCKED.value
-        await _queue_user_notice(session, user, "⛔ Ваш профіль АМП XP заблоковано. Зверніться до команди АМП.", source="moderation", entity_type="user", entity_id=user.id, dedupe_key=f"user_blocked:{user.id}:{datetime.utcnow().date().isoformat()}")
+        await _queue_user_notice(session, user, "⛔ Ваш профіль АМП XP заблоковано. Зверніться до команди АМП.", source="moderation", entity_type="user", entity_id=user.id, dedupe_key=f"user_blocked:{user.id}:{clock.storage_utc().date().isoformat()}")
         await session.commit()
         await call.answer("Заблоковано")
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import asyncio
 import json
 import logging
@@ -15,6 +17,7 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 from .models import SystemSetting
+from .observability import log_extra
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +88,7 @@ def _parse_dt(value: Any) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value))
+        return clock.ensure_utc(datetime.fromisoformat(str(value)))
     except (TypeError, ValueError):
         return None
 
@@ -134,19 +137,20 @@ async def record_heartbeat(
     started_at: datetime | None = None,
     boot_id: str | None = None,
 ) -> None:
-    now = datetime.utcnow()
+    now_utc = clock.now_utc()
+    storage_now = clock.storage_utc(now_utc)
     key = _key(component)
     async with db.session_factory() as session:
         existing = await session.get(SystemSetting, key)
         previous = _decode_payload(existing.value if existing else None)
         payload = {
-            "at": now.isoformat(),
+            "at": now_utc.isoformat(),
             "status": (status or "running")[:32],
             "error": (error or "")[:500],
             "started_at": (
-                started_at.isoformat()
+                clock.ensure_utc(started_at).isoformat()
                 if started_at
-                else str(previous.get("started_at") or now.isoformat())
+                else str(previous.get("started_at") or now_utc.isoformat())
             ),
             "boot_id": boot_id or str(previous.get("boot_id") or ""),
         }
@@ -154,7 +158,7 @@ async def record_heartbeat(
             session,
             key,
             json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-            now=now,
+            now=storage_now,
         )
         await session.commit()
 
@@ -172,7 +176,7 @@ async def heartbeat_loop(
     or an external provider, so a fresh worker marker remains a strong signal
     that the process and PostgreSQL connection are alive.
     """
-    started_at = datetime.utcnow()
+    started_at = clock.now_utc()
     boot_id = uuid.uuid4().hex[:12]
     status = initial_status
     try:
@@ -188,10 +192,13 @@ async def heartbeat_loop(
                 status = "running"
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception as exc:
                 # A heartbeat must never become the reason a healthy web/worker
                 # process dies during a short database interruption.
-                log.exception("Не вдалося оновити heartbeat для %s", component)
+                log.exception(
+                    "Не вдалося оновити heartbeat для %s", component,
+                    extra=log_extra("HEARTBEAT_WRITE_FAILED", component=component, exception_type=type(exc).__name__),
+                )
             await asyncio.sleep(max(5, int(interval_seconds)))
     except asyncio.CancelledError:
         try:
@@ -202,8 +209,11 @@ async def heartbeat_loop(
                 started_at=started_at,
                 boot_id=boot_id,
             )
-        except Exception:
-            log.exception("Не вдалося записати фінальний heartbeat для %s", component)
+        except Exception as exc:
+            log.exception(
+                "Не вдалося записати фінальний heartbeat для %s", component,
+                extra=log_extra("HEARTBEAT_FINAL_WRITE_FAILED", component=component, exception_type=type(exc).__name__),
+            )
         raise
 
 
@@ -212,10 +222,18 @@ async def scheduler_heartbeat(db, scheduler_name: str, *, status: str = "running
         await record_heartbeat(db, f"scheduler:{scheduler_name}", status=status, error=error)
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as exc:
         # Scheduler work already has its own database/error handling. Telemetry
         # failure is logged but must not create a second cascading outage.
-        log.exception("Не вдалося оновити heartbeat scheduler %s", scheduler_name)
+        log.exception(
+            "Не вдалося оновити heartbeat scheduler %s", scheduler_name,
+            extra=log_extra(
+                "SCHEDULER_HEARTBEAT_FAILED",
+                scheduler=scheduler_name,
+                status=status,
+                exception_type=type(exc).__name__,
+            ),
+        )
 
 
 async def _direct_superadmin_alert(bot, settings, text_value: str) -> int:
@@ -224,8 +242,11 @@ async def _direct_superadmin_alert(bot, settings, text_value: str) -> int:
         try:
             await bot.send_message(tg_id, text_value)
             sent += 1
-        except Exception:
-            log.exception("Не вдалося надіслати runtime-alert суперадміну")
+        except Exception as exc:
+            log.exception(
+                "Не вдалося надіслати runtime-alert суперадміну",
+                extra=log_extra("RUNTIME_ALERT_SEND_FAILED", tg_id=tg_id, exception_type=type(exc).__name__),
+            )
     return sent
 
 
@@ -250,15 +271,15 @@ async def supervise_scheduler(
         except asyncio.CancelledError:
             try:
                 await scheduler_heartbeat(db, scheduler_name, status="stopping")
-            except Exception:
-                log.exception("Не вдалося записати зупинку scheduler %s", scheduler_name)
+            except Exception as exc:
+                log.exception("Не вдалося записати зупинку scheduler %s", scheduler_name, extra=log_extra("SCHEDULER_STOP_HEARTBEAT_FAILED", scheduler=scheduler_name, exception_type=type(exc).__name__))
             raise
         except Exception as exc:
-            log.exception("Scheduler %s аварійно завершився", scheduler_name)
+            log.exception("Scheduler %s аварійно завершився", scheduler_name, extra=log_extra("SCHEDULER_CRASH", scheduler=scheduler_name, exception_type=type(exc).__name__))
             try:
                 await scheduler_heartbeat(db, scheduler_name, status="failed", error=str(exc))
-            except Exception:
-                log.exception("Не вдалося зафіксувати scheduler failure: %s", scheduler_name)
+            except Exception as heartbeat_exc:
+                log.exception("Не вдалося зафіксувати scheduler failure: %s", scheduler_name, extra=log_extra("SCHEDULER_FAILURE_HEARTBEAT_FAILED", scheduler=scheduler_name, exception_type=type(heartbeat_exc).__name__))
             await _direct_superadmin_alert(
                 bot,
                 settings,
@@ -303,7 +324,7 @@ async def runtime_health_snapshot(
     startup_grace_seconds: int = 180,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    now = now or datetime.utcnow()
+    now = clock.ensure_utc(now) if now is not None else clock.now_utc()
     components = ["worker"] + [f"scheduler:{name}" for name in SCHEDULER_MAX_SILENCE_SECONDS]
     keys = [_key(name) for name in components]
     rows = list((await session.scalars(select(SystemSetting).where(SystemSetting.key.in_(keys)))).all())
@@ -379,7 +400,8 @@ async def runtime_health_alert(
     dedicated Telegram worker itself has stopped. Alerts contain only component
     names and timing metadata; no participant data are included.
     """
-    now = datetime.utcnow()
+    now = clock.now_utc()
+    storage_now = clock.storage_utc(now)
     async with db.session_factory() as session:
         snapshot = await runtime_health_snapshot(
             session,
@@ -407,7 +429,7 @@ async def runtime_health_alert(
             last_alert = _parse_dt(marker.value if marker else None)
             if last_alert and now - last_alert < timedelta(seconds=max(60, int(repeat_seconds))):
                 continue
-            await _upsert_setting(session, marker_key, now.isoformat(), now=now)
+            await _upsert_setting(session, marker_key, now.isoformat(), now=storage_now)
             alerts_to_send.append((component, description))
         if alerts_to_send:
             await session.commit()

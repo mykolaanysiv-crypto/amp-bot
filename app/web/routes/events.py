@@ -9,7 +9,8 @@ from app.media import load_file_bytes
 from app.event_documents import fill_registration_template
 from app.telegram_webapp import validate_webapp_init_data
 from app.services import admin_scan_event_participant, event_checkin_window
-from app.time_utils import event_local_now
+from app.time_utils import clock
+from app.observability import log_extra
 from app.content_views import content_view_stat, content_view_stats
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
@@ -191,15 +192,19 @@ async def events(request: Request, q: str = "", status: str = "", period: str = 
         stmt = select(Event)
         if q: stmt = stmt.where(or_(Event.title.ilike(f"%{q}%"), Event.location.ilike(f"%{q}%"), Event.description.ilike(f"%{q}%")))
         if status: stmt = stmt.where(Event.status == status)
-        now = datetime.utcnow()
+        now_utc = clock.now_utc()
+        now = clock.local_wall(now_utc)
         if type == "upcoming": stmt = stmt.where(Event.starts_at >= now)
         elif type == "past": stmt = stmt.where(Event.starts_at < now)
         cutoff_map = {"7d": 7, "30d": 30, "90d": 90}
-        if period in cutoff_map: stmt = stmt.where(Event.starts_at >= now - timedelta(days=cutoff_map[period]), Event.starts_at <= now + timedelta(days=cutoff_map[period]))
+        if period in cutoff_map:
+            before = clock.local_wall(now_utc - timedelta(days=cutoff_map[period]))
+            after = clock.local_wall(now_utc + timedelta(days=cutoff_map[period]))
+            stmt = stmt.where(Event.starts_at >= before, Event.starts_at <= after)
         order_map = {"oldest": Event.starts_at.asc(), "title": Event.title.asc(), "newest": Event.starts_at.desc()}
         rows=(await session.scalars(stmt.order_by(order_map.get(sort, Event.starts_at.desc())).limit(250))).all()
         view_stats = await content_view_stats(session, "event", [row.id for row in rows])
-        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
+        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort))
 
 
 @router.get("/admin/events/{event_id}", response_class=HTMLResponse)
@@ -569,8 +574,11 @@ def _scanner_profile_token(raw: str) -> tuple[str | None, int | None]:
         start = (parse_qs(parsed.query).get("start") or [""])[0]
         if start.startswith("profile_"):
             return start.removeprefix("profile_"), None
-    except Exception:
-        pass
+    except (TypeError, ValueError) as exc:
+        logging.getLogger("amp.web.events").debug(
+            "Не вдалося розібрати scanner URL",
+            extra=log_extra("WEB_SCANNER_URL_PARSE_FAILED", input_length=len(text), exception_type=type(exc).__name__),
+        )
     match = re.search(r"(?:start=|/)profile_([A-Za-z0-9_-]{8,80})", text)
     if match:
         return match.group(1), None
@@ -644,7 +652,7 @@ async def event_web_scanner(
                 "message": "Учасник не зареєстрований на цю подію.",
             })
 
-        now = event_local_now()
+        now = clock.storage_utc()
         if not reg:
             reg = EventRegistration(event_id=event.id, user_id=user.id, status="registered", registered_at=now)
             session.add(reg)
@@ -703,7 +711,7 @@ async def web_mark_present(request: Request, event_id: int, registration_id: int
             if window["state"] != "open" and len(reason) < 5:
                 raise HTTPException(status_code=409, detail="Поза check-in window потрібна причина ручного override (мінімум 5 символів).")
             reg.status = "checked_in"
-            reg.checkin_at = event_local_now()
+            reg.checkin_at = clock.storage_utc()
             reg.reservation_expires_at = None
             if window["state"] != "open":
                 await log_audit(session, "web_event_attendance_override", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=event.id, details=f"Реєстрація #{reg.id}; mark-present; window={window['state']}; reason={reason}")
@@ -794,7 +802,7 @@ async def web_mark_no_show(request: Request, event_id: int, registration_id: int
         if reg.status not in {"registered", "reserved"}:
             raise HTTPException(status_code=409, detail="Статус цієї участі не можна змінити на «Не прийшов»")
         reg.status = "no_show"
-        reg.no_show_at = datetime.utcnow()
+        reg.no_show_at = clock.storage_utc()
         reg.reservation_expires_at = None
         await log_audit(session, "web_event_no_show", actor_label=request.session.get("admin_name","web"), entity_type="event", entity_id=event.id, details=f"АМП-{reg.user_id:04d}")
         await process_event_operations(session)
@@ -900,7 +908,7 @@ async def event_operations_mark_no_show(request: Request, event_id: int):
                 EventRegistration.status.in_(["registered", "reserved"]),
             )
         )).all())
-        now = event_local_now()
+        now = clock.storage_utc()
         for reg in rows:
             reg.status = "no_show"
             reg.no_show_at = now
@@ -982,7 +990,7 @@ async def event_postpone(request: Request, event_id: int, reason: str = Form(...
     if not reason:
         raise HTTPException(status_code=400, detail="Вкажіть причину перенесення події.")
     new_at = compose_event_datetime(day, month, year, event_time)
-    if new_at <= event_local_now():
+    if clock.local_wall_to_utc(new_at) <= clock.now_utc():
         raise HTTPException(status_code=400, detail="Нова дата події має бути в майбутньому.")
     campaign_id = None
     async with db.session_factory() as session:
@@ -990,7 +998,7 @@ async def event_postpone(request: Request, event_id: int, reason: str = Form(...
         if not event: raise HTTPException(status_code=404, detail="Подію не знайдено.")
         if event.cancelled_at or event.status == "cancelled": raise HTTPException(status_code=409, detail="Скасовану подію не можна переносити.")
         users = list((await session.scalars(select(User).join(EventRegistration, EventRegistration.user_id==User.id).where(EventRegistration.event_id==event.id, EventRegistration.status!="cancelled").distinct())).all())
-        event.starts_at = new_at; event.status = "postponed"; event.postponed_reason = reason; event.postponed_at = datetime.utcnow(); await session.execute(update(EventRegistration).where(EventRegistration.event_id==event.id).values(reminder_1h_sent_at=None))
+        event.starts_at = new_at; event.status = "postponed"; event.postponed_reason = reason; event.postponed_at = clock.storage_utc(); await session.execute(update(EventRegistration).where(EventRegistration.event_id==event.id).values(reminder_1h_sent_at=None))
         campaign_id = await _queue_system_broadcast(session, users, _postponed_notice_text("Подію", event.title, new_at, reason), author_label=request.session.get("admin_name","web"), audience_label=f"Учасники перенесеної події: {event.title}", template_code="event_postponed")
         await log_audit(session,"web_event_postpone",actor_label=request.session.get("admin_name","web"),entity_type="event",entity_id=event.id,details=f"Нова дата {new_at}; причина: {reason}; повідомлень: {len(users)}")
         await session.commit()
@@ -1021,7 +1029,7 @@ async def event_cancel(request: Request, event_id: int, reason: str = Form(...))
         )).all())
         event.status = "cancelled"
         event.cancellation_reason = reason
-        event.cancelled_at = datetime.utcnow()
+        event.cancelled_at = clock.storage_utc()
         campaign_id = await _queue_system_broadcast(
             session, users, _entity_notice_text("Подію", event.title, reason),
             author_label=request.session.get("admin_name", "web"),

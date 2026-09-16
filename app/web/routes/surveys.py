@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.content_views import content_view_stat, content_view_stats
@@ -19,7 +21,7 @@ async def surveys_page(request: Request, q: str = "", status: str = "", period: 
         if q: stmt=stmt.where(or_(Survey.title.ilike(f"%{q}%"),Survey.description.ilike(f"%{q}%")))
         if status: stmt=stmt.where(Survey.status == status)
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: stmt=stmt.where(Survey.created_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt=stmt.where(Survey.created_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         if type == "rewarded": stmt=stmt.where(Survey.xp_reward > 0)
         elif type == "no_reward": stmt=stmt.where(Survey.xp_reward == 0)
         order_map={"oldest":Survey.created_at.asc(),"title":Survey.title.asc(),"deadline":Survey.ends_at.asc().nullslast(),"newest":Survey.created_at.desc()}
@@ -37,7 +39,7 @@ async def survey_create(request: Request, title: str=Form(...), description: str
     if not title: raise HTTPException(400, "Вкажіть назву опитування")
     deadline = datetime.fromisoformat(ends_at) if (ends_at or "").strip() else None
     async with db.session_factory() as session:
-        row = Survey(title=title, description=description.strip(), xp_reward=max(0,min(40,int(xp_reward or 0))), status="draft", ends_at=deadline, created_by_label=request.session.get("admin_name","web"), updated_at=datetime.utcnow())
+        row = Survey(title=title, description=description.strip(), xp_reward=max(0,min(40,int(xp_reward or 0))), status="draft", ends_at=deadline, created_by_label=request.session.get("admin_name","web"), updated_at=clock.storage_utc())
         session.add(row); await session.flush()
         await log_audit(session,"web_survey_create",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=row.id,details=row.title)
         await session.commit()
@@ -67,7 +69,7 @@ async def survey_update(request: Request, survey_id: int, title: str=Form(...), 
     async with db.session_factory() as session:
         survey=await session.get(Survey,survey_id)
         if not survey: raise HTTPException(404,"Опитування не знайдено")
-        survey.title=title.strip(); survey.description=description.strip(); survey.xp_reward=max(0,min(40,int(xp_reward or 0))); survey.ends_at=datetime.fromisoformat(ends_at) if (ends_at or '').strip() else None; survey.updated_at=datetime.utcnow()
+        survey.title=title.strip(); survey.description=description.strip(); survey.xp_reward=max(0,min(40,int(xp_reward or 0))); survey.ends_at=datetime.fromisoformat(ends_at) if (ends_at or '').strip() else None; survey.updated_at=clock.storage_utc()
         await log_audit(session,"web_survey_update",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=survey.id,details=survey.title)
         await session.commit()
     return RedirectResponse(f"/admin/surveys/{survey_id}",303)
@@ -202,7 +204,7 @@ async def survey_publish(request: Request, survey_id: int):
         if survey.status != "draft": raise HTTPException(409,"Опитування вже було опубліковано або закрито")
         qcount=int(await session.scalar(select(func.count(SurveyQuestion.id)).where(SurveyQuestion.survey_id==survey_id)) or 0)
         if qcount==0: raise HTTPException(400,"Додайте хоча б одне питання")
-        survey.status="published"; survey.starts_at=survey.starts_at or datetime.utcnow(); survey.updated_at=datetime.utcnow()
+        survey.status="published"; survey.starts_at=survey.starts_at or clock.storage_utc(); survey.updated_at=clock.storage_utc()
         users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)).order_by(User.id))).all())
         text=(f"📋 Нове опитування в АМП: «{survey.title}»\n\n{survey.description[:700]}\n\n🎁 За повне проходження: {survey.xp_reward} XP.\nВідкрий у боті розділ «📋 Опитування», щоб пройти його.")
         campaign_id=await _queue_system_broadcast(session,users,text,author_label=request.session.get("admin_name","web"),audience_label=f"Нове опитування: {survey.title}",template_code="survey_published")
@@ -217,7 +219,7 @@ async def survey_close(request: Request, survey_id: int):
     if r := guard(request): return r
     async with db.session_factory() as session:
         survey=await session.get(Survey,survey_id)
-        if survey: survey.status="closed"; survey.updated_at=datetime.utcnow(); await session.commit()
+        if survey: survey.status="closed"; survey.updated_at=clock.storage_utc(); await session.commit()
     return RedirectResponse(f"/admin/surveys/{survey_id}",303)
 
 

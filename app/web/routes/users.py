@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 import json
-from datetime import datetime as dt_datetime, time as dt_time, timedelta as dt_timedelta, timezone as dt_timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime as dt_datetime, time as dt_time, timedelta as dt_timedelta
 
 from fastapi import APIRouter
 from sqlalchemy.orm import selectinload
@@ -37,7 +38,7 @@ async def users(request: Request, q: str = "", role: str = "", status: str = "",
         if status: stmt = stmt.where(User.status == status)
         if consent == "pending": stmt = stmt.where(User.parental_consent_required == True, User.parental_consent_confirmed == False)
         cutoff_map = {"7d": 7, "30d": 30, "90d": 90}
-        if period in cutoff_map: stmt = stmt.where(User.created_at >= datetime.utcnow() - timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt = stmt.where(User.created_at >= clock.storage_utc() - timedelta(days=cutoff_map[period]))
         order_map = {
             "oldest": User.created_at.asc(), "name": User.full_name.asc(),
             "inactive": User.last_activity_at.asc().nullsfirst(), "newest": User.created_at.desc(),
@@ -62,13 +63,12 @@ async def users(request: Request, q: str = "", role: str = "", status: str = "",
 async def registrations_page(request: Request):
     if r := guard_permission(request, "participants.approve"):
         return r
-    tz = ZoneInfo(settings.timezone or "Europe/Kyiv")
-    today = dt_datetime.now(tz).date()
-    local_start = dt_datetime.combine(today, dt_time.min, tzinfo=tz)
+    today = clock.today_local()
+    local_start = dt_datetime.combine(today, dt_time.min)
     local_end = local_start + dt_timedelta(days=1)
-    # Database timestamps are stored as naive UTC datetimes.
-    day_start = local_start.astimezone(dt_timezone.utc).replace(tzinfo=None)
-    day_end = local_end.astimezone(dt_timezone.utc).replace(tzinfo=None)
+    # Database timestamps are stored as naive UTC datetimes. Convert the local
+    # calendar day through the canonical Clock so DST/midnight stay consistent.
+    day_start, day_end = clock.local_period_to_storage_utc(local_start, local_end)
     async with db.session_factory() as session:
         pending = list((await session.scalars(
             select(User).where(User.registration_review_status == "pending").order_by(User.created_at.asc())
@@ -111,7 +111,7 @@ async def registration_reject(request: Request, user_id: int, reason: str = Form
         if not user:
             raise HTTPException(status_code=404, detail="Заявку не знайдено.")
         user.registration_review_status = "rejected"
-        user.registration_reviewed_at = datetime.utcnow()
+        user.registration_reviewed_at = clock.storage_utc()
         user.registration_reviewed_by = request.session.get("admin_name", "web")
         user.registration_rejection_reason = reason
         if user.status == UserStatus.PENDING.value:
@@ -283,7 +283,7 @@ async def user_profile_update(request: Request, user_id: int):
                 birth_date = datetime.strptime(birth_raw, "%Y-%m-%d").date()
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="Некоректна дата народження.") from exc
-            if birth_date > date.today():
+            if birth_date > clock.today_local():
                 raise HTTPException(status_code=400, detail="Дата народження не може бути в майбутньому.")
 
         allowed_codes = {code for _, code, _ in VULNERABILITY_OPTIONS}
@@ -313,7 +313,7 @@ async def user_profile_update(request: Request, user_id: int):
         if new_media_status != old_media_status or media_consent != old_media_consent:
             user.media_consent_status = new_media_status
             user.media_consent_version = MEDIA_CONSENT_VERSION
-            user.media_consent_recorded_at = datetime.utcnow()
+            user.media_consent_recorded_at = clock.storage_utc()
             session.add(ConsentHistory(
                 user_id=user.id, consent_type="media", status=new_media_status,
                 version=user.media_consent_version, changed_by_label=request.session.get("admin_name","web"),
@@ -374,7 +374,7 @@ async def user_consents_update(
         user.parental_consent_status=parental_status
         user.parental_consent_confirmed=parental_status=="received"
         if parental_status=="received":
-            user.parental_consent_received_at = received_at_input or (old_parental[1] if old_parental[0]=="received" else None) or datetime.utcnow()
+            user.parental_consent_received_at = received_at_input or (old_parental[1] if old_parental[0]=="received" else None) or clock.storage_utc()
         else:
             user.parental_consent_received_at = received_at_input
         # The field remains a demographic rule, not an admin switch.
@@ -382,18 +382,18 @@ async def user_consents_update(
         if (user.parental_consent_status,user.parental_consent_received_at,user.parental_consent_file_path) != old_parental:
             session.add(ConsentHistory(
                 user_id=user.id,consent_type="parental",status=parental_status,file_path=user.parental_consent_file_path,
-                note=note.strip(),changed_by_label=actor,changed_at=datetime.utcnow(),
+                note=note.strip(),changed_by_label=actor,changed_at=clock.storage_utc(),
             ))
 
         user.media_consent_status=media_status
         user.media_consent=True if media_status=="granted" else False if media_status in {"declined","revoked"} else None
         user.media_consent_version=(media_version or user.media_consent_version or MEDIA_CONSENT_VERSION).strip()
         media_core_changed=(user.media_consent_status,user.media_consent_version) != (old_media[0],old_media[1])
-        user.media_consent_recorded_at = media_at_input or (datetime.utcnow() if media_core_changed else old_media[2])
+        user.media_consent_recorded_at = media_at_input or (clock.storage_utc() if media_core_changed else old_media[2])
         if (user.media_consent_status,user.media_consent_version,user.media_consent_recorded_at) != old_media:
             session.add(ConsentHistory(
                 user_id=user.id,consent_type="media",status=media_status,version=user.media_consent_version,
-                note=note.strip(),changed_by_label=actor,changed_at=user.media_consent_recorded_at or datetime.utcnow(),
+                note=note.strip(),changed_by_label=actor,changed_at=user.media_consent_recorded_at or clock.storage_utc(),
             ))
         await log_audit(session,"web_user_consents_update",actor_label=actor,entity_type="user",entity_id=user.id,details=f"parental={parental_status}; media={media_status}; version={user.media_consent_version}")
         await session.commit()
@@ -458,7 +458,7 @@ async def user_activate_from_web(request: Request, user_id: int, return_to: str 
         if user.status == UserStatus.ACTIVE.value:
             if user.registration_review_status != "approved":
                 user.registration_review_status = "approved"
-                user.registration_reviewed_at = datetime.utcnow()
+                user.registration_reviewed_at = clock.storage_utc()
                 user.registration_reviewed_by = request.session.get("admin_name", "web")
                 await mark_registration_approved(session, user.id)
                 await session.commit()
@@ -468,7 +468,7 @@ async def user_activate_from_web(request: Request, user_id: int, return_to: str 
             previous = user.status
             user.status = UserStatus.ACTIVE.value
             user.registration_review_status = "approved"
-            user.registration_reviewed_at = datetime.utcnow()
+            user.registration_reviewed_at = clock.storage_utc()
             user.registration_reviewed_by = actor
             user.registration_rejection_reason = None
             await add_active_users_to_default_team(session)
@@ -480,7 +480,7 @@ async def user_activate_from_web(request: Request, user_id: int, return_to: str 
             await session.execute(
                 update(UserStatusChangeRequest)
                 .where(UserStatusChangeRequest.user_id == user.id, UserStatusChangeRequest.status == "pending")
-                .values(status="rejected", review_note="Замінено запитом активації", reviewed_by_label="system", reviewed_at=datetime.utcnow())
+                .values(status="rejected", review_note="Замінено запитом активації", reviewed_by_label="system", reviewed_at=clock.storage_utc())
             )
             session.add(UserStatusChangeRequest(
                 user_id=user.id, previous_status=user.status, requested_status=UserStatus.ACTIVE.value,
@@ -535,7 +535,7 @@ async def user_update(request: Request, user_id: int, role: str = Form(...), sta
                     await session.execute(
                         update(UserStatusChangeRequest)
                         .where(UserStatusChangeRequest.user_id==user.id,UserStatusChangeRequest.status=="pending")
-                        .values(status="rejected",review_note="Замінено новішим запитом",reviewed_by_label="system",reviewed_at=datetime.utcnow())
+                        .values(status="rejected",review_note="Замінено новішим запитом",reviewed_by_label="system",reviewed_at=clock.storage_utc())
                     )
                     session.add(UserStatusChangeRequest(
                         user_id=user.id,previous_status=user.status,requested_status=status,requested_by_label=actor,status="pending"
@@ -557,7 +557,7 @@ async def user_status_request_approve(request: Request,user_id:int,request_id:in
         if user.status==UserStatus.BLOCKED.value: raise HTTPException(409,"Заблокований профіль змінюється лише через модерацію")
         if user.status in {UserStatus.DELETED.value, UserStatus.DELETED_PERMANENT.value}: raise HTTPException(409,"Видалений профіль змінюється лише через workflow відновлення")
         was_active=user.status==UserStatus.ACTIVE.value
-        user.status=item.requested_status; item.status="approved"; item.reviewed_by_label=request.session.get("admin_name","superadmin"); item.reviewed_at=datetime.utcnow()
+        user.status=item.requested_status; item.status="approved"; item.reviewed_by_label=request.session.get("admin_name","superadmin"); item.reviewed_at=clock.storage_utc()
         if user.status == UserStatus.INACTIVE.value:
             revoked = await revoke_referral_reward_if_inactive(
                 session, user, reason=f"Підтверджено запит на неактивний статус ({item.reviewed_by_label})"
@@ -574,7 +574,7 @@ async def user_status_request_approve(request: Request,user_id:int,request_id:in
         if user.status==UserStatus.ACTIVE.value:
             if user.registration_review_status != "approved":
                 user.registration_review_status = "approved"
-                user.registration_reviewed_at = datetime.utcnow()
+                user.registration_reviewed_at = clock.storage_utc()
                 user.registration_reviewed_by = item.reviewed_by_label
                 user.registration_rejection_reason = None
             await mark_registration_approved(session, user.id)
@@ -591,7 +591,7 @@ async def user_status_request_reject(request: Request,user_id:int,request_id:int
     async with db.session_factory() as session:
         item=await session.get(UserStatusChangeRequest,request_id)
         if not item or item.user_id!=user_id or item.status!="pending": raise HTTPException(404,"Запит не знайдено")
-        item.status="rejected"; item.review_note=review_note.strip(); item.reviewed_by_label=request.session.get("admin_name","superadmin"); item.reviewed_at=datetime.utcnow()
+        item.status="rejected"; item.review_note=review_note.strip(); item.reviewed_by_label=request.session.get("admin_name","superadmin"); item.reviewed_at=clock.storage_utc()
         await log_audit(session,"web_user_status_reject",actor_label=item.reviewed_by_label,entity_type="user",entity_id=user_id,details=f"Відхилено {item.requested_status}; {item.review_note}")
         await session.commit()
     return RedirectResponse(f"/admin/users/{user_id}",303)
@@ -604,7 +604,7 @@ async def restoration_approve(request: Request, user_id: int):
         user=await session.get(User,user_id)
         if not user or user.status != UserStatus.DELETED.value or user.restoration_request_status != "pending":
             raise HTTPException(409,"Немає активного запиту на відновлення")
-        now=datetime.utcnow()
+        now=clock.storage_utc()
         user.status=UserStatus.ACTIVE.value
         user.restoration_request_status="approved"
         user.restoration_reviewed_at=now
@@ -627,7 +627,7 @@ async def restoration_reject(request: Request, user_id: int, review_note: str=Fo
         if not user or user.status != UserStatus.DELETED.value or user.restoration_request_status != "pending":
             raise HTTPException(409,"Немає активного запиту на відновлення")
         user.restoration_request_status="rejected"
-        user.restoration_reviewed_at=datetime.utcnow()
+        user.restoration_reviewed_at=clock.storage_utc()
         user.restoration_reviewed_by=request.session.get("admin_name","superadmin")
         await log_audit(session,"user_restoration_rejected",actor_label=user.restoration_reviewed_by,entity_type="user",entity_id=user.id,details=review_note.strip())
         await queue_telegram_delivery(session,user.tg_id,"❌ <b>Запит на відновлення акаунта не підтверджено.</b>\n\nЗа уточненнями зверніться до команди АМП.",source="restoration",dedupe_key=f"restoration:rejected:{user.id}:{user.restoration_reviewed_at.date().isoformat()}")
@@ -658,7 +658,7 @@ async def user_unban(request: Request, user_id: int):
 @router.get("/admin/moderation", response_class=HTMLResponse)
 async def moderation(request: Request, q: str = ""):
     if r := guard_permission(request, "moderation.manage"): return r
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         expired = await process_expired_bans(session, now)
         if expired:
@@ -687,7 +687,7 @@ async def moderation_ban(request: Request, user_id: int = Form(...), days: int =
     if r := guard_permission(request, "moderation.manage"): return r
     days = max(1, min(int(days), 365))
     reason = reason.strip() or "Порушення правил спільноти"
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     ends_at = now + timedelta(days=days)
     notify_id = None
     async with db.session_factory() as session:
@@ -722,7 +722,7 @@ async def moderation_ban(request: Request, user_id: int = Form(...), days: int =
 async def moderation_unban(request: Request, record_id: int, lift_reason: str = Form("Блокування знято суперадміністратором")):
     if r := guard_permission(request, "moderation.manage"): return r
     notify_id = None
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         record = await session.get(BanRecord, record_id)
         if not record:
@@ -746,7 +746,7 @@ async def moderation_unban(request: Request, record_id: int, lift_reason: str = 
 async def moderation_shorten(request: Request, record_id: int, remaining_days: int = Form(...)):
     if r := guard_permission(request, "moderation.manage"): return r
     remaining_days = max(1, min(int(remaining_days), 365))
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     new_end = now + timedelta(days=remaining_days)
     notify_id = None
     async with db.session_factory() as session:

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from ..observability import log_extra
+from ..time_utils import clock
+
 from datetime import datetime
 import logging
 from html import escape
@@ -27,7 +30,7 @@ async def _send_events(target, db: Database) -> None:
         changed = await process_expired_content(session)
         if changed: await session.commit()
         events = (await session.scalars(
-            select(Event).where(Event.status.in_(["open", "closed", "postponed"]), Event.starts_at >= datetime.now()).order_by(Event.starts_at.asc()).limit(20)
+            select(Event).where(Event.status.in_(["open", "closed", "postponed"]), Event.starts_at >= clock.local_wall()).order_by(Event.starts_at.asc()).limit(20)
         )).all()
         if not events:
             await target.answer("📅 Найближчих відкритих подій поки немає.")
@@ -66,9 +69,12 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
             changed = await process_expired_content(session)
             if changed:
                 await session.commit()
-        except Exception:
+        except Exception as exc:
             await session.rollback()
-            logging.getLogger("amp.events").exception("Lifecycle refresh failed while opening event %s", event_id)
+            logging.getLogger("amp.events").exception(
+                "Lifecycle refresh failed while opening event %s", event_id,
+                extra=log_extra("EVENT_LIFECYCLE_REFRESH_FAILED", entity_type="event", entity_id=event_id, exception_type=type(exc).__name__),
+            )
 
         user = await get_user_by_tg(session, call.from_user.id)
         event = await session.get(Event, event_id)
@@ -108,7 +114,7 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
                 "https://t.me/share/url?url=" + quote(public_url, safe="") +
                 "&text=" + quote(f"Подія АМП: {event.title}", safe="")
             )
-        if event.starts_at >= datetime.now():
+        if clock.event_utc(event.starts_at) >= clock.now_utc():
             if event.status in {"open", "postponed"}:
                 keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None)
             elif event.status == "closed" and registered:
@@ -139,7 +145,7 @@ async def event_join(call: CallbackQuery, db: Database) -> None:
             await call.answer("Профіль не активований", show_alert=True)
             return
         event = await session.get(Event, event_id)
-        if not event or event.status not in {"open", "postponed"} or event.starts_at < datetime.now():
+        if not event or event.status not in {"open", "postponed"} or clock.event_utc(event.starts_at) < clock.now_utc():
             await call.answer("Реєстрація недоступна", show_alert=True)
             return
         if event.capacity:

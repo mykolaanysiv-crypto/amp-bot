@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -191,7 +193,7 @@ async def donation_report_create(
             document_path=document_path,
             document_name=(document.filename[:255] if document and document.filename else None),
             published=bool(published),
-            updated_at=datetime.utcnow(),
+            updated_at=clock.storage_utc(),
         )
         session.add(row)
         await session.flush()
@@ -209,7 +211,7 @@ async def donation_report_toggle(request: Request, report_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Звіт не знайдено.")
         row.published = not row.published
-        row.updated_at = datetime.utcnow()
+        row.updated_at = clock.storage_utc()
         await log_audit(session, "web_donation_report_publish", actor_label=request.session.get("admin_name", "web"), entity_type="donation_report", entity_id=row.id, details=f"published={row.published}")
         await session.commit()
     return RedirectResponse("/admin/donations#reporting", 303)

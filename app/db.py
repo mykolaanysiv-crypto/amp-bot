@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from .observability import log_extra
+from .time_utils import clock
+
 import asyncio
 import logging
 import shutil
@@ -189,7 +192,7 @@ def _backup_sqlite_before_start(settings: Settings) -> None:
         return
     backup_dir = Path(settings.data_dir) / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y-%m-%d")
+    stamp = clock.now_local().strftime("%Y-%m-%d")
     target = backup_dir / f"amp_bot_{stamp}.db"
     if target.exists():
         return
@@ -402,7 +405,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
                 sync_conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
                 log.info("DB migration: added %s.%s", table, col)
             except Exception as exc:
-                log.warning("Could not add %s.%s: %s", table, col, exc)
+                log.warning("Could not add %s.%s: %s", table, col, exc, extra=log_extra("LEGACY_SCHEMA_COLUMN_ADD_FAILED", table=table, column=col, exception_type=type(exc).__name__))
 
 
     # v1.10.4: split the registration intake queue from the participant base.
@@ -414,7 +417,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             sync_conn.exec_driver_sql("UPDATE users SET registration_review_status='pending' WHERE status='pending'")
             sync_conn.exec_driver_sql("UPDATE users SET registration_review_status='approved' WHERE status<>'pending' AND (registration_review_status IS NULL OR registration_review_status='' OR registration_review_status='pending')")
     except Exception as exc:
-        log.warning("Could not initialize v1.10.4 registration review fields: %s", exc)
+        log.warning("Could not initialize v1.10.4 registration review fields: %s", exc, extra=log_extra("LEGACY_REGISTRATION_REVIEW_INIT_FAILED", exception_type=type(exc).__name__))
 
     # v1.6.8: initialize current consent state for legacy profiles.
     try:
@@ -426,7 +429,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             if "parental_consent_status" in user_cols:
                 sync_conn.exec_driver_sql("UPDATE users SET parental_consent_status=CASE WHEN parental_consent_required=FALSE THEN 'not_required' WHEN parental_consent_confirmed=TRUE THEN 'received' ELSE 'pending' END WHERE parental_consent_status IS NULL OR parental_consent_status='' OR parental_consent_status='not_required'")
     except Exception as exc:
-        log.warning("Could not initialize v1.6.8 consent fields: %s", exc)
+        log.warning("Could not initialize v1.6.8 consent fields: %s", exc, extra=log_extra("LEGACY_CONSENT_INIT_FAILED", exception_type=type(exc).__name__))
 
     # v1.6.6: backfill human-readable case numbers and initialize case threads.
     try:
@@ -452,7 +455,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
                 WHERE NOT EXISTS (SELECT 1 FROM request_messages m WHERE m.case_id=r.id)
             """)
     except Exception as exc:
-        log.warning("Could not backfill v1.6.6 request cases: %s", exc)
+        log.warning("Could not backfill v1.6.6 request cases: %s", exc, extra=log_extra("LEGACY_REQUEST_CASE_BACKFILL_FAILED", exception_type=type(exc).__name__))
 
     # v1.6.5: normalize new lifecycle fields for legacy data.
     try:
@@ -464,7 +467,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
         if "opportunities" in tables_now and "updated_at" in columns("opportunities"):
             sync_conn.exec_driver_sql("UPDATE opportunities SET updated_at=created_at WHERE updated_at IS NULL")
     except Exception as exc:
-        log.warning("Could not normalize v1.6.5 lifecycle fields: %s", exc)
+        log.warning("Could not normalize v1.6.5 lifecycle fields: %s", exc, extra=log_extra("LEGACY_LIFECYCLE_NORMALIZE_FAILED", exception_type=type(exc).__name__))
 
     # v1.6.2: initialize activity timestamps for legacy profiles so the
     # communication-center "inactive" filter behaves predictably immediately
@@ -476,7 +479,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
                 "UPDATE users SET last_activity_at = created_at WHERE last_activity_at IS NULL"
             )
     except Exception as exc:
-        log.warning("Could not initialize users.last_activity_at: %s", exc)
+        log.warning("Could not initialize users.last_activity_at: %s", exc, extra=log_extra("LEGACY_LAST_ACTIVITY_INIT_FAILED", exception_type=type(exc).__name__))
 
     # v1.5: preserve legacy one-person volunteer-task assignments in the new
     # many-participant table. The INSERT is idempotent because of UNIQUE(task_id,user_id).
@@ -508,7 +511,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             sync_conn.exec_driver_sql("UPDATE volunteer_tasks SET status='open' WHERE status IN ('assigned','submitted')")
             sync_conn.exec_driver_sql("UPDATE volunteer_tasks SET status='closed' WHERE status='done'")
     except Exception as exc:
-        log.warning("Legacy volunteer task migration skipped: %s", exc)
+        log.warning("Legacy volunteer task migration skipped: %s", exc, extra=log_extra("LEGACY_VOLUNTEER_MIGRATION_SKIPPED", exception_type=type(exc).__name__))
 
     # v1.5.1: preserve legacy temporary bans in the dedicated moderation history.
     try:
@@ -536,7 +539,7 @@ def _migrate_v10_to_v11(sync_conn) -> None:
                 """
             )
     except Exception as exc:
-        log.warning("Legacy ban history migration skipped: %s", exc)
+        log.warning("Legacy ban history migration skipped: %s", exc, extra=log_extra("LEGACY_BAN_MIGRATION_SKIPPED", exception_type=type(exc).__name__))
 
     if wallet_was_missing:
         try:
@@ -546,4 +549,4 @@ def _migrate_v10_to_v11(sync_conn) -> None:
             sync_conn.exec_driver_sql("UPDATE users SET wallet_xp = 0 WHERE wallet_xp < 0")
             log.info("DB migration: seeded users.wallet_xp from XP history")
         except Exception as exc:
-            log.warning("Could not seed wallet XP: %s", exc)
+            log.warning("Could not seed wallet XP: %s", exc, extra=log_extra("LEGACY_WALLET_XP_SEED_FAILED", exception_type=type(exc).__name__))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.web.app import (
@@ -12,7 +14,7 @@ router = APIRouter()
 @router.get("/admin/reports", response_class=HTMLResponse)
 async def reports_page(request: Request):
     if r := guard(request): return r
-    return templates.TemplateResponse(request=request, name="reports.html", context=ctx(request, current_year=datetime.now().year))
+    return templates.TemplateResponse(request=request, name="reports.html", context=ctx(request, current_year=clock.today_local().year))
 
 
 @router.get("/admin/reports/download")

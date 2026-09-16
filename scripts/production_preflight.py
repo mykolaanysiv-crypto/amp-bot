@@ -56,6 +56,45 @@ def main() -> None:
             + "; ".join(bad_relative_imports)
         )
 
+
+    # v1.12.2 hardening gates: one Clock boundary, no deprecated utcnow calls,
+    # no silent broad-exception swallowing, and structured error context.
+    time_source = (root / "app" / "time_utils.py").read_text(encoding="utf-8")
+    if "class Clock" not in time_source or "clock = Clock()" not in time_source or "def now_utc" not in time_source:
+        raise SystemExit("Time preflight failed: canonical Clock helper missing")
+
+    direct_time_hits: list[str] = []
+    silent_exception_hits: list[str] = []
+    allowed_time_source = root / "app" / "time_utils.py"
+    for scan_root in (root / "app", root / "scripts"):
+        for path in scan_root.rglob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(path))
+            if path != allowed_time_source and path.name != "production_preflight.py":
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+                        if (node.value.id, node.attr) in {
+                            ("datetime", "utcnow"),
+                            ("datetime", "now"),
+                            ("date", "today"),
+                        }:
+                            direct_time_hits.append(f"{path.relative_to(root)}:{node.lineno}:{node.value.id}.{node.attr}")
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ExceptHandler):
+                    continue
+                broad = node.type is None or (isinstance(node.type, ast.Name) and node.type.id == "Exception")
+                if broad and len(node.body) == 1 and isinstance(node.body[0], ast.Pass):
+                    silent_exception_hits.append(f"{path.relative_to(root)}:{node.lineno}")
+    if direct_time_hits:
+        raise SystemExit("Time preflight failed: direct wall-clock API outside Clock: " + ", ".join(sorted(set(direct_time_hits))))
+    if silent_exception_hits:
+        raise SystemExit("Error preflight failed: silent broad exceptions at " + ", ".join(silent_exception_hits))
+
+    observability_source = (root / "app" / "observability.py").read_text(encoding="utf-8")
+    for token in ("error_code", "context", "def log_extra"):
+        if token not in observability_source:
+            raise SystemExit(f"Observability preflight failed: {token} missing")
+
     web_source = (root / "app" / "web" / "app.py").read_text(encoding="utf-8")
     for endpoint in ("/health/live", "/health/ready", "/health/dependencies"):
         if endpoint not in web_source:

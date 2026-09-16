@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import base64
 import hashlib
 import hmac
@@ -110,7 +112,7 @@ def verify_otp(code: str, nonce: str, expected_hash: str) -> bool:
 
 
 def session_expiry(now: datetime | None = None) -> datetime:
-    return (now or datetime.utcnow()) + timedelta(days=WEB_SESSION_DAYS)
+    return (now or clock.storage_utc()) + timedelta(days=WEB_SESSION_DAYS)
 
 
 def browser_label(user_agent: str | None) -> str:

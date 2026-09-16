@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 import os
 import shutil
 from datetime import datetime
@@ -13,6 +15,6 @@ if not src.exists():
     raise SystemExit(f"Базу не знайдено: {src}")
 out_dir = root / "backups"
 out_dir.mkdir(parents=True, exist_ok=True)
-dst = out_dir / f"amp_bot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+dst = out_dir / f"amp_bot_{clock.now_local().strftime('%Y%m%d_%H%M%S')}.db"
 shutil.copy2(src, dst)
 print(f"✅ Резервна копія БД: {dst}")

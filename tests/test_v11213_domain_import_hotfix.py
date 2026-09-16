@@ -32,7 +32,7 @@ def test_root_app_dependencies_use_parent_relative_imports_after_refactor():
 
 def test_version_and_static_cache_are_synchronized():
     version = (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip()
-    assert version.startswith("1.12.1")
+    assert tuple(map(int, version.split("."))) >= (1, 12, 1)
     assert (ROOT / "VERSION_CHECK.txt").read_text(encoding="utf-8").strip() == version
     for rel in (
         "app/web/templates/base.html",

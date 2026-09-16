@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from ..time_utils import clock
+
 from datetime import datetime
+import logging
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -9,6 +12,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from ..db import Database
 from ..models import Event, EventFeedback, User
 from ..states import EventFeedbackState
+from ..observability import log_extra
 
 router = Router(name="feedback")
 
@@ -67,7 +71,7 @@ async def feedback_rating(call: CallbackQuery, db: Database, state: FSMContext) 
             await call.answer("Відгук уже завершено", show_alert=True); return
         feedback.rating = rating
         feedback.status = "in_progress"
-        feedback.updated_at = datetime.utcnow()
+        feedback.updated_at = clock.storage_utc()
         await session.commit()
     await _replace_question(
         call,
@@ -95,10 +99,10 @@ async def feedback_yes_no(call: CallbackQuery, db: Database, state: FSMContext) 
             await call.answer("Відгук уже завершено", show_alert=True); return
         setattr(feedback, fields[field], value)
         feedback.status = "in_progress"
-        feedback.updated_at = datetime.utcnow()
+        feedback.updated_at = clock.storage_utc()
         if field == "return":
             feedback.status = "completed"
-            feedback.completed_at = datetime.utcnow()
+            feedback.completed_at = clock.storage_utc()
         await session.commit()
 
     if field == "useful":
@@ -145,12 +149,17 @@ async def feedback_skip(call: CallbackQuery, db: Database, state: FSMContext) ->
         feedback, _ = await _feedback_for_tg(session, fid, call.from_user.id)
         if feedback and feedback.status != "completed":
             feedback.status = "completed"
-            feedback.completed_at = datetime.utcnow()
+            feedback.completed_at = clock.storage_utc()
             feedback.updated_at = feedback.completed_at
             await session.commit()
     await state.clear()
-    try: await call.message.edit_reply_markup(reply_markup=None)
-    except Exception: pass
+    try:
+        await call.message.edit_reply_markup(reply_markup=None)
+    except Exception as exc:
+        logging.getLogger("amp.feedback").debug(
+            "Не вдалося прибрати feedback markup",
+            extra=log_extra("TG_FEEDBACK_MARKUP_CLEAR_FAILED", tg_id=call.from_user.id, exception_type=type(exc).__name__),
+        )
     await call.answer("Дякуємо!")
 
 
@@ -169,8 +178,8 @@ async def feedback_comment(message: Message, db: Database, state: FSMContext) ->
             await state.clear(); await message.answer("Не вдалося знайти форму відгуку."); return
         feedback.comment = text[:3000]
         feedback.status = "completed"
-        feedback.completed_at = feedback.completed_at or datetime.utcnow()
-        feedback.updated_at = datetime.utcnow()
+        feedback.completed_at = feedback.completed_at or clock.storage_utc()
+        feedback.updated_at = clock.storage_utc()
         await session.commit()
     await state.clear()
     await message.answer("💙 Дякуємо за коментар!")

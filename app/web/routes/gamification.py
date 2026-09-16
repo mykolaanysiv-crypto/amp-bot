@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.season_history import finalize_season, season_snapshot
@@ -133,7 +135,7 @@ async def streak_update(
             row.event_started_at = None
         row.manual_lock = True
         row.manual_note = manual_note.strip()
-        row.updated_at = datetime.utcnow()
+        row.updated_at = clock.storage_utc()
         await log_audit(
             session, "web_streak_manual_update", actor_label=request.session.get("admin_name", "web"),
             entity_type="user", entity_id=user_id,
@@ -236,7 +238,7 @@ async def goals_create(
     if r := guard(request): return r
     if scope not in {"season","personal","team"}: scope="season"
     if metric not in GOAL_METRIC_LABELS: metric="xp"
-    start=_parse_goal_dt(starts_at) or datetime.utcnow(); end=_parse_goal_dt(ends_at)
+    start=_parse_goal_dt(starts_at) or clock.storage_utc(); end=_parse_goal_dt(ends_at)
     if end and end <= start:
         raise HTTPException(status_code=400, detail="Дедлайн має бути пізніше за початок")
     uid=int(user_id) if user_id.strip().isdigit() else None
@@ -265,7 +267,7 @@ async def goals_update(
     if r := guard(request): return r
     if scope not in {"season","personal","team"}: scope="season"
     if metric not in GOAL_METRIC_LABELS: metric="xp"
-    start=_parse_goal_dt(starts_at) or datetime.utcnow(); end=_parse_goal_dt(ends_at)
+    start=_parse_goal_dt(starts_at) or clock.storage_utc(); end=_parse_goal_dt(ends_at)
     if end and end <= start:
         raise HTTPException(status_code=400, detail="Дедлайн має бути пізніше за початок")
     uid=int(user_id) if user_id.strip().isdigit() else None
@@ -436,7 +438,7 @@ async def reward_claim_action(request:Request,claim_id:int,action:str):
         if c and c.status=="requested":
             u=await session.get(User,c.user_id); rw=await session.get(Reward,c.reward_id)
             if action=="fulfill":
-                c.status="fulfilled"; c.fulfilled_at=datetime.utcnow()
+                c.status="fulfilled"; c.fulfilled_at=clock.storage_utc()
             elif action=="reject":
                 c.status="rejected"
                 if u: u.wallet_xp += int(c.xp_spent or 0)
@@ -461,7 +463,7 @@ async def season_history_detail(request: Request, season_id: int):
         season=await session.get(Season,season_id)
         if not season: raise HTTPException(status_code=404,detail="Сезон не знайдено")
         snapshot=season_snapshot(season)
-        if not snapshot and (season.archived or season.ends_at < date.today()):
+        if not snapshot and (season.archived or season.ends_at < clock.today_local()):
             snapshot=await finalize_season(session,season); await session.commit()
         return templates.TemplateResponse(request=request,name="season_detail.html",context=ctx(request,season=season,snapshot=snapshot))
 

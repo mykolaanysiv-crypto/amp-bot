@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -7,7 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .runtime_config import get_runtime_int
-from .time_utils import event_local_now
 from .models import (
     ActivityApplication, Event, EventRegistration, Goal, Idea, Opportunity, Quest, Survey, SurveyResponse,
     QuestParticipation, Referral, User, UserBadge, UserRole, UserStatus, VolunteerTask,
@@ -40,7 +41,7 @@ def _previous_month(year: int, month: int) -> tuple[int, int]:
 
 
 async def active_month_streak(session: AsyncSession, user_id: int, *, now: datetime | None = None) -> int:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     months: set[tuple[int, int]] = set()
     queries = [
         select(XPTransaction.created_at).where(XPTransaction.user_id == user_id, XPTransaction.amount > 0),
@@ -88,7 +89,7 @@ async def _goal_user_ids(session: AsyncSession, goal: Goal, current_user: User |
 
 
 async def goal_progress(session: AsyncSession, goal: Goal, current_user: User | None = None, *, now: datetime | None = None) -> float:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     start, end = _goal_window(goal, now)
     user_ids = await _goal_user_ids(session, goal, current_user)
     if not user_ids:
@@ -124,7 +125,7 @@ async def goal_progress(session: AsyncSession, goal: Goal, current_user: User | 
 
 
 async def goals_for_user(session: AsyncSession, user: User, *, now: datetime | None = None) -> list[dict]:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     goals = list((await session.scalars(select(Goal).where(Goal.active == True).order_by(Goal.scope.asc(), Goal.ends_at.asc().nullslast(), Goal.id.desc()))).all())  # noqa: E712
     result: list[dict] = []
     for goal in goals:
@@ -150,7 +151,7 @@ async def process_goal_rewards(session: AsyncSession, *, now: datetime | None = 
     """
     from .services import add_xp
 
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     goals = list((await session.scalars(
         select(Goal).where(Goal.active == True, Goal.reward_xp > 0)  # noqa: E712
         .order_by(Goal.id.asc())
@@ -206,20 +207,30 @@ async def process_goal_rewards(session: AsyncSession, *, now: datetime | None = 
 
 
 async def process_expired_content(session: AsyncSession, *, now: datetime | None = None) -> dict[str, int]:
-    explicit_now = now
-    now = now or datetime.utcnow()
-    event_now = explicit_now or event_local_now()
+    # Operational timestamps are UTC; scheduled content deadlines are legacy
+    # Europe/Kyiv local-wall values. Normalize the instant once, then convert
+    # each scheduled boundary to aware UTC before making lifecycle decisions.
+    if now is None:
+        now_utc = clock.now_utc()
+    elif now.tzinfo is None:
+        # Legacy callers historically passed a naive UTC operational timestamp.
+        now_utc = clock.from_storage_utc(now) or clock.now_utc()
+    else:
+        now_utc = clock.ensure_utc(now)
+    storage_now = clock.storage_utc(now_utc)
+
     changed = defaultdict(int)
     events = list((await session.scalars(select(Event).where(Event.status.in_(["open", "closed", "postponed"]), Event.cancelled_at.is_(None)))).all())
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
     for event in events:
         # No explicit end-time exists, so the configured attendance window also
         # defines when the event moves to completed.
-        if event.starts_at and event.starts_at + timedelta(minutes=checkin_close_minutes) < event_now:
+        event_start_utc = clock.event_utc(event.starts_at)
+        if event_start_utc and event_start_utc + timedelta(minutes=checkin_close_minutes) < now_utc:
             event.status = "completed"; changed["events"] += 1
     quests = list((await session.scalars(select(Quest).where(Quest.status.in_(["open", "postponed"]), Quest.cancelled_at.is_(None)))).all())
     for quest in quests:
-        if quest.ends_at and quest.ends_at < now:
+        if quest.ends_at and clock.local_wall_to_utc(quest.ends_at) < now_utc:
             quest.active = False
             # ``Quest.completed`` is reserved for the team-goal reward flow.
             # The deadline lifecycle is represented by ``status=completed`` only.
@@ -227,18 +238,19 @@ async def process_expired_content(session: AsyncSession, *, now: datetime | None
             changed["quests"] += 1
     tasks = list((await session.scalars(select(VolunteerTask).where(VolunteerTask.status.in_(["open", "active", "postponed"]), VolunteerTask.cancelled_at.is_(None)))).all())
     for task in tasks:
-        if task.deadline and task.deadline < now:
+        if task.deadline and clock.local_wall_to_utc(task.deadline) < now_utc:
             task.status = "completed"; changed["tasks"] += 1
     surveys = list((await session.scalars(
-        select(Survey).where(Survey.status == "published", Survey.ends_at.is_not(None), Survey.ends_at < now)
+        select(Survey).where(Survey.status == "published", Survey.ends_at.is_not(None))
     )).all())
     for survey in surveys:
-        survey.status = "closed"
-        survey.updated_at = now
-        changed["surveys"] += 1
+        if survey.ends_at and clock.local_wall_to_utc(survey.ends_at) < now_utc:
+            survey.status = "closed"
+            survey.updated_at = storage_now
+            changed["surveys"] += 1
 
     opportunities = list((await session.scalars(select(Opportunity).where(Opportunity.active == True))).all())  # noqa: E712
     for item in opportunities:
-        if item.deadline and item.deadline < now:
-            item.active = False; item.updated_at = now; changed["opportunities"] += 1
+        if item.deadline and clock.local_wall_to_utc(item.deadline) < now_utc:
+            item.active = False; item.updated_at = storage_now; changed["opportunities"] += 1
     return dict(changed)

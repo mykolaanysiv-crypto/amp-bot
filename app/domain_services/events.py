@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .gamification import add_xp, evaluate_automatic_badges
 
@@ -38,7 +39,7 @@ async def register_for_event(session: AsyncSession, user_id: int, event_id: int)
     )
     if reg:
         reg.status = "registered"
-        reg.registered_at = datetime.utcnow()
+        reg.registered_at = clock.storage_utc()
         reg.waitlisted_at = None
         reg.reservation_expires_at = None
         reg.no_show_at = None
@@ -51,7 +52,7 @@ async def register_for_event(session: AsyncSession, user_id: int, event_id: int)
 
 async def join_event_waitlist(session: AsyncSession, user_id: int, event_id: int, *, now: datetime | None = None) -> EventRegistration:
     """Place a participant in an event queue without consuming event capacity."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     reg = await session.scalar(
         select(EventRegistration).where(EventRegistration.user_id == user_id, EventRegistration.event_id == event_id)
     )
@@ -73,7 +74,7 @@ async def join_event_waitlist(session: AsyncSession, user_id: int, event_id: int
 
 async def accept_event_reservation(session: AsyncSession, user_id: int, event_id: int, *, now: datetime | None = None) -> tuple[EventRegistration | None, str]:
     """Confirm a two-hour waitlist reservation. Returns (registration, state)."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     reg = await session.scalar(
         select(EventRegistration).where(EventRegistration.user_id == user_id, EventRegistration.event_id == event_id)
     )
@@ -101,22 +102,29 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
     """
     from ..reliability import queue_telegram_delivery
 
-    explicit_now = now
-    now = now or datetime.utcnow()
-    event_now = explicit_now or event_local_now()
+    if now is None:
+        now_utc = clock.now_utc()
+        storage_now = clock.storage_utc(now_utc)
+    elif now.tzinfo is None:
+        # Legacy callers supplied naive UTC for scheduler/storage operations.
+        storage_now = now
+        now_utc = clock.from_storage_utc(now) or clock.now_utc()
+    else:
+        now_utc = clock.ensure_utc(now)
+        storage_now = clock.storage_utc(now_utc)
     changed = {"expired_reservations": 0, "promoted_waitlist": 0, "cancelled_waitlist": 0, "no_show": 0}
 
     expired_stmt = select(EventRegistration).where(
         EventRegistration.status == "reserved",
         EventRegistration.reservation_expires_at.is_not(None),
-        EventRegistration.reservation_expires_at <= now,
+        EventRegistration.reservation_expires_at <= storage_now,
     )
     if event_id is not None:
         expired_stmt = expired_stmt.where(EventRegistration.event_id == int(event_id))
     expired = list((await session.scalars(expired_stmt)).all())
     for reg in expired:
         reg.status = "waitlisted"
-        reg.waitlisted_at = now
+        reg.waitlisted_at = storage_now
         reg.reservation_expires_at = None
         changed["expired_reservations"] += 1
         user = await session.get(User, reg.user_id)
@@ -127,7 +135,7 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
                 f"⏳ <b>Резерв місця завершився</b>\n\nДвогодинний резерв на подію «<b>{event.title}</b>» минув. "
                 "Ми повернули тебе в чергу. Якщо звільниться наступне місце — бот повідомить автоматично.",
                 source="event_waitlist",
-                dedupe_key=f"event_waitlist_expired:{event.id}:{reg.id}:{int(now.timestamp())//7200}",
+                dedupe_key=f"event_waitlist_expired:{event.id}:{reg.id}:{int(now_utc.timestamp())//7200}",
             )
 
     events_stmt = select(Event).where(
@@ -139,7 +147,8 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
     for event in events:
         # Do not promote people after the configured operational window has ended.
-        if event.cancelled_at or (event.starts_at and event.starts_at + timedelta(minutes=checkin_close_minutes) < event_now):
+        event_start_utc = clock.event_utc(event.starts_at)
+        if event.cancelled_at or (event_start_utc and event_start_utc + timedelta(minutes=checkin_close_minutes) < now_utc):
             continue
         occupied = int(await session.scalar(
             select(func.count(EventRegistration.id)).where(
@@ -162,9 +171,9 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
                 changed["cancelled_waitlist"] += 1
                 continue
             reg.status = "reserved"
-            reg.waitlist_promoted_at = now
+            reg.waitlist_promoted_at = storage_now
             reservation_minutes = await get_runtime_int(session, "events.waitlist_reservation_minutes")
-            reg.reservation_expires_at = now + timedelta(minutes=reservation_minutes)
+            reg.reservation_expires_at = storage_now + timedelta(minutes=reservation_minutes)
             changed["promoted_waitlist"] += 1
             occupied += 1
             await queue_telegram_delivery(
@@ -172,7 +181,7 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
                 f"🎉 <b>Звільнилося місце!</b>\n\nНа подію «<b>{event.title}</b>» для тебе зарезервовано місце на <b>{reservation_minutes} хв</b>. "
                 "Підтвердь його кнопкою нижче, інакше резерв перейде наступному учаснику в черзі.",
                 source="event_waitlist",
-                dedupe_key=f"event_waitlist_reserved:{event.id}:{reg.id}:{int(now.timestamp())//7200}",
+                dedupe_key=f"event_waitlist_reserved:{event.id}:{reg.id}:{int(now_utc.timestamp())//7200}",
                 button_text="✅ Підтвердити місце",
                 callback_data=f"event_reserve_accept:{event.id}",
             )
@@ -190,7 +199,7 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
         )).all())
         for reg in regs:
             reg.status = "no_show"
-            reg.no_show_at = now
+            reg.no_show_at = storage_now
             reg.reservation_expires_at = None
             changed["no_show"] += 1
 
@@ -202,22 +211,41 @@ async def event_checkin_window(
 ) -> dict[str, object]:
     """Return the operational check-in/attendance window for an event.
 
-    Datetimes in the current schema are naive and are compared consistently with
-    the rest of the application. Runtime settings make the window adjustable
-    without a deploy.
+    Event schedule values remain legacy local-wall datetimes in storage, but the
+    operational decision is made on an aware UTC timeline. Runtime settings make
+    the window adjustable without a deploy.
     """
-    now = now or event_local_now()
     before = await get_runtime_int(session, "events.checkin_open_before_minutes")
     after = await get_runtime_int(session, "events.checkin_close_after_minutes")
-    opens_at = event.starts_at - timedelta(minutes=before)
-    closes_at = event.starts_at + timedelta(minutes=after)
-    if now < opens_at:
+    event_start_utc = clock.event_utc(event.starts_at)
+    if event_start_utc is None:
+        return {"state": "closed", "opens_at": None, "closes_at": None, "now": clock.local_wall(), "before_minutes": before, "after_minutes": after}
+    if now is None:
+        now_utc = clock.now_utc()
+    elif now.tzinfo is None:
+        # Explicit naive values in the legacy API represent event-local wall time.
+        now_utc = clock.local_wall_to_utc(now)
+    else:
+        now_utc = clock.ensure_utc(now)
+    opens_at_utc = event_start_utc - timedelta(minutes=before)
+    closes_at_utc = event_start_utc + timedelta(minutes=after)
+    if now_utc < opens_at_utc:
         state = "too_early"
-    elif now > closes_at:
+    elif now_utc > closes_at_utc:
         state = "closed"
     else:
         state = "open"
-    return {"state": state, "opens_at": opens_at, "closes_at": closes_at, "now": now, "before_minutes": before, "after_minutes": after}
+    return {
+        "state": state,
+        "opens_at": clock.local_wall(opens_at_utc),
+        "closes_at": clock.local_wall(closes_at_utc),
+        "now": clock.local_wall(now_utc),
+        "opens_at_utc": opens_at_utc,
+        "closes_at_utc": closes_at_utc,
+        "now_utc": now_utc,
+        "before_minutes": before,
+        "after_minutes": after,
+    }
 
 
 async def checkin_for_event(
@@ -239,7 +267,7 @@ async def checkin_for_event(
         session.add(reg)
     elif reg.status != "attended":
         reg.status = "checked_in"
-    reg.checkin_at = access["now"]
+    reg.checkin_at = clock.storage_utc(access["now_utc"])
     return event, "ok"
 
 
@@ -288,7 +316,7 @@ async def confirm_single_event_attendance(
     )
     user.volunteer_hours += event.volunteer_hours
     reg.status = "attended"
-    reg.confirmed_at = access["now"]
+    reg.confirmed_at = clock.storage_utc(access["now_utc"])
     reg.attendance_confirmed_by_user_id = admin_user.id
     if not reg.attendance_signature:
         raw_signature = "|".join([
@@ -352,7 +380,7 @@ async def admin_scan_event_participant(
             "event": event, "user": user, "registration": reg, "requires_registration": True,
         }
 
-    now = event_local_now()
+    now = clock.storage_utc()
     if not reg:
         reg = EventRegistration(event_id=event.id, user_id=user.id, status="registered", registered_at=now)
         session.add(reg)

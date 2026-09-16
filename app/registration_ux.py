@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import base64
 import hashlib
 import json
@@ -77,7 +79,7 @@ async def save_registration_checkpoint(
     mark_consent: bool = False,
     mark_profile: bool = False,
 ) -> RegistrationJourney:
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     row = await get_registration_journey(session, tg_id)
     if not row:
         row = RegistrationJourney(tg_id=tg_id, started_at=now)
@@ -95,7 +97,7 @@ async def save_registration_checkpoint(
 
 
 async def restart_registration_journey(session: AsyncSession, tg_id: int, *, start_payload: str = "") -> RegistrationJourney:
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     row = await get_registration_journey(session, tg_id)
     if not row:
         row = RegistrationJourney(tg_id=tg_id, started_at=now)
@@ -122,7 +124,7 @@ async def mark_registration_submitted(session: AsyncSession, tg_id: int, user_id
     if not row:
         row = RegistrationJourney(tg_id=tg_id)
         session.add(row)
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     row.user_id = user_id
     row.current_step = "submitted"
     row.draft_ciphertext = ""  # questionnaire now lives only in the normalized User record
@@ -134,16 +136,16 @@ async def mark_registration_approved(session: AsyncSession, user_id: int) -> Non
     row = await session.scalar(select(RegistrationJourney).where(RegistrationJourney.user_id == user_id))
     if not row:
         return
-    row.approved_at = row.approved_at or datetime.utcnow()
+    row.approved_at = row.approved_at or clock.storage_utc()
     row.current_step = "approved"
-    row.updated_at = datetime.utcnow()
+    row.updated_at = clock.storage_utc()
 
 
 async def mark_first_activity(session: AsyncSession, user_id: int, at: datetime | None = None) -> None:
     row = await session.scalar(select(RegistrationJourney).where(RegistrationJourney.user_id == user_id))
     if not row or row.first_activity_at:
         return
-    row.first_activity_at = at or datetime.utcnow()
+    row.first_activity_at = at or clock.storage_utc()
     row.current_step = "first_activity"
     row.updated_at = row.first_activity_at
 

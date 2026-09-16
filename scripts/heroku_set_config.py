@@ -4,6 +4,7 @@ import argparse
 import secrets
 import subprocess
 import json
+import sys
 from pathlib import Path
 
 from dotenv import dotenv_values
@@ -41,8 +42,8 @@ def main() -> None:
         )
         parsed = json.loads(info.stdout or "{}")
         app_url = str(parsed.get("web_url") or app_url).rstrip("/")
-    except Exception:
-        pass
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError) as exc:
+        print(f"WARN HEROKU_APP_INFO_LOOKUP_FAILED: {type(exc).__name__}; використовую fallback URL", file=sys.stderr)
 
     config = {
         "BOT_TOKEN": values["BOT_TOKEN"].strip(),

@@ -10,8 +10,9 @@ def _read(path: str) -> str:
 
 
 def test_v11217_version_and_schema():
-    assert _read("VERSION.txt").strip() == "1.12.1.7"
-    assert _read("VERSION_CHECK.txt").strip() == "1.12.1.7"
+    version = _read("VERSION.txt").strip()
+    assert _read("VERSION_CHECK.txt").strip() == version
+    assert tuple(map(int, version.split("."))) >= (1, 12, 1, 7)
     assert "content_views" in Base.metadata.tables
     assert len(Base.metadata.tables) >= 54
     table = ContentView.__table__

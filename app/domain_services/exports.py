@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .gamification import current_season, season_xp, xp_total
 from .users import age_on
@@ -89,7 +90,7 @@ def export_event_participants_pdf(
             else:
                 ax.text(.5,.55,"На подію ще ніхто не зареєструвався",ha="center",va="center",fontsize=13,color="#71888E")
             fig.text(.04,.035,"АМП • Анисівський молодіжний простір",fontsize=8,color="#0B5B6C")
-            fig.text(.96,.035,f"Сформовано {datetime.now().strftime('%d.%m.%Y %H:%M')}",fontsize=7.5,color="#71888E",ha="right")
+            fig.text(.96,.035,f"Сформовано {clock.now_local().strftime('%d.%m.%Y %H:%M')}",fontsize=7.5,color="#71888E",ha="right")
             pdf.savefig(fig, bbox_inches="tight", pad_inches=.03); plt.close(fig)
     return out.getvalue()
 

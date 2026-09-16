@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from datetime import datetime
 from typing import Iterable
 
@@ -44,7 +46,7 @@ async def record_content_view(
     viewer_tg_id = int(tg_id or (user.tg_id if user and user.tg_id else 0))
     if viewer_tg_id <= 0 or int(entity_id) <= 0:
         return
-    stamp = now or datetime.utcnow()
+    stamp = now or clock.storage_utc()
     filters = (
         ContentView.entity_type == kind,
         ContentView.entity_id == int(entity_id),

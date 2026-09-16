@@ -18,7 +18,7 @@ from .profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
 from .leagues import LEAGUES, league_for_xp
 from .runtime_config import get_runtime_int
 from .settlements import canonicalize_settlement_text, settlement_quality_report
-from .time_utils import event_local_now
+from .time_utils import clock
 
 MONTHS_UA = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"]
 
@@ -61,6 +61,11 @@ def resolve_report_period(period_type: str, *, year: int, month: int | None = No
     raise ValueError("Невідомий тип періоду")
 
 
+def resolve_report_storage_bounds(start: datetime, end: datetime) -> tuple[datetime, datetime]:
+    """Map local-calendar report boundaries to legacy naive-UTC DB bounds."""
+    return clock.local_period_to_storage_utc(start, end)
+
+
 def _age(birth: date | None, on: date) -> int | None:
     if not birth: return None
     return on.year-birth.year-((on.month,on.day)<(birth.month,birth.day))
@@ -78,7 +83,16 @@ def _age_group(age: int | None) -> str:
 
 
 async def build_period_report(session: AsyncSession, start: datetime, end: datetime, label: str, *, reveal_sensitive_counts: bool = False) -> dict[str, Any]:
-    generated_at = event_local_now()
+    # Report selection is a local-calendar concept; persisted operational timestamps
+    # are UTC. Convert boundaries once so midnight and DST do not leak records into
+    # the neighbouring local day/month. Event.starts_at remains legacy local-wall.
+    generated_at_utc = clock.now_utc()
+    generated_at = clock.local_wall(generated_at_utc)
+    start_utc, end_utc = resolve_report_storage_bounds(start, end)
+
+    def _storage_to_local(value: datetime | None) -> datetime | None:
+        aware = clock.from_storage_utc(value)
+        return clock.local_wall(aware) if aware else None
     privacy_threshold = await get_runtime_int(session, "privacy.suppression_threshold")
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
     users=list((await session.scalars(select(User))).all())
@@ -96,25 +110,29 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     regs=list((await session.scalars(select(EventRegistration).where(EventRegistration.event_id.in_(event_ids) if event_ids else EventRegistration.id==-1))).all())
     attended=[r for r in regs if r.status=="attended" and r.event_id in completed_event_ids]
     quests=list((await session.scalars(select(Quest))).all())
-    qparts=list((await session.scalars(select(QuestParticipation).where(QuestParticipation.status=="approved", QuestParticipation.approved_at>=start, QuestParticipation.approved_at<end))).all())
+    qparts=list((await session.scalars(select(QuestParticipation).where(QuestParticipation.status=="approved", QuestParticipation.approved_at>=start_utc, QuestParticipation.approved_at<end_utc))).all())
     tasks=list((await session.scalars(select(VolunteerTask))).all())
-    tparts=list((await session.scalars(select(VolunteerTaskParticipation).where(VolunteerTaskParticipation.status=="approved", VolunteerTaskParticipation.approved_at>=start, VolunteerTaskParticipation.approved_at<end))).all())
-    apps=list((await session.scalars(select(ActivityApplication).where(ActivityApplication.completed_at>=start, ActivityApplication.completed_at<end))).all())
-    ideas=list((await session.scalars(select(Idea).where(Idea.created_at>=start, Idea.created_at<end))).all())
-    implemented=list((await session.scalars(select(Idea).where(Idea.status=="implemented", Idea.updated_at>=start, Idea.updated_at<end))).all())
-    requests=list((await session.scalars(select(RequestCase).where(RequestCase.created_at>=start, RequestCase.created_at<end))).all())
-    resolved_requests=list((await session.scalars(select(RequestCase).where(RequestCase.resolved_at>=start, RequestCase.resolved_at<end))).all())
-    txs=list((await session.scalars(select(XPTransaction).where(XPTransaction.created_at>=start, XPTransaction.created_at<end))).all())
-    interests=list((await session.scalars(select(OpportunityInterest).where(OpportunityInterest.created_at>=start, OpportunityInterest.created_at<end, OpportunityInterest.status=="interested"))).all())
+    tparts=list((await session.scalars(select(VolunteerTaskParticipation).where(VolunteerTaskParticipation.status=="approved", VolunteerTaskParticipation.approved_at>=start_utc, VolunteerTaskParticipation.approved_at<end_utc))).all())
+    apps=list((await session.scalars(select(ActivityApplication).where(ActivityApplication.completed_at>=start_utc, ActivityApplication.completed_at<end_utc))).all())
+    ideas=list((await session.scalars(select(Idea).where(Idea.created_at>=start_utc, Idea.created_at<end_utc))).all())
+    implemented=list((await session.scalars(select(Idea).where(Idea.status=="implemented", Idea.updated_at>=start_utc, Idea.updated_at<end_utc))).all())
+    requests=list((await session.scalars(select(RequestCase).where(RequestCase.created_at>=start_utc, RequestCase.created_at<end_utc))).all())
+    resolved_requests=list((await session.scalars(select(RequestCase).where(RequestCase.resolved_at>=start_utc, RequestCase.resolved_at<end_utc))).all())
+    txs=list((await session.scalars(select(XPTransaction).where(XPTransaction.created_at>=start_utc, XPTransaction.created_at<end_utc))).all())
+    interests=list((await session.scalars(select(OpportunityInterest).where(OpportunityInterest.created_at>=start_utc, OpportunityInterest.created_at<end_utc, OpportunityInterest.status=="interested"))).all())
     all_surveys=list((await session.scalars(select(Survey))).all())
-    surveys=[sv for sv in all_surveys if start <= (sv.starts_at or sv.created_at) < end and sv.status in {"published","closed"}]
-    survey_responses=list((await session.scalars(select(SurveyResponse).where(SurveyResponse.completed_at>=start, SurveyResponse.completed_at<end))).all())
-    user_badges=list((await session.scalars(select(UserBadge).where(UserBadge.awarded_at>=start, UserBadge.awarded_at<end))).all())
-    feedback_rows=list((await session.scalars(select(EventFeedback).where(EventFeedback.completed_at>=start, EventFeedback.completed_at<end, EventFeedback.status=="completed"))).all())
-    freeze_rows=list((await session.scalars(select(StreakFreeze).where(StreakFreeze.starts_at>=start, StreakFreeze.starts_at<end))).all())
+    surveys=[]
+    for sv in all_surveys:
+        survey_stamp = sv.starts_at if sv.starts_at else _storage_to_local(sv.created_at)
+        if survey_stamp and start <= survey_stamp < end and sv.status in {"published","closed"}:
+            surveys.append(sv)
+    survey_responses=list((await session.scalars(select(SurveyResponse).where(SurveyResponse.completed_at>=start_utc, SurveyResponse.completed_at<end_utc))).all())
+    user_badges=list((await session.scalars(select(UserBadge).where(UserBadge.awarded_at>=start_utc, UserBadge.awarded_at<end_utc))).all())
+    feedback_rows=list((await session.scalars(select(EventFeedback).where(EventFeedback.completed_at>=start_utc, EventFeedback.completed_at<end_utc, EventFeedback.status=="completed"))).all())
+    freeze_rows=list((await session.scalars(select(StreakFreeze).where(StreakFreeze.starts_at>=start_utc, StreakFreeze.starts_at<end_utc))).all())
     streak_rows=list((await session.scalars(select(ParticipationStreak))).all())
     active_season=await session.scalar(select(Season).where(Season.active==True).order_by(Season.starts_at.desc()))  # noqa: E712
-    new_users=[u for u in users if start <= u.created_at < end]
+    new_users=[u for u in users if start_utc <= u.created_at < end_utc]
 
     event_by={e.id:e for e in report_events}; task_by={t.id:t for t in tasks}
     event_attendance=Counter(r.event_id for r in attended)
@@ -171,15 +189,16 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     monthly=[]; y,m=start.year,start.month
     while datetime(y,m,1)<end:
         ny,nm=_next_month(y,m); ms=datetime(y,m,1); me=datetime(ny,nm,1)
+        ms_utc, me_utc = clock.local_period_to_storage_utc(ms, me)
         monthly.append({
             "label":f"{m:02d}.{y}",
             "events":sum(1 for e in completed_events if ms<=e.starts_at<me),
             "planned_events":sum(1 for e in report_events if ms<=e.starts_at<me),
             "visits":sum(1 for r in attended if (event_by.get(r.event_id) and ms<=event_by[r.event_id].starts_at<me)),
-            "new_users":sum(1 for u in new_users if ms<=u.created_at<me),
-            "xp":sum(max(0,int(t.amount or 0)) for t in txs if ms<=t.created_at<me),
-            "survey_responses":sum(1 for r in survey_responses if ms<=r.completed_at<me),
-            "badges":sum(1 for r in user_badges if ms<=r.awarded_at<me),
+            "new_users":sum(1 for u in new_users if ms_utc<=u.created_at<me_utc),
+            "xp":sum(max(0,int(t.amount or 0)) for t in txs if ms_utc<=t.created_at<me_utc),
+            "survey_responses":sum(1 for r in survey_responses if ms_utc<=r.completed_at<me_utc),
+            "badges":sum(1 for r in user_badges if ms_utc<=r.awarded_at<me_utc),
         })
         y,m=ny,nm
 
@@ -216,15 +235,16 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
 
     trend=[]
     for bs,be,bucket_label in buckets:
+        bs_utc, be_utc = clock.local_period_to_storage_utc(bs, be)
         trend.append({
             "label":bucket_label,
             "events":sum(1 for e in completed_events if bs<=e.starts_at<be),
             "planned_events":sum(1 for e in report_events if bs<=e.starts_at<be),
             "visits":sum(1 for r in attended if (event_by.get(r.event_id) and bs<=event_by[r.event_id].starts_at<be)),
-            "new_users":sum(1 for u in new_users if bs<=u.created_at<be),
-            "xp":sum(max(0,int(t.amount or 0)) for t in txs if bs<=t.created_at<be),
-            "survey_responses":sum(1 for r in survey_responses if bs<=r.completed_at<be),
-            "badges":sum(1 for r in user_badges if bs<=r.awarded_at<be),
+            "new_users":sum(1 for u in new_users if bs_utc<=u.created_at<be_utc),
+            "xp":sum(max(0,int(t.amount or 0)) for t in txs if bs_utc<=t.created_at<be_utc),
+            "survey_responses":sum(1 for r in survey_responses if bs_utc<=r.completed_at<be_utc),
+            "badges":sum(1 for r in user_badges if bs_utc<=r.awarded_at<be_utc),
         })
 
     positive_xp=sum(int(t.amount or 0) for t in txs if int(t.amount or 0)>0)
@@ -232,7 +252,10 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     # Weekly badge dynamics inside the selected report period.
     badge_weekly_counter=Counter()
     for row in user_badges:
-        monday=row.awarded_at.date()-timedelta(days=row.awarded_at.date().weekday())
+        local_awarded = _storage_to_local(row.awarded_at)
+        if not local_awarded:
+            continue
+        monday=local_awarded.date()-timedelta(days=local_awarded.date().weekday())
         badge_weekly_counter[monday]+=1
     badge_weekly=[{"label":week.strftime("%d.%m.%Y"),"value":count} for week,count in sorted(badge_weekly_counter.items())]
 
@@ -343,27 +366,28 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     for reg in all_event_regs:
         event=all_event_by.get(reg.event_id); stamp=event.starts_at if event and event.starts_at else (reg.confirmed_at or reg.checkin_at)
         if stamp: heat_stamps.append(stamp)
-    heat_stamps.extend((r.completed_at or r.approved_at) for r in all_qparts if r.status=="approved" and (r.completed_at or r.approved_at))
-    heat_stamps.extend((r.submitted_at or r.approved_at) for r in all_tparts if r.status=="approved" and (r.submitted_at or r.approved_at))
-    heat_stamps.extend((r.submitted_at or r.completed_at) for r in all_apps if r.status=="activity_completed" and (r.submitted_at or r.completed_at))
-    heat_stamps.extend(r.completed_at for r in all_survey_responses if r.completed_at)
-    heat_stamps.extend(i.created_at for i in all_ideas if i.created_at)
+    heat_stamps.extend(filter(None, (_storage_to_local(r.completed_at or r.approved_at) for r in all_qparts if r.status=="approved" and (r.completed_at or r.approved_at))))
+    heat_stamps.extend(filter(None, (_storage_to_local(r.submitted_at or r.approved_at) for r in all_tparts if r.status=="approved" and (r.submitted_at or r.approved_at))))
+    heat_stamps.extend(filter(None, (_storage_to_local(r.submitted_at or r.completed_at) for r in all_apps if r.status=="activity_completed" and (r.submitted_at or r.completed_at))))
+    heat_stamps.extend(filter(None, (_storage_to_local(r.completed_at) for r in all_survey_responses if r.completed_at)))
+    heat_stamps.extend(filter(None, (_storage_to_local(i.created_at) for i in all_ideas if i.created_at)))
     for stamp in heat_stamps: heatmap[stamp.weekday()][stamp.hour]+=1
 
     # Reporting 2.0 conversion funnels. Registration funnel is cohort-based:
     # only journeys started in the selected period are included, and later
     # stages are counted only when they occurred before the report cut-off.
     cutoff=min(end, generated_at + timedelta(microseconds=1))
+    cutoff_utc = clock.storage_utc(clock.local_wall_to_utc(cutoff))
     journey_rows=list((await session.scalars(
-        select(RegistrationJourney).where(RegistrationJourney.started_at>=start, RegistrationJourney.started_at<end)
+        select(RegistrationJourney).where(RegistrationJourney.started_at>=start_utc, RegistrationJourney.started_at<end_utc)
     )).all())
     registration_funnel={
         "start":len(journey_rows),
-        "consent":sum(1 for r in journey_rows if r.consent_at and r.consent_at < cutoff),
-        "profile":sum(1 for r in journey_rows if r.profile_at and r.profile_at < cutoff),
-        "submit":sum(1 for r in journey_rows if r.submitted_at and r.submitted_at < cutoff),
-        "approved":sum(1 for r in journey_rows if r.approved_at and r.approved_at < cutoff),
-        "first_activity":sum(1 for r in journey_rows if r.first_activity_at and r.first_activity_at < cutoff),
+        "consent":sum(1 for r in journey_rows if r.consent_at and r.consent_at < cutoff_utc),
+        "profile":sum(1 for r in journey_rows if r.profile_at and r.profile_at < cutoff_utc),
+        "submit":sum(1 for r in journey_rows if r.submitted_at and r.submitted_at < cutoff_utc),
+        "approved":sum(1 for r in journey_rows if r.approved_at and r.approved_at < cutoff_utc),
+        "first_activity":sum(1 for r in journey_rows if r.first_activity_at and r.first_activity_at < cutoff_utc),
     }
     completed_regs=[r for r in regs if r.event_id in completed_event_ids]
     event_feedback_for_period=list((await session.scalars(

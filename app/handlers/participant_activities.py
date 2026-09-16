@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .participant_common import *  # noqa: F401,F403
 
 @router.message(F.text == "⚡ Активності")
@@ -235,7 +236,7 @@ async def _finish_activity_submission(state: FSMContext, db: Database, tg_id: in
         if image_path:
             app.result_image_path = image_path
         app.status = "activity_submitted"
-        app.submitted_at = datetime.utcnow()
+        app.submitted_at = clock.storage_utc()
         await session.commit()
     await state.clear()
     return True

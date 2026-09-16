@@ -20,4 +20,4 @@ def test_hotfix_version_is_current():
     version = Path('VERSION.txt').read_text().strip()
     check = Path('VERSION_CHECK.txt').read_text().strip()
     assert version == check
-    assert version.startswith('1.12.1.')
+    assert tuple(map(int, version.split('.'))) >= (1, 12, 1, 4)

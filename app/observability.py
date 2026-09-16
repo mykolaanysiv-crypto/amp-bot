@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import json
 import logging
 import os
@@ -8,7 +10,7 @@ import sys
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Any, Iterable
 
 _request_id: ContextVar[str] = ContextVar("amp_request_id", default="")
 
@@ -37,8 +39,10 @@ class SensitiveDataFilter(logging.Filter):
             rendered = re.sub(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[REDACTED_BOT_TOKEN]", rendered)
             record.msg = rendered
             record.args = ()
-        except Exception:
-            pass
+        except Exception as exc:
+            # A logging filter must never crash the application, but a redaction
+            # failure must not be silent either. The formatter emits this marker.
+            record.redaction_error = type(exc).__name__
         return True
 
 
@@ -49,7 +53,7 @@ class JsonLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "ts": clock.now_utc().isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "service": self.service,
             "logger": record.name,
@@ -61,12 +65,51 @@ class JsonLogFormatter(logging.Formatter):
         dyno = os.getenv("DYNO", "").strip()
         if dyno:
             payload["dyno"] = dyno
+        error_code = getattr(record, "error_code", None)
+        if error_code:
+            payload["error_code"] = str(error_code)[:120]
+        context = getattr(record, "context", None)
+        if isinstance(context, dict) and context:
+            payload["context"] = _json_safe_context(context)
+        redaction_error = getattr(record, "redaction_error", None)
+        if redaction_error:
+            payload["redaction_error"] = str(redaction_error)[:120]
         if record.exc_info:
             payload["exception"] = {
                 "type": record.exc_info[0].__name__ if record.exc_info[0] else "Exception",
                 "message": str(record.exc_info[1])[:1000] if record.exc_info[1] else "",
             }
         return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+_SENSITIVE_CONTEXT_KEYS = {
+    "authorization", "cookie", "password", "secret", "token", "bot_token",
+    "monobank_token", "database_url", "web_session_secret", "sentry_dsn",
+    "heroku_api_key",
+}
+
+
+def _json_safe_context(value: Any, *, _key: str = "") -> Any:
+    """Convert structured log context to bounded JSON-safe, secret-aware data."""
+    key = (_key or "").lower()
+    if key in _SENSITIVE_CONTEXT_KEYS or any(part in key for part in ("password", "secret", "token")):
+        return "[REDACTED]"
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str):
+        return value[:1000]
+    if isinstance(value, dict):
+        return {str(k)[:120]: _json_safe_context(v, _key=str(k)) for k, v in list(value.items())[:40]}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe_context(item) for item in list(value)[:40]]
+    return str(value)[:1000]
+
+
+def log_extra(error_code: str, /, **context: Any) -> dict[str, Any]:
+    """Canonical ``logging`` extra payload for machine-searchable errors/events."""
+    return {"error_code": error_code, "context": context}
 
 
 def configure_observability(*, service: str) -> None:
@@ -99,8 +142,11 @@ def _init_sentry(*, service: str) -> None:
             before_send=_sentry_scrub,
         )
         sentry_sdk.set_tag("service", service)
-    except Exception:
-        logging.getLogger(__name__).exception("Не вдалося ініціалізувати Sentry")
+    except Exception as exc:
+        logging.getLogger(__name__).exception(
+            "Не вдалося ініціалізувати Sentry",
+            extra=log_extra("SENTRY_INIT_FAILED", service=service, exception_type=type(exc).__name__),
+        )
 
 
 def _sentry_scrub(event, hint):

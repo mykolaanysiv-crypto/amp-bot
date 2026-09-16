@@ -1,3 +1,34 @@
+# AMP XP v1.12.2 — Error & Time Hardening
+
+## Час і DST
+- Додано один canonical `Clock` (`app/time_utils.py`) з aware UTC, Europe/Kyiv local time, local-wall/legacy-storage adapters і DST-safe helpers.
+- Application/scripts більше не використовують прямі `datetime.utcnow`, `datetime.now` або `date.today` поза Clock boundary; ORM defaults також централізовано.
+- Check-in window порівнює aware UTC timestamps і повертає UTC diagnostic fields разом із legacy-compatible local-wall values.
+- Birthday scheduler очікує локальні 09:00 через absolute UTC delta, тому spring/fall DST не додає/не віднімає зайву годину.
+- Reporting 2.0 переводить local-calendar boundaries у UTC storage bounds; day/month/quarter/year selections коректні на midnight і DST transitions.
+- Registration daily counters і season XP backfill використовують ті самі canonical UTC boundaries.
+
+## Error hardening / observability
+- Прибрано silent `except Exception: pass`; production preflight і regression test блокують повернення цього патерну.
+- `JsonLogFormatter` підтримує `error_code` і структурований `context`; sensitive context keys редагуються, нестандартні values переводяться у bounded JSON-safe representation.
+- Critical runtime/heartbeat/scheduler/broadcast/version/notification/backup error paths отримали стабільні error codes та context.
+- Redaction filter більше не ковтає власну помилку мовчки: formatter може віддати `redaction_error` marker.
+
+## Compatibility / schema
+- Нова schema migration не потрібна.
+- PostgreSQL лишається на 54 SQLAlchemy tables; Alembic head: `20260915_0002`.
+- Legacy timestamp-without-time-zone storage не мігрується масово у цьому релізі: UTC/local semantics зафіксовані на persistence boundary через `Clock`.
+- `VERSION.txt`, `VERSION_CHECK.txt`, static cache-busters, README/CHANGELOG/START_HERE/SERVER_UPDATE/TEST_REPORT синхронізовано до v1.12.2.
+
+## QA
+- `compileall`: PASS.
+- `production_preflight`: PASS.
+- v1.12.2 hardening tests: 8/8 PASS.
+- focused v1.12.x regression suite: 49/49 PASS.
+- Full local `pytest -q` у sandbox не завершено на collection через відсутній `aiogram`; authoritative full/integration suite лишається GitHub Actions із dependency install + PostgreSQL 16.
+
+---
+
 # AMP XP v1.12.1.7 — Event Open + Content Views + Cockpit UX
 
 ## Додано

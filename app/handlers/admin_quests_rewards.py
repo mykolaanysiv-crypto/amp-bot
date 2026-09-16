@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.callback_query(F.data == "admin:create_quest")
@@ -156,7 +157,7 @@ async def approve_quest(call: CallbackQuery, db: Database, bot: Bot) -> None:
         quest.xp_reward = normalize_quest_xp(quest.xp_reward, quest.quest_type)
         total, level, leveled = await add_xp(session, user, quest.xp_reward, f"Квест «{quest.title}»", category="quest", created_by=admin.id)
         part.status = "approved"
-        part.approved_at = datetime.utcnow()
+        part.approved_at = clock.storage_utc()
         await evaluate_automatic_badges(session, user)
         text = f"🏆 Квест <b>{quest.title}</b> підтверджено!\n+{quest.xp_reward} XP\nВсього: {total} XP"
         if leveled:
@@ -328,7 +329,7 @@ async def fulfill_reward(call: CallbackQuery, db: Database, bot: Bot) -> None:
         reward = await session.get(Reward, claim.reward_id)
         user = await session.get(User, claim.user_id)
         claim.status = "fulfilled"
-        claim.fulfilled_at = datetime.utcnow()
+        claim.fulfilled_at = clock.storage_utc()
         if user and reward:
             await _queue_user_notice(session, user, f"🎁 Винагороду <b>{reward.title}</b> позначено як видану. Дякуємо за активність!", source="reward", title="Винагороду видано", entity_type="reward_claim", entity_id=claim.id, dedupe_key=f"reward_fulfilled:{claim.id}")
         await session.commit()

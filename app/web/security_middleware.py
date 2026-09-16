@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..time_utils import clock
+
 from datetime import datetime, timedelta
 from hmac import compare_digest
 
@@ -110,7 +112,7 @@ class AdminSessionValidationMiddleware:
             await response(scope, receive, send)
             return
 
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         valid = False
         account = None
         server_session = None

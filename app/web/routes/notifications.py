@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, or_, select
@@ -58,7 +60,7 @@ async def notifications_center(request: Request, type: str = "", status: str = "
 async def notifications_retry_failed(request: Request):
     if r := guard(request):
         return r
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         rows = list((await session.scalars(select(Notification).where(Notification.status == "failed").limit(1000))).all())
         for row in rows:

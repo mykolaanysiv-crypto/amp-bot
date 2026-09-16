@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from statistics import median
@@ -25,7 +27,7 @@ ENGAGEMENT_CATEGORIES = {"event", "quest", "team_quest", "activity", "task", "su
 
 async def ensure_clean_data_baseline(session: AsyncSession, now: datetime | None = None) -> datetime:
     """Persist the v1.12 observation start without altering XP or rewards."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     row = await session.get(SystemSetting, "gamification.clean_data_start")
     if row and row.value:
         try:
@@ -45,7 +47,7 @@ def _rate(num: int, den: int) -> float:
 
 
 async def build_gamification_insights(session: AsyncSession, *, now: datetime | None = None) -> dict:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     baseline = await ensure_clean_data_baseline(session, now)
     observation_days = max(0, (now.date() - baseline.date()).days)
     if observation_days < 28:

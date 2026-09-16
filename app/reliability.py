@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from .observability import log_extra
+from .time_utils import clock
+
 import asyncio
 import logging
 import os
@@ -38,7 +41,7 @@ def worker_id() -> str:
 
 async def acquire_job_lock(db, job_name: str, *, ttl_seconds: int = 300, owner: str | None = None) -> str | None:
     owner = owner or worker_id()
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     locked_until = now + timedelta(seconds=max(30, int(ttl_seconds)))
     async with db.session_factory() as session:
         stmt = (
@@ -72,7 +75,7 @@ async def acquire_job_lock(db, job_name: str, *, ttl_seconds: int = 300, owner: 
 
 
 async def finish_job_lock(db, job_name: str, owner: str, *, success: bool, error: str = "") -> None:
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     values = {"locked_at": None, "locked_until": None, "locked_by": None, "updated_at": now}
     if success:
         values.update(last_success_at=now, last_error="")
@@ -165,7 +168,7 @@ async def queue_notification(
         body=body,
         entity_type=(entity_type or None),
         entity_id=entity_id,
-        scheduled_at=scheduled_at or datetime.utcnow(),
+        scheduled_at=scheduled_at or clock.storage_utc(),
         status="queued",
         retry_count=0,
         max_attempts=max(1, int(max_attempts or DEFAULT_MAX_ATTEMPTS)),
@@ -286,7 +289,7 @@ async def _sync_legacy_broadcast(session, notification: Notification) -> None:
         campaign.completed_at = None
     else:
         campaign.status = "completed_with_errors" if failed else "completed"
-        campaign.completed_at = datetime.utcnow()
+        campaign.completed_at = clock.storage_utc()
 
 
 async def send_notification_now(bot, session, notification: Notification) -> bool:
@@ -297,12 +300,12 @@ async def send_notification_now(bot, session, notification: Notification) -> boo
     """
     if notification.status == "sent":
         return True
-    notification.last_attempt_at = datetime.utcnow()
+    notification.last_attempt_at = clock.storage_utc()
     notification.updated_at = notification.last_attempt_at
     try:
         await bot.send_message(notification.recipient_tg_id, notification.body, parse_mode=notification.parse_mode, reply_markup=_generic_markup(notification))
         notification.status = "sent"
-        notification.sent_at = datetime.utcnow()
+        notification.sent_at = clock.storage_utc()
         notification.error = ""
         await _sync_legacy_broadcast(session, notification)
         return True
@@ -314,7 +317,7 @@ async def send_notification_now(bot, session, notification: Notification) -> boo
             notification.status = "failed"
         else:
             notification.status = "retry"
-            notification.scheduled_at = datetime.utcnow() + timedelta(seconds=_retry_delay(next_retry_count))
+            notification.scheduled_at = clock.storage_utc() + timedelta(seconds=_retry_delay(next_retry_count))
         await _sync_legacy_broadcast(session, notification)
         return False
 
@@ -345,7 +348,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
     async with job_lock(db, "notification_center_delivery", ttl_seconds=120) as acquired:
         if not acquired:
             return summary
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         async with db.session_factory() as session:
             rows = list((await session.scalars(
                 select(Notification)
@@ -354,12 +357,12 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                 .limit(max(1, int(limit)))
             )).all())
             for row in rows:
-                row.last_attempt_at = datetime.utcnow()
+                row.last_attempt_at = clock.storage_utc()
                 row.updated_at = row.last_attempt_at
                 try:
                     await bot.send_message(row.recipient_tg_id, row.body, parse_mode=row.parse_mode, reply_markup=_generic_markup(row))
                     row.status = "sent"
-                    row.sent_at = datetime.utcnow()
+                    row.sent_at = clock.storage_utc()
                     row.error = ""
                     summary["sent"] += 1
                 except TelegramForbiddenError as exc:
@@ -369,7 +372,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                     user = await session.scalar(select(User).where(User.tg_id == row.recipient_tg_id))
                     if user and user.status == UserStatus.ACTIVE.value and user.role in {UserRole.PARTICIPANT.value, UserRole.AMBASSADOR.value}:
                         user.status = UserStatus.DELETED.value
-                        user.deleted_at = datetime.utcnow()
+                        user.deleted_at = clock.storage_utc()
                         user.deletion_reason = "TelegramForbiddenError: бот заблоковано або деактивовано"
                         user.restoration_request_status = None
                         from .services import log_audit, revoke_referral_reward_if_inactive
@@ -387,7 +390,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                         summary["failed"] += 1
                     else:
                         row.status = "retry"
-                        row.scheduled_at = datetime.utcnow() + timedelta(seconds=_retry_delay(next_retry_count))
+                        row.scheduled_at = clock.storage_utc() + timedelta(seconds=_retry_delay(next_retry_count))
                         summary["retry"] += 1
                 summary["processed"] += 1
                 await _sync_legacy_broadcast(session, row)
@@ -413,7 +416,7 @@ async def record_backup_marker(db, *, label: str) -> None:
     successfully.  Any initial ``unknown`` grace marker is cleared so the UI and
     monitor immediately switch to a verified state.
     """
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         row = await session.get(SystemSetting, "last_backup_at")
         value = f"{now.isoformat()}|{label}"
@@ -443,7 +446,7 @@ async def notification_failure_alert(bot, db, settings, *, lookback_minutes: int
     aggregate counts and notification ids are sent; message bodies/contacts are
     never included.
     """
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     cutoff = now - timedelta(minutes=max(5, int(lookback_minutes)))
     async with db.session_factory() as session:
         marker = await session.get(SystemSetting, "monitor.notifications.last_failed_id")
@@ -483,8 +486,11 @@ async def notification_failure_alert(bot, db, settings, *, lookback_minutes: int
         try:
             await bot.send_message(tg_id, text)
             alerted += 1
-        except Exception:
-            log.exception("Не вдалося надіслати superadmin alert про Notification Center")
+        except Exception as exc:
+            log.exception(
+                "Не вдалося надіслати superadmin alert про Notification Center",
+                extra=log_extra("NOTIFICATION_HEALTH_ALERT_FAILED", tg_id=tg_id, exception_type=type(exc).__name__),
+            )
     return {"new_failed": len(rows), "alerted": alerted}
 
 
@@ -511,7 +517,7 @@ async def backup_verification_status(
             except ValueError:
                 unknown_since = None
             if unknown_since is not None:
-                age = max(0.0, (datetime.utcnow() - unknown_since).total_seconds() / 3600)
+                age = max(0.0, (clock.storage_utc() - unknown_since).total_seconds() / 3600)
                 if age < max(1, int(unknown_grace_hours)):
                     remaining = max(0.0, float(unknown_grace_hours) - age)
                     return {
@@ -542,7 +548,7 @@ async def backup_verification_status(
             "age_hours": None,
             "grace_remaining_hours": 0.0,
         }
-    age = max(0.0, (datetime.utcnow() - verified_at).total_seconds() / 3600)
+    age = max(0.0, (clock.storage_utc() - verified_at).total_seconds() / 3600)
     return {
         "ok": age <= max_age_hours,
         "status": "ok" if age <= max_age_hours else "stale",
@@ -570,7 +576,7 @@ async def backup_health_alert(
     grace expires, the normal alert is sent.  Stale/invalid verified markers are
     never suppressed by this bootstrap grace.
     """
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     grace_hours = int(unknown_grace_hours or getattr(settings, "backup_unknown_grace_hours", 24))
     async with db.session_factory() as session:
         status = await backup_verification_status(
@@ -643,6 +649,9 @@ async def backup_health_alert(
         try:
             await bot.send_message(tg_id, text)
             alerted += 1
-        except Exception:
-            log.exception("Не вдалося надіслати superadmin alert про резервну копію")
+        except Exception as exc:
+            log.exception(
+                "Не вдалося надіслати superadmin alert про резервну копію",
+                extra=log_extra("BACKUP_HEALTH_ALERT_FAILED", tg_id=tg_id, exception_type=type(exc).__name__),
+            )
     return {"alerted": alerted, **status}

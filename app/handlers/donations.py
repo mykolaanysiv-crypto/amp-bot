@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+import logging
 
 from aiogram import F, Router
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
@@ -12,6 +13,7 @@ from app.db import Database
 from app.media import load_file_bytes
 from app.models import DonationJarState, DonationReport, SupportPageView, User
 from app.services import get_user_by_tg
+from app.observability import log_extra
 
 router = Router()
 
@@ -96,7 +98,10 @@ async def public_reports(call: CallbackQuery, db: Database) -> None:
                 BufferedInputFile(raw, filename=filename),
                 caption=f"📄 <b>{escape(row.title)}</b>",
             )
-        except Exception:
+        except Exception as exc:
             # The textual report remains available even if Telegram rejects a legacy file.
-            pass
+            logging.getLogger("amp.donations").warning(
+                "Telegram rejected donation report document; text fallback remains available",
+                extra=log_extra("TG_DONATION_REPORT_DOCUMENT_FAILED", report_id=row.id, tg_id=call.from_user.id, exception_type=type(exc).__name__),
+            )
     await call.answer()

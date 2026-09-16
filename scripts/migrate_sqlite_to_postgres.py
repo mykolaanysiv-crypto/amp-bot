@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 import argparse
 import asyncio
 import mimetypes
@@ -154,7 +156,7 @@ async def migrate(args) -> None:
                             content_type=content_type,
                             data=raw,
                             size_bytes=len(raw),
-                            created_at=datetime.utcnow(),
+                            created_at=clock.storage_utc(),
                         ).returning(MediaAsset.id)
                     )
                     asset_id = int(asset_result.scalar_one())

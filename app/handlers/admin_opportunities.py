@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.callback_query(F.data == "admin:create_opportunity")
@@ -89,7 +90,7 @@ async def export_data(call: CallbackQuery, db: Database) -> None:
             return
         content = await export_excel(session)
     await call.message.answer_document(
-        BufferedInputFile(content, filename=f"AMP_XP_export_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"),
+        BufferedInputFile(content, filename=f"AMP_XP_export_{clock.now_local().strftime('%Y%m%d_%H%M')}.xlsx"),
         caption="📈 Експорт учасників, XP-журналу та подій.",
     )
     await call.answer()

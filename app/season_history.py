@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .leagues import LEAGUES, league_for_xp
+from .observability import log_extra
+from .time_utils import clock
 from .models import (
     Badge, Event, EventRegistration, Season, User, UserBadge,
     VolunteerTask, VolunteerTaskParticipation, XPTransaction,
@@ -126,7 +129,7 @@ async def build_season_snapshot(session: AsyncSession, season: Season) -> dict:
             "league_distribution": {lg.title: len(by_league[lg.code]) for lg in LEAGUES},
         },
         "leaderboard": leaderboard,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": clock.storage_utc().isoformat(),
     }
 
 
@@ -134,11 +137,14 @@ async def finalize_season(session: AsyncSession, season: Season, *, force: bool 
     if season.history_json and season.finalized_at and not force:
         try:
             return json.loads(season.history_json)
-        except Exception:
-            pass
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            logging.getLogger("amp.season_history").warning(
+                "Збережений snapshot сезону пошкоджено; буде перебудовано",
+                extra=log_extra("SEASON_HISTORY_JSON_INVALID", season_id=season.id, exception_type=type(exc).__name__),
+            )
     snapshot = await build_season_snapshot(session, season)
     season.history_json = json.dumps(snapshot, ensure_ascii=False)
-    season.finalized_at = datetime.utcnow()
+    season.finalized_at = clock.storage_utc()
     season.active = False
     season.archived = True
     return snapshot

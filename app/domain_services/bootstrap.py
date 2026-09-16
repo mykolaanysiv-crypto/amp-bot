@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .gamification import ensure_default_season, seed_activity_types, seed_badges, seed_default_space_rewards, seed_streak_restore_reward
 from .teams import add_active_users_to_default_team
@@ -62,8 +63,8 @@ async def ensure_web_staff_accounts(session: AsyncSession, settings: Settings) -
                 must_change_password=True,
                 two_factor_enabled=True,
                 two_factor_tg_id=tg_id,
-                password_changed_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                password_changed_at=clock.storage_utc(),
+                updated_at=clock.storage_utc(),
             ))
 
     for username, cfg in (settings.web_staff_accounts or {}).items():
@@ -84,8 +85,8 @@ async def ensure_web_staff_accounts(session: AsyncSession, settings: Settings) -
             active=True,
             must_change_password=True,
             two_factor_enabled=False,
-            password_changed_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            password_changed_at=clock.storage_utc(),
+            updated_at=clock.storage_utc(),
         ))
 
 

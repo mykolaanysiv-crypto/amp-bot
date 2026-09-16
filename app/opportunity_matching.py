@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import json
+import logging
 from datetime import date, datetime, timedelta
 from typing import Iterable
 
@@ -8,6 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Opportunity, OpportunityMatch, User, UserStatus
+from .observability import log_extra
 from .services import age_on
 from .settlements import settlement_key
 
@@ -37,8 +41,11 @@ def user_interests(user: User) -> list[str]:
         data = json.loads(raw)
         if isinstance(data, list):
             return [x for x in data if x in OPPORTUNITY_INTERESTS]
-    except Exception:
-        pass
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        logging.getLogger("amp.opportunity_matching").debug(
+            "Legacy opportunity interests are not JSON; using CSV fallback",
+            extra=log_extra("OPPORTUNITY_INTERESTS_JSON_FALLBACK", exception_type=type(exc).__name__),
+        )
     return [x.strip() for x in raw.split(",") if x.strip() in OPPORTUNITY_INTERESTS]
 
 
@@ -69,7 +76,7 @@ def _target_settlements(item: Opportunity) -> list[str]:
 
 def match_opportunity(user: User, item: Opportunity, *, now: datetime | None = None) -> tuple[int, list[str]] | None:
     """Privacy-preserving match. Vulnerability/social categories are intentionally not read."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     if not item.active or (item.deadline and item.deadline < now):
         return None
 
@@ -150,14 +157,14 @@ async def refresh_matches_for_opportunity(session: AsyncSession, item: Opportuni
         if not result:
             if existing:
                 existing.status = "stale"
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = clock.storage_utc()
             continue
         score, reasons = result
         if existing:
             existing.score = score
             existing.reasons_json = json.dumps(reasons, ensure_ascii=False)
             existing.status = "notified" if existing.notified_at else "matched"
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = clock.storage_utc()
         else:
             session.add(OpportunityMatch(
                 opportunity_id=item.id, user_id=user.id, score=score,
@@ -168,7 +175,7 @@ async def refresh_matches_for_opportunity(session: AsyncSession, item: Opportuni
 
 
 async def refresh_matches_for_user(session: AsyncSession, user: User) -> int:
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     rows = list((await session.scalars(select(Opportunity).where(
         Opportunity.active == True,  # noqa: E712
         (Opportunity.deadline.is_(None)) | (Opportunity.deadline >= now),
@@ -183,7 +190,7 @@ async def refresh_matches_for_user(session: AsyncSession, user: User) -> int:
         if not result:
             if existing:
                 existing.status = "stale"
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = clock.storage_utc()
             continue
         score, reasons = result
         if existing:
@@ -197,7 +204,7 @@ async def refresh_matches_for_user(session: AsyncSession, user: User) -> int:
 async def queue_pending_match_digests(session: AsyncSession, *, max_items: int = 3) -> int:
     """Queue one digest per user and mark the matched rows notified atomically."""
     from .reliability import queue_notification
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     user_ids = list((await session.scalars(
         select(OpportunityMatch.user_id)
         .join(Opportunity, Opportunity.id == OpportunityMatch.opportunity_id)

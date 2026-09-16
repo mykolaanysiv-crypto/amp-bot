@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 
 async def current_season(session: AsyncSession) -> Season | None:
@@ -24,8 +25,8 @@ async def ensure_default_season(session: AsyncSession, settings: Settings) -> Se
                         name=settings.season_name,
                         starts_at=settings.season_start,
                         ends_at=settings.season_end,
-                        active=settings.season_end >= date.today(),
-                        archived=settings.season_end < date.today(),
+                        active=settings.season_end >= clock.today_local(),
+                        archived=settings.season_end < clock.today_local(),
                     )
                     session.add(candidate)
                     await session.flush()
@@ -39,17 +40,20 @@ async def ensure_default_season(session: AsyncSession, settings: Settings) -> Se
         if not season.finalized_at:
             season.starts_at = settings.season_start
             season.ends_at = settings.season_end
-            if settings.season_end >= date.today():
+            if settings.season_end >= clock.today_local():
                 season.active = True
                 season.archived = False
 
-    # Backfill legacy XP into whichever season is currently selected.
-    start_dt = datetime.combine(season.starts_at, datetime.min.time())
-    end_dt = datetime.combine(season.ends_at, datetime.max.time())
+    # Backfill legacy XP into whichever season is currently selected. Season
+    # dates are local-calendar boundaries while XP timestamps are stored as
+    # naive UTC in the legacy schema, so convert the full local interval once.
+    start_local = datetime.combine(season.starts_at, datetime.min.time())
+    end_local = datetime.combine(season.ends_at + timedelta(days=1), datetime.min.time())
+    start_dt, end_dt = clock.local_period_to_storage_utc(start_local, end_local)
     legacy = (await session.scalars(select(XPTransaction).where(
         XPTransaction.season_id.is_(None),
         XPTransaction.created_at >= start_dt,
-        XPTransaction.created_at <= end_dt,
+        XPTransaction.created_at < end_dt,
     ))).all()
     for tx in legacy:
         tx.season_id = season.id
@@ -105,7 +109,7 @@ async def add_xp(
     user.wallet_xp = max(0, int(user.wallet_xp or 0) + amount)
     await session.flush()
     if amount >= 0 and category in {"event", "quest", "task", "activity", "survey", "team_quest", "idea_approved"}:
-        await mark_first_activity(session, user.id, tx.created_at or datetime.utcnow())
+        await mark_first_activity(session, user.id, tx.created_at or clock.storage_utc())
     after = before + amount
     after_level = get_level(after)[0]
     await evaluate_automatic_badges(session, user)
@@ -185,7 +189,7 @@ async def complete_activity_application(
     )
     user.volunteer_hours += float(application.hours_reward or activity.hours_reward or 0)
     application.status = "activity_completed"
-    application.completed_at = datetime.utcnow()
+    application.completed_at = clock.storage_utc()
     application.completed_by = admin_user.id if admin_user else None
     await evaluate_automatic_badges(session, user)
     return (user, *result)

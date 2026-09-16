@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.ui_labels import IDEA_STATUSES
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
@@ -24,7 +26,7 @@ async def ideas(request: Request, q: str = "", status: str = "", period: str = "
         if selected != "all" and selected in IDEA_STATUSES: base = base.where(Idea.status == selected)
         if type: base = base.where(Idea.category == type)
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: base=base.where(Idea.created_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: base=base.where(Idea.created_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         rank = sql_case({st: idx for idx, st in enumerate(IDEA_STATUSES)}, value=Idea.status, else_=999)
         order_map={"newest":[Idea.created_at.desc()],"oldest":[Idea.created_at.asc()],"title":[Idea.title.asc()],"workflow":[rank.asc(),Idea.created_at.desc()]}
         rows=(await session.execute(base.order_by(*order_map.get(sort,order_map["workflow"])))).all()
@@ -60,7 +62,7 @@ async def idea_status(request: Request, idea_id: int, status: str = Form(...)):
     async with db.session_factory() as session:
         idea = await session.get(Idea, idea_id)
         if idea and status in IDEA_STATUSES:
-            now = datetime.utcnow()
+            now = clock.storage_utc()
             idea.status = status
             if status == "approved":
                 idea.approved_at = idea.approved_at or now
@@ -111,7 +113,7 @@ async def idea_update(
             return HTMLResponse("Ідею не знайдено", status_code=404)
         old_status = idea.status
         old_responsible_id = idea.responsible_user_id
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         if status in IDEA_STATUSES:
             idea.status = status
         idea.category = category or "other"

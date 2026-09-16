@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.callback_query(F.data == "admin:moderation")
@@ -7,7 +8,7 @@ async def moderation_panel(call: CallbackQuery, db: Database) -> None:
         if not admin:
             await call.answer("Недостатньо прав для модерації", show_alert=True)
             return
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         active_count = int(await session.scalar(select(func.count(BanRecord.id)).where(BanRecord.lifted_at.is_(None), BanRecord.ends_at > now)) or 0)
     b = InlineKeyboardBuilder()
     b.button(text="⛔ Видати бан", callback_data="admin:ban_new")
@@ -50,7 +51,7 @@ async def moderation_new_user(message: Message, state: FSMContext, db: Database)
             await message.answer("Учасника не знайдено."); return
         if user.role == UserRole.SUPERADMIN.value:
             await message.answer("Суперадміністратора не можна заблокувати."); return
-        active = await session.scalar(select(BanRecord).where(BanRecord.user_id == user.id, BanRecord.lifted_at.is_(None), BanRecord.ends_at > datetime.utcnow()))
+        active = await session.scalar(select(BanRecord).where(BanRecord.user_id == user.id, BanRecord.lifted_at.is_(None), BanRecord.ends_at > clock.storage_utc()))
         if active:
             await message.answer("У цього учасника вже є активний бан. Відкрийте «Активні бани»."); await state.clear(); return
     await state.update_data(user_id=user_id)
@@ -83,7 +84,7 @@ async def moderation_new_finish(message: Message, state: FSMContext, db: Databas
     reason = (message.text or "").strip()
     if len(reason) < 4:
         await message.answer("Причина занадто коротка. Опишіть порушення конкретніше."); return
-    now = datetime.utcnow(); days = int(data["days"]); ends_at = now + timedelta(days=days)
+    now = clock.storage_utc(); days = int(data["days"]); ends_at = now + timedelta(days=days)
     async with db.session_factory() as session:
         admin = await _admin(session, message.from_user.id)
         user = await session.get(User, int(data["user_id"]))
@@ -105,7 +106,7 @@ async def moderation_active(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         if not await _admin(session, call.from_user.id):
             await call.answer("Недостатньо прав", show_alert=True); return
-        rows = (await session.scalars(select(BanRecord).where(BanRecord.lifted_at.is_(None), BanRecord.ends_at > datetime.utcnow()).order_by(BanRecord.ends_at.asc()))).all()
+        rows = (await session.scalars(select(BanRecord).where(BanRecord.lifted_at.is_(None), BanRecord.ends_at > clock.storage_utc()).order_by(BanRecord.ends_at.asc()))).all()
         if not rows:
             await call.message.answer("✅ Активних банів немає."); await call.answer(); return
         for ban in rows[:30]:
@@ -124,7 +125,7 @@ async def moderation_active(call: CallbackQuery, db: Database) -> None:
 
 @router.callback_query(F.data.startswith("admin:ban_unban:"))
 async def moderation_unban_tg(call: CallbackQuery, db: Database, bot: Bot) -> None:
-    record_id = int(call.data.rsplit(":", 1)[1]); now = datetime.utcnow()
+    record_id = int(call.data.rsplit(":", 1)[1]); now = clock.storage_utc()
     async with db.session_factory() as session:
         admin = await _admin(session, call.from_user.id)
         record = await session.get(BanRecord, record_id)
@@ -166,7 +167,7 @@ async def moderation_shorten_finish_tg(message: Message, state: FSMContext, db: 
         await message.answer("Вкажіть ціле число днів."); return
     if not 1 <= days <= 365:
         await message.answer("Допустимо від 1 до 365 днів."); return
-    data = await state.get_data(); now = datetime.utcnow(); new_end = now + timedelta(days=days)
+    data = await state.get_data(); now = clock.storage_utc(); new_end = now + timedelta(days=days)
     async with db.session_factory() as session:
         admin = await _admin(session, message.from_user.id)
         record = await session.get(BanRecord, int(data["shorten_record_id"]))
@@ -192,7 +193,7 @@ async def moderation_history_tg(call: CallbackQuery, db: Database) -> None:
         if not rows:
             await call.message.answer("Історія банів порожня."); await call.answer(); return
         lines = ["🕘 <b>Останні рішення модерації</b>"]
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         for ban in rows:
             user = await session.get(User, ban.user_id)
             if ban.lifted_at: status = f"завершено {ban.lifted_at.strftime('%d.%m.%Y')}"

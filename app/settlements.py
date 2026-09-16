@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import json
+import logging
 import re
 import unicodedata
 from difflib import SequenceMatcher
@@ -9,8 +12,10 @@ from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from .models import SettlementReference, User
+from .observability import log_extra
 
 # v1.10.3 canonical directory.  The list is deliberately conservative: only
 # names already used by AMP are seeded.  Other legitimate settlements are
@@ -65,7 +70,11 @@ def canonicalize_settlement_text(value: str | None) -> str | None:
 def _aliases(row: SettlementReference) -> list[str]:
     try:
         data = json.loads(row.aliases_json or "[]")
-    except Exception:
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        logging.getLogger("amp.settlements").warning(
+            "Некоректний aliases_json у довіднику населених пунктів",
+            extra=log_extra("SETTLEMENT_ALIASES_JSON_INVALID", settlement_id=getattr(row, "id", None), exception_type=type(exc).__name__),
+        )
         return []
     return [str(x) for x in data if str(x).strip()] if isinstance(data, list) else []
 
@@ -76,7 +85,7 @@ async def ensure_settlement_directory(session: AsyncSession) -> int:
     Returns the number of user profiles whose value changed.  Existing unknown
     settlements are preserved and added as canonical entries.
     """
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     rows = list((await session.scalars(select(SettlementReference))).all())
     by_key: dict[str, SettlementReference] = {}
     for row in rows:
@@ -99,7 +108,7 @@ async def ensure_settlement_directory(session: AsyncSession) -> int:
                     )
                     session.add(row)
                     await session.flush()
-            except Exception:
+            except IntegrityError:
                 # Bot and web may bootstrap at nearly the same time. Reuse the
                 # row created by the other process instead of failing startup.
                 row = await session.scalar(select(SettlementReference).where(SettlementReference.canonical_name == canonical))
@@ -160,10 +169,14 @@ async def resolve_canonical_settlement(session: AsyncSession, value: str | None)
             row = SettlementReference(canonical_name=cleaned, aliases_json="[]", active=True, sort_order=1000)
             session.add(row)
             await session.flush()
-    except Exception:
+    except IntegrityError as exc:
         # A concurrent request may have inserted it first. The nested transaction
-        # keeps the caller's surrounding transaction usable.
-        pass
+        # keeps the caller's surrounding transaction usable, and the conflict is
+        # visible in structured logs instead of being silently swallowed.
+        logging.getLogger("amp.settlements").info(
+            "Concurrent settlement insert reused existing row",
+            extra=log_extra("SETTLEMENT_CONCURRENT_INSERT", settlement=cleaned, exception_type=type(exc).__name__),
+        )
     return cleaned
 
 

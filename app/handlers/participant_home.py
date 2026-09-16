@@ -1,9 +1,12 @@
+from ..time_utils import clock
 from .participant_common import *  # noqa: F401,F403
 
 @router.message(F.text.in_({"🏠 Головна", "🏠 Огляд"}))
 async def overview(message: Message, db: Database) -> None:
     """Participant home: a concise, useful snapshot of what matters today."""
-    now = event_local_now()
+    now_utc = clock.now_utc()
+    storage_now = clock.storage_utc(now_utc)
+    local_now = clock.local_wall(now_utc)
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.ACTIVE.value:
@@ -26,9 +29,9 @@ async def overview(message: Message, db: Database) -> None:
         league = league_for_xp(sxp)
         level_name, next_threshold = get_level(xp)
         next_event = await session.scalar(
-            select(Event).where(Event.status == "open", Event.starts_at >= now).order_by(Event.starts_at.asc()).limit(1)
+            select(Event).where(Event.status == "open", Event.starts_at >= local_now).order_by(Event.starts_at.asc()).limit(1)
         )
-        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         today_event = await session.scalar(
             select(Event)
@@ -54,7 +57,7 @@ async def overview(message: Message, db: Database) -> None:
                 QuestParticipation.status.in_(["joined", "returned", "completed"]),
                 Quest.status.in_(["open", "active", "postponed"]),
                 Quest.ends_at.is_not(None),
-                Quest.ends_at >= now,
+                Quest.ends_at >= local_now,
             )
             .order_by(Quest.ends_at.asc()).limit(1)
         )
@@ -82,10 +85,10 @@ async def overview(message: Message, db: Database) -> None:
             select(func.count(OpportunityMatch.id)).where(
                 OpportunityMatch.user_id == user.id,
                 OpportunityMatch.status.in_(["matched", "notified"]),
-                OpportunityMatch.matched_at >= now - timedelta(days=7),
+                OpportunityMatch.matched_at >= storage_now - timedelta(days=7),
             )
         ) or 0)
-        goal_rows = await goals_for_user(session, user, now=now)
+        goal_rows = await goals_for_user(session, user, now=storage_now)
         near_goal = max(
             (row for row in goal_rows if 70 <= float(row.get("percent") or 0) < 100),
             key=lambda row: float(row.get("percent") or 0),
@@ -129,7 +132,7 @@ async def overview(message: Message, db: Database) -> None:
     else:
         lines.append("📅 Найближчих відкритих подій поки немає")
     if next_quest and next_quest.ends_at:
-        delta = next_quest.ends_at - now
+        delta = next_quest.ends_at - local_now
         days = max(0, delta.days)
         if days == 0:
             q_when = "сьогодні"
@@ -356,8 +359,13 @@ async def _send_badge_list(target, db: Database, tg_id: int, badge_type: str) ->
             for badge in rows:
                 photo=await telegram_photo_input(db, badge.image_path)
                 if photo:
-                    try: await target.answer_photo(photo, caption=f"{badge.icon} <b>{badge.name}</b>\n{badge.description}")
-                    except Exception: pass
+                    try:
+                        await target.answer_photo(photo, caption=f"{badge.icon} <b>{badge.name}</b>\n{badge.description}")
+                    except Exception as exc:
+                        logging.getLogger("amp.participant_home").debug(
+                            "Не вдалося надіслати зображення бейджа",
+                            extra=log_extra("TG_BADGE_PHOTO_SEND_FAILED", badge_id=badge.id, exception_type=type(exc).__name__),
+                        )
 
 
 @router.message(F.text == "⚡ Мій XP")
@@ -528,7 +536,7 @@ async def reward_claim(call: CallbackQuery, db: Database) -> None:
         if existing:
             existing.status = "requested"
             existing.xp_spent = reward.min_xp
-            existing.requested_at = datetime.utcnow()
+            existing.requested_at = clock.storage_utc()
             existing.fulfilled_at = None
         else:
             session.add(RewardClaim(reward_id=reward.id, user_id=user.id, xp_spent=reward.min_xp))

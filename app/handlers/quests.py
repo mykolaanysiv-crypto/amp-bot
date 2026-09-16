@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from ..observability import log_extra
+from ..time_utils import clock
+
 from datetime import datetime
 import logging
 from html import escape
@@ -23,7 +26,7 @@ async def _send_quests(target, db: Database) -> None:
     async with db.session_factory() as session:
         changed=await process_expired_content(session)
         if changed: await session.commit()
-        quests=(await session.scalars(select(Quest).where(Quest.active == True, Quest.status.in_(["open","postponed"])).where((Quest.ends_at.is_(None)) | (Quest.ends_at >= datetime.now())).order_by(Quest.ends_at.asc()).limit(20))).all()  # noqa: E712
+        quests=(await session.scalars(select(Quest).where(Quest.active == True, Quest.status.in_(["open","postponed"])).where((Quest.ends_at.is_(None)) | (Quest.ends_at >= clock.local_wall())).order_by(Quest.ends_at.asc()).limit(20))).all()  # noqa: E712
         if not quests:
             await target.answer("🎯 Активних квестів зараз немає.")
             return
@@ -57,9 +60,12 @@ async def quest_detail(call: CallbackQuery, db: Database) -> None:
             changed = await process_expired_content(session)
             if changed:
                 await session.commit()
-        except Exception:
+        except Exception as exc:
             await session.rollback()
-            logging.getLogger("amp.quests").exception("Lifecycle refresh failed while opening quest %s", quest_id)
+            logging.getLogger("amp.quests").exception(
+                "Lifecycle refresh failed while opening quest %s", quest_id,
+                extra=log_extra("QUEST_LIFECYCLE_REFRESH_FAILED", entity_type="quest", entity_id=quest_id, exception_type=type(exc).__name__),
+            )
         user = await get_user_by_tg(session, call.from_user.id)
         quest = await session.get(Quest, quest_id)
         if not user or not quest:
@@ -85,7 +91,7 @@ async def quest_detail(call: CallbackQuery, db: Database) -> None:
             f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
             f"{safe_description}"
         )
-        is_available = quest.active and quest.status in {"open", "postponed"} and (quest.ends_at is None or quest.ends_at >= datetime.now())
+        is_available = quest.active and quest.status in {"open", "postponed"} and (quest.ends_at is None or clock.local_wall_to_utc(quest.ends_at) >= clock.now_utc())
         kb = quest_detail_keyboard(quest.id, part.status if part else None, quest.quest_type) if is_available else None
         photo = await telegram_photo_input(db, quest.image_path)
         if photo and len(text) <= 950:
@@ -107,7 +113,7 @@ async def quest_join(call: CallbackQuery, db: Database) -> None:
             await call.answer("Профіль не активований", show_alert=True)
             return
         quest = await session.get(Quest, quest_id)
-        if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and quest.ends_at < datetime.now()):
+        if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and clock.local_wall_to_utc(quest.ends_at) < clock.now_utc()):
             await call.answer("Квест недоступний", show_alert=True)
             return
         part = await session.scalar(select(QuestParticipation).where(QuestParticipation.quest_id == quest_id, QuestParticipation.user_id == user.id))
@@ -116,7 +122,7 @@ async def quest_join(call: CallbackQuery, db: Database) -> None:
             await session.commit()
         elif part.status == "cancelled":
             part.status = "joined"
-            part.joined_at = datetime.utcnow()
+            part.joined_at = clock.storage_utc()
             part.completed_at = None
             part.approved_at = None
             await session.commit()
@@ -133,14 +139,14 @@ async def quest_done(call: CallbackQuery, db: Database) -> None:
             return
         quest = await session.get(Quest, quest_id)
         part = await session.scalar(select(QuestParticipation).where(QuestParticipation.quest_id == quest_id, QuestParticipation.user_id == user.id))
-        if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and quest.ends_at < datetime.now()):
+        if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and clock.local_wall_to_utc(quest.ends_at) < clock.now_utc()):
             await call.answer("Дедлайн квесту завершено", show_alert=True)
             return
         if not part or part.status not in {"joined", "returned"}:
             await call.answer("Спочатку візьми квест", show_alert=True)
             return
         part.status = "completed"
-        part.completed_at = datetime.utcnow()
+        part.completed_at = clock.storage_utc()
         await session.commit()
         await call.message.answer("✅ Виконання надіслано на підтвердження координатору.")
         await call.answer()

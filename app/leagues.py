@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Iterable
@@ -147,7 +149,7 @@ def _protected_weeks(freezes: list[StreakFreeze], now: datetime) -> set[date]:
 
 
 async def freeze_days_used(session: AsyncSession, user_id: int, *, when: datetime | None = None) -> int:
-    when = when or datetime.utcnow()
+    when = when or clock.storage_utc()
     qkey = quarter_key(when)
     return int(await session.scalar(
         select(func.coalesce(func.sum(StreakFreeze.days), 0)).where(
@@ -166,7 +168,7 @@ async def create_streak_freeze(
     note: str = "",
     now: datetime | None = None,
 ) -> StreakFreeze:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     days = int(days or 0)
     if days < 1:
         raise ValueError("Вкажіть щонайменше 1 день заморозки")
@@ -207,7 +209,7 @@ async def streak_freeze_summary(
     *,
     now: datetime | None = None,
 ) -> dict[int, dict[str, object]]:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     ids = list({int(x) for x in user_ids})
     if not ids:
         return {}
@@ -348,7 +350,7 @@ async def refresh_user_streak(
     third total miss breaks it. The previous run is stored as recoverable so a
     special reward can restore it once.
     """
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     row = await get_or_create_streak(session, user.id)
     if row.manual_lock and not rebuild_events:
         row.updated_at = now
@@ -432,7 +434,7 @@ async def refresh_user_streak(
 
 
 async def refresh_all_streaks(session: AsyncSession, *, now: datetime | None = None):
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     users = (await session.scalars(
         select(User).where(User.status == UserStatus.ACTIVE.value).order_by(User.id.asc())
     )).all()
@@ -459,7 +461,7 @@ async def restore_super_streak(session: AsyncSession, user: User) -> tuple[bool,
     row.recoverable_event_started_at = None
     row.recoverable_saved_at = None
     row.restores_used = int(row.restores_used or 0) + 1
-    row.updated_at = datetime.utcnow()
+    row.updated_at = clock.storage_utc()
     return True, row
 
 

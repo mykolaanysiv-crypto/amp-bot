@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import utc_storage_now
+
 from datetime import date, datetime
 from enum import StrEnum
 
@@ -37,7 +39,7 @@ class MediaAsset(Base):
     content_type: Mapped[str] = mapped_column(String(80), default="image/webp")
     data: Mapped[bytes] = mapped_column(LargeBinary)
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class SettlementReference(Base):
@@ -48,8 +50,8 @@ class SettlementReference(Base):
     aliases_json: Mapped[str] = mapped_column(Text, default="[]")
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=1000)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class User(Base):
@@ -89,7 +91,7 @@ class User(Base):
     public_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     referral_code: Mapped[str | None] = mapped_column(String(32), unique=True, index=True, nullable=True)
     referred_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     last_activity_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     badge_photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
@@ -131,14 +133,14 @@ class RegistrationJourney(Base):
     current_step: Mapped[str] = mapped_column(String(48), default="privacy_notice", index=True)
     draft_ciphertext: Mapped[str] = mapped_column(Text, default="")
     start_payload: Mapped[str] = mapped_column(String(180), default="")
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
     consent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     profile_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     first_activity_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     restarted_count: Mapped[int] = mapped_column(Integer, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
     user: Mapped[User | None] = relationship(foreign_keys=[user_id])
 
@@ -151,12 +153,12 @@ class BanRecord(Base):
     issued_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     source: Mapped[str] = mapped_column(String(24), default="web")
     reason: Mapped[str] = mapped_column(Text)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     original_ends_at: Mapped[datetime] = mapped_column(DateTime)
     ends_at: Mapped[datetime] = mapped_column(DateTime)
     lifted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     lift_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     issued_by: Mapped[User | None] = relationship(foreign_keys=[issued_by_user_id])
@@ -171,7 +173,7 @@ class Season(Base):
     ends_at: Mapped[date] = mapped_column(Date)
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     history_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -187,7 +189,7 @@ class XPTransaction(Base):
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True)
     season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"), nullable=True, index=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     user: Mapped[User] = relationship(foreign_keys=[user_id], back_populates="xp_transactions")
     season: Mapped[Season | None] = relationship()
@@ -216,7 +218,7 @@ class Event(Base):
     postponed_reason: Mapped[str] = mapped_column(Text, default="")
     postponed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     registrations: Mapped[list["EventRegistration"]] = relationship(back_populates="event")
 
@@ -229,7 +231,7 @@ class EventRegistration(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="registered")
-    registered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    registered_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     checkin_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     attendance_signature: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
@@ -253,7 +255,7 @@ class Team(Base):
     name: Mapped[str] = mapped_column(String(140), unique=True)
     description: Mapped[str] = mapped_column(Text, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class TeamMember(Base):
@@ -264,7 +266,7 @@ class TeamMember(Base):
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     role: Mapped[str] = mapped_column(String(32), default="member")
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class Quest(Base):
@@ -274,7 +276,7 @@ class Quest(Base):
     title: Mapped[str] = mapped_column(String(180))
     description: Mapped[str] = mapped_column(Text)
     xp_reward: Mapped[int] = mapped_column(Integer, default=20)
-    starts_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    starts_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(24), default="open", index=True)
@@ -302,7 +304,7 @@ class QuestParticipation(Base):
     quest_id: Mapped[int] = mapped_column(ForeignKey("quests.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="joined")
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -319,7 +321,7 @@ class TeamQuestContribution(Base):
     value: Mapped[int] = mapped_column(Integer, default=1)
     note: Mapped[str] = mapped_column(String(255), default="")
     approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class Badge(Base):
@@ -345,7 +347,7 @@ class UserBadge(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     badge_id: Mapped[int] = mapped_column(ForeignKey("badges.id"), index=True)
     awarded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    awarded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    awarded_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     user: Mapped[User] = relationship(back_populates="badges", foreign_keys=[user_id])
     badge: Mapped[Badge] = relationship()
@@ -360,7 +362,7 @@ class Referral(Base):
     invited_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="pending")
     xp_reward: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     rewarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoke_reason: Mapped[str] = mapped_column(Text, default="")
@@ -389,7 +391,7 @@ class RewardClaim(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="requested")
     xp_spent: Mapped[int] = mapped_column(Integer, default=0)
-    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -414,7 +416,7 @@ class ParticipationStreak(Base):
     restores_used: Mapped[int] = mapped_column(Integer, default=0)
     manual_lock: Mapped[bool] = mapped_column(Boolean, default=False)
     manual_note: Mapped[str] = mapped_column(Text, default="")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     user: Mapped[User] = relationship()
 
@@ -430,7 +432,7 @@ class StreakFreeze(Base):
     quarter_key: Mapped[str] = mapped_column(String(8), index=True)
     created_by_label: Mapped[str] = mapped_column(String(160), default="web")
     note: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
     user: Mapped[User] = relationship()
 
@@ -461,8 +463,8 @@ class Idea(Base):
     implementation_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     implemented_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approval_xp_awarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class RequestCase(Base):
@@ -481,8 +483,8 @@ class RequestCase(Base):
     admin_response: Mapped[str] = mapped_column(Text, default="")
     internal_note: Mapped[str] = mapped_column(Text, default="")
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     participant_last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -496,7 +498,7 @@ class RequestMessage(Base):
     sender_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     body: Mapped[str] = mapped_column(Text, default="")
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
     case: Mapped[RequestCase] = relationship()
     sender: Mapped[User | None] = relationship()
@@ -521,7 +523,7 @@ class VolunteerTask(Base):
     # Legacy single-assignee field is kept for backward compatibility only.
     assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     participations: Mapped[list["VolunteerTaskParticipation"]] = relationship(back_populates="task")
 
@@ -534,7 +536,7 @@ class VolunteerTaskParticipation(Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("volunteer_tasks.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="joined", index=True)
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     admin_note: Mapped[str] = mapped_column(Text, default="")
@@ -556,7 +558,7 @@ class ActivityType(Base):
     hours_reward: Mapped[float] = mapped_column(Float, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=100)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class ActivityApplication(Base):
@@ -572,7 +574,7 @@ class ActivityApplication(Base):
     admin_note: Mapped[str] = mapped_column(Text, default="")
     xp_reward: Mapped[int] = mapped_column(Integer, default=0)
     hours_reward: Mapped[float] = mapped_column(Float, default=0)
-    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -597,8 +599,8 @@ class Opportunity(Base):
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     target_settlements: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -613,10 +615,10 @@ class OpportunityMatch(Base):
     score: Mapped[int] = mapped_column(Integer, default=0, index=True)
     reasons_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="matched", index=True)
-    matched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    matched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     opportunity: Mapped[Opportunity] = relationship()
     user: Mapped[User] = relationship()
@@ -630,8 +632,8 @@ class OpportunityInterest(Base):
     opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="interested", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     opportunity: Mapped[Opportunity] = relationship()
     user: Mapped[User] = relationship()
@@ -648,7 +650,7 @@ class DonationJarState(Base):
     goal_kop: Mapped[int] = mapped_column(BigInteger, default=0)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class DonationTransaction(Base):
@@ -664,7 +666,7 @@ class DonationTransaction(Base):
     counter_name: Mapped[str | None] = mapped_column(String(240), nullable=True)
     receipt_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
     linked_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     linked_user: Mapped[User | None] = relationship(foreign_keys=[linked_user_id])
 
@@ -680,8 +682,8 @@ class DonationReport(Base):
     document_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class SupportPageView(Base):
@@ -690,7 +692,7 @@ class SupportPageView(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     tg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
-    viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    viewed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
 
 class ContentView(Base):
@@ -709,8 +711,8 @@ class ContentView(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     tg_id: Mapped[int] = mapped_column(BigInteger, index=True)
     view_count: Mapped[int] = mapped_column(Integer, default=1)
-    first_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    last_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    first_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+    last_viewed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
 
 class Goal(Base):
@@ -725,12 +727,12 @@ class Goal(Base):
     target_value: Mapped[float] = mapped_column(Float, default=1)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"), nullable=True, index=True)
-    starts_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    starts_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     reward_xp: Mapped[int] = mapped_column(Integer, default=0)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     user: Mapped[User | None] = relationship()
     season: Mapped[Season | None] = relationship()
@@ -744,7 +746,7 @@ class GoalReward(Base):
     goal_id: Mapped[int] = mapped_column(ForeignKey("goals.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     xp_awarded: Mapped[int] = mapped_column(Integer, default=0)
-    awarded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    awarded_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     goal: Mapped[Goal] = relationship()
     user: Mapped[User] = relationship()
@@ -761,7 +763,7 @@ class ConsentHistory(Base):
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     note: Mapped[str] = mapped_column(Text, default="")
     changed_by_label: Mapped[str] = mapped_column(String(160), default="system")
-    changed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
 
     user: Mapped[User] = relationship()
 
@@ -777,8 +779,8 @@ class Survey(Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_by_label: Mapped[str] = mapped_column(String(160), default="web")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class SurveyQuestion(Base):
@@ -805,7 +807,7 @@ class SurveyResponse(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     answers_json: Mapped[str] = mapped_column(Text, default="{}")
     xp_awarded: Mapped[int] = mapped_column(Integer, default=0)
-    completed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     survey: Mapped[Survey] = relationship()
     user: Mapped[User] = relationship()
@@ -822,7 +824,7 @@ class UserStatusChangeRequest(Base):
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)  # pending|approved|rejected
     review_note: Mapped[str] = mapped_column(Text, default="")
     reviewed_by_label: Mapped[str | None] = mapped_column(String(160), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped[User] = relationship()
@@ -836,8 +838,8 @@ class BroadcastTemplate(Base):
     text: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_by_label: Mapped[str] = mapped_column(String(160), default="superadmin")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class SystemSetting(Base):
@@ -845,7 +847,7 @@ class SystemSetting(Base):
 
     key: Mapped[str] = mapped_column(String(120), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class BroadcastCampaign(Base):
@@ -866,7 +868,7 @@ class BroadcastCampaign(Base):
     recipient_count: Mapped[int] = mapped_column(Integer, default=0)
     sent_count: Mapped[int] = mapped_column(Integer, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -906,7 +908,7 @@ class ScheduledJob(Base):
     last_error: Mapped[str] = mapped_column(Text, default="")
     run_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class NotificationDelivery(Base):
@@ -927,8 +929,8 @@ class NotificationDelivery(Base):
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
 
 class Notification(Base):
@@ -949,7 +951,7 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text)
     entity_type: Mapped[str | None] = mapped_column(String(48), nullable=True, index=True)
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="queued", index=True)  # queued|retry|sent|failed
     error: Mapped[str] = mapped_column(String(500), default="")
@@ -959,8 +961,8 @@ class Notification(Base):
     parse_mode: Mapped[str | None] = mapped_column(String(24), nullable=True)
     button_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
     callback_data: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     recipient: Mapped[User | None] = relationship(foreign_keys=[recipient_user_id])
 
@@ -982,8 +984,8 @@ class EventFeedback(Base):
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)  # pending|in_progress|completed
     prompted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     event: Mapped[Event] = relationship()
     user: Mapped[User] = relationship()
@@ -1004,10 +1006,10 @@ class WebStaffAccount(Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     two_factor_tg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     sessions: Mapped[list["WebAdminSession"]] = relationship(back_populates="account", cascade="all, delete-orphan")
 
@@ -1020,8 +1022,8 @@ class WebAdminSession(Base):
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     user_agent: Mapped[str] = mapped_column(String(500), default="")
     ip_address: Mapped[str] = mapped_column(String(96), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
@@ -1038,4 +1040,4 @@ class AuditLog(Base):
     entity_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     details: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)

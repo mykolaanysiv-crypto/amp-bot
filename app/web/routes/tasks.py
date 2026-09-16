@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.content_views import content_view_stat, content_view_stats
@@ -21,7 +23,7 @@ async def tasks(request: Request, q: str = "", status: str = "", period: str = "
         if type == "solo": stmt = stmt.where(VolunteerTask.max_participants == 1)
         elif type == "team": stmt = stmt.where(VolunteerTask.max_participants > 1)
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: stmt = stmt.where(VolunteerTask.created_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt = stmt.where(VolunteerTask.created_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         order_map={"oldest":VolunteerTask.created_at.asc(),"title":VolunteerTask.title.asc(),"deadline":VolunteerTask.deadline.asc().nullslast(),"newest":VolunteerTask.created_at.desc()}
         rows = (await session.scalars(stmt.order_by(order_map.get(sort, VolunteerTask.created_at.desc())))).all()
         participant_counts = {}; submitted_counts = {}; approved_counts = {}
@@ -30,7 +32,7 @@ async def tasks(request: Request, q: str = "", status: str = "", period: str = "
             submitted_counts[task.id] = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.task_id == task.id, VolunteerTaskParticipation.status == "submitted")) or 0)
             approved_counts[task.id] = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(VolunteerTaskParticipation.task_id == task.id, VolunteerTaskParticipation.status == "approved")) or 0)
         view_stats = await content_view_stats(session, "volunteer_task", [task.id for task in rows])
-        return templates.TemplateResponse(request=request,name="tasks.html",context=ctx(request,rows=rows,participant_counts=participant_counts,submitted_counts=submitted_counts,approved_counts=approved_counts,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort))
+        return templates.TemplateResponse(request=request,name="tasks.html",context=ctx(request,rows=rows,participant_counts=participant_counts,submitted_counts=submitted_counts,approved_counts=approved_counts,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort))
 
 
 @router.get("/admin/tasks/{task_id}", response_class=HTMLResponse)
@@ -51,7 +53,7 @@ async def task_detail_web(request: Request, task_id: int):
         view_stat = await content_view_stat(session, "volunteer_task", task.id)
         return templates.TemplateResponse(
             request=request, name="task_detail.html",
-            context=ctx(request, task=task, participants=participants, active_count=active_count, view_stat=view_stat, today=date.today()),
+            context=ctx(request, task=task, participants=participants, active_count=active_count, view_stat=view_stat, today=clock.today_local()),
         )
 
 
@@ -178,14 +180,14 @@ async def task_postpone(request: Request, task_id: int, reason: str = Form(...),
     reason=reason.strip()
     if not reason: raise HTTPException(status_code=400,detail="Вкажіть причину перенесення волонтерської задачі.")
     new_at=compose_optional_datetime_fields(deadline_day,deadline_month,deadline_year,deadline_time,entity_label="нового дедлайну волонтерської задачі")
-    if not new_at or new_at<=datetime.utcnow(): raise HTTPException(status_code=400,detail="Новий дедлайн має бути в майбутньому.")
+    if not new_at or new_at<=clock.storage_utc(): raise HTTPException(status_code=400,detail="Новий дедлайн має бути в майбутньому.")
     campaign_id=None
     async with db.session_factory() as session:
         task=await session.get(VolunteerTask,task_id)
         if not task: raise HTTPException(status_code=404,detail="Волонтерську задачу не знайдено.")
         if task.cancelled_at or task.status=="cancelled": raise HTTPException(status_code=409,detail="Скасовану задачу не можна переносити.")
         users=list((await session.scalars(select(User).join(VolunteerTaskParticipation,VolunteerTaskParticipation.user_id==User.id).where(VolunteerTaskParticipation.task_id==task.id,VolunteerTaskParticipation.status!="cancelled").distinct())).all())
-        task.deadline=new_at; task.status="postponed"; task.postponed_reason=reason; task.postponed_at=datetime.utcnow()
+        task.deadline=new_at; task.status="postponed"; task.postponed_reason=reason; task.postponed_at=clock.storage_utc()
         campaign_id=await _queue_system_broadcast(session,users,_postponed_notice_text("Волонтерську задачу",task.title,new_at,reason),author_label=request.session.get("admin_name","web"),audience_label=f"Учасники перенесеної задачі: {task.title}",template_code="task_postponed")
         await log_audit(session,"web_task_postpone",actor_label=request.session.get("admin_name","web"),entity_type="task",entity_id=task.id,details=f"Новий дедлайн {new_at}; причина: {reason}; повідомлень: {len(users)}")
         await session.commit()
@@ -216,7 +218,7 @@ async def task_cancel(request: Request, task_id: int, reason: str = Form(...)):
         )).all())
         task.status = "cancelled"
         task.cancellation_reason = reason
-        task.cancelled_at = datetime.utcnow()
+        task.cancelled_at = clock.storage_utc()
         campaign_id = await _queue_system_broadcast(
             session, users, _entity_notice_text("Волонтерську задачу", task.title, reason),
             author_label=request.session.get("admin_name", "web"),

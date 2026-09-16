@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from io import BytesIO
@@ -33,7 +35,6 @@ from .leagues import LEAGUES, league_for_xp, quarter_key
 from .ui_labels import label
 from .runtime_config import get_runtime_int
 from .settlements import canonicalize_settlement_text
-from .time_utils import event_local_now
 
 
 METRIC_ORDER = [
@@ -297,7 +298,7 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None,
     are returned. Superadmins may request unsuppressed aggregate counts for small
     vulnerability groups; all other viewers receive privacy-threshold suppression.
     """
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     today = now.date()
     active_users = (await session.scalars(select(User).where(User.status == UserStatus.ACTIVE.value))).all()
     all_users = (await session.scalars(select(User))).all()
@@ -345,10 +346,11 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None,
     )
 
     checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
-    event_reference_now = event_local_now()
+    event_reference_utc = clock.now_utc()
     completed_event_ids = {
         e.id for e in events
-        if e.status == "completed" or (e.starts_at and e.starts_at + timedelta(minutes=checkin_close_minutes) < event_reference_now)
+        if e.status == "completed"
+        or (e.starts_at and clock.event_utc(e.starts_at) + timedelta(minutes=checkin_close_minutes) < event_reference_utc)
     }
     # Legacy/manual bad rows from future events must never pollute attendance analytics.
     attended_regs = [r for r in regs if r.status == "attended" and r.event_id in completed_event_ids]

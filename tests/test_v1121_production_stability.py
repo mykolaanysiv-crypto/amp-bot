@@ -11,7 +11,7 @@ def read(rel: str) -> str:
 
 def test_version_is_v1121():
     version = read("VERSION.txt").strip()
-    assert version.startswith("1.12.1")
+    assert tuple(map(int, version.split("."))) >= (1, 12, 1)
     assert read("VERSION_CHECK.txt").strip() == version
 
 

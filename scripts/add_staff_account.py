@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 import argparse
 import asyncio
 import subprocess
@@ -36,9 +38,9 @@ async def _upsert(args) -> None:
                 must_change_password=True,
                 two_factor_enabled=bool(args.two_factor_tg_id),
                 two_factor_tg_id=args.two_factor_tg_id or None,
-                created_at=datetime.utcnow(),
-                password_changed_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=clock.storage_utc(),
+                password_changed_at=clock.storage_utc(),
+                updated_at=clock.storage_utc(),
             )
             session.add(row)
         else:
@@ -51,8 +53,8 @@ async def _upsert(args) -> None:
             row.two_factor_enabled = bool(args.two_factor_tg_id) or row.two_factor_enabled
             if args.two_factor_tg_id:
                 row.two_factor_tg_id = args.two_factor_tg_id
-            row.password_changed_at = datetime.utcnow()
-            row.updated_at = datetime.utcnow()
+            row.password_changed_at = clock.storage_utc()
+            row.updated_at = clock.storage_utc()
         await session.commit()
     await db.close()
     print(f"✓ Web-admin {args.display_name} ({args.username}) створено/оновлено в БД.")

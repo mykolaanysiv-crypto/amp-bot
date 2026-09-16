@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 import os
 import shutil
 import sys
@@ -25,7 +27,7 @@ target.mkdir(parents=True, exist_ok=True)
 
 target_db = target / "amp_bot.db"
 if target_db.exists():
-    backup = target / "backups" / f"before_migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+    backup = target / "backups" / f"before_migration_{clock.now_local().strftime('%Y%m%d_%H%M%S')}.db"
     shutil.copy2(target_db, backup)
     print(f"Створено резервну копію поточної бази: {backup}")
 

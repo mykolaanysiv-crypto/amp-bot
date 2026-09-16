@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 import os
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
@@ -70,7 +72,7 @@ async def system_health(request: Request):
     if r := guard(request):
         return r
 
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     db_ok = True
     db_error = ""
     bot_ok = False
@@ -189,7 +191,7 @@ async def system_health(request: Request):
 async def retry_failed_notifications(request: Request):
     if r := guard(request):
         return r
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         rows = list((await session.scalars(
             select(Notification).where(Notification.status == "failed").limit(500)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import asyncio
 import json
 import re
@@ -218,7 +220,7 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
     token = (getattr(settings, "monobank_token", "") or "").strip()
     if not token:
         state.last_error = "Не задано MONOBANK_TOKEN. Банка доступна за посиланням, але автоматична синхронізація вимкнена."
-        state.updated_at = datetime.utcnow()
+        state.updated_at = clock.storage_utc()
         return {"ok": False, "imported": 0, "linked": 0, "awarded": {}, "error": state.last_error}
 
     send_id = _jar_send_id(getattr(settings, "donation_jar_url", ""))
@@ -243,11 +245,11 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
 
         latest = await session.scalar(select(func.max(DonationTransaction.occurred_at)))
         # Re-read a small overlap to make eventual consistency harmless; provider IDs de-duplicate rows.
-        start = (latest - timedelta(days=1)) if latest else (datetime.utcnow() - timedelta(days=31))
-        earliest = datetime.utcnow() - timedelta(days=31)
+        start = (latest - timedelta(days=1)) if latest else (clock.storage_utc() - timedelta(days=31))
+        earliest = clock.storage_utc() - timedelta(days=31)
         if start < earliest:
             start = earliest
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         path = f"/personal/statement/{jar_id}/{int(start.timestamp())}/{int(now.timestamp())}"
         statement = await asyncio.to_thread(_api_get, path, token)
         if not isinstance(statement, list):
@@ -293,13 +295,13 @@ async def sync_monobank_donations(session: AsyncSession, settings) -> dict[str, 
             if badges:
                 awarded[user_id] = [b.name for b in badges]
 
-        state.last_sync_at = datetime.utcnow()
+        state.last_sync_at = clock.storage_utc()
         state.last_error = None
-        state.updated_at = datetime.utcnow()
+        state.updated_at = clock.storage_utc()
         return {"ok": True, "imported": imported, "linked": linked, "awarded": awarded, "error": None}
     except Exception as exc:
         # All expected API errors above are already sanitized. Do not include
         # repr(exc), request headers, tokens or provider response payloads.
         state.last_error = (str(exc) or "Помилка синхронізації Monobank.")[:500]
-        state.updated_at = datetime.utcnow()
+        state.updated_at = clock.storage_utc()
         return {"ok": False, "imported": 0, "linked": 0, "awarded": {}, "error": state.last_error}

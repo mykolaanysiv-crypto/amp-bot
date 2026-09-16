@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 import calendar as pycalendar
@@ -121,9 +123,9 @@ async def calendar_page(request: Request, view: str = "month", date_value: str =
         return r
     view = view if view in {"day", "week", "month"} else "month"
     try:
-        selected = date.fromisoformat(date_value) if date_value else date.today()
+        selected = date.fromisoformat(date_value) if date_value else clock.today_local()
     except ValueError:
-        selected = date.today()
+        selected = clock.today_local()
 
     if view == "day":
         period_start = selected
@@ -224,7 +226,7 @@ async def calendar_page(request: Request, view: str = "month", date_value: str =
             "key": cursor.isoformat(),
             "entries": by_day.get(cursor.isoformat(), []),
             "current_month": cursor.month == selected.month,
-            "today": cursor == date.today(),
+            "today": cursor == clock.today_local(),
         })
         cursor += timedelta(days=1)
 
@@ -241,7 +243,7 @@ async def calendar_page(request: Request, view: str = "month", date_value: str =
         context=ctx(
             request, items=items, days=days, by_day=by_day, view=view,
             selected=selected, period_start=period_start, period_end=period_end,
-            prev_date=prev_date, next_date=next_date, title=title, today=date.today(),
+            prev_date=prev_date, next_date=next_date, title=title, today=clock.today_local(),
         ),
     )
 

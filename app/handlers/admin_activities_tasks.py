@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.callback_query(F.data == "admin:activity_apps")
@@ -53,7 +54,7 @@ async def admin_activity_approve(call: CallbackQuery, db: Database, bot: Bot) ->
         item = await session.get(ActivityType, app.activity_type_id)
         user = await session.get(User, app.user_id)
         app.status = "activity_approved"
-        app.approved_at = datetime.utcnow()
+        app.approved_at = clock.storage_utc()
         app.reviewed_by = admin.id
         await log_audit(session, "tg_activity_approve", admin, entity_type="activity_application", entity_id=app.id, details=item.title if item else "")
         if user and item:
@@ -291,7 +292,7 @@ async def approve_task_part(call: CallbackQuery, db: Database, bot: Bot) -> None
         total, level, leveled = await add_xp(session, user, task.xp_reward, f"Волонтерська задача «{task.title}»", category="task", created_by=admin.id)
         user.volunteer_hours += task.hours_reward
         part.status = "approved"
-        part.approved_at = datetime.utcnow()
+        part.approved_at = clock.storage_utc()
         await evaluate_automatic_badges(session, user)
         text = f"✅ Задачу <b>{task.title}</b> підтверджено.\n+{task.xp_reward} XP\n+{task.hours_reward:g} год.\nВсього: {total} XP"
         if leveled:

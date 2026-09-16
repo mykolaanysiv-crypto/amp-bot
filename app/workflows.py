@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 import json
 from datetime import datetime
 
@@ -41,7 +43,7 @@ async def approve_quest_participation(
         created_by=created_by,
     )
     participation.status = "approved"
-    participation.approved_at = datetime.utcnow()
+    participation.approved_at = clock.storage_utc()
     await evaluate_automatic_badges(session, user)
     return total, level, leveled
 
@@ -69,14 +71,14 @@ async def approve_volunteer_task_participation(
     )
     user.volunteer_hours += float(task.hours_reward or 0)
     participation.status = "approved"
-    participation.approved_at = datetime.utcnow()
+    participation.approved_at = clock.storage_utc()
     participation.admin_note = (admin_note or "").strip()
     await evaluate_automatic_badges(session, user)
     return total, level, leveled
 
 
 def survey_is_available(survey: Survey, *, now: datetime | None = None) -> bool:
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     if survey.status != "published":
         return False
     if survey.starts_at and survey.starts_at > now:
@@ -138,7 +140,7 @@ async def award_idea_approval_once(session, idea: Idea) -> tuple[int | None, str
         f"Схвалена ідея «{idea.title}»",
         category="idea_approved",
     )
-    idea.approval_xp_awarded_at = datetime.utcnow()
+    idea.approval_xp_awarded_at = clock.storage_utc()
     text = (
         f"💡 <b>Вашу ідею «{idea.title}» схвалено!</b>\n"
         f"⚡ За схвалену ідею нараховано <b>+{reward} XP</b>.\n"

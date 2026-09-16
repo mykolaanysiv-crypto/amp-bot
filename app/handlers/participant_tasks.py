@@ -1,3 +1,5 @@
+from ..observability import log_extra
+from ..time_utils import clock
 import logging
 
 from .participant_common import *  # noqa: F401,F403
@@ -11,7 +13,7 @@ async def tasks(message: Message, db: Database) -> None:
         user = await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.ACTIVE.value:
             return
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         rows = (
             await session.scalars(
                 select(VolunteerTask)
@@ -83,9 +85,12 @@ async def task_detail(call: CallbackQuery, db: Database) -> None:
             changed = await process_expired_content(session)
             if changed:
                 await session.commit()
-        except Exception:
+        except Exception as exc:
             await session.rollback()
-            logging.getLogger("amp.volunteer_tasks").exception("Lifecycle refresh failed while opening task %s", task_id)
+            logging.getLogger("amp.volunteer_tasks").exception(
+                "Lifecycle refresh failed while opening task %s", task_id,
+                extra=log_extra("VOLUNTEER_TASK_LIFECYCLE_REFRESH_FAILED", entity_type="volunteer_task", entity_id=task_id, exception_type=type(exc).__name__),
+            )
         user = await get_user_by_tg(session, call.from_user.id)
         task = await session.get(VolunteerTask, task_id)
         if not user or not task:
@@ -109,7 +114,7 @@ async def task_detail(call: CallbackQuery, db: Database) -> None:
         maximum = max(1, int(task.max_participants or 1))
         deadline = task.deadline.strftime("%d.%m.%Y") if task.deadline else "без дедлайну"
         b = InlineKeyboardBuilder()
-        is_available = task.status in {"open", "active", "postponed"} and (task.deadline is None or task.deadline >= datetime.utcnow())
+        is_available = task.status in {"open", "active", "postponed"} and (task.deadline is None or task.deadline >= clock.local_wall())
         if is_available:
             if not mine and count < maximum:
                 b.button(text="🙋 Долучитися", callback_data=f"task_claim:{task.id}")
@@ -156,7 +161,7 @@ async def task_claim(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, call.from_user.id)
         task = await session.get(VolunteerTask, task_id)
-        if not user or not task or task.status not in {"open", "active", "postponed"} or (task.deadline and task.deadline < datetime.utcnow()):
+        if not user or not task or task.status not in {"open", "active", "postponed"} or (task.deadline and clock.local_wall_to_utc(task.deadline) < clock.now_utc()):
             await call.answer("Задача недоступна", show_alert=True)
             return
         existing = await session.scalar(select(VolunteerTaskParticipation).where(
@@ -175,7 +180,7 @@ async def task_claim(call: CallbackQuery, db: Database) -> None:
             return
         if existing:
             existing.status = "joined"
-            existing.joined_at = datetime.utcnow()
+            existing.joined_at = clock.storage_utc()
             existing.submitted_at = None
             existing.approved_at = None
             existing.admin_note = ""
@@ -196,14 +201,14 @@ async def task_done(call: CallbackQuery, db: Database) -> None:
             VolunteerTaskParticipation.task_id == task_id,
             VolunteerTaskParticipation.user_id == user.id if user else -1,
         ))
-        if not user or not task or task.status not in {"open", "active", "postponed"} or (task.deadline and task.deadline < datetime.utcnow()):
+        if not user or not task or task.status not in {"open", "active", "postponed"} or (task.deadline and clock.local_wall_to_utc(task.deadline) < clock.now_utc()):
             await call.answer("Дедлайн задачі завершено", show_alert=True)
             return
         if not part or part.status not in {"joined", "returned"}:
             await call.answer("Неактуально", show_alert=True)
             return
         part.status = "submitted"
-        part.submitted_at = datetime.utcnow()
+        part.submitted_at = clock.storage_utc()
         await session.commit()
         await call.message.answer("⏳ Виконання передано координатору на підтвердження.")
         await call.answer()
@@ -231,7 +236,7 @@ async def task_cancel_join(call: CallbackQuery, db: Database) -> None:
 async def nav_opportunities(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user=await get_user_by_tg(session,call.from_user.id)
-        rows=list((await session.scalars(select(Opportunity).where(Opportunity.active == True,(Opportunity.deadline.is_(None)) | (Opportunity.deadline >= datetime.utcnow())).order_by(Opportunity.deadline.asc().nullslast(),Opportunity.id.desc()))).all())  # noqa: E712
+        rows=list((await session.scalars(select(Opportunity).where(Opportunity.active == True,(Opportunity.deadline.is_(None)) | (Opportunity.deadline >= clock.local_wall())).order_by(Opportunity.deadline.asc().nullslast(),Opportunity.id.desc()))).all())  # noqa: E712
         if not user or not rows:
             await call.message.answer("🌍 Зараз немає актуальних можливостей для молоді.")
         else:
@@ -281,7 +286,7 @@ async def nav_tasks(call: CallbackQuery, db: Database) -> None:
         await process_expired_content(session); await session.commit()
         user=await get_user_by_tg(session,call.from_user.id)
         if not user: await call.answer(); return
-        now=datetime.utcnow(); rows=(await session.scalars(select(VolunteerTask).where(VolunteerTask.status.in_(["open","active","postponed"]),(VolunteerTask.deadline.is_(None)) | (VolunteerTask.deadline>=now)).order_by(VolunteerTask.deadline.is_(None),VolunteerTask.deadline.asc(),VolunteerTask.id.desc()))).all()
+        now=clock.local_wall(); rows=(await session.scalars(select(VolunteerTask).where(VolunteerTask.status.in_(["open","active","postponed"]),(VolunteerTask.deadline.is_(None)) | (VolunteerTask.deadline>=now)).order_by(VolunteerTask.deadline.is_(None),VolunteerTask.deadline.asc(),VolunteerTask.id.desc()))).all()
         mine={p.task_id:p for p in (await session.scalars(select(VolunteerTaskParticipation).where(VolunteerTaskParticipation.user_id==user.id))).all()}
         b=InlineKeyboardBuilder(); lines=["✅ <b>Волонтерські задачі</b>"]
         for task in rows:

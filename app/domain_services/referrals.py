@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .audit import log_audit
 from .gamification import add_xp, evaluate_automatic_badges
@@ -17,7 +18,7 @@ async def create_referral_for_user(session: AsyncSession, new_user: User, referr
 
 def referral_quarter_bounds(now: datetime | None = None) -> tuple[datetime, datetime]:
     """Return [quarter_start, next_quarter_start) for the supplied UTC datetime."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     start_month = ((now.month - 1) // 3) * 3 + 1
     start = datetime(now.year, start_month, 1)
     if start_month == 10:
@@ -64,7 +65,7 @@ async def reward_referral_if_ready(
     count, reward, _, _ = await referral_quarter_summary(session, inviter.id)
     referral.xp_reward = reward
     referral.status = "rewarded"
-    referral.rewarded_at = datetime.utcnow()
+    referral.rewarded_at = clock.storage_utc()
     await add_xp(
         session,
         inviter,
@@ -90,7 +91,7 @@ async def revoke_referral_reward_if_inactive(
     The operation is idempotent: only referrals in ``rewarded`` state can be revoked.
     Returns (inviter, xp_removed, days_after_reward) when a clawback was applied.
     """
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     referral = await session.scalar(select(Referral).where(Referral.invited_user_id == invited_user.id))
     if not referral or referral.status != "rewarded" or not referral.rewarded_at or int(referral.xp_reward or 0) <= 0:
         return None

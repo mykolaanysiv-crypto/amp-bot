@@ -1,7 +1,8 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 
 def age_on(birth_date: date, today: date | None = None) -> int:
-    today = today or date.today()
+    today = today or clock.today_local()
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 
@@ -9,8 +10,8 @@ async def get_user_by_tg(session: AsyncSession, tg_id: int) -> User | None:
     user = await session.scalar(select(User).where(User.tg_id == tg_id))
     # Restore access immediately when a temporary ban has expired, even before
     # the hourly maintenance job runs. This keeps Telegram behaviour intuitive.
-    if user and user.status == UserStatus.BLOCKED.value and user.blocked_until and user.blocked_until <= datetime.utcnow():
-        now = datetime.utcnow()
+    if user and user.status == UserStatus.BLOCKED.value and user.blocked_until and user.blocked_until <= clock.storage_utc():
+        now = clock.storage_utc()
         active_ban = await session.scalar(
             select(BanRecord).where(
                 BanRecord.user_id == user.id,

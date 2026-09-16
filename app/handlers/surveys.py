@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from ..time_utils import clock
+
 import json
+import logging
 from datetime import datetime
 from html import escape
 
@@ -17,6 +20,7 @@ from ..services import get_user_by_tg
 from ..workflows import complete_survey_once
 from ..states import SurveyState
 from ..content_views import content_view_stat, record_content_view
+from ..observability import log_extra
 
 router = Router(name="surveys")
 
@@ -28,10 +32,16 @@ def _options(question: SurveyQuestion) -> list[str]:
 def _survey_available(survey: Survey | None, now: datetime | None = None) -> bool:
     if not survey or survey.status != "published":
         return False
-    now = now or datetime.utcnow()
-    if survey.starts_at and survey.starts_at > now:
+    if now is None:
+        now_utc = clock.now_utc()
+    elif now.tzinfo is None:
+        now_utc = clock.from_storage_utc(now) or clock.now_utc()
+    else:
+        now_utc = clock.ensure_utc(now)
+    storage_now = clock.storage_utc(now_utc)
+    if survey.starts_at and survey.starts_at > storage_now:
         return False
-    if survey.ends_at and survey.ends_at < now:
+    if survey.ends_at and clock.local_wall_to_utc(survey.ends_at) < now_utc:
         return False
     return True
 
@@ -44,12 +54,14 @@ async def _active(session, tg_id: int) -> User | None:
 
 
 async def _available_surveys(session, user_id: int) -> list[tuple[Survey, bool]]:
-    now = datetime.utcnow()
+    now_utc = clock.now_utc()
+    storage_now = clock.storage_utc(now_utc)
+    local_now = clock.local_wall(now_utc)
     surveys = list((await session.scalars(
         select(Survey)
         .where(Survey.status == "published")
-        .where((Survey.starts_at.is_(None)) | (Survey.starts_at <= now))
-        .where((Survey.ends_at.is_(None)) | (Survey.ends_at >= now))
+        .where((Survey.starts_at.is_(None)) | (Survey.starts_at <= storage_now))
+        .where((Survey.ends_at.is_(None)) | (Survey.ends_at >= local_now))
         .order_by(Survey.created_at.desc())
     )).all())
     done_ids = set((await session.scalars(
@@ -269,9 +281,12 @@ async def survey_multi(call: CallbackQuery, db: Database, state: FSMContext) -> 
     b.adjust(1)
     try:
         await call.message.edit_reply_markup(reply_markup=b.as_markup())
-    except Exception:
+    except Exception as exc:
         # Telegram may reject a no-op edit; the selection is still persisted.
-        pass
+        logging.getLogger("amp.surveys").debug(
+            "Не вдалося оновити multi-select markup",
+            extra=log_extra("TG_SURVEY_MULTI_MARKUP_EDIT_FAILED", tg_id=call.from_user.id, question_id=qid, exception_type=type(exc).__name__),
+        )
     await call.answer("Обрано" if option_idx in selected else "Знято")
 
 

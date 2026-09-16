@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.ui_labels import REQUEST_CATEGORIES, REQUEST_PRIORITIES, REQUEST_STATUSES
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
@@ -20,9 +22,9 @@ async def requests_page(request: Request, q: str = "", status: str = "", period:
         if q: stmt=stmt.where(or_(RequestCase.case_number.ilike(f"%{q}%"),RequestCase.title.ilike(f"%{q}%"),RequestCase.description.ilike(f"%{q}%"),User.full_name.ilike(f"%{q}%")))
         if selected_status in REQUEST_STATUSES: stmt=stmt.where(RequestCase.status == selected_status)
         if selected_category in REQUEST_CATEGORIES: stmt=stmt.where(RequestCase.category == selected_category)
-        if overdue == "1": stmt=stmt.where(RequestCase.response_deadline.is_not(None),RequestCase.response_deadline < datetime.utcnow(),RequestCase.status.not_in(["resolved","case_closed"]))
+        if overdue == "1": stmt=stmt.where(RequestCase.response_deadline.is_not(None),RequestCase.response_deadline < clock.storage_utc(),RequestCase.status.not_in(["resolved","case_closed"]))
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: stmt=stmt.where(RequestCase.created_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt=stmt.where(RequestCase.created_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         order_map={"newest":RequestCase.created_at.desc(),"oldest":RequestCase.created_at.asc(),"deadline":RequestCase.response_deadline.asc().nullslast(),"updated":RequestCase.updated_at.desc()}
         rows=(await session.execute(stmt.order_by(order_map.get(sort,RequestCase.updated_at.desc())))).all()
         all_cases=(await session.scalars(select(RequestCase))).all(); counts={st:0 for st in REQUEST_STATUSES}
@@ -72,7 +74,7 @@ async def request_photo_update(
         if img:
             await delete_image(case.image_path)
             case.image_path = img
-        case.updated_at = datetime.utcnow()
+        case.updated_at = clock.storage_utc()
         await log_audit(session, "web_request_photo", actor_label=request.session.get("admin_name","web"), entity_type="request_case", entity_id=case.id, details="Оновлено фото звернення")
         await session.commit()
     return RedirectResponse(f"/admin/requests/{case_id}",303)
@@ -115,8 +117,8 @@ async def request_update(
         else:
             case.response_deadline = None
         case.internal_note = internal_note.strip()
-        case.updated_at = datetime.utcnow()
-        case.resolved_at = datetime.utcnow() if case.status in {"resolved", "case_closed"} else None
+        case.updated_at = clock.storage_utc()
+        case.resolved_at = clock.storage_utc() if case.status in {"resolved", "case_closed"} else None
         author = await session.get(User, case.user_id)
         assigned = await session.get(User, case.assigned_user_id) if case.assigned_user_id else None
         old_assigned_id = old_public[3]
@@ -198,7 +200,7 @@ async def request_add_message(
         )
         session.add(msg)
         case.admin_response = body or case.admin_response
-        case.updated_at = datetime.utcnow()
+        case.updated_at = clock.storage_utc()
         author = await session.get(User, case.user_id)
         if author:
             number = case.case_number or f"AMP-{case.created_at.year}-{case.id:04d}"

@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .admin_common import *  # noqa: F401,F403
 
 @router.callback_query(F.data == "admin:create_event")
@@ -164,8 +165,11 @@ def _scanner_participant_identity(raw: str) -> tuple[int | None, str | None]:
         payload = (parse_qs(parsed.query).get("start") or [""])[0]
         if payload.startswith("profile_"):
             return None, payload.removeprefix("profile_")
-    except Exception:
-        pass
+    except (TypeError, ValueError) as exc:
+        logging.getLogger("amp.admin_events").debug(
+            "Не вдалося розібрати scanner URL",
+            extra=log_extra("ADMIN_SCANNER_URL_PARSE_FAILED", input_length=len(text), exception_type=type(exc).__name__),
+        )
     match = re.search(r"(?:start=|/)profile_([A-Za-z0-9_-]{8,80})", text)
     return (None, match.group(1)) if match else (None, None)
 
@@ -239,7 +243,7 @@ async def admin_event_scanner_list(call: CallbackQuery, db: Database, settings: 
         events = list((await session.scalars(
             select(Event).where(
                 Event.status.in_(["open", "closed", "postponed"]),
-                Event.starts_at >= datetime.utcnow() - timedelta(hours=12),
+                Event.starts_at >= clock.local_wall(clock.now_utc() - timedelta(hours=12)),
             ).order_by(Event.starts_at.asc()).limit(25)
         )).all())
     if not events:
@@ -279,7 +283,7 @@ async def admin_event_scanner_textmode(call: CallbackQuery, db: Database) -> Non
         events = list((await session.scalars(
             select(Event).where(
                 Event.status.in_(["open", "closed", "postponed"]),
-                Event.starts_at >= datetime.utcnow() - timedelta(hours=12),
+                Event.starts_at >= clock.local_wall(clock.now_utc() - timedelta(hours=12)),
             ).order_by(Event.starts_at.asc()).limit(25)
         )).all())
     if events:
@@ -367,7 +371,7 @@ async def admin_event_qr_list(call: CallbackQuery, db: Database) -> None:
         events = list((await session.scalars(
             select(Event).where(
                 Event.status.in_(["open", "closed", "postponed"]),
-                Event.starts_at >= datetime.utcnow() - timedelta(hours=12),
+                Event.starts_at >= clock.local_wall(clock.now_utc() - timedelta(hours=12)),
             ).order_by(Event.starts_at.asc()).limit(25)
         )).all())
     if not events:
@@ -414,7 +418,7 @@ async def admin_event_share_list(call: CallbackQuery, db: Database) -> None:
         events = list((await session.scalars(
             select(Event).where(
                 Event.status.in_(["open", "postponed"]),
-                Event.starts_at >= datetime.utcnow(),
+                Event.starts_at >= clock.local_wall(),
             ).order_by(Event.starts_at.asc()).limit(25)
         )).all())
     if not events:

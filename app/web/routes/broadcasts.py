@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.web.app import (
@@ -70,7 +72,7 @@ async def broadcast_template_update(
         row.title = title
         row.text = text
         row.active = bool(active)
-        row.updated_at = datetime.utcnow()
+        row.updated_at = clock.storage_utc()
         await log_audit(
             session, "web_broadcast_template_update",
             actor_label=request.session.get("admin_name", "superadmin"),

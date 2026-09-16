@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 from io import BytesIO
 from urllib.parse import parse_qs, quote, urlparse
 import re
@@ -14,6 +15,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
 
 from ..config import Settings
+from ..observability import log_extra
 from ..db import Database
 from ..gamification import get_level, normalize_event_xp, normalize_manual_xp, normalize_quest_xp, normalize_task_xp
 from ..analytics import analytics_bot_text, build_analytics

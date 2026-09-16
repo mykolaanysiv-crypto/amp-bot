@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .participant_common import *  # noqa: F401,F403
 
 @router.message(F.text.in_({"📰 Можливості", "🌍 Можливості"}))
@@ -15,7 +16,7 @@ async def opportunities(message: Message, db: Database) -> None:
         rows = list((await session.scalars(
             select(Opportunity).where(
                 Opportunity.active == True,  # noqa: E712
-                (Opportunity.deadline.is_(None)) | (Opportunity.deadline >= datetime.utcnow()),
+                (Opportunity.deadline.is_(None)) | (Opportunity.deadline >= clock.local_wall()),
             ).order_by(Opportunity.deadline.asc().nullslast(), Opportunity.id.desc())
         )).all())
         rows.sort(key=lambda o: (0 if o.id in matched_ids else 1, -int(matched_ids.get(o.id, 0)), o.deadline or datetime.max))
@@ -87,8 +88,12 @@ async def opportunity_preference_toggle(call: CallbackQuery, db: Database) -> No
         b.adjust(2, 2, 2, 2, 1, 1)
         try:
             await call.message.edit_reply_markup(reply_markup=b.as_markup())
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger("amp.participant_opportunities").debug(
+                "Не вдалося оновити кнопки інтересів",
+                exc_info=exc,
+                extra=log_extra("TG_OPP_PREF_MARKUP_EDIT_FAILED", tg_id=call.from_user.id),
+            )
     await call.answer("Збережено")
 
 
@@ -107,7 +112,7 @@ async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, call.from_user.id)
         item = await session.get(Opportunity, opportunity_id)
-        if not user or not item or not item.active or (item.deadline and item.deadline < datetime.utcnow()):
+        if not user or not item or not item.active or (item.deadline and clock.local_wall_to_utc(item.deadline) < clock.now_utc()):
             await call.answer("Можливість уже неактуальна", show_alert=True)
             return
         await record_content_view(session, "opportunity", item.id, user=user)
@@ -161,7 +166,7 @@ async def opportunity_interest(call: CallbackQuery, db: Database) -> None:
             await call.answer("Можливість недоступна", show_alert=True); return
         row = await session.scalar(select(OpportunityInterest).where(OpportunityInterest.opportunity_id == item.id, OpportunityInterest.user_id == user.id))
         if row:
-            row.status = "interested"; row.updated_at = datetime.utcnow()
+            row.status = "interested"; row.updated_at = clock.storage_utc()
         else:
             session.add(OpportunityInterest(opportunity_id=item.id, user_id=user.id, status="interested"))
         await session.commit()
@@ -178,7 +183,7 @@ async def opportunity_uninterest(call: CallbackQuery, db: Database) -> None:
             await call.answer(); return
         row = await session.scalar(select(OpportunityInterest).where(OpportunityInterest.opportunity_id == opportunity_id, OpportunityInterest.user_id == user.id))
         if row:
-            row.status = "not_interested"; row.updated_at = datetime.utcnow(); await session.commit()
+            row.status = "not_interested"; row.updated_at = clock.storage_utc(); await session.commit()
     await call.message.answer("Готово. Позначку інтересу прибрано.")
     await call.answer()
 
@@ -217,8 +222,12 @@ async def participant_goals(message: Message, db: Database) -> None:
                     try:
                         await message.answer_photo(photo,caption=text)
                         continue
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logging.getLogger("amp.participant_opportunities").warning(
+                            "Не вдалося надіслати фото можливості; fallback на текст",
+                            exc_info=exc,
+                            extra=log_extra("TG_OPPORTUNITY_PHOTO_SEND_FAILED", tg_id=message.from_user.id, opportunity_id=g.id),
+                        )
             await message.answer(text)
 
 

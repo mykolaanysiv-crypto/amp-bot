@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .participant_common import *  # noqa: F401,F403
 
 @router.message(F.text.in_({"💡 Нова ідея", "💡 Запропонувати ідею"}))
@@ -47,8 +48,12 @@ async def idea_category(call: CallbackQuery, state: FSMContext) -> None:
     selected.button(text=f"✅ {labels.get(value, value)}", callback_data="noop")
     try:
         await call.message.edit_reply_markup(reply_markup=selected.as_markup())
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.getLogger("amp.participant_requests").debug(
+            "Не вдалося зафіксувати візуальний стан вибору категорії",
+            exc_info=exc,
+            extra=log_extra("TG_IDEA_CATEGORY_MARKUP_EDIT_FAILED", tg_id=call.from_user.id, category=value),
+        )
     await state.set_state(IdeaState.problem)
     await call.message.answer(f"✅ Обраний напрям: <b>{labels.get(value, value)}</b>\n\n3/6. Яку <b>проблему або потребу</b> має вирішити ця ідея?")
     await call.answer("Вибір збережено")
@@ -100,7 +105,7 @@ async def idea_resources(message: Message, state: FSMContext, db: Database) -> N
             expected_result=data.get("expected_result", ""),
             resources=(message.text or "").strip(),
             status="new",
-            updated_at=datetime.utcnow(),
+            updated_at=clock.storage_utc(),
         ))
         await session.commit()
     await state.clear()
@@ -188,7 +193,7 @@ async def _create_request_case(message_or_call, state: FSMContext, db: Database,
             priority=priority,
             status="new",
             image_path=image_path,
-            updated_at=datetime.utcnow(),
+            updated_at=clock.storage_utc(),
         )
         session.add(case)
         await session.flush()
@@ -275,7 +280,7 @@ async def request_view(call: CallbackQuery, db: Database) -> None:
         )).all())[::-1]
         number = case.case_number or f"AMP-{case.created_at.year}-{case.id:04d}"
         deadline = case.response_deadline.strftime("%d.%m.%Y %H:%M") if case.response_deadline else "не встановлено"
-        case.participant_last_viewed_at = datetime.utcnow()
+        case.participant_last_viewed_at = clock.storage_utc()
         await session.commit()
         parts = [
             f"🆘 <b>{number}</b>",
@@ -330,7 +335,7 @@ async def request_reply_photo(message: Message, state: FSMContext, db: Database,
             await state.clear(); return
         body = (message.caption or "Фото від учасника").strip()
         session.add(RequestMessage(case_id=case.id, sender_type="participant", sender_user_id=user.id, body=body, image_path=image_path))
-        case.updated_at = datetime.utcnow()
+        case.updated_at = clock.storage_utc()
         await session.commit()
     await state.clear()
     await message.answer("✅ Фото додано до переписки звернення.")
@@ -350,7 +355,7 @@ async def request_reply_text(message: Message, state: FSMContext, db: Database) 
         if not user or not case or case.user_id != user.id:
             await state.clear(); return
         session.add(RequestMessage(case_id=case.id, sender_type="participant", sender_user_id=user.id, body=body))
-        case.updated_at = datetime.utcnow()
+        case.updated_at = clock.storage_utc()
         await session.commit()
     await state.clear()
     await message.answer("✅ Повідомлення додано до звернення.")

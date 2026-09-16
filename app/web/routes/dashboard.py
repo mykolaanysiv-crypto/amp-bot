@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.settlements import ensure_settlement_directory, settlement_quality_report
 from app.registration_ux import registration_funnel_counts
 from app.runtime_config import get_runtime_int
-from app.time_utils import event_local_now
 from app.web.app import (
     _refresh_lifecycle, _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -38,8 +39,8 @@ async def dashboard(request: Request):
         )).all()
         recent = (await session.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(4))).all() if is_superadmin(request) else []
 
-        event_now = event_local_now()
-        utc_now = datetime.utcnow()
+        event_now = clock.local_wall()
+        utc_now = clock.storage_utc()
         day_start = event_now.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         upcoming = (await session.scalars(

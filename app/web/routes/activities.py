@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.content_views import content_view_stats
@@ -28,7 +30,7 @@ async def activities_page(request: Request, status: str = "attention", q: str = 
         if status == "attention": stmt = stmt.where(ActivityApplication.status.in_(["activity_requested", "activity_submitted"]))
         elif status in ACTIVITY_APPLICATION_STATUSES: stmt = stmt.where(ActivityApplication.status == status)
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: stmt = stmt.where(ActivityApplication.requested_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt = stmt.where(ActivityApplication.requested_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         order_map={"oldest":ActivityApplication.requested_at.asc(),"name":User.full_name.asc(),"newest":ActivityApplication.requested_at.desc()}
         rows = (await session.execute(stmt.order_by(order_map.get(sort, ActivityApplication.requested_at.desc())).limit(400))).all()
         counts = {st: int(await session.scalar(select(func.count(ActivityApplication.id)).where(ActivityApplication.status == st)) or 0) for st in ACTIVITY_APPLICATION_STATUSES}
@@ -107,7 +109,7 @@ async def activity_application_action(request: Request, application_id: int, act
         actor_label = request.session.get("admin_name", "web")
         action_code = ""
         if action == "approve" and app_row.status == "activity_requested":
-            app_row.status = "activity_approved"; app_row.approved_at = datetime.utcnow()
+            app_row.status = "activity_approved"; app_row.approved_at = clock.storage_utc()
             action_code = "web_activity_approve"
             notify_text = f"✅ Заявку на активність <b>{item.title}</b> погоджено. Можна виконувати. Після завершення передайте результат через «⚡ Активності → Мої заявки»."
         elif action == "reject" and app_row.status == "activity_requested":

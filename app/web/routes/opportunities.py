@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_opportunity
@@ -24,7 +26,7 @@ async def opportunities_page(request: Request, q: str = "", status: str = "", pe
         if type: stmt = stmt.where(Opportunity.kind == type)
         cutoff_map = {"7d": 7, "30d": 30, "90d": 90}
         if period in cutoff_map:
-            stmt = stmt.where(Opportunity.created_at >= datetime.utcnow() - timedelta(days=cutoff_map[period]))
+            stmt = stmt.where(Opportunity.created_at >= clock.storage_utc() - timedelta(days=cutoff_map[period]))
         order_map = {"newest": Opportunity.created_at.desc(), "oldest": Opportunity.created_at.asc(), "title": Opportunity.title.asc(), "deadline": Opportunity.deadline.asc().nullslast()}
         items = list((await session.scalars(stmt.order_by(order_map.get(sort, Opportunity.deadline.asc().nullslast())))).all())
         counts = dict((await session.execute(select(OpportunityInterest.opportunity_id, func.count(OpportunityInterest.id)).where(OpportunityInterest.status == "interested").group_by(OpportunityInterest.opportunity_id))).all())
@@ -55,7 +57,7 @@ async def opportunity_create(
             title=title.strip(), kind=kind.strip() or "можливість", direction=direction.strip() or "Інше",
             format=format.strip() or "Онлайн/офлайн", age_min=oi(age_min), age_max=oi(age_max),
             deadline=dl, url=url.strip() or None, description=description.strip(), active=bool(active),
-            target_settlements=target_settlements.strip() or None, image_path=image_path, updated_at=datetime.utcnow(),
+            target_settlements=target_settlements.strip() or None, image_path=image_path, updated_at=clock.storage_utc(),
         )
         session.add(item); await session.flush()
         await log_audit(session, "web_opportunity_create", actor_label=request.session.get("admin_name", "web"), entity_type="opportunity", entity_id=item.id, details=item.title)
@@ -93,7 +95,7 @@ async def opportunity_update(request: Request, opportunity_id: int):
                 if item.image_path:
                     await delete_image(item.image_path)
                 item.image_path = new_image
-        item.active = bool(form.get("active")); item.updated_at = datetime.utcnow()
+        item.active = bool(form.get("active")); item.updated_at = clock.storage_utc()
         await log_audit(session, "web_opportunity_update", actor_label=request.session.get("admin_name", "web"), entity_type="opportunity", entity_id=item.id, details=item.title)
         # Rebuild pending matches after every eligibility-related edit.
         await session.execute(delete(OpportunityMatch).where(OpportunityMatch.opportunity_id == item.id, OpportunityMatch.notified_at.is_(None)))

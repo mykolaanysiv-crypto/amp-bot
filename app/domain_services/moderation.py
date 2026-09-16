@@ -1,9 +1,10 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .audit import log_audit
 
 async def process_expired_bans(session: AsyncSession, now: datetime | None = None) -> int:
     """Automatically reactivate users whose temporary ban has expired."""
-    now = now or datetime.utcnow()
+    now = now or clock.storage_utc()
     users = (await session.scalars(
         select(User).where(
             User.status == UserStatus.BLOCKED.value,

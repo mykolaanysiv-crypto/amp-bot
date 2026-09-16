@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..time_utils import clock
+
 from contextlib import asynccontextmanager
 import asyncio
 import logging
@@ -27,7 +29,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
 
 from ..config import get_settings
-from ..observability import RequestContextMiddleware
+from ..observability import RequestContextMiddleware, log_extra
 from ..db import Database
 from ..gamification import AUTOMATIC_XP_GUIDE, get_level, normalize_event_xp, normalize_manual_xp, normalize_quest_xp, normalize_task_xp
 from ..models import (
@@ -107,8 +109,11 @@ async def _runtime_health_monitor_loop(bot: Bot) -> None:
             )
         except asyncio.CancelledError:
             raise
-        except Exception:
-            logging.getLogger("amp.runtime_health").exception("Помилка runtime health monitor")
+        except Exception as exc:
+            logging.getLogger("amp.runtime_health").exception(
+                "Помилка runtime health monitor",
+                extra=log_extra("RUNTIME_HEALTH_MONITOR_FAILED", exception_type=type(exc).__name__),
+            )
         await asyncio.sleep(60)
 
 
@@ -573,8 +578,11 @@ async def notify_telegram(
                 callback_data=callback_data,
             )
             await session.commit()
-    except Exception:
-        logging.getLogger("amp.web_notifications").exception("Не вдалося поставити Telegram-повідомлення в чергу")
+    except Exception as exc:
+        logging.getLogger("amp.web_notifications").exception(
+            "Не вдалося поставити Telegram-повідомлення в чергу",
+            extra=log_extra("WEB_NOTIFICATION_QUEUE_FAILED", exception_type=type(exc).__name__),
+        )
 
 
 
@@ -663,7 +671,7 @@ async def _retire_legacy_version_broadcasts() -> None:
             )).all())
             if not ids:
                 return
-            now = datetime.utcnow()
+            now = clock.storage_utc()
             await session.execute(
                 update(BroadcastCampaign)
                 .where(BroadcastCampaign.id.in_(ids))
@@ -689,8 +697,11 @@ async def _retire_legacy_version_broadcasts() -> None:
                 details=f"Зупинено незавершених legacy version campaigns: {len(ids)}.",
             )
             await session.commit()
-    except Exception:
-        logging.getLogger(__name__).exception("Не вдалося завершити legacy version campaigns")
+    except Exception as exc:
+        logging.getLogger(__name__).exception(
+            "Не вдалося завершити legacy version campaigns",
+            extra=log_extra("LEGACY_VERSION_CAMPAIGN_RETIRE_FAILED", exception_type=type(exc).__name__),
+        )
 
 
 async def _announce_version_update() -> None:
@@ -705,8 +716,11 @@ async def _announce_version_update() -> None:
             if not acquired:
                 return
             await _announce_version_update_locked()
-    except Exception:
-        logging.getLogger(__name__).exception("Не вдалося підготувати одноразове повідомлення про версію")
+    except Exception as exc:
+        logging.getLogger(__name__).exception(
+            "Не вдалося підготувати одноразове повідомлення про версію",
+            extra=log_extra("VERSION_ANNOUNCEMENT_PREPARE_FAILED", version=APP_VERSION, exception_type=type(exc).__name__),
+        )
 
 
 async def _announce_version_update_locked() -> None:
@@ -753,7 +767,7 @@ async def _announce_version_update_locked() -> None:
             if row is not None:
                 queued += 1
 
-        now = datetime.utcnow()
+        now = clock.storage_utc()
         if state:
             state.value = APP_VERSION
             state.updated_at = now
@@ -781,10 +795,13 @@ async def _recover_pending_broadcasts() -> None:
             )).all()
         for campaign_id in ids:
             _schedule_broadcast(int(campaign_id))
-    except Exception:
+    except Exception as exc:
         # A fresh database may be in the middle of its first startup. The next
         # manually created campaign still works; do not block the whole app.
-        pass
+        logging.getLogger("amp.broadcast_resume").warning(
+            "Не вдалося відновити queued/sending broadcast campaigns",
+            extra=log_extra("BROADCAST_RESUME_FAILED", exception_type=type(exc).__name__),
+        )
 
 
 async def _broadcast_retry_scheduler() -> None:
@@ -794,7 +811,7 @@ async def _broadcast_retry_scheduler() -> None:
         try:
             async with job_lock(db, "broadcast_retry_scan", ttl_seconds=45) as acquired:
                 if acquired:
-                    now = datetime.utcnow()
+                    now = clock.storage_utc()
                     async with db.session_factory() as session:
                         campaign_ids = list((await session.scalars(
                             select(BroadcastRecipient.campaign_id)
@@ -812,7 +829,10 @@ async def _broadcast_retry_scheduler() -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            log.exception("Помилка retry-сканера розсилок: %s", exc)
+            log.exception(
+                "Помилка retry-сканера розсилок: %s", exc,
+                extra=log_extra("BROADCAST_RETRY_SCAN_FAILED", exception_type=type(exc).__name__),
+            )
         await asyncio.sleep(60)
 
 
@@ -832,7 +852,7 @@ async def _deliver_broadcast_campaign(campaign_id: int) -> None:
             if not campaign or campaign.status in {"completed", "completed_with_errors", "failed"}:
                 return
             campaign.status = "sending"
-            campaign.started_at = campaign.started_at or datetime.utcnow()
+            campaign.started_at = campaign.started_at or clock.storage_utc()
             campaign.completed_at = None
             rows = (await session.execute(
                 select(BroadcastRecipient, User)
@@ -945,7 +965,7 @@ async def _send_web_2fa_code(account: WebStaffAccount, code: str) -> None:
 
 async def _establish_web_session(request: Request, db_session, account: WebStaffAccount) -> None:
     raw_token = generate_session_token()
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     ua = str(request.headers.get("user-agent") or "")[:500]
     ip = client_ip(list(request.scope.get("headers") or []), request.client.host if request.client else None)
     db_session.add(WebAdminSession(
@@ -990,7 +1010,7 @@ async def login_page(request: Request):
 @app.post("/admin/login", response_class=HTMLResponse)
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
     username = username.strip()
-    now = datetime.utcnow()
+    now = clock.storage_utc()
     async with db.session_factory() as session:
         account = await session.scalar(select(WebStaffAccount).where(WebStaffAccount.username == username))
         if not account or not account.active:
@@ -1075,7 +1095,7 @@ async def login_2fa(request: Request, code: str = Form(...)):
         expires = datetime.fromisoformat(expires_raw)
     except ValueError:
         expires = datetime.min
-    if datetime.utcnow() > expires:
+    if clock.storage_utc() > expires:
         csrf = _csrf_token(request)
         request.session.clear(); request.session["csrf_token"] = csrf
         return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error="Код двоетапного входу застарів. Увійдіть ще раз."), status_code=401)
@@ -1109,7 +1129,7 @@ async def logout(request: Request):
         async with db.session_factory() as session:
             row = await session.scalar(select(WebAdminSession).where(WebAdminSession.token_hash == token_hash(raw_token)))
             if row and row.revoked_at is None:
-                row.revoked_at = datetime.utcnow()
+                row.revoked_at = clock.storage_utc()
             await log_audit(session, "web_logout", actor_label=actor, entity_type="web_staff_account", entity_id=account_id, details="Сесію завершено користувачем")
             await session.commit()
     request.session.clear()
@@ -1182,8 +1202,8 @@ async def account_password_change(
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         account.password_hash = hash_password(new_password)
         account.must_change_password = False
-        account.password_changed_at = datetime.utcnow()
-        account.updated_at = datetime.utcnow()
+        account.password_changed_at = clock.storage_utc()
+        account.updated_at = clock.storage_utc()
         # Password change invalidates all other devices, while the current one stays active.
         current_hash = token_hash(raw_token)
         other_sessions = (await session.scalars(select(WebAdminSession).where(
@@ -1192,7 +1212,7 @@ async def account_password_change(
             WebAdminSession.token_hash != current_hash,
         ))).all()
         for row in other_sessions:
-            row.revoked_at = datetime.utcnow()
+            row.revoked_at = clock.storage_utc()
         await log_audit(session, "web_password_changed", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=f"Пароль змінено; завершено інших сесій: {len(other_sessions)}")
         await session.commit()
     context = await _account_security_context(request, success="Пароль успішно змінено. Інші активні сесії завершено.")
@@ -1222,7 +1242,7 @@ async def account_2fa_update(request: Request, enabled: str = Form(""), telegram
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         account.two_factor_enabled = want_enabled
         account.two_factor_tg_id = tg_id if want_enabled else None
-        account.updated_at = datetime.utcnow()
+        account.updated_at = clock.storage_utc()
         await log_audit(session, "web_2fa_settings", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=f"enabled={account.two_factor_enabled}; telegram_id={'set' if account.two_factor_tg_id else 'none'}")
         await session.commit()
     context = await _account_security_context(request, success="Налаштування двоетапного входу збережено.")
@@ -1238,7 +1258,7 @@ async def account_session_revoke(request: Request, session_id: int):
         row = await session.get(WebAdminSession, session_id)
         if not row or row.account_id != account_id:
             raise HTTPException(status_code=404, detail="Сесію не знайдено")
-        row.revoked_at = datetime.utcnow()
+        row.revoked_at = clock.storage_utc()
         await log_audit(session, "web_session_revoked", actor_label=request.session.get("admin_name", "web"), entity_type="web_admin_session", entity_id=row.id, details="Сесію завершено з профілю")
         await session.commit()
         is_current = row.token_hash == token_hash(raw_token)
@@ -1256,7 +1276,7 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
             active_counts[account.id] = int(await session.scalar(select(func.count(WebAdminSession.id)).where(
                 WebAdminSession.account_id == account.id,
                 WebAdminSession.revoked_at.is_(None),
-                or_(WebAdminSession.expires_at.is_(None), WebAdminSession.expires_at > datetime.utcnow()),
+                or_(WebAdminSession.expires_at.is_(None), WebAdminSession.expires_at > clock.storage_utc()),
             )) or 0)
         telegram_staff = list((await session.scalars(
             select(User).where(User.role.in_([UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value]))
@@ -1265,7 +1285,7 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
     return ctx(
         request, staff_accounts=accounts, telegram_staff=telegram_staff, active_session_counts=active_counts,
         permission_groups=PERMISSION_GROUPS, effective_permissions=effective_permissions,
-        temp_password=temp_password, temp_username=temp_username, success=success, now=datetime.utcnow(),
+        temp_password=temp_password, temp_username=temp_username, success=success, now=clock.storage_utc(),
     )
 
 
@@ -1294,7 +1314,7 @@ async def security_account_permissions(request: Request, account_id: int):
         else:
             account.permissions_json = dump_permissions(selected)
             note = f"права={account.permissions_json}"
-        account.updated_at = datetime.utcnow()
+        account.updated_at = clock.storage_utc()
         await log_audit(session, "web_permissions_update", actor_label=request.session.get("admin_name", "web"), entity_type="web_staff_account", entity_id=account.id, details=note)
         await session.commit()
     return RedirectResponse("/admin/security", 303)
@@ -1336,11 +1356,11 @@ async def security_reset_password(request: Request, account_id: int):
         account.must_change_password = True
         account.failed_attempts = 0
         account.locked_until = None
-        account.password_changed_at = datetime.utcnow()
-        account.updated_at = datetime.utcnow()
+        account.password_changed_at = clock.storage_utc()
+        account.updated_at = clock.storage_utc()
         rows = (await session.scalars(select(WebAdminSession).where(WebAdminSession.account_id == account.id, WebAdminSession.revoked_at.is_(None)))).all()
         for row in rows:
-            row.revoked_at = datetime.utcnow()
+            row.revoked_at = clock.storage_utc()
         await log_audit(session, "web_password_reset", actor_label=request.session.get("admin_name", "web"), entity_type="web_staff_account", entity_id=account.id, details=f"Створено тимчасовий пароль; завершено сесій: {len(rows)}")
         await session.commit()
         username = account.username
@@ -1358,7 +1378,7 @@ async def security_revoke_all_sessions(request: Request, account_id: int):
             raise HTTPException(status_code=404, detail="Акаунт не знайдено")
         rows = (await session.scalars(select(WebAdminSession).where(WebAdminSession.account_id == account.id, WebAdminSession.revoked_at.is_(None)))).all()
         for row in rows:
-            row.revoked_at = datetime.utcnow()
+            row.revoked_at = clock.storage_utc()
         await log_audit(session, "web_sessions_revoke_all", actor_label=request.session.get("admin_name", "web"), entity_type="web_staff_account", entity_id=account.id, details=f"Завершено сесій: {len(rows)}")
         await session.commit()
     if account_id == current_account_id:

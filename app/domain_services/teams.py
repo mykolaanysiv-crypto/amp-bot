@@ -1,3 +1,4 @@
+from ..time_utils import clock
 from .common import *  # noqa: F401,F403
 from .audit import log_audit
 from .gamification import add_xp
@@ -67,8 +68,8 @@ async def complete_team_quest(session: AsyncSession, quest: Quest, admin_user: U
         if part:
             part.status = "approved"
             if not part.completed_at:
-                part.completed_at = datetime.utcnow()
-            part.approved_at = datetime.utcnow()
+                part.completed_at = clock.storage_utc()
+            part.approved_at = clock.storage_utc()
         count += 1
     quest.completed = True
     quest.active = False

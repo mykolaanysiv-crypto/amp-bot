@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.time_utils import clock
+
 from fastapi import APIRouter
 from app.web.app import *  # noqa: F401,F403 - transitional shared web dependencies
 from app.content_views import content_view_stat, content_view_stats
@@ -21,7 +23,7 @@ async def quests(request: Request, q: str = "", status: str = "", period: str = 
         if type: stmt = stmt.where(Quest.quest_type == type)
         if review == "completed": stmt = stmt.where(Quest.id.in_(select(QuestParticipation.quest_id).where(QuestParticipation.status == "completed")))
         cutoff_map={"7d":7,"30d":30,"90d":90}
-        if period in cutoff_map: stmt = stmt.where(Quest.starts_at >= datetime.utcnow()-timedelta(days=cutoff_map[period]))
+        if period in cutoff_map: stmt = stmt.where(Quest.starts_at >= clock.storage_utc()-timedelta(days=cutoff_map[period]))
         order_map={"oldest":Quest.starts_at.asc(),"title":Quest.title.asc(),"deadline":Quest.ends_at.asc().nullslast(),"newest":Quest.starts_at.desc()}
         rows = (await session.scalars(stmt.order_by(order_map.get(sort, Quest.starts_at.desc())).limit(250))).all()
         team = await seed_default_team(session)
@@ -30,7 +32,7 @@ async def quests(request: Request, q: str = "", status: str = "", period: str = 
             participant_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id)) or 0)
             completed_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id, QuestParticipation.status == "approved")) or 0)
         view_stats = await content_view_stats(session, "quest", [row.id for row in rows])
-        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,participant_counts=participant_counts,completed_counts=completed_counts,view_stats=view_stats,today=date.today(),q=q,status=status,period=period,type=type,sort=sort,review=review))
+        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,participant_counts=participant_counts,completed_counts=completed_counts,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort,review=review))
 
 
 @router.get("/admin/quests/{quest_id}", response_class=HTMLResponse)
@@ -50,7 +52,7 @@ async def quest_detail_web(request: Request, quest_id: int):
         view_stat = await content_view_stat(session, "quest", q.id)
         return templates.TemplateResponse(
             request=request, name="quest_detail.html",
-            context=ctx(request, q=q, participants=participants, view_stat=view_stat, today=date.today()),
+            context=ctx(request, q=q, participants=participants, view_stat=view_stat, today=clock.today_local()),
         )
 
 
@@ -148,10 +150,10 @@ async def quest_update(
             q.team_id = team.id if q.quest_type == "team" else None
             q.target_value = max(1, target_value)
             q.ends_at = ends_at
-            now = datetime.utcnow()
+            now_utc = clock.now_utc()
             if q.cancelled_at:
                 q.active = False
-            elif q.ends_at and q.ends_at < now:
+            elif q.ends_at and clock.local_wall_to_utc(q.ends_at) < now_utc:
                 q.active = False
                 q.status = "completed"
             else:
@@ -193,7 +195,7 @@ async def quest_postpone(request: Request, quest_id: int, reason: str = Form(...
     reason = reason.strip()
     if not reason: raise HTTPException(status_code=400, detail="Вкажіть причину перенесення квесту.")
     new_at = compose_optional_datetime_fields(deadline_day, deadline_month, deadline_year, deadline_time, entity_label="нового дедлайну квесту")
-    if not new_at or new_at <= datetime.utcnow(): raise HTTPException(status_code=400, detail="Новий дедлайн має бути в майбутньому.")
+    if not new_at or new_at <= clock.storage_utc(): raise HTTPException(status_code=400, detail="Новий дедлайн має бути в майбутньому.")
     campaign_id=None
     async with db.session_factory() as session:
         quest=await session.get(Quest,quest_id)
@@ -203,7 +205,7 @@ async def quest_postpone(request: Request, quest_id: int, reason: str = Form(...
         if quest.cancelled_at or quest.status=="cancelled": raise HTTPException(status_code=409,detail="Скасований квест не можна переносити.")
         if quest.status == "completed": raise HTTPException(status_code=409, detail="Завершений квест не можна переносити. Вкажіть новий дедлайн через редагування лише до завершення.")
         users=list((await session.scalars(select(User).join(QuestParticipation,QuestParticipation.user_id==User.id).where(QuestParticipation.quest_id==quest.id,QuestParticipation.status!="cancelled").distinct())).all())
-        quest.ends_at=new_at; quest.active=True; quest.status="postponed"; quest.postponed_reason=reason; quest.postponed_at=datetime.utcnow(); quest.completed=False
+        quest.ends_at=new_at; quest.active=True; quest.status="postponed"; quest.postponed_reason=reason; quest.postponed_at=clock.storage_utc(); quest.completed=False
         campaign_id=await _queue_system_broadcast(session,users,_postponed_notice_text("Квест",quest.title,new_at,reason),author_label=request.session.get("admin_name","web"),audience_label=f"Учасники перенесеного квесту: {quest.title}",template_code="quest_postponed")
         await log_audit(session,"web_quest_postpone",actor_label=request.session.get("admin_name","web"),entity_type="quest",entity_id=quest.id,details=f"Новий дедлайн {new_at}; причина: {reason}; повідомлень: {len(users)}")
         await session.commit()
@@ -235,7 +237,7 @@ async def quest_cancel(request: Request, quest_id: int, reason: str = Form(...))
         quest.active = False
         quest.status = "cancelled"
         quest.cancellation_reason = reason
-        quest.cancelled_at = datetime.utcnow()
+        quest.cancelled_at = clock.storage_utc()
         campaign_id = await _queue_system_broadcast(
             session, users, _entity_notice_text("Квест", quest.title, reason),
             author_label=request.session.get("admin_name", "web"),

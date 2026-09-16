@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .time_utils import clock
+
 from datetime import date, datetime, timedelta
 from typing import Iterable
 
@@ -61,7 +63,7 @@ AUDIENCE_LABELS = {
 
 
 def _age_on(birth_date: date, today: date | None = None) -> int:
-    today = today or date.today()
+    today = today or clock.today_local()
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 
@@ -139,7 +141,7 @@ async def resolve_broadcast_audience(
 
     if audience_type == "inactive":
         days = max(1, int(inactive_days or 30))
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = clock.storage_utc() - timedelta(days=days)
         return [u for u in users if (u.last_activity_at or u.created_at) <= cutoff]
 
     return []

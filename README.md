@@ -1,8 +1,25 @@
-# AMP XP / «АМПасадори» v1.12.1.7 — 👁 Content Views + Event UX
+# AMP XP / «АМПасадори» v1.12.2 — Error & Time Hardening
 
-v1.12.1.7 — UX/data hotfix поверх v1.12.1.6: стабілізує відкриття карток у Telegram, додає participant-view metrics для шести типів контенту та вирівнює Event Operations Cockpit. Схема БД тепер 54 таблиці через additive `content_views` (Alembic `20260915_0002`).
+v1.12.2 — reliability/hardening реліз поверх v1.12.1.7. Основний фокус: один часовий boundary через `Clock`, timezone-aware UTC для бізнес-рішень, DST-safe local-calendar періоди та machine-searchable error logs без silent broad exceptions.
 
-## v1.12.1.7 — Event Open + Content Views + Cockpit UX
+## Що нового у v1.12.2
+- Додано canonical `Clock` у `app/time_utils.py`: aware UTC, Europe/Kyiv local time, legacy DB adapters, local-period → UTC boundaries і DST-safe scheduler waits.
+- Прямі `datetime.utcnow`, `datetime.now` і `date.today` прибрано з application/scripts коду поза `Clock`; SQLAlchemy defaults також проходять через `clock.storage_utc`.
+- Production-БД не переписується: legacy `timestamp without time zone` лишається сумісним через явний persistence boundary; `Event.starts_at` лишається local-wall полем і конвертується в aware UTC для бізнес-рішень.
+- Прибрано silent `except Exception: pass`; production preflight та regression test блокують їх повернення.
+- Structured JSON logs підтримують стабільні `error_code` + `context`, bounded JSON-safe context і redaction token/secret/password-полів.
+- Critical heartbeat/scheduler/broadcast/runtime/version/notification/backup error paths отримали machine-searchable error codes.
+- Check-in window працює на aware UTC; scheduler waits коректно проходять spring/fall DST; report calendar boundaries конвертуються з Europe/Kyiv у UTC один раз на boundary.
+- Reports, registration-day counters і season backfill більше не змішують local midnight з naive UTC storage.
+- Нові tests покривають winter/summer offsets, autumn fold, spring DST scheduler wait, local midnight/month boundaries, check-in window і structured logs.
+- Схема БД не змінюється від v1.12.1.7: **54 таблиці**, Alembic head — `20260915_0002`.
+
+Деталі: `SERVER_UPDATE_V1122.md`. Команди: `COMMANDS_V1122.txt`. QA: `TEST_REPORT_V1122.txt`.
+
+---
+
+## Попередній реліз: v1.12.1.7 — Event Open + Content Views + Cockpit UX
+
 - Картка події не блокується помилкою lifecycle-refresh; HTML екранується, довгі photo captions безпечно розділяються.
 - Перегляди рахуються для подій, квестів, волонтерських задач, можливостей, активностей і опитувань.
 - Web показує загальні перегляди; detail-екрани ключових сутностей — також унікальних глядачів.
