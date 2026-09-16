@@ -65,7 +65,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
             if target:
                 total = await xp_total(session, target.id)
                 sxp = await season_xp(session, target.id)
-                from ..gamification import get_level
+                from ...gamification import get_level
                 level = get_level(total)[0]
                 await message.answer(
                     f"🚀 <b>АМПасадор • публічна картка</b>\n\n"

@@ -56,6 +56,42 @@ def main() -> None:
             + "; ".join(bad_relative_imports)
         )
 
+    # v1.13.0.2 startup-import guard: every explicit relative module import
+    # inside app/ must resolve to a real Python module/package.  This catches
+    # package-depth mistakes introduced while splitting a monolithic module,
+    # e.g. ``app.handlers.start_flow`` accidentally importing ``..time_utils``
+    # (which resolves to the nonexistent ``app.handlers.time_utils``) instead
+    # of ``...time_utils``.  compileall cannot catch this class of runtime error.
+    unresolved_relative_imports: list[str] = []
+    app_dir = root / "app"
+    for path in app_dir.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        rel_module = path.relative_to(root).with_suffix("")
+        module_parts = list(rel_module.parts)
+        package_parts = module_parts[:-1]
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or not node.level or not node.module:
+                continue
+            up = node.level - 1
+            if up > len(package_parts):
+                unresolved_relative_imports.append(
+                    f"{path.relative_to(root)}:{node.lineno}: relative import escapes package root"
+                )
+                continue
+            target_parts = package_parts[: len(package_parts) - up] + node.module.split(".")
+            module_file = root.joinpath(*target_parts).with_suffix(".py")
+            package_init = root.joinpath(*target_parts) / "__init__.py"
+            if not module_file.exists() and not package_init.exists():
+                unresolved_relative_imports.append(
+                    f"{path.relative_to(root)}:{node.lineno}: from {'.' * node.level}{node.module} import ... -> "
+                    f"{'.'.join(target_parts)}"
+                )
+    if unresolved_relative_imports:
+        raise SystemExit(
+            "Startup import preflight failed: unresolved relative module import(s): "
+            + "; ".join(unresolved_relative_imports)
+        )
+
 
     # v1.12.2 hardening gates: one Clock boundary, no deprecated utcnow calls,
     # no silent broad-exception swallowing, and structured error context.
@@ -154,6 +190,21 @@ def main() -> None:
                 wildcard_imports.append(f"{path.relative_to(root)}:{node.lineno}")
     if wildcard_imports:
         raise SystemExit("Architecture preflight failed: wildcard imports remain at " + ", ".join(wildcard_imports))
+
+    # Release asset-cache guard: historical regression tests key static assets
+    # to VERSION.txt.  A patch release must update the three public/admin login
+    # templates together or browsers can keep stale CSS/logo assets.
+    cache_token = f"?v={APP_VERSION}"
+    for template_rel in (
+        "app/web/templates/base.html",
+        "app/web/templates/login.html",
+        "app/web/templates/login_2fa.html",
+    ):
+        template_source = (root / template_rel).read_text(encoding="utf-8")
+        if cache_token not in template_source:
+            raise SystemExit(
+                f"Release asset preflight failed: {template_rel} does not use current cache token {cache_token}"
+            )
 
     # Schema continuity: the architecture release must not silently alter the
     # v1.12.1.7/v1.12.2 production schema or Alembic head.

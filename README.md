@@ -1,3 +1,17 @@
+# AMP XP / «АМПасадори» v1.13.0.2 — Startup Import Hotfix
+
+v1.13.0.2 — patch-реліз поверх v1.13.0.1. Виправлено release/startup crash після Architecture Completion: модулі `app.handlers.start_flow` використовували неправильну глибину relative imports і намагалися імпортувати неіснуючі `app.handlers.time_utils`, `app.handlers.config` тощо. Додано generic preflight guard для всіх explicit relative module imports у `app/` та синхронізовано static asset cache-buster з поточною версією.
+
+## Що виправлено у v1.13.0.2
+
+- `start_flow/common.py`: root-app imports переведено з `..module` на `...module`;
+- `start_flow/entry.py`: `gamification` також імпортується з кореня `app`;
+- `production_preflight`: unresolved relative imports тепер блокують release до GitHub/Heroku startup;
+- `base.html`, `login.html`, `login_2fa.html`: cache token оновлено до v1.13.0.2;
+- schema не змінюється, Alembic head залишається `20260915_0002`.
+
+---
+
 # AMP XP / «АМПасадори» v1.13.0.1 — Architecture CI Compatibility Hotfix
 
 v1.13.0.1 — малий patch-реліз поверх Architecture Completion. Він не повертає старі моноліти і не змінює бізнес-логіку: оновлено regression suite, щоб historical safety/UX checks читали canonical source modules після split-архітектури v1.13.0.

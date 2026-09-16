@@ -1,0 +1,48 @@
+AMP XP / «АМПасадори» v1.13.0.2 — QA REPORT
+Дата: 16.09.2026
+Реліз: Startup Import Hotfix
+
+1. Причина
+GitHub `python -m scripts.heroku_release` для v1.13.0.1 впав під час startup smoke на імпорті `app.main`:
+ModuleNotFoundError: No module named 'app.handlers.time_utils'.
+
+Коренева причина: після split `app.handlers.start` -> package `app.handlers.start_flow` relative imports рівня `..` почали резолвитись як `app.handlers.*` замість root `app.*`.
+
+2. Виправлення
+- `app/handlers/start_flow/common.py`: root imports переведено на `...`.
+- `app/handlers/start_flow/entry.py`: `gamification` переведено на `...gamification`.
+- `scripts/production_preflight.py`: додано generic AST guard для всіх explicit relative module imports у `app/`.
+- `base.html`, `login.html`, `login_2fa.html`: asset cache token синхронізовано з 1.13.0.2.
+- Додано `tests/test_v11302_startup_import_hotfix.py`.
+
+3. Version/schema
+- VERSION.txt = 1.13.0.2
+- VERSION_CHECK.txt = 1.13.0.2
+- SQLAlchemy schema: без змін, 54 таблиці
+- нової Alembic migration немає
+- expected head = 20260915_0002
+
+4. Local checks
+- python -m compileall -q app scripts tests migrations: PASS
+- python -m scripts.production_preflight: PASS
+  output: Production preflight OK for AMP v1.13.0.2
+- v1.13.0 + v1.13.0.1 + v1.13.0.2 architecture/hotfix suite: 20/20 PASS
+- historical source-layout/static regression bundle: 115/115 PASS
+- unresolved explicit relative module imports under app/: 0
+
+5. Local environment limitation
+Authoritative `python -m scripts.heroku_release` cannot be fully executed in this sandbox because local environment does not contain project runtime dependency `aiogram`; DB integration tests also need `aiosqlite`. GitHub Actions installs requirements-dev.txt and PostgreSQL 16, therefore the authoritative acceptance criterion is a fully green CI release/startup smoke.
+
+6. Acceptance after push
+- full GitHub regression gate green;
+- `python -m scripts.heroku_release` PASS;
+- `app.main` imports successfully during startup smoke;
+- web.1 / worker.1 up;
+- Alembic current = 20260915_0002 (head);
+- health/ready = 200;
+- health/dependencies = 200 after startup grace;
+- Telegram /start and /menu smoke PASS;
+- Web login/2FA, Event Cockpit, Analytics/Reports smoke PASS.
+
+Conclusion:
+v1.13.0.2 fixes the startup import regression without rolling back Architecture Completion or changing business logic/database schema. The new generic preflight guard prevents this class of nested-package relative-import error from reaching release smoke again.

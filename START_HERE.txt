@@ -1,6 +1,6 @@
-АМП XP / «АМПасадори» v1.13.0.1
+АМП XP / «АМПасадори» v1.13.0.2
 
-Поточний production candidate: v1.13.0.1 — Architecture CI Compatibility Hotfix.
+Поточний production candidate: v1.13.0.2 — Startup Import Hotfix.
 
 Основне:
 - архітектура v1.13.0 збережена без rollback;

@@ -1,3 +1,11 @@
+# AMP XP v1.13.0.2 — Startup Import Hotfix
+
+- виправлено неправильну package depth у `app/handlers/start_flow/common.py` після split `handlers/start.py`;
+- виправлено lazy import `gamification` у `start_flow/entry.py`;
+- додано загальний AST preflight для unresolved explicit relative module imports у `app/`;
+- додано release asset-cache guard і синхронізовано `?v=1.13.0.2`;
+- business logic, 54-table schema та Alembic head `20260915_0002` без змін.
+
 # AMP XP v1.13.0.1 — Architecture CI Compatibility Hotfix
 
 ## CI / regression compatibility

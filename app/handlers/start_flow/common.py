@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..time_utils import clock
+from ...time_utils import clock
 
 from datetime import datetime, timedelta
 import logging
@@ -16,13 +16,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardRemove, WebAppInfo
 from sqlalchemy import select
 
-from ..config import Settings
-from ..observability import log_extra
-from ..db import Database
-from ..keyboards import event_detail_keyboard, main_menu, registration_phone_keyboard
-from ..models import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
-from ..profile_data import MEDIA_CONSENT_VERSION, PRIVACY_NOTICE_VERSION, VULNERABILITY_OPTIONS, dump_vulnerabilities, parse_vulnerability_numbers, privacy_notice_text, vulnerability_prompt
-from ..services import (
+from ...config import Settings
+from ...observability import log_extra
+from ...db import Database
+from ...keyboards import event_detail_keyboard, main_menu, registration_phone_keyboard
+from ...models import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
+from ...profile_data import MEDIA_CONSENT_VERSION, PRIVACY_NOTICE_VERSION, VULNERABILITY_OPTIONS, dump_vulnerabilities, parse_vulnerability_numbers, privacy_notice_text, vulnerability_prompt
+from ...services import (
     age_on,
     checkin_for_event,
     event_checkin_window,
@@ -35,11 +35,11 @@ from ..services import (
     season_xp,
     xp_total,
 )
-from ..states import AdminEventScannerState, RegistrationState, RestorationState
-from ..ui_labels import lifecycle_status_label
-from ..reliability import queue_telegram_delivery
-from ..settlements import canonicalize_settlement_text, resolve_canonical_settlement, settlement_key
-from ..registration_ux import (
+from ...states import AdminEventScannerState, RegistrationState, RestorationState
+from ...ui_labels import lifecycle_status_label
+from ...reliability import queue_telegram_delivery
+from ...settlements import canonicalize_settlement_text, resolve_canonical_settlement, settlement_key
+from ...registration_ux import (
     decrypt_draft, get_registration_journey, mark_registration_submitted,
     registration_progress, restart_registration_journey, save_registration_checkpoint,
 )
