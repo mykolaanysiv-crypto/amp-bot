@@ -65,9 +65,20 @@ async def analytics_detail(request: Request, metric_key: str):
     async with db.session_factory() as session:
         data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
     metric = data["metrics"][metric_key]
+    scope_groups = {"age", "gender", "settlement", "vulnerability", "leagues", "lifecycle", "restoration"}
+    scope_answers = {"event_outcomes", "surveys_weekly"}
+    scope_periods = {"new_participants", "retention", "activity", "visits", "avg_attendance", "badges_weekly"}
+    if metric_key in scope_groups:
+        data_scope = "Агрегована група учасників"
+    elif metric_key in scope_answers:
+        data_scope = "Агреговані відповіді / результати"
+    elif metric_key in scope_periods:
+        data_scope = "Агрегований період"
+    else:
+        data_scope = "Агрегована категорія / тип"
     return templates.TemplateResponse(
         request=request, name="analytics_detail.html",
-        context=ctx(request, analytics=data, metric=metric)
+        context=ctx(request, analytics=data, metric=metric, analytics_data_scope=data_scope)
     )
 
 

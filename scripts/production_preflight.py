@@ -207,6 +207,24 @@ def main() -> None:
             )
 
 
+    # v1.13.1 participant profile/badges/analytics UX guards.
+    participant_home_source = (root / "app" / "handlers" / "participant_home.py").read_text(encoding="utf-8")
+    gamification_source = (root / "app" / "domain_services" / "gamification.py").read_text(encoding="utf-8")
+    analytics_template = (root / "app" / "web" / "templates" / "analytics.html").read_text(encoding="utf-8")
+    analytics_detail_template = (root / "app" / "web" / "templates" / "analytics_detail.html").read_text(encoding="utf-8")
+    admin_css = (root / "app" / "web" / "static" / "admin.css").read_text(encoding="utf-8")
+    if "row.description or row.category" not in participant_home_source or "row.reason or row.category" in participant_home_source:
+        raise SystemExit("Profile XP preflight failed: XP history is not using canonical transaction.description")
+    for token in ('callback_data="badges:all"', 'callback_data="badges:mine"', "TELEGRAM_FIRE_CUSTOM_EMOJI_ID"):
+        if token not in participant_home_source:
+            raise SystemExit(f"Badge/profile UX preflight failed: missing {token}")
+    if "automatic_badge:{user.id}:{badge.id}" not in gamification_source or "Вітаємо! Ви отримали новий бейдж" not in gamification_source:
+        raise SystemExit("Badge notification preflight failed: automatic badge notification wiring missing")
+    if "analytics-chart-clickable" not in analytics_template or "Деталізація вибраного значення" not in analytics_detail_template:
+        raise SystemExit("Analytics UX preflight failed: chart drill-down UI missing")
+    if "@media (min-width:1024px) and (max-width:1365px){.admin-topbar{left:232px}}" not in admin_css:
+        raise SystemExit("Admin layout preflight failed: topbar/search laptop alignment guard missing")
+
     # v1.13.0.4 CI/localization guard. Historical source-inspection tests must
     # follow the canonical Ukrainian Notification Center label and the Smart
     # Opportunities regression must not reintroduce Python 3.13 utcnow warnings.

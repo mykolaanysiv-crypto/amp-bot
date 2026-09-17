@@ -31,6 +31,19 @@
 {% else %}<div class="analytics-detail-chart"><canvas id="detailChart"></canvas></div>{% endif %}
 </section>
 
+{% if is_superadmin %}
+<section class="card analytics-superadmin-drill" id="analyticsDrillPanel">
+  <div class="section-title"><h2>🔎 Деталізація вибраного значення</h2><span>тільки суперадміністратор</span></div>
+  <p class="muted">Натисніть на точку/стовпчик графіка або рядок таблиці. Тут показуються лише агреговані метадані без ПІБ і контактів.</p>
+  <div class="analytics-drill-grid">
+    <div><span>Вид даних</span><b id="drillScope">{{ analytics_data_scope }}</b></div>
+    <div><span>Група / категорія</span><b id="drillLabel">—</b></div>
+    <div><span>{{ metric.value_label }}</span><b id="drillValue">—</b></div>
+    <div><span>Додатково</span><b id="drillSecondary">—</b></div>
+  </div>
+</section>
+{% endif %}
+
 <section class="card analytics-table-card">
   <div class="section-title"><h2>Детальні агреговані дані</h2><span>{{ metric.rows|length }} рядків</span></div>
   <div class="analytics-table-wrap">
@@ -38,7 +51,7 @@
       <thead><tr><th>Категорія / період</th><th>{{ metric.value_label }}</th><th>Додатково</th></tr></thead>
       <tbody>
       {% for row in metric.rows %}
-        <tr><td><b>{{ row.label }}</b></td><td>{{ row.display_value if row.display_value is defined else row.value }}</td><td>{{ row.secondary or '—' }}</td></tr>
+        <tr{% if is_superadmin %} class="analytics-drill-row" tabindex="0" data-label="{{ row.label|e }}" data-value="{{ (row.display_value if row.display_value is defined else row.value)|e }}" data-secondary="{{ (row.secondary or '—')|e }}"{% endif %}><td><b>{{ row.label }}</b></td><td>{{ row.display_value if row.display_value is defined else row.value }}</td><td>{{ row.secondary or '—' }}</td></tr>
       {% else %}
         <tr><td colspan="3" class="muted">Даних поки немає.</td></tr>
       {% endfor %}
@@ -55,7 +68,19 @@ const metric={{ metric|tojson }};
 if(metric.kind!=='heatmap'){
   const palette=['#06AEBB','#6C63FF','#2FAE75','#F3A63A','#E86C8D','#5C86D9','#8C6CCF','#42A5A5','#D47B45','#6D8C75','#A0A7B4'];
   const isDoughnut=metric.kind==='doughnut';
-  new Chart(document.getElementById('detailChart'),{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:'#06AEBB',backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:'#06AEBB'}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}}}});
+  const detailChart=new Chart(document.getElementById('detailChart'),{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:'#06AEBB',backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:'#06AEBB'}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}},onClick:(event,elements)=>{if(elements.length) showDrill(elements[0].index);}}});
 }
+function setDrill(label,value,secondary){
+  const l=document.getElementById('drillLabel'); if(!l) return;
+  l.textContent=label??'—'; document.getElementById('drillValue').textContent=value??'—'; document.getElementById('drillSecondary').textContent=secondary||'—';
+}
+function showDrill(index){
+  const row=(metric.rows||[])[index];
+  if(row) setDrill(row.label, row.display_value!==undefined?row.display_value:row.value, row.secondary);
+}
+document.querySelectorAll('.analytics-drill-row').forEach((row)=>{
+  const show=()=>setDrill(row.dataset.label,row.dataset.value,row.dataset.secondary);
+  row.addEventListener('click',show); row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show();}});
+});
 </script>
 {% endblock %}

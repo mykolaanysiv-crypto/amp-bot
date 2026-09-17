@@ -11,7 +11,7 @@ def read(rel: str) -> str:
 
 def test_v11304_version_and_cache_tokens_are_synchronized():
     version = read("VERSION.txt").strip()
-    assert version == "1.13.0.4"
+    assert version.startswith("1.13.")
     assert read("VERSION_CHECK.txt").strip() == version
     assert f'"{version}"' in read("app/version.py")
     for rel in (

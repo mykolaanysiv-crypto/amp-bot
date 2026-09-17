@@ -1,3 +1,13 @@
+# AMP XP v1.13.1 — Profile, Badges & Analytics UX
+
+- Виправлено кнопку «⚡ XP» у «Мій профіль»: історія XP використовує canonical `XPTransaction.description`.
+- Автоматичні бейджі тепер створюють Notification Center повідомлення «Вітаємо! Ви отримали новий бейдж» з причиною та кнопкою переходу.
+- «🏅 Бейджі» спрощено до «Усі бейджі» / «Мої бейджі»; каталог показує умови отримання та вже здобуті бейджі.
+- У профілі біля ПІБ показується 🔥 при активній суперсерії; підтримано optional animated Telegram custom emoji через `TELEGRAM_FIRE_CUSTOM_EMOJI_ID`.
+- Вирівняно fixed topbar/search із фактичною шириною sidebar на laptop/desktop/large desktop; нормалізовано відступи карток та analytics controls.
+- Графіки аналітики з dashboard відкривають детальний агрегований показник по кліку. На detail page суперадміністратор може клікнути точку/рядок і побачити тип агрегату, групу/категорію, значення та додаткове поле.
+- Schema unchanged: 54 таблиці; Alembic head `20260915_0002`.
+
 # AMP XP v1.13.0.4 — CI Localization & Test Time Hotfix
 
 - Виправлено застарілий regression assertion Notification Center: `Streak` → `Серії участі`.

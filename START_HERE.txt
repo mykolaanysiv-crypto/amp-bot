@@ -1,15 +1,11 @@
-АМП XP / «АМПасадори» v1.13.0.4
+АМП XP / «АМПасадори» v1.13.1
 
-Поточний production candidate: v1.13.0.4 — CI Localization & Test Time Hotfix.
+Поточний production candidate: v1.13.1 — Profile, Badges & Analytics UX.
 
-Основне:
-- виправлено активний /start та /menu після Architecture Completion;
-- /menu знову встановлює актуальну reply-клавіатуру бота;
-- додано /smart як повноцінну команду персональних можливостей;
-- винагороди показують повні назви без code-side truncation;
-- видимі англомовні службові labels web-панелі локалізовано українською;
-- Notification Center локалізує відомі внутрішні type/entity/status коди;
-- schema без змін: 54 таблиці, Alembic head 20260915_0002;
-- Architecture Completion і compatibility facades збережено.
-
-Почніть із SERVER_UPDATE_V11303.md та COMMANDS_V11303.txt.
+Перед deploy:
+1. Зробити PGBackup.
+2. Накласти build поверх Git-репозиторію, зберігши .git/.env/.venv.
+3. Перевірити VERSION.txt = 1.13.1.
+4. Запустити compileall + production_preflight + targeted regression tests.
+5. Commit/push у main і дочекатися зеленого GitHub Production Gate.
+6. Після deploy перевірити web.1/worker.1, Alembic head 20260915_0002, health та smoke Telegram/Web.

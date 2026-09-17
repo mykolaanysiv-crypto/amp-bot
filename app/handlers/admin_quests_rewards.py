@@ -226,7 +226,7 @@ async def badge_finish(message: Message, state: FSMContext, db: Database, bot: B
             await state.clear()
             return
         session.add(UserBadge(user_id=user.id, badge_id=badge.id, awarded_by=admin.id))
-        await _queue_user_notice(session, user, f"🏅 Новий бейдж!\n{badge.icon} <b>{badge.name}</b>\n{badge.description}", source="badge", title="Новий бейдж", entity_type="badge", entity_id=badge.id, dedupe_key=f"manual_badge:{badge.id}:{user.id}")
+        await _queue_user_notice(session, user, f"🎉 <b>Вітаємо! Ви отримали новий бейдж</b>\n\n{badge.icon} <b>{badge.name}</b>\n📌 За що: {badge.description}", source="badge", title="Новий бейдж", entity_type="badge", entity_id=badge.id, dedupe_key=f"manual_badge:{badge.id}:{user.id}")
         await session.commit()
         await message.answer(f"✅ Бейдж {badge.icon} {badge.name} видано {user.full_name}.")
     await state.clear()

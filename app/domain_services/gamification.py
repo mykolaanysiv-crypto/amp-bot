@@ -1,4 +1,5 @@
 from ..time_utils import clock
+from html import escape as html_escape
 from .common import (
     ActivityApplication, ActivityType, AsyncSession, Badge, CLAIMABLE_ACTIVITY_CATALOG, EventRegistration, Idea, IntegrityError, ParticipationStreak, QuestParticipation, Referral, Reward, Season, Settings, SurveyResponse, User, UserBadge, UserStatus, VolunteerTaskParticipation, XPTransaction, date, datetime, func, get_level, get_runtime_int, mark_first_activity, participant_first_name, select, timedelta
 )
@@ -307,9 +308,30 @@ async def evaluate_automatic_badges(session: AsyncSession, user: User) -> list[B
             qualifies = value >= badge.criteria_value
         if qualifies:
             session.add(UserBadge(user_id=user.id, badge_id=badge.id, awarded_by=None))
+            await session.flush()
+            # Lazy import keeps the pure gamification model/service importable in
+            # lightweight analytics/tests while production still uses the canonical
+            # Notification Center outbox.
+            from ..reliability import queue_notification
+            await queue_notification(
+                session,
+                user.tg_id,
+                (
+                    "🎉 <b>Вітаємо! Ви отримали новий бейдж</b>\n\n"
+                    f"{badge.icon} <b>{html_escape(badge.name)}</b>\n"
+                    f"📌 За що: {html_escape(badge.description or 'за активність у просторі АМП')}"
+                ),
+                source="badge",
+                notification_type="badge",
+                title="Новий бейдж",
+                recipient_user_id=user.id,
+                entity_type="badge",
+                entity_id=badge.id,
+                dedupe_key=f"automatic_badge:{user.id}:{badge.id}",
+                button_text="🏅 Переглянути бейджі",
+                callback_data="ux:mine:badges",
+            )
             awarded.append(badge)
-    if awarded:
-        await session.flush()
     return awarded
 
 

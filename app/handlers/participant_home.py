@@ -1,4 +1,5 @@
 from ..time_utils import clock
+import os
 from .participant_common import (
     AMBASSADOR_BADGE_ROLES, Badge, CallbackQuery, Database, Event, EventFeedback, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, LEVELS, Message, OpportunityMatch, Quest, QuestParticipation, RequestCase, RequestMessage, Reward, RewardClaim, StreakFreezeState, UserBadge, UserStatus, XPTransaction, active_month_streak, create_streak_freeze, current_season, escape, func, get_level, get_registration_journey, get_runtime_int, get_user_by_tg, goals_for_user, join_hub_keyboard, label, league_for_xp, log_audit, log_extra, logging, main_menu, more_hub_keyboard, participant_first_name, profile_hub_keyboard, progress_text, refresh_user_streak, restore_super_streak, rewards_keyboard, router, season_xp, select, streak_freeze_summary, telegram_photo_input, timedelta, xp_total
 )
@@ -302,6 +303,21 @@ async def streak_freeze_days(message: Message, db: Database, state: FSMContext) 
     )
 
 
+def _super_streak_fire(event_streak: int | None) -> str:
+    """Return an animated Telegram custom fire when configured, otherwise Unicode fire.
+
+    Bots need a Telegram custom-emoji id for inline animation. The optional
+    TELEGRAM_FIRE_CUSTOM_EMOJI_ID config keeps the feature deploy-safe while
+    preserving a normal fire marker when no custom emoji is configured.
+    """
+    if int(event_streak or 0) <= 0:
+        return ""
+    custom_id = os.getenv("TELEGRAM_FIRE_CUSTOM_EMOJI_ID", "").strip()
+    if custom_id.isdigit():
+        return f'<tg-emoji emoji-id="{custom_id}">🔥</tg-emoji>'
+    return "🔥"
+
+
 @router.message(F.text == "👤 Мій профіль")
 async def profile(message: Message, db: Database) -> None:
     async with db.session_factory() as session:
@@ -319,8 +335,9 @@ async def profile(message: Message, db: Database) -> None:
         await session.commit()
         league = league_for_xp(sxp)
         b = profile_hub_keyboard()
+        streak_fire = _super_streak_fire(streak_row.event_streak)
         await message.answer(
-            f"👤 <b>{user.full_name}</b>\n"
+            f"👤 <b>{escape(user.full_name)}</b>{f' {streak_fire}' if streak_fire else ''}\n"
             f"АМП-код: <code>АМП-{user.id:04d}</code>\n\n"
             f"{progress_text(xp)}\n"
             f"📈 XP сезону{f' «{season.name}»' if season else ''}: <b>{sxp}</b>\n"
@@ -337,57 +354,74 @@ async def profile(message: Message, db: Database) -> None:
         )
 
 
-async def _send_badge_list(target, db: Database, tg_id: int, badge_type: str) -> None:
-    async with db.session_factory() as session:
-        user = await get_user_by_tg(session, tg_id)
-        if not user or user.status != UserStatus.ACTIVE.value:
-            return
-        rows = (await session.execute(
-            select(Badge).join(UserBadge, UserBadge.badge_id == Badge.id)
-            .where(UserBadge.user_id == user.id, Badge.badge_type == badge_type)
-            .order_by(UserBadge.awarded_at.desc())
-        )).scalars().all()
-        title = "🚀 <b>Бейджі АМПасадора</b>" if badge_type == "ambassador" else "🏅 <b>Загальні бейджі</b>"
-        if not rows:
-            b=InlineKeyboardBuilder(); b.button(text="⬅️ Назад",callback_data="badge_menu_back")
-            await target.answer(f"{title}\n\nПоки що в цьому розділі бейджів немає.", reply_markup=b.as_markup())
-            return
-        lines=[title,""]
-        for badge in rows:
-            lines.append(f"{badge.icon} <b>{badge.name}</b> — {badge.description}")
-        b=InlineKeyboardBuilder(); b.button(text="⬅️ Назад",callback_data="badge_menu_back")
-        await target.answer("\n".join(lines), reply_markup=b.as_markup())
-        if badge_type == "ambassador":
-            for badge in rows:
-                photo=await telegram_photo_input(db, badge.image_path)
-                if photo:
-                    try:
-                        await target.answer_photo(photo, caption=f"{badge.icon} <b>{badge.name}</b>\n{badge.description}")
-                    except Exception as exc:
-                        logging.getLogger("amp.participant_home").debug(
-                            "Не вдалося надіслати зображення бейджа",
-                            extra=log_extra("TG_BADGE_PHOTO_SEND_FAILED", badge_id=badge.id, exception_type=type(exc).__name__),
-                        )
-
-
 @router.message(F.text == "⚡ Мій XP")
 async def xp_history(message: Message, db: Database) -> None:
+    """Show the participant's XP balance and latest canonical XP transactions."""
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.ACTIVE.value:
             await message.answer("Профіль ще не активований. Натисніть /start")
             return
         total = await xp_total(session, user.id)
+        wallet_xp = int(user.wallet_xp or 0)
         rows = list((await session.scalars(
-            select(XPTransaction).where(XPTransaction.user_id == user.id).order_by(XPTransaction.created_at.desc()).limit(10)
+            select(XPTransaction)
+            .where(XPTransaction.user_id == user.id)
+            .order_by(XPTransaction.created_at.desc())
+            .limit(10)
         )).all())
-    lines = ["⚡ <b>Мій XP</b>", progress_text(total), f"💳 Баланс винагород: <b>{user.wallet_xp} XP</b>"]
+    lines = ["⚡ <b>Мій XP</b>", progress_text(total), f"💳 Баланс винагород: <b>{wallet_xp} XP</b>"]
     if rows:
         lines.append("\n<b>Останні операції</b>")
         for row in rows:
             sign = "+" if int(row.amount or 0) >= 0 else ""
-            lines.append(f"• {row.created_at.strftime('%d.%m')} · <b>{sign}{int(row.amount or 0)} XP</b> · {escape(row.reason or row.category or 'Операція')}")
+            description = row.description or row.category or "Операція"
+            lines.append(
+                f"• {row.created_at.strftime('%d.%m')} · <b>{sign}{int(row.amount or 0)} XP</b> · {escape(description)}"
+            )
+    else:
+        lines.append("\nПоки що XP-операцій немає.")
     await message.answer("\n".join(lines))
+
+
+async def _badge_rows(session, user, *, mine_only: bool):
+    owned_ids = set((await session.scalars(select(UserBadge.badge_id).where(UserBadge.user_id == user.id))).all())
+    stmt = select(Badge).where(Badge.active == True)  # noqa: E712
+    if user.role not in AMBASSADOR_BADGE_ROLES:
+        stmt = stmt.where(Badge.badge_type != "ambassador")
+    rows = list((await session.scalars(stmt.order_by(Badge.badge_type.asc(), Badge.id.asc()))).all())
+    if mine_only:
+        rows = [row for row in rows if row.id in owned_ids]
+    return rows, owned_ids
+
+
+def _badge_menu_keyboard() -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.button(text="🏅 Усі бейджі", callback_data="badges:all")
+    b.button(text="✅ Мої бейджі", callback_data="badges:mine")
+    b.adjust(2)
+    return b.as_markup()
+
+
+async def _send_badges_view(target, db: Database, tg_id: int, *, mine_only: bool) -> None:
+    async with db.session_factory() as session:
+        user = await get_user_by_tg(session, tg_id)
+        if not user or user.status != UserStatus.ACTIVE.value:
+            return
+        rows, owned_ids = await _badge_rows(session, user, mine_only=mine_only)
+    title = "✅ <b>Мої бейджі</b>" if mine_only else "🏅 <b>Усі бейджі</b>"
+    if not rows:
+        text = f"{title}\n\nПоки що тут немає бейджів."
+    else:
+        lines = [title, ""]
+        if not mine_only:
+            lines.append("Тут можна побачити, які бейджі існують і за що їх можна отримати.\n")
+        for badge in rows:
+            status = "✅ " if badge.id in owned_ids else ""
+            kind = " · АМПасадор" if badge.badge_type == "ambassador" else ""
+            lines.append(f"{status}{badge.icon} <b>{escape(badge.name)}</b>{kind}\n📌 {escape(badge.description or 'Умову визначає команда АМП')}")
+        text = "\n\n".join(lines)
+    await target.answer(text, reply_markup=_badge_menu_keyboard())
 
 
 @router.message(F.text == "🏅 Бейджі")
@@ -396,36 +430,24 @@ async def badges(message: Message, db: Database) -> None:
         user = await get_user_by_tg(session, message.from_user.id)
         if not user or user.status != UserStatus.ACTIVE.value:
             return
-        is_ambassador = user.role in AMBASSADOR_BADGE_ROLES
-    if not is_ambassador:
-        await _send_badge_list(message, db, message.from_user.id, "general")
-        return
-    b=InlineKeyboardBuilder()
-    b.button(text="🏅 Загальні бейджі",callback_data="badge_list:general")
-    b.button(text="🚀 Бейджі АМПасадора",callback_data="badge_list:ambassador")
-    b.adjust(1)
-    await message.answer("🏅 <b>Мої бейджі</b>\n\nОберіть розділ:",reply_markup=b.as_markup())
+    await message.answer(
+        "🏅 <b>Бейджі</b>\n\nПереглянь усі доступні бейджі та умови їх отримання або лише ті, які вже маєш.",
+        reply_markup=_badge_menu_keyboard(),
+    )
 
 
-@router.callback_query(F.data.startswith("badge_list:"))
-async def badge_list_callback(call: CallbackQuery, db: Database) -> None:
-    badge_type=call.data.split(":",1)[1]
-    if badge_type not in {"general","ambassador"}:
-        await call.answer(); return
-    await _send_badge_list(call.message,db,call.from_user.id,badge_type)
-    await call.answer()
-
-
-@router.callback_query(F.data == "badge_menu_back")
-async def badge_menu_back(call: CallbackQuery, db: Database) -> None:
-    async with db.session_factory() as session:
-        user=await get_user_by_tg(session,call.from_user.id)
-        if not user: await call.answer(); return
-        if user.role in AMBASSADOR_BADGE_ROLES:
-            b=InlineKeyboardBuilder(); b.button(text="🏅 Загальні бейджі",callback_data="badge_list:general"); b.button(text="🚀 Бейджі АМПасадора",callback_data="badge_list:ambassador"); b.adjust(1)
-            await call.message.answer("🏅 <b>Мої бейджі</b>\n\nОберіть розділ:",reply_markup=b.as_markup())
-        else:
-            await _send_badge_list(call.message,db,call.from_user.id,"general")
+@router.callback_query(F.data.in_({"badges:all", "badges:mine", "badge_list:general", "badge_list:ambassador", "badge_menu_back"}))
+async def badge_navigation_callback(call: CallbackQuery, db: Database) -> None:
+    action = str(call.data or "")
+    if action == "badges:all" or action in {"badge_list:general", "badge_list:ambassador"}:
+        await _send_badges_view(call.message, db, call.from_user.id, mine_only=False)
+    elif action == "badges:mine":
+        await _send_badges_view(call.message, db, call.from_user.id, mine_only=True)
+    else:
+        await call.message.answer(
+            "🏅 <b>Бейджі</b>\n\nОберіть, що хочете переглянути:",
+            reply_markup=_badge_menu_keyboard(),
+        )
     await call.answer()
 
 

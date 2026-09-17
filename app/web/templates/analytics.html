@@ -58,7 +58,7 @@
         {% endfor %}
       </div>
     </div>
-    {% else %}<div class="analytics-chart-wrap"><canvas id="chart-{{ metric.key }}"></canvas></div>{% endif %}
+    {% else %}<div class="analytics-chart-wrap analytics-chart-clickable" data-detail-url="/admin/analytics/{{ metric.key }}" title="Натисніть, щоб відкрити детальні агреговані дані"><canvas id="chart-{{ metric.key }}"></canvas></div>{% endif %}
     <div class="analytics-card-actions">
       <a class="primary link-button" href="/admin/analytics/{{ metric.key }}">👁 Детально</a>
       <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.xlsx">Excel</a>
@@ -86,5 +86,14 @@ function createAmpChart(metric){
   new Chart(el,{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:chartBase,backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:chartBase}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}}}});
 }
 Object.values(analyticsMetrics).forEach(createAmpChart);
+(function analyticsChartNavigation(){
+  document.querySelectorAll('.analytics-chart-clickable').forEach(function(wrap){
+    wrap.setAttribute('role','link'); wrap.setAttribute('tabindex','0');
+    const open=()=>{ if(wrap.dataset.detailUrl) location.href=wrap.dataset.detailUrl; };
+    wrap.addEventListener('click',open);
+    wrap.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+  });
+})();
+
 </script>
 {% endblock %}

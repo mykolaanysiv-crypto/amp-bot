@@ -3289,3 +3289,31 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 @media(max-width:980px){.survey-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:680px){.survey-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:440px){.survey-kpis{grid-template-columns:1fr!important}}
+
+/* =========================================================
+   v1.13.1 — navigation/profile/analytics layout hardening
+   ========================================================= */
+/* Keep the fixed top search aligned with the actual sidebar width at every breakpoint. */
+@media (min-width:1920px){.admin-topbar{left:300px}}
+@media (min-width:1366px) and (max-width:1919px){.admin-topbar{left:268px}}
+@media (min-width:1024px) and (max-width:1365px){.admin-topbar{left:232px}}
+.admin-topbar{box-sizing:border-box;min-width:0}
+.global-search-top{min-width:0;max-width:min(720px,calc(100vw - 420px));width:100%}
+.global-search-top input{min-width:0;width:100%}
+.topbar-actions{flex:0 0 auto;padding-right:58px}
+
+/* Give top-level workspace blocks a consistent visual rhythm without merging cards. */
+.content>:where(.card,.cards,.kpis,.analytics-grid,.dashboard-duo,.event-detail-grid,.work-cards-grid,.event-cards-grid,.analytics-privacy-note,.analytics-kpis,.system-health-actions)+:where(.card,.cards,.kpis,.analytics-grid,.dashboard-duo,.event-detail-grid,.work-cards-grid,.event-cards-grid,.analytics-privacy-note,.analytics-kpis,.system-health-actions){margin-top:18px}
+.card,.analytics-card,.analytics-detail-card,.analytics-table-card{min-width:0}
+.analytics-card-actions{gap:10px;flex-wrap:wrap}
+.analytics-chart-clickable{cursor:pointer;border-radius:12px;transition:background .15s ease,box-shadow .15s ease}
+.analytics-chart-clickable:hover,.analytics-chart-clickable:focus-visible{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);outline:none}
+.analytics-drill-row{cursor:pointer}
+.analytics-drill-row:hover,.analytics-drill-row:focus-visible{background:var(--surface-2);outline:none}
+.analytics-superadmin-drill{border-style:dashed}
+.analytics-drill-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.analytics-drill-grid>div{display:grid;gap:5px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);min-width:0}
+.analytics-drill-grid span{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.analytics-drill-grid b{overflow-wrap:anywhere}
+@media(max-width:980px){.analytics-drill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.analytics-drill-grid{grid-template-columns:1fr}.global-search-top{max-width:100%}}
