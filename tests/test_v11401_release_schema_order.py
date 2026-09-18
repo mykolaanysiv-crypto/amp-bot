@@ -5,9 +5,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version_is_v11401():
-    assert read("VERSION.txt").strip() == "1.14.0.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.14.0.1"
+def test_version_is_v11401_or_newer():
+    version = tuple(map(int, read("VERSION.txt").strip().split(".")))
+    version_check = tuple(map(int, read("VERSION_CHECK.txt").strip().split(".")))
+    assert version >= (1, 14, 0, 1)
+    assert version_check == version
 
 def test_release_smoke_migrates_before_orm_bootstrap():
     src = read("scripts/startup_smoke.py")

@@ -1,3 +1,9 @@
+# v1.14.0.2 — Telegram Profile Import Hotfix
+
+- Виправлено відкриття «👤 Мій профіль» у Telegram після v1.14.0: `participant_home.py` тепер явно імпортує `UserRole`, який використовується для відображення напряму відповідальності АМПасадора.
+- Додано regression test і production-preflight guard, щоб профільний handler не міг знову посилатися на `UserRole` без explicit import.
+- Функціональність v1.14.0.1, donation XP, кабінети АМПасадорів і Alembic head `20260917_0003` збережені без нової міграції.
+
 # v1.14.0.1 — Release Schema Order Hotfix
 
 - Виправлено Heroku release failure `UndefinedColumnError: users.ambassador_responsibility does not exist`.

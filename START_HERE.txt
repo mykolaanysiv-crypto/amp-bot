@@ -1,8 +1,8 @@
-АМП XP / «АМПасадори» v1.14.0.1
+АМП XP / «АМПасадори» v1.14.0.2
 
-Поточний production candidate: v1.14.0.1 — Release Schema Order Hotfix.
-Функціональність v1.14.0 збережена; hotfix переносить Alembic upgrade перед ORM bootstrap.
+Поточний production candidate: v1.14.0.2 — Telegram Profile Import Hotfix.
+Виправлено відкриття «👤 Мій профіль» у Telegram: explicit UserRole import у participant_home.py.
 
-Перед deploy створіть PGBackup. Нова additive migration: 20260917_0003.
-Перевірки: compileall, production_preflight, tests/test_v1140_ambassador_donation_xp.py.
-Після deploy: web.1/worker.1, Alembic head 20260917_0003, health та Telegram/Web smoke.
+Схема БД без змін. Alembic head: 20260917_0003.
+Перевірки: compileall, production_preflight, tests/test_v11402_profile_import.py, v1.14 regression.
+Після deploy: перевірити «👤 Мій профіль», XP, Бейджі, Кабінет АМПасадора, web.1/worker.1 та health.

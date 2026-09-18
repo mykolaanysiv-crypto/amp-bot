@@ -1,0 +1,24 @@
+QA REPORT — AMP XP / «АМПасадори» v1.14.0.2
+
+Hotfix focus:
+- Restore Telegram «Мій профіль» after v1.14 ambassador responsibility change.
+- Root cause: UserRole referenced by participant_home.profile without explicit import.
+- Add regression + production-preflight guard.
+- Preserve v1.14 donation XP / Ambassador Cabinets and Alembic head 20260917_0003.
+
+Checks completed on final source tree:
+- python -m compileall -q app scripts tests migrations: PASS
+- python -m scripts.production_preflight: PASS (v1.14.0.2)
+- v1.13.x + v1.14.x focused source/regression bundle: 49/49 PASS
+- deployment-focused bundle (v1.14.0.2 + v1.14.0.1 + v1.14.0 + production stability): 23/23 PASS
+
+Full pytest note:
+- Full suite collection cannot complete in this audit container because aiogram is not installed locally in the audit environment; collection stops in integration/test_postgres_smoke.py and test_reliability.py.
+- This is an environment dependency limitation, not a failed product assertion. GitHub Actions with requirements-dev.txt remains authoritative for the full gate.
+
+Production acceptance:
+- GitHub Actions green.
+- Heroku release succeeds.
+- web.1 and worker.1 up.
+- Alembic current = 20260917_0003 (head).
+- Telegram «👤 Мій профіль» opens for active participant and ambassador.

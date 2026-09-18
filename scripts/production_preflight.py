@@ -306,6 +306,22 @@ def main() -> None:
     if not (db_init_pos < migrate_pos < bootstrap_pos < web_pos):
         raise SystemExit("Release-order preflight failed: expected db.init -> Alembic -> bootstrap -> web lifespan")
 
+    # v1.14.0.2 Telegram profile guard.  The profile handler renders the
+    # ambassador responsibility condition with UserRole.AMBASSADOR.  Because
+    # participant_home imports symbols explicitly from participant_common,
+    # UserRole must be included in that import list or the handler crashes at
+    # runtime with NameError as soon as «Мій профіль» is opened.
+    participant_home_source = (root / "app" / "handlers" / "participant_home.py").read_text(encoding="utf-8")
+    if "UserRole.AMBASSADOR.value" in participant_home_source:
+        tree = ast.parse(participant_home_source, filename="app/handlers/participant_home.py")
+        imported_user_role = any(
+            isinstance(node, ast.ImportFrom)
+            and any(alias.name == "UserRole" for alias in node.names)
+            for node in ast.walk(tree)
+        )
+        if not imported_user_role:
+            raise SystemExit("Telegram profile preflight failed: UserRole is used but not explicitly imported")
+
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 
 
