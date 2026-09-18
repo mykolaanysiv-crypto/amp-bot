@@ -292,6 +292,20 @@ def main() -> None:
     if 'revision: str = "20260917_0003"' not in migration_source or 'down_revision: Union[str, None] = "20260915_0002"' not in migration_source:
         raise SystemExit("Alembic preflight failed: expected production head 20260917_0003 missing")
 
+    # v1.14.0.1 release-order guard.  Never run ORM bootstrap queries before
+    # additive Alembic revisions are applied: mapped SELECTs include new columns
+    # immediately and will fail against the previous production schema.
+    startup_smoke_source = (root / "scripts" / "startup_smoke.py").read_text(encoding="utf-8")
+    try:
+        db_init_pos = startup_smoke_source.index("asyncio.run(_db_init_phase())")
+        migrate_pos = startup_smoke_source.index("upgrade_head()", db_init_pos)
+        bootstrap_pos = startup_smoke_source.index("asyncio.run(_bootstrap_defaults_phase())", migrate_pos)
+        web_pos = startup_smoke_source.index("asyncio.run(_web_startup_phase())", bootstrap_pos)
+    except ValueError as exc:
+        raise SystemExit("Release-order preflight failed: canonical startup phases are missing") from exc
+    if not (db_init_pos < migrate_pos < bootstrap_pos < web_pos):
+        raise SystemExit("Release-order preflight failed: expected db.init -> Alembic -> bootstrap -> web lifespan")
+
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 
 

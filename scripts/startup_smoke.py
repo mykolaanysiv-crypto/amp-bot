@@ -5,11 +5,16 @@ from __future__ import annotations
 This script deliberately executes the same critical sequence used during a
 release:
 
-    db.init() -> bootstrap_defaults() -> Alembic upgrade head -> FastAPI lifespan
+    db.init() -> Alembic upgrade head -> bootstrap_defaults() -> FastAPI lifespan
 
-It is safe for production data: the bootstrap is idempotent, Alembic only moves
-forward, and AMP_STARTUP_SMOKE disables participant-facing startup broadcasts
-and long-running background tasks while the real web lifespan is entered.
+Schema migrations MUST run before any ORM bootstrap query that loads a full
+model row.  This matters for additive columns introduced by a new release:
+SQLAlchemy SELECTs include mapped columns immediately, while PostgreSQL does not
+have those columns until Alembic applies the revision.  The sequence remains
+safe for production data: db.init() is idempotent, Alembic only moves forward,
+bootstrap defaults are idempotent, and AMP_STARTUP_SMOKE disables participant-
+facing startup broadcasts and long-running background tasks while the real web
+lifespan is entered.
 """
 
 import asyncio
@@ -39,11 +44,21 @@ def _smoke_environment():
             os.environ["AMP_STARTUP_SMOKE"] = previous
 
 
-async def _legacy_bootstrap_phase() -> None:
+async def _db_init_phase() -> None:
+    """Initialize legacy-compatible base schema without issuing ORM bootstrap queries."""
     settings = get_settings(require_bot_token=False)
     db = Database(settings)
     try:
         await db.init()
+    finally:
+        await db.close()
+
+
+async def _bootstrap_defaults_phase() -> None:
+    """Seed/query defaults only after Alembic has upgraded the mapped schema."""
+    settings = get_settings(require_bot_token=False)
+    db = Database(settings)
+    try:
         await bootstrap_defaults(db, settings)
     finally:
         await db.close()
@@ -69,16 +84,21 @@ async def _web_startup_phase() -> None:
 
 
 def run() -> None:
-    # Exact critical order requested for the production gate.
-    asyncio.run(_legacy_bootstrap_phase())
+    # v1.14.0.1: migrate the database before bootstrap_defaults performs ORM
+    # SELECTs.  v1.14.0 exposed the new mapped ambassador_responsibility column
+    # before revision 20260917_0003 was applied, so the release smoke could fail
+    # with UndefinedColumnError on an otherwise healthy existing production DB.
+    asyncio.run(_db_init_phase())
 
     from scripts.alembic_bootstrap import upgrade_head
     upgrade_head()
 
+    asyncio.run(_bootstrap_defaults_phase())
+
     with _smoke_environment():
         asyncio.run(_web_startup_phase())
 
-    log.info("Production lifecycle smoke PASS: db.init -> bootstrap -> Alembic -> web lifespan")
+    log.info("Production lifecycle smoke PASS: db.init -> Alembic -> bootstrap -> web lifespan")
 
 
 def main() -> None:

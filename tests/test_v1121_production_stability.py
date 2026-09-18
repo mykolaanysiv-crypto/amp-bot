@@ -33,8 +33,13 @@ def test_startup_smoke_covers_required_order_and_real_web_lifespan():
     ]
     for token in required:
         assert token in src
-    assert src.index("asyncio.run(_legacy_bootstrap_phase())") < src.index("upgrade_head()")
-    assert src.index("upgrade_head()") < src.index("asyncio.run(_web_startup_phase())")
+    # Additive Alembic revisions must be applied before bootstrap_defaults can
+    # issue ORM SELECTs against models containing the new mapped columns.
+    db_init = src.index("asyncio.run(_db_init_phase())")
+    migrate = src.index("upgrade_head()", db_init)
+    bootstrap = src.index("asyncio.run(_bootstrap_defaults_phase())", migrate)
+    web = src.index("asyncio.run(_web_startup_phase())", bootstrap)
+    assert db_init < migrate < bootstrap < web
 
 
 def test_ci_has_postgres16_real_release_gate_and_deploy_dependency():

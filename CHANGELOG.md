@@ -1,3 +1,10 @@
+# v1.14.0.1 — Release Schema Order Hotfix
+
+- Виправлено Heroku release failure `UndefinedColumnError: users.ambassador_responsibility does not exist`.
+- Production lifecycle тепер виконується у безпечному порядку: `db.init()` → Alembic `upgrade head` → `bootstrap_defaults()` → FastAPI lifespan.
+- Додано production-preflight guard і regression test, які не дозволяють повернути ORM bootstrap перед schema migration.
+- Функціональність v1.14.0, схема 55 таблиць і Alembic head `20260917_0003` збережені без нової міграції.
+
 # v1.14.0 — Donations XP + Ambassador Cabinets
 
 - Донатний XP: 1 XP = 5 грн, автоматичне зв’язування за АМП-кодом, idempotent та retroactive backfill.

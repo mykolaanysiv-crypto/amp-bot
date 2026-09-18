@@ -1,0 +1,50 @@
+АМП XP / «АМПасадори» v1.14.0.1 — Release Schema Order Hotfix
+
+1. Перейти в репозиторій:
+cd ~/Downloads/amp_bot_v1103
+
+2. Перед повторним schema deploy зробити backup:
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+3. Розпакувати build:
+rm -rf /tmp/amp_bot_v11401
+mkdir -p /tmp/amp_bot_v11401
+unzip -q ~/Downloads/amp_bot_v11401.zip -d /tmp/amp_bot_v11401
+
+4. Накласти поверх Git-репозиторію:
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='__pycache__' \
+  --exclude='.pytest_cache' \
+  /tmp/amp_bot_v11401/amp_bot_v11401/ ./
+
+5. Перевірки:
+cat VERSION.txt
+# 1.14.0.1
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q tests/test_v11401_release_schema_order.py tests/test_v1140_ambassador_donation_xp.py tests/test_v1121_production_stability.py
+
+6. Commit + push:
+git add -A
+git commit -m "Hotfix AMP v1.14.0.1 release schema order"
+git push origin main
+
+7. Після зеленого GitHub/Heroku deploy:
+heroku releases -a amp-bot-ver-1-5-0 | head -10
+heroku ps -a amp-bot-ver-1-5-0
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+# очікується 20260917_0003 (head)
+
+8. Health:
+curl -sS https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/ready | python3 -m json.tool
+curl -sS -o /tmp/amp_dependencies.json -w 'HTTP %{http_code}\n' https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/dependencies
+cat /tmp/amp_dependencies.json | python3 -m json.tool
+
+9. Smoke v1.14:
+- Підтримати → 1 XP = 5 грн + АМП-код.
+- АМПасадор → Кабінет → Подати звіт.
+- Web → АМПасадори.
+- Зареєстрований АМПасадор → Подія → QR-код події.

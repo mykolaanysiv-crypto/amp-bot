@@ -3,7 +3,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel): return (ROOT/rel).read_text(encoding='utf-8')
 
 def test_version_and_additive_migration():
-    assert read('VERSION.txt').strip() == '1.14.0'
+    assert tuple(map(int, read('VERSION.txt').strip().split('.'))) >= (1, 14, 0)
     mig=read('migrations/versions/20260917_0003_ambassador_cabinets.py')
     assert 'revision: str = "20260917_0003"' in mig
     assert 'ambassador_responsibility' in mig
