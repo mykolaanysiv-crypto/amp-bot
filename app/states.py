@@ -134,3 +134,10 @@ class RestorationState(StatesGroup):
 
 class EventFeedbackState(StatesGroup):
     comment = State()
+
+
+class AmbassadorReportState(StatesGroup):
+    period_start = State()
+    period_end = State()
+    description = State()
+    photo = State()

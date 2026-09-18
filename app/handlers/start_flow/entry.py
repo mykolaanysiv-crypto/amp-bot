@@ -75,6 +75,8 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                     f"⚡ Загальний XP: <b>{total}</b>\n"
                     f"📈 XP сезону: <b>{sxp}</b>\n"
                     f"⏱ Волонтерських годин: <b>{target.volunteer_hours:g}</b>"
+                    + (f"\n🧭 Відповідальність: <b>{target.ambassador_responsibility or 'Не визначено'}</b>" if target.role == UserRole.AMBASSADOR.value else "")
+                    + f"\n🎖 Статус: <b>{'АМПасадор' if target.role == UserRole.AMBASSADOR.value else 'Учасник'}</b>"
                 )
                 return
         if not user and message.from_user.id in settings.superadmin_ids:

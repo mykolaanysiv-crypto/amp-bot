@@ -69,8 +69,8 @@ def join_hub_keyboard() -> InlineKeyboardMarkup:
     ], columns=2)
 
 
-def profile_hub_keyboard() -> InlineKeyboardMarkup:
-    return _admin_inline_menu([
+def profile_hub_keyboard(role: str | None = None) -> InlineKeyboardMarkup:
+    buttons = [
         ("👤 Профіль", "ux:mine:profile"),
         ("⚡ XP", "ux:mine:xp"),
         ("🏆 Ліга", "ux:mine:league"),
@@ -80,7 +80,10 @@ def profile_hub_keyboard() -> InlineKeyboardMarkup:
         ("🎁 Винагороди", "ux:mine:rewards"),
         ("🕰 Історія сезонів", "ux:mine:seasons"),
         ("⚙️ Інтереси", "opp_prefs"),
-    ], columns=2)
+    ]
+    if role == UserRole.AMBASSADOR.value:
+        buttons.append(("🧭 Кабінет АМПасадора", "ambassador:cabinet"))
+    return _admin_inline_menu(buttons, columns=2)
 
 
 def more_hub_keyboard() -> InlineKeyboardMarkup:
@@ -107,7 +110,7 @@ def events_keyboard(events) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None = None, registration_status: str | None = None) -> InlineKeyboardMarkup:
+def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None = None, registration_status: str | None = None, ambassador_qr: bool = False) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     status = registration_status or ("registered" if registered else None)
     if status == "waitlisted":
@@ -126,6 +129,8 @@ def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None
         b.button(text="🚫 Позначено «Не прийшов»", callback_data="noop")
     else:
         b.button(text="🙋 Долучитися", callback_data=f"event_join:{event_id}")
+    if ambassador_qr and status in {"registered", "checked_in", "attended"}:
+        b.button(text="🔳 QR-код події", callback_data=f"ambassador:event_qr:{event_id}")
     if share_url:
         b.button(text="📤 Переслати другу", url=share_url)
     b.button(text="⬅️ Назад", callback_data="nav:events")

@@ -334,7 +334,7 @@ async def profile(message: Message, db: Database) -> None:
         streak_row, _ = await refresh_user_streak(session, user)
         await session.commit()
         league = league_for_xp(sxp)
-        b = profile_hub_keyboard()
+        b = profile_hub_keyboard(user.role)
         streak_fire = _super_streak_fire(streak_row.event_streak)
         await message.answer(
             f"👤 <b>{escape(user.full_name)}</b>{f' {streak_fire}' if streak_fire else ''}\n"
@@ -349,7 +349,8 @@ async def profile(message: Message, db: Database) -> None:
             f"🔥 Серія активних місяців: <b>{streak}</b>\n"
             f"📆 Тижнева серія: <b>{streak_row.weekly_streak}</b> тиж.\n"
             f"🔥 Суперсерія подій: <b>{streak_row.event_streak}</b> відвідувань\n\n"
-            f"Роль: <b>{label(user.role)}</b>",
+            f"Роль: <b>{label(user.role)}</b>"
+            + (f"\n🧭 Відповідальність: <b>{escape(user.ambassador_responsibility or 'Не визначено')}</b>" if user.role == UserRole.AMBASSADOR.value else ""),
             reply_markup=b,
         )
 

@@ -86,6 +86,7 @@ class User(Base):
     registration_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     registration_reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
     registration_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ambassador_responsibility: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     xp_transactions: Mapped[list["XPTransaction"]] = relationship(back_populates="user", foreign_keys="XPTransaction.user_id")
     registrations: Mapped[list["EventRegistration"]] = relationship(back_populates="user", foreign_keys="EventRegistration.user_id")

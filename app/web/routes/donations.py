@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
-from app.donations import award_donation_badges, sync_monobank_donations
+from app.donations import award_donation_badges, award_donation_xp_for_transaction, sync_monobank_donations
 from app.models import DonationJarState, DonationReport, DonationTransaction, SupportPageView, User, UserStatus
 from app.web.dependencies import (
     ctx, db, delete_image, guard_permission, is_superadmin, log_audit, notify_telegram,
@@ -124,6 +124,10 @@ async def donations_sync(request: Request):
             entity_type="donations", details=f"ok={result.get('ok')}; imported={result.get('imported')}; linked={result.get('linked')}",
         )
         await session.commit()
+        for user_id, xp_amount in (result.get("xp_awarded") or {}).items():
+            user = await session.get(User, int(user_id))
+            if user and user.tg_id and int(xp_amount or 0) > 0:
+                await notify_telegram(user.tg_id, f"💙 <b>Дякуємо за підтримку АМП!</b>\n\n⚡ За донат нараховано <b>+{int(xp_amount)} XP</b>.\nКурс: <b>1 XP = 5 грн</b>.")
         for user_id, badge_names in (result.get("awarded") or {}).items():
             user = await session.get(User, int(user_id))
             if user and user.tg_id:
@@ -147,7 +151,9 @@ async def donation_link_participant(request: Request, transaction_id: int, user_
         if uid and not await session.get(User, uid):
             raise HTTPException(status_code=404, detail="Учасника не знайдено.")
         row.linked_user_id = uid
+        xp_awarded = 0
         if uid and int(row.amount_kop or 0) > 0:
+            xp_awarded = await award_donation_xp_for_transaction(session, row)
             badges = await award_donation_badges(session, uid)
             badge_names = [b.name for b in badges]
             user = await session.get(User, uid)
@@ -157,8 +163,13 @@ async def donation_link_participant(request: Request, transaction_id: int, user_
             entity_type="donation_transaction", entity_id=row.id, details=f"user {previous or '—'} -> {uid or '—'}",
         )
         await session.commit()
-    if notify_tg and badge_names:
-        await notify_telegram(notify_tg, "💙 <b>Донат пов’язано з вашим профілем АМП.</b>\n\n🏅 Нові бейджі: " + ", ".join(badge_names))
+    if notify_tg and (badge_names or xp_awarded):
+        parts = ["💙 <b>Донат пов’язано з вашим профілем АМП.</b>"]
+        if xp_awarded:
+            parts.append(f"⚡ Нараховано <b>+{xp_awarded} XP</b> · 1 XP = 5 грн")
+        if badge_names:
+            parts.append("🏅 Нові бейджі: " + ", ".join(badge_names))
+        await notify_telegram(notify_tg, "\n\n".join(parts))
     return RedirectResponse("/admin/donations#transactions", 303)
 
 

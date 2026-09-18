@@ -1,3 +1,11 @@
+# v1.14.0 — Donations XP + Ambassador Cabinets
+
+- Донатний XP: 1 XP = 5 грн, автоматичне зв’язування за АМП-кодом, idempotent та retroactive backfill.
+- Telegram-кабінет АМПасадора: напрям відповідальності, звіти за період, фото.
+- QR-код події для зареєстрованого АМПасадора.
+- Web: новий розділ АМПасадорів для admin/superadmin, призначення напрямів і перегляд звітів.
+- Alembic 20260917_0003: users.ambassador_responsibility + ambassador_reports.
+
 # AMP XP v1.13.1 — Profile, Badges & Analytics UX
 
 - Виправлено кнопку «⚡ XP» у «Мій профіль»: історія XP використовує canonical `XPTransaction.description`.

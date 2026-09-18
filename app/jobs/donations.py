@@ -29,6 +29,17 @@ async def _donation_sync_scheduler(bot: Bot, db: Database, settings) -> None:
                                 log.info("Donations sync: imported=%s linked=%s", result.get("imported", 0), result.get("linked", 0))
                             else:
                                 log.warning("Donations sync failed: %s", result.get("error"))
+                            for user_id, xp_amount in (result.get("xp_awarded") or {}).items():
+                                user = await session.get(User, int(user_id))
+                                if not user or not user.tg_id or int(xp_amount or 0) <= 0:
+                                    continue
+                                await queue_telegram_delivery(
+                                    session, user.tg_id,
+                                    f"💙 <b>Дякуємо за підтримку АМП!</b>\n\n⚡ За донат нараховано <b>+{int(xp_amount)} XP</b>.\nКурс: <b>1 XP = 5 грн</b>.",
+                                    source="donation_xp", notification_type="gamification",
+                                    recipient_user_id=user.id, entity_type="user", entity_id=user.id,
+                                    dedupe_key=f"donation_xp_sync:{user.id}:{int(xp_amount)}:{result.get('imported', 0)}:{result.get('linked', 0)}",
+                                )
                             for user_id, badge_names in (result.get("awarded") or {}).items():
                                 user = await session.get(User, int(user_id))
                                 if not user or not user.tg_id:

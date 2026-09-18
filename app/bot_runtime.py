@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import BotCommand, CallbackQuery
 
 from .db import Database
-from .handlers import admin, donations, events, feedback, participant, quests, start, surveys, v11
+from .handlers import admin, ambassadors, donations, events, feedback, participant, quests, start, surveys, v11
 from .observability import log_extra
 from .telegram_middleware import (
     DeletedAccountMiddleware, FSMNavigationMiddleware, LastActivityMiddleware, TemporaryBanMiddleware,
@@ -50,6 +50,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
     dp.include_router(start.router)
     dp.include_router(v11.router)
     dp.include_router(donations.router)
+    dp.include_router(ambassadors.router)
     dp.include_router(feedback.router)
     dp.include_router(surveys.router)
     dp.include_router(participant.router)

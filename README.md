@@ -1,11 +1,11 @@
-# AMP XP / «АМПасадори» v1.13.1 — Profile, Badges & Analytics UX
+# AMP XP / «АМПасадори» v1.14.0 — Donations XP + Ambassador Cabinets
 
-v1.13.1 — функціональне UX-оновлення поверх Architecture Completion v1.13.x. Виправляє XP у профілі Telegram, додає повний каталог/мої бейджі та автоматичні badge notifications, індикатор суперсерії біля ПІБ, вирівнює web layout/top search і додає інтерактивний drill-down агрегованої аналітики для суперадміністратора.
+v1.14.0 додає автоматичний XP за донати (1 XP = 5 грн) з retroactive backfill, кабінет АМПасадора, напрями відповідальності, звітність із фото та QR події для зареєстрованих АМПасадорів.
 
 ## Production
 
 - PostgreSQL schema: 54 таблиці.
-- Alembic head: `20260915_0002`.
+- Alembic head: `20260917_0003`.
 - Release flow: GitHub Production Gate → verified backup → Heroku release/web/worker.
 - Перед deploy рекомендований ручний Heroku PGBackup.
 

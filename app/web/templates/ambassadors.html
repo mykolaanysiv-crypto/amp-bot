@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Кабінети АМПасадорів{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>🧭 Кабінети АМПасадорів</h1><p>Напрями відповідальності та звітність команди АМП.</p></div></div>
+
+<section class="card" id="team">
+  <div class="section-title"><div><h2>🎖 АМПасадори та відповідальність</h2><p class="muted">Напрям видно самому АМПасадору в Telegram і в його публічній картці.</p></div></div>
+  <div class="table-wrap"><table><thead><tr><th>АМП-код</th><th>ПІБ</th><th>Відповідальність</th><th>Змінити</th></tr></thead><tbody>
+  {% for u in ambassadors %}<tr><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><span class="tag">{{responsibility_label(u.ambassador_responsibility)}}</span></td><td>
+    <form method="post" action="/admin/ambassadors/{{u.id}}/responsibility" class="inline-form"><input type="hidden" name="_csrf" value="{{csrf_token}}"><select name="responsibility"><option value="">Не визначено</option>{% for item in responsibilities %}<option value="{{item}}" {% if u.ambassador_responsibility==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select><button class="soft-button" type="submit">Зберегти</button></form>
+  </td></tr>{% else %}<tr><td colspan="4" class="muted">АМПасадорів поки немає.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="card" id="reports">
+  <div class="section-title"><div><h2>📋 Звіти про роботу</h2><p class="muted">Звіти, подані АМПасадорами через Telegram.</p></div><span class="tag">{{report_rows|length}}</span></div>
+  <div class="ambassador-report-grid">
+  {% for report,u in report_rows %}
+    <article class="card ambassador-report-card">
+      <div class="card-top"><span class="tag {{'active' if report.status=='reviewed' else 'pending'}}">{{'Переглянуто' if report.status=='reviewed' else 'Новий звіт'}}</span><code>№{{report.id}}</code></div>
+      <h3>{{u.full_name}}</h3>
+      <p><b>🧭 {{responsibility_label(u.ambassador_responsibility)}}</b></p>
+      <p>📅 {{report.period_start.strftime('%d.%m.%Y')}} — {{report.period_end.strftime('%d.%m.%Y')}}</p>
+      <p class="report-description">{{report.description}}</p>
+      {% if report.photo_path %}<a href="{{report.photo_path}}" target="_blank"><img class="ambassador-report-photo" src="{{report.photo_path}}" alt="Фото до звіту"></a>{% endif %}
+      <small class="muted">Подано {{report.created_at.strftime('%d.%m.%Y %H:%M')}}</small>
+      {% if report.status=='reviewed' %}<p class="muted">✅ {{report.reviewed_by or 'Адміністратор'}}{% if report.admin_note %}: {{report.admin_note}}{% endif %}</p>{% else %}
+      <form method="post" action="/admin/ambassadors/reports/{{report.id}}/review"><input type="hidden" name="_csrf" value="{{csrf_token}}"><label>Коментар адміністратора<textarea name="admin_note" placeholder="Необов’язково"></textarea></label><button class="primary" type="submit">✅ Позначити переглянутим</button></form>{% endif %}
+    </article>
+  {% else %}<p class="muted">Звітів поки немає.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

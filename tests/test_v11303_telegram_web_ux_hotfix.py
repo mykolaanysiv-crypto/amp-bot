@@ -11,7 +11,7 @@ def read(rel: str) -> str:
 
 def test_v11303_version_is_synchronized():
     version = read("VERSION.txt").strip()
-    assert version.startswith("1.13.")
+    assert version.startswith("1.")
     assert read("VERSION_CHECK.txt").strip() == version
     assert f'"{version}"' in read("app/version.py")
 

@@ -270,14 +270,27 @@ def main() -> None:
     if leaking_labels:
         raise SystemExit("Web localization preflight failed: visible English labels remain: " + ", ".join(leaking_labels))
 
-    # Schema continuity: the architecture release must not silently alter the
-    # v1.12.1.7/v1.12.2 production schema or Alembic head.
+    # v1.14.0 Ambassador cabinets + donation XP guards.
+    donation_source = (root / "app" / "donations.py").read_text(encoding="utf-8")
+    ambassador_handler = (root / "app" / "handlers" / "ambassadors.py").read_text(encoding="utf-8")
+    ambassador_route = (root / "app" / "web" / "routes" / "ambassadors.py").read_text(encoding="utf-8")
+    if "DONATION_XP_KOP_PER_POINT = 500" not in donation_source or "backfill_donation_xp" not in donation_source:
+        raise SystemExit("Donation XP preflight failed: 1 XP = 5 UAH/backfill wiring missing")
+    if "AmbassadorReportState" not in ambassador_handler or "ambassador:event_qr" not in (root / "app" / "handlers" / "events.py").read_text(encoding="utf-8"):
+        raise SystemExit("Ambassador cabinet preflight failed: reports/event QR wiring missing")
+    if "/admin/ambassadors" not in ambassador_route or "AMBASSADOR_RESPONSIBILITIES" not in ambassador_route:
+        raise SystemExit("Ambassador web preflight failed: admin/superadmin cabinet missing")
+
+    # Schema continuity and the additive v1.14.0 migration.
     models_source = (root / "app" / "models.py").read_text(encoding="utf-8")
     if "model_domains" not in models_source or "Compatibility facade" not in models_source:
         raise SystemExit("Architecture preflight failed: app.models is not the explicit compatibility facade")
-    migration_source = (root / "migrations" / "versions" / "20260915_0002_content_views.py").read_text(encoding="utf-8")
-    if 'revision: str = "20260915_0002"' not in migration_source:
-        raise SystemExit("Alembic preflight failed: expected production head 20260915_0002 missing")
+    legacy_content_views_migration = (root / "migrations" / "versions" / "20260915_0002_content_views.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260915_0002"' not in legacy_content_views_migration:
+        raise SystemExit("Alembic preflight failed: v1.12 content views migration missing")
+    migration_source = (root / "migrations" / "versions" / "20260917_0003_ambassador_cabinets.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260917_0003"' not in migration_source or 'down_revision: Union[str, None] = "20260915_0002"' not in migration_source:
+        raise SystemExit("Alembic preflight failed: expected production head 20260917_0003 missing")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

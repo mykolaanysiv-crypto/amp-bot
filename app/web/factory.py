@@ -28,6 +28,7 @@ from .routes import (
     adminux as adminux_routes,
     notifications as notifications_routes,
     donations as donations_routes,
+    ambassadors as ambassadors_routes,
 )
 
 
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
         adminux_routes,
         notifications_routes,
         donations_routes,
+        ambassadors_routes,
     ):
         app.include_router(module.router)
     return app

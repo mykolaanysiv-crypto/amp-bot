@@ -4,19 +4,21 @@ from ..observability import log_extra
 from ..time_utils import clock
 
 from datetime import datetime
+from io import BytesIO
 import logging
 from html import escape
 from urllib.parse import quote
 
-from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram import Bot, F, Router
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from sqlalchemy import func, select
+import qrcode
 
 from ..config import Settings
 from ..db import Database
 from ..keyboards import event_detail_keyboard, event_waitlist_offer_keyboard, events_keyboard
 from ..media import telegram_photo_input
-from ..models import Event, EventRegistration, UserStatus
+from ..models import Event, EventRegistration, UserRole, UserStatus
 from ..services import accept_event_reservation, get_user_by_tg, join_event_waitlist, process_event_operations, register_for_event
 from ..ui_labels import lifecycle_status_label
 from ..engagement import process_expired_content
@@ -116,7 +118,7 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
             )
         if clock.event_utc(event.starts_at) >= clock.now_utc():
             if event.status in {"open", "postponed"}:
-                keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None)
+                keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None, ambassador_qr=(user.role == UserRole.AMBASSADOR.value and registered))
             elif event.status == "closed" and registered:
                 keyboard = event_detail_keyboard(event.id, True, share_button_url, reg.status if reg else None)
 
@@ -134,6 +136,33 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         else:
             await call.message.answer(text, reply_markup=keyboard)
         await call.answer()
+
+
+@router.callback_query(F.data.startswith("ambassador:event_qr:"))
+async def ambassador_event_qr(call: CallbackQuery, db: Database, bot: Bot) -> None:
+    event_id = int(call.data.rsplit(":", 1)[1])
+    async with db.session_factory() as session:
+        user = await get_user_by_tg(session, call.from_user.id)
+        event = await session.get(Event, event_id)
+        reg = await session.scalar(select(EventRegistration).where(
+            EventRegistration.event_id == event_id, EventRegistration.user_id == user.id if user else -1
+        )) if user else None
+        if (not user or user.role != UserRole.AMBASSADOR.value or not event or not reg
+                or reg.status not in {"registered", "checked_in", "attended"}):
+            await call.answer("QR доступний зареєстрованим АМПасадорам", show_alert=True)
+            return
+    username = (await bot.get_me()).username
+    deep_link = f"https://t.me/{username}?start=checkin_{event.checkin_token}"
+    qr = qrcode.QRCode(version=None, box_size=12, border=3)
+    qr.add_data(deep_link); qr.make(fit=True)
+    image = qr.make_image(fill_color="#0B5B6C", back_color="white").convert("RGB")
+    bio = BytesIO(); image.save(bio, format="PNG")
+    await call.message.answer_document(
+        BufferedInputFile(bio.getvalue(), filename=f"AMP_event_{event.id}_QR.png"),
+        caption=(f"🔳 <b>QR-код події</b>\n<b>{escape(event.title)}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+                 "Покажіть цей QR учасникам для відмітки на події. Фінальне нарахування XP/годин залишається під контролем системи та підтвердження участі."),
+    )
+    await call.answer("QR згенеровано")
 
 
 @router.callback_query(F.data.startswith("event_join:"))

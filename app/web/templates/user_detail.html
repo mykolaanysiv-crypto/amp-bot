@@ -86,6 +86,7 @@
     <div class="profile-data-item"><span>Населений пункт</span><b>{{ user.settlement or '—' }}</b></div>
     <div class="profile-data-item"><span>Статус профілю</span><b>{{ label(user.status) }}</b></div>
     <div class="profile-data-item"><span>Роль у системі</span><b>{{ label(user.role) }}</b></div>
+    {% if user.role=='ambassador' %}<div class="profile-data-item"><span>Відповідальність</span><b>{{ user.ambassador_responsibility or 'Не визначено' }}</b></div>{% endif %}
     <div class="profile-data-item"><span>Згода на фото/відео</span><b>{% if user.media_consent_status=='granted' %}✅ Надана{% elif user.media_consent_status=='revoked' %}🚫 Відкликана{% elif user.media_consent_status=='declined' %}❌ Не надана{% else %}⏳ Очікується{% endif %}</b></div>
     <div class="profile-data-item"><span>Згода батьків</span><b>{% if not user.parental_consent_required %}Не потрібна{% elif user.parental_consent_status=='received' %}✅ Отримана{% elif user.parental_consent_status=='revoked' %}🚫 Відкликана{% else %}⏳ Очікується{% endif %}</b></div>
     <div class="profile-data-item"><span>Номер телефону</span><b>{% if sensitive %}{{ user.phone or '—' }}{% else %}{{ masked_phone }}{% endif %}</b></div>

@@ -5,6 +5,7 @@ from .gamification import Season, XPTransaction, Team, TeamMember, Badge, UserBa
 from .events import Event, EventRegistration, EventFeedback
 from .engagement import Quest, QuestParticipation, TeamQuestContribution, Idea, RequestCase, RequestMessage, VolunteerTask, VolunteerTaskParticipation, ActivityType, ActivityApplication, Opportunity, OpportunityMatch, OpportunityInterest, Survey, SurveyQuestion, SurveyResponse, ContentView
 from .donations import DonationJarState, DonationTransaction, DonationReport, SupportPageView
+from .ambassadors import AmbassadorReport
 from .communications import BroadcastTemplate, SystemSetting, BroadcastCampaign, BroadcastRecipient, ScheduledJob, NotificationDelivery, Notification
 
 __all__ = [
@@ -58,6 +59,7 @@ __all__ = [
     "DonationTransaction",
     "DonationReport",
     "SupportPageView",
+    "AmbassadorReport",
     "BroadcastTemplate",
     "SystemSetting",
     "BroadcastCampaign",
