@@ -1,4 +1,5 @@
 from ..time_utils import clock
+from ..badge_seeds import badge_seed_is_deleted
 from html import escape as html_escape
 from .common import (
     ActivityApplication, ActivityType, AsyncSession, Badge, CLAIMABLE_ACTIVITY_CATALOG, EventRegistration, Idea, IntegrityError, ParticipationStreak, QuestParticipation, Referral, Reward, Season, Settings, SurveyResponse, User, UserBadge, UserStatus, VolunteerTaskParticipation, XPTransaction, date, datetime, func, get_level, get_runtime_int, mark_first_activity, participant_first_name, select, timedelta
@@ -200,17 +201,20 @@ async def complete_activity_application(
 
 async def seed_badges(session: AsyncSession) -> None:
     defaults = [
-        ("Перший крок", "🚀", "Перша підтверджена активність", "xp_transactions", 1),
-        ("Прокачаний", "🎓", "10 підтверджених активностей", "xp_transactions", 10),
-        ("Серце команди", "❤️", "50 волонтерських годин", "volunteer_hours", 50),
-        ("100 годин для АМП", "⏱", "100 волонтерських годин", "volunteer_hours", 100),
-        ("Магніт", "👥", "3 успішно залучені нові учасники", "referrals", 3),
-        ("Квестер", "🎯", "5 підтверджених квестів", "quests", 5),
-        ("АМПасадор", "🔥", "Досягнення 300 XP", "xp_total", 300),
-        ("Лідер АМП", "🛰️", "Досягнення 800 XP", "xp_total", 800),
-        ("Легенда АМП", "🏆", "Досягнення 1200 XP", "xp_total", 1200),
+        ("core:xp_transactions:1", "Перший крок", "🚀", "Перша підтверджена активність", "xp_transactions", 1),
+        ("core:xp_transactions:10", "Прокачаний", "🎓", "10 підтверджених активностей", "xp_transactions", 10),
+        ("core:volunteer_hours:50", "Серце команди", "❤️", "50 волонтерських годин", "volunteer_hours", 50),
+        ("core:volunteer_hours:100", "100 годин для АМП", "⏱", "100 волонтерських годин", "volunteer_hours", 100),
+        ("core:referrals:3", "Магніт", "👥", "3 успішно залучені нові учасники", "referrals", 3),
+        ("core:quests:5", "Квестер", "🎯", "5 підтверджених квестів", "quests", 5),
+        ("core:xp_total:300", "АМПасадор", "🔥", "Досягнення 300 XP", "xp_total", 300),
+        ("core:xp_total:800", "Лідер АМП", "🛰️", "Досягнення 800 XP", "xp_total", 800),
+        ("core:xp_total:1200", "Легенда АМП", "🏆", "Досягнення 1200 XP", "xp_total", 1200),
     ]
-    for name, icon, desc, criteria_type, criteria_value in defaults:
+    for seed_key, name, icon, desc, criteria_type, criteria_value in defaults:
+        # Deleted built-in badges stay deleted across deploy/restart.
+        if await badge_seed_is_deleted(session, seed_key):
+            continue
         # Match built-in automatic badges by their stable business rule first,
         # then by legacy name. This lets admins rename/rewrite the visible badge
         # without bootstrap recreating a duplicate on the next deploy.
@@ -232,39 +236,53 @@ async def seed_badges(session: AsyncSession) -> None:
                         criteria_type=criteria_type,
                         criteria_value=criteria_value,
                         automatic=True,
+                        seed_key=seed_key,
                     ))
                     await session.flush()
             except IntegrityError:
                 pass
-            badge = await session.scalar(select(Badge).where(
-                Badge.criteria_type == criteria_type,
-                Badge.criteria_value == criteria_value,
-                Badge.automatic == True,  # noqa: E712
-                Badge.badge_type == "general",
-            ))
+            badge = await session.scalar(select(Badge).where(Badge.seed_key == seed_key))
+            if not badge:
+                badge = await session.scalar(select(Badge).where(
+                    Badge.criteria_type == criteria_type,
+                    Badge.criteria_value == criteria_value,
+                    Badge.automatic == True,  # noqa: E712
+                    Badge.badge_type == "general",
+                ))
+        if badge and not badge.seed_key:
+            badge.seed_key = seed_key
         # Existing system badges are intentionally not overwritten here.
-        # From v1.15.0 their presentation and enabled state are administrator-editable;
-        # bootstrap only creates missing defaults.
+        # Their visible presentation and enabled state remain administrator-editable.
 
-    # Manual / thematic badges remain available to admins.
+    # Manual / thematic badges remain available to admins, but can now also be
+    # permanently deleted without bootstrap recreating them.
     manual = [
-        ("Чистий старт", "🧹", "Участь у толоках та благоустрої"),
-        ("Голос АМП", "🎤", "Проведення власної активності"),
-        ("Контент-мейкер", "📸", "Внесок у комунікації та медіа"),
-        ("Нетворкер", "🤝", "Залучення партнерів"),
-        ("Ідейник", "💡", "Реалізовані ідеї"),
-        ("Ментор", "🧑‍🏫", "Допомога новим учасникам"),
-        ("Запускаю зміни", "🚀", "Реалізація власного мініпроєкту"),
+        ("manual:clean-start", "Чистий старт", "🧹", "Участь у толоках та благоустрої"),
+        ("manual:amp-voice", "Голос АМП", "🎤", "Проведення власної активності"),
+        ("manual:content-maker", "Контент-мейкер", "📸", "Внесок у комунікації та медіа"),
+        ("manual:networker", "Нетворкер", "🤝", "Залучення партнерів"),
+        ("manual:idea-maker", "Ідейник", "💡", "Реалізовані ідеї"),
+        ("manual:mentor", "Ментор", "🧑‍🏫", "Допомога новим учасникам"),
+        ("manual:change-maker", "Запускаю зміни", "🚀", "Реалізація власного мініпроєкту"),
     ]
-    for name, icon, desc in manual:
-        badge = await session.scalar(select(Badge).where(Badge.name == name))
+    for seed_key, name, icon, desc in manual:
+        if await badge_seed_is_deleted(session, seed_key):
+            continue
+        badge = await session.scalar(select(Badge).where(Badge.seed_key == seed_key))
+        if not badge:
+            badge = await session.scalar(select(Badge).where(Badge.name == name))
         if not badge:
             try:
                 async with session.begin_nested():
-                    session.add(Badge(name=name, icon=icon, description=desc, automatic=False))
+                    session.add(Badge(name=name, icon=icon, description=desc, automatic=False, seed_key=seed_key))
                     await session.flush()
             except IntegrityError:
                 pass
+            badge = await session.scalar(select(Badge).where(Badge.seed_key == seed_key))
+            if not badge:
+                badge = await session.scalar(select(Badge).where(Badge.name == name))
+        if badge and not badge.seed_key:
+            badge.seed_key = seed_key
 
 
 async def _metric_value(session: AsyncSession, user: User, criteria_type: str) -> int:

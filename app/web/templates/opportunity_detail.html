@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{item.title}} • Можливість{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/opportunities">Можливості</a><span>›</span><b>{{item.title}}</b></nav>
+<div class="page-head opportunity-detail-head">
+  <div><span class="eyebrow">ДЕТАЛІ МОЖЛИВОСТІ</span><h1>{{item.title}}</h1><p>{{item.kind}} • {{item.direction or 'Інше'}}</p></div>
+  <div class="opportunity-detail-statuses">
+    {% if state.expired %}<span class="tag inactive">Дедлайн минув</span>{% elif item.active %}<span class="tag good">Активна</span>{% else %}<span class="tag inactive">Неактивна</span>{% endif %}
+    {% if state.urgent %}<span class="tag postponed">🔥 Останні 3 дні</span>{% endif %}
+  </div>
+</div>
+
+{% if state.urgent %}<section class="card opportunity-deadline-alert opportunity-detail-alert">🔥 <b>У вас є остання можливість долучитись до «{{item.title}}»</b> — до дедлайну залишилося менше 3 днів.</section>{% endif %}
+
+<div class="event-detail-grid opportunity-detail-grid">
+  <section class="card event-hero">
+    {% if item.image_path %}<div class="event-photo-frame"><img src="{{item.image_path}}" alt="Фото можливості"></div>{% else %}<div class="event-no-image">🌍</div>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Основне</h2>
+    <div class="facts">
+      <div><span>Тип</span><b>{{item.kind}}</b></div>
+      <div><span>Напрям</span><b>{{item.direction or 'Інше'}}</b></div>
+      <div><span>Формат</span><b>{{item.format or '—'}}</b></div>
+      <div><span>Дедлайн</span><b>{{item.deadline.strftime('%d.%m.%Y %H:%M') if item.deadline else 'Без дедлайну'}}</b></div>
+      <div><span>Вік</span><b>{% if item.age_min or item.age_max %}{{item.age_min or '—'}}–{{item.age_max or '—'}}{% else %}Без обмежень{% endif %}</b></div>
+      <div><span>Територія</span><b>{{item.target_settlements or 'Усі населені пункти'}}</b></div>
+    </div>
+    <hr>
+    <h3>Опис</h3><p class="preline">{{item.description or 'Опис не додано.'}}</p>
+    {% if item.url %}<p><a class="primary link-button" href="{{item.url}}" target="_blank" rel="noopener">🔗 Відкрити офіційне посилання</a></p>{% endif %}
+  </section>
+</div>
+
+<section class="card opportunity-analytics-card">
+  <div class="section-title"><div><h2>📊 Аналітика можливості</h2><p class="muted">Перегляди, персональні збіги та фактичний інтерес учасників.</p></div></div>
+  <div class="kpis five opportunity-analytics-kpis">
+    <div class="kpi"><span>Переглядів</span><strong>{{analytics.views}}</strong><small>{{analytics.unique_views}} унікальних</small></div>
+    <div class="kpi"><span>Зацікавлені</span><strong>{{analytics.interested}}</strong><small>{{analytics.interest_rate}}% від унікальних переглядів</small></div>
+    <div class="kpi"><span>Персональні збіги</span><strong>{{analytics.matches}}</strong><small>середній збіг {{analytics.avg_score}}%</small></div>
+    <div class="kpi"><span>Повідомлено</span><strong>{{analytics.notified}}</strong><small>про релевантну можливість</small></div>
+    <div class="kpi"><span>Повторні перегляди</span><strong>{{analytics.repeat_views}}</strong><small>повторних відкриттів</small></div>
+  </div>
+</section>
+
+<section class="card event-share-card">
+  <div class="section-title"><div><h2>📤 Поділитися можливістю</h2><p class="muted">Публічна картка містить опис, дедлайн та офіційне посилання без персональних даних учасників.</p></div></div>
+  <div class="share-link-row">
+    <input id="opportunity-share-link" type="text" value="{{share_url}}" readonly aria-label="Публічне посилання на можливість">
+    <button type="button" class="primary" onclick="const u=document.getElementById('opportunity-share-link').value;if(navigator.share){navigator.share({title:{{item.title|tojson}},url:u}).catch(()=>{});}else{navigator.clipboard.writeText(u).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='📤 Поділитися',1800)});}">📤 Поділитися</button>
+    <button type="button" class="soft-button" onclick="navigator.clipboard.writeText(document.getElementById('opportunity-share-link').value).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='🔗 Копіювати',1800)});">🔗 Копіювати</button>
+    <a class="soft-button" href="{{share_url}}" target="_blank" rel="noopener">👁 Відкрити</a>
+  </div>
+</section>
+
+<section class="card opportunity-management-card">
+  <div class="section-title"><div><span class="eyebrow">КЕРУВАННЯ МОЖЛИВІСТЮ</span><h2>🎛 Редагування та статус</h2><p class="muted">Тут зібрані всі адміністративні дії, щоб основна дошка залишалась компактною.</p></div></div>
+  <details class="opportunity-edit-details" open>
+    <summary class="soft-button">✏️ Редагувати інформацію</summary>
+    <form method="post" action="/admin/opportunities/{{item.id}}/update" class="form-grid entity-edit-form opportunity-detail-edit-form" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label class="span2">Назва<input name="title" value="{{item.title}}" required></label>
+      <label>Тип<input name="kind" value="{{item.kind}}"></label>
+      <label>Напрям<select name="direction"><option value="{{item.direction}}">{{item.direction}}</option>{% for interest in opportunity_interests %}{% if interest != item.direction %}<option value="{{interest}}">{{interest}}</option>{% endif %}{% endfor %}{% if item.direction != 'Інше' %}<option value="Інше">Інше</option>{% endif %}</select></label>
+      <label>Формат<input name="format" value="{{item.format}}"></label>
+      <label>Мін. вік<input name="age_min" type="number" value="{{item.age_min or ''}}"></label>
+      <label>Макс. вік<input name="age_max" type="number" value="{{item.age_max or ''}}"></label>
+      <label class="span2">Населені пункти<input name="target_settlements" value="{{item.target_settlements or ''}}"></label>
+      <label>Дедлайн<input name="deadline" type="datetime-local" value="{{item.deadline.strftime('%Y-%m-%dT%H:%M') if item.deadline else ''}}"></label>
+      <label class="span2">Посилання<input name="url" value="{{item.url or ''}}"></label>
+      <label class="span2">Опис<textarea name="description">{{item.description}}</textarea></label>
+      <label class="span2">Нове фото<input type="file" name="photo" accept="image/*"></label>
+      {% if item.image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}
+      <label class="check-line"><input name="active" type="checkbox" value="1" {% if item.active %}checked{% endif %}> Опубліковано</label>
+      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div>
+    </form>
+  </details>
+  <div class="opportunity-management-actions">
+    <form method="post" action="/admin/opportunities/{{item.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{% if item.active %}🙈 Приховати можливість{% else %}🌍 Опублікувати знову{% endif %}</button></form>
+    <form method="post" action="/admin/opportunities/{{item.id}}/refresh-matches"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🔄 Оновити персональні збіги</button></form>
+    <form method="post" action="/admin/opportunities/{{item.id}}/delete" onsubmit="return confirm('Видалити можливість, записи інтересу та підбору? Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити можливість</button></form>
+  </div>
+</section>
+
+<div class="grid2 opportunity-people-grid">
+  <section class="card">
+    <div class="section-title"><div><h2>💙 Зацікавлені учасники</h2><p class="muted">Лише внутрішній список для команди.</p></div><span>{{analytics.interested}}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for row,u in interest_rows if row.status=='interested' %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a><small>АМП-{{'%04d'|format(u.id)}}</small></td><td><span class="tag good">Зацікавлений</span></td><td>{{row.updated_at.strftime('%d.%m.%Y %H:%M')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Ще ніхто не позначив інтерес.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+  <section class="card">
+    <div class="section-title"><div><h2>✨ Персональні збіги</h2><p class="muted">Найрелевантніші учасники за їхніми налаштуваннями.</p></div><span>{{analytics.matches}}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Збіг</th><th>Сповіщення</th></tr></thead><tbody>{% for row,u in match_rows if row.status in ['matched','notified'] %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><b>{{row.score}}%</b></td><td>{{'✅ Надіслано' if row.notified_at or row.status=='notified' else 'Очікує'}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Персональних збігів поки немає.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+</div>
+{% endblock %}

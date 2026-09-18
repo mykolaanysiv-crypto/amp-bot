@@ -6,7 +6,7 @@
   <div>
     <span class="eyebrow">РОЗУМНІ МОЖЛИВОСТІ</span>
     <h1>🌍 Каталог можливостей</h1>
-    <p>Персональний підбір враховує вік, обрані інтереси, населений пункт, формат і дедлайн. Категорії вразливості для автоматичного профілювання не використовуються.</p>
+    <p>На дошці показуємо лише ключове. Повний опис, аналітика, поширення та керування відкриваються через «Детально».</p>
   </div>
 </div>
 
@@ -19,8 +19,8 @@
   <button class="primary smart-filter-submit">Застосувати</button>
 </form>
 
-<section class="card">
-  <div class="section-title"><div><h2>➕ Додати можливість</h2><p class="muted">Активна можливість автоматично потрапляє у персональний підбір. Сповіщення отримають лише релевантні активні учасники, які обрали інтереси.</p></div></div>
+<section class="card opportunity-create-card">
+  <div class="section-title"><div><h2>➕ Додати можливість</h2><p class="muted">Після створення відкриється окрема картка можливості з керуванням та аналітикою.</p></div></div>
   <form class="form-grid" method="post" action="/admin/opportunities/create" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="span2">Назва<input name="title" required></label>
@@ -33,53 +33,32 @@
     <label>Дедлайн<input name="deadline" type="datetime-local"></label>
     <label class="span2">Посилання<input name="url" type="url" placeholder="https://..."></label>
     <label class="span2">Опис<textarea name="description"></textarea></label>
-    <label class="span2">Фото можливості<input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP. Фото показуватиметься у вебпанелі та Telegram.</small></label>
+    <label class="span2">Фото можливості<input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP.</small></label>
     <label class="check-line"><input name="active" type="checkbox" value="1" checked> Опубліковано</label>
-    <div class="span2 form-actions-row"><button class="primary">🌍 Опублікувати</button></div>
+    <div class="span2 form-actions-row"><button class="primary">🌍 Створити можливість</button></div>
   </form>
 </section>
 
-<div class="work-cards-grid opportunity-cards">
+<div class="work-cards-grid opportunity-cards opportunity-board">
 {% for item in items %}
 <article class="card opportunity-card {% if opportunity_states.get(item.id, {}).get('urgent') %}opportunity-urgent{% elif opportunity_states.get(item.id, {}).get('expired') or not item.active %}opportunity-inactive{% endif %}">
-  {% if item.image_path %}<img class="opportunity-cover" src="{{item.image_path}}" alt="Фото: {{item.title}}">{% endif %}
-  <div class="entity-card-topline">
+  <div class="opportunity-card-media">
+    {% if item.image_path %}<img class="opportunity-cover" src="{{item.image_path}}" alt="Фото: {{item.title}}">{% else %}<div class="opportunity-cover opportunity-cover-placeholder">🌍</div>{% endif %}
+  </div>
+  <div class="entity-card-topline opportunity-card-topline">
     <div><span class="tag">{{item.kind}}</span> <span class="tag {% if item.active %}good{% endif %}">{{'Активна' if item.active else 'Неактивна'}}</span></div>
-    <span class="event-date-badge">{{item.deadline.strftime('%d.%m.%Y · %H:%M') if item.deadline else 'Без дедлайну'}}</span>
+    <span class="event-date-badge">{{item.deadline.strftime('%d.%m.%Y') if item.deadline else 'Без дедлайну'}}</span>
   </div>
-  <h3>{{item.title}}</h3>
-  {% if opportunity_states.get(item.id, {}).get('urgent') %}<div class="opportunity-deadline-alert">🔥 <b>У вас є остання можливість долучитись до «{{item.title}}»</b> — до дедлайну залишилося менше 3 днів.</div>{% endif %}
-  <div class="entity-card-info">
-    <span>🧭 {{item.direction or 'Інше'}}</span><span>💻 {{item.format or '—'}}</span>
-    <span>🎂 {% if item.age_min or item.age_max %}{{item.age_min or '—'}}–{{item.age_max or '—'}}{% else %}без обмежень{% endif %}</span>
-    <span>📍 {{item.target_settlements or 'усі населені пункти'}}</span>
-    <span>✨ {{match_counts.get(item.id,0)}} збігів</span><span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span><span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span>
+  <h3 class="opportunity-card-title">{{item.title}}</h3>
+  {% if opportunity_states.get(item.id, {}).get('urgent') %}<div class="opportunity-deadline-alert compact">🔥 Останні 3 дні для подачі</div>{% endif %}
+  <div class="opportunity-card-facts">
+    <span>🧭 {{item.direction or 'Інше'}}</span>
+    <span>💻 {{item.format or '—'}}</span>
+    <span>✨ {{match_counts.get(item.id,0)}} збігів</span>
+    <span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span>
+    <span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span>
   </div>
-  <p>{{item.description or 'Без опису.'}}</p>
-  {% if item.url %}<p><a class="soft-button" target="_blank" rel="noopener" href="{{item.url}}">🔗 Відкрити посилання</a></p>{% endif %}
-  <details class="event-edit-details">
-    <summary class="soft-button">✏️ Редагувати</summary>
-    <form method="post" action="/admin/opportunities/{{item.id}}/update" class="form-grid entity-edit-form" enctype="multipart/form-data">
-      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      <label class="span2">Назва<input name="title" value="{{item.title}}" required></label>
-      <label>Тип<input name="kind" value="{{item.kind}}"></label>
-      <label>Напрям<select name="direction"><option value="{{item.direction}}">{{item.direction}}</option>{% for interest in opportunity_interests %}{% if interest != item.direction %}<option value="{{interest}}">{{interest}}</option>{% endif %}{% endfor %}<option value="Інше">Інше</option></select></label>
-      <label>Формат<input name="format" value="{{item.format}}"></label>
-      <label>Мін. вік<input name="age_min" type="number" value="{{item.age_min or ''}}"></label>
-      <label>Макс. вік<input name="age_max" type="number" value="{{item.age_max or ''}}"></label>
-      <label class="span2">Населені пункти<input name="target_settlements" value="{{item.target_settlements or ''}}"></label>
-      <label>Дедлайн<input name="deadline" type="datetime-local" value="{{item.deadline.strftime('%Y-%m-%dT%H:%M') if item.deadline else ''}}"></label>
-      <label class="span2">Посилання<input name="url" value="{{item.url or ''}}"></label>
-      <label class="span2">Опис<textarea name="description">{{item.description}}</textarea></label>
-      <label class="span2">Нове фото<input type="file" name="photo" accept="image/*"></label>
-      {% if item.image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}
-      <label class="check-line"><input name="active" type="checkbox" value="1" {% if item.active %}checked{% endif %}> Опубліковано</label>
-      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
-    </form>
-  </details>
-  <form method="post" action="/admin/opportunities/{{item.id}}/delete" onsubmit="return confirm('Видалити можливість та записи інтересу/підбору?');">
-    <input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button>
-  </form>
+  <div class="opportunity-card-actions"><a class="primary link-button" href="/admin/opportunities/{{item.id}}">👁 Детально</a></div>
 </article>
 {% else %}
 <section class="card"><p class="empty">Можливостей ще немає.</p></section>

@@ -9,6 +9,7 @@
     <p>Загальні відзнаки для всіх учасників та окремі PNG-бейджі АМПасадорів. Бейдж можна видати одному або відразу кільком учасникам.</p>
   </div>
 </div>
+{% if notice=='badge_deleted' %}<div class="alert success">✅ Бейдж видалено. Якщо він був виданий учасникам, відповідні присвоєння також прибрано. Вбудований бейдж не буде створено повторно після перезапуску.</div>{% endif %}
 
 <section class="card badge-create-section">
   <div class="section-title"><div><h2>➕ Новий бейдж</h2><p class="muted">Для типу «Бейдж АМПасадора» можна завантажити PNG із прозорим фоном.</p></div></div>
@@ -94,6 +95,9 @@
         <label class="span2">Опис<textarea name="description">{{b.description}}</textarea></label><button class="primary">Зберегти</button>
       </form>
     </details>
+    <div class="badge-card-actions">
+      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" onsubmit="return confirm('Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
+    </div>
   </article>
   {% else %}<p class="empty">Загальних бейджів ще немає.</p>{% endfor %}
 </div>
@@ -125,6 +129,9 @@
         <button class="primary">Зберегти</button>
       </form>
     </details>
+    <div class="badge-card-actions">
+      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" onsubmit="return confirm('Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
+    </div>
   </article>
   {% else %}<p class="empty">Бейджів АМПасадора ще немає.</p>{% endfor %}
 </div>

@@ -20,9 +20,20 @@
     <label>XP за проходження<input name="xp_reward" type="number" min="0" max="40" value="5"></label>
     <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
     <label class="span2">Опис<textarea name="description" placeholder="Навіщо проводимо опитування та скільки часу воно займе"></textarea></label>
-    <label>Кому доступне<select name="audience_type" id="surveyAudienceCreate" onchange="toggleSurveyAudience('Create')"><option value="all">Усім активним учасникам</option><option value="users">Обраним учасникам</option><option value="event">Учасникам певної події</option></select></label>
-    <label class="survey-audience-event" id="surveyAudienceEventCreate" style="display:none">Подія<select name="audience_event_id"><option value="">Оберіть подію</option>{% for e in audience_events %}<option value="{{e.id}}">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
-    <label class="span2 survey-audience-users" id="surveyAudienceUsersCreate" style="display:none">Обрані учасники<select name="audience_user_ids" multiple size="8">{% for u in audience_users %}<option value="{{u.id}}">АМП-{{'%04d'|format(u.id)}} · {{u.full_name}} · {{label(u.role)}}</option>{% endfor %}</select><small>Можна обрати кількох учасників: Ctrl/Cmd + клік.</small></label>
+    <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceCreate" onchange="toggleSurveyAudience('Create')"><option value="all">Усім активним учасникам</option><option value="users">Обраним учасникам</option><option value="event">Учасникам певної події</option></select></label>
+    <div class="span2 survey-audience-panel survey-audience-event" id="surveyAudienceEventCreate" style="display:none">
+      <div class="survey-audience-panel-head"><div><b>🎫 Оберіть подію</b><small>Опитування автоматично буде доступне її учасникам.</small></div></div>
+      <label class="survey-event-picker">Подія<select name="audience_event_id"><option value="">Оберіть подію зі списку</option>{% for e in audience_events %}<option value="{{e.id}}">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
+    </div>
+    <div class="span2 survey-audience-panel survey-audience-users" id="surveyAudienceUsersCreate" style="display:none">
+      <div class="survey-audience-panel-head"><div><b>👥 Оберіть учасників</b><small>Пошук працює за ПІБ, АМП-кодом і роллю.</small></div><span class="tag"><b id="surveyAudienceCountCreate">0</b> обрано</span></div>
+      <div class="survey-audience-toolbar">
+        <input type="search" id="surveyAudienceSearchCreate" placeholder="🔎 Пошук учасника…" oninput="filterSurveyAudience('Create')">
+        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceVisible('Create',true)">Обрати показаних</button>
+        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceAll('Create',false)">Очистити</button>
+      </div>
+      <div class="survey-user-picker" id="surveyUserPickerCreate">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}" onchange="updateSurveyAudienceCount('Create')"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div>
+    </div>
     <div class="span2 form-actions-row"><button class="primary">Створити опитування</button></div>
   </form>
 </section>
@@ -38,7 +49,12 @@
 {% else %}<section class="card"><p class="muted">Опитувань ще немає.</p></section>{% endfor %}
 </div>
 <script>
-function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'flex':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'flex':'none';}
+function surveyAudienceChecks(suffix){return Array.from(document.querySelectorAll('#surveyUserPicker'+suffix+' input[name="audience_user_ids"]'));}
+function updateSurveyAudienceCount(suffix){const el=document.getElementById('surveyAudienceCount'+suffix);if(el)el.textContent=surveyAudienceChecks(suffix).filter(x=>x.checked).length;}
+function filterSurveyAudience(suffix){const q=(document.getElementById('surveyAudienceSearch'+suffix)?.value||'').trim().toLowerCase();document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{row.hidden=q&&!row.dataset.search.includes(q);});}
+function setSurveyAudienceVisible(suffix,value){document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{if(!row.hidden)row.querySelector('input').checked=value;});updateSurveyAudienceCount(suffix);}
+function setSurveyAudienceAll(suffix,value){surveyAudienceChecks(suffix).forEach(x=>x.checked=value);updateSurveyAudienceCount(suffix);}
+function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'grid':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'grid':'none';updateSurveyAudienceCount(suffix);}
 toggleSurveyAudience('Create');
 </script>
 {% endblock %}

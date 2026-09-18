@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.time_utils import clock
+from app.badge_seeds import mark_badge_seed_deleted
 
 from fastapi import APIRouter
 from app.web.dependencies import (
@@ -343,13 +344,13 @@ async def goals_delete(request: Request, goal_id: int):
 
 
 @router.get("/admin/badges", response_class=HTMLResponse)
-async def badges(request:Request):
+async def badges(request:Request, notice: str = ""):
     if r := guard(request): return r
     async with db.session_factory() as session:
         rows=(await session.scalars(select(Badge).order_by(Badge.badge_type.asc(), Badge.automatic.desc(),Badge.name))).all()
         users=(await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value).order_by(User.full_name.asc()))).all()
         system_badge_ids = {b.id for b in rows if _is_system_badge_rule(b)}
-        return templates.TemplateResponse(request=request,name="badges.html",context=ctx(request,rows=rows,users=users,system_badge_ids=system_badge_ids))
+        return templates.TemplateResponse(request=request,name="badges.html",context=ctx(request,rows=rows,users=users,system_badge_ids=system_badge_ids,notice=notice))
 
 
 @router.post("/admin/badges/create")
@@ -402,6 +403,31 @@ async def badge_update(
     return RedirectResponse("/admin/badges",303)
 
 
+@router.post("/admin/badges/{badge_id}/delete")
+async def badge_delete(request: Request, badge_id: int):
+    if r := guard(request): return r
+    image_path = None
+    async with db.session_factory() as session:
+        badge = await session.get(Badge, badge_id)
+        if not badge:
+            return RedirectResponse("/admin/badges", 303)
+        image_path = badge.image_path
+        assigned_count = int(await session.scalar(select(func.count(UserBadge.id)).where(UserBadge.badge_id == badge.id)) or 0)
+        # Built-in badges carry a stable seed key. Persist a tombstone before
+        # deleting so bootstrap/donation sync cannot recreate them on restart.
+        await mark_badge_seed_deleted(session, badge.seed_key)
+        await session.execute(delete(UserBadge).where(UserBadge.badge_id == badge.id))
+        await log_audit(
+            session, "web_badge_delete", actor_label=request.session.get("admin_name", "web"),
+            entity_type="badge", entity_id=badge.id, details=f"{badge.name}; removed_assignments={assigned_count}",
+        )
+        await session.delete(badge)
+        await session.commit()
+    if image_path:
+        await delete_image(image_path)
+    return RedirectResponse("/admin/badges?notice=badge_deleted", 303)
+
+
 @router.post("/admin/badges/award-batch")
 async def badge_award_batch(request: Request):
     if r := guard(request): return r
@@ -432,12 +458,12 @@ async def badge_award_batch(request: Request):
 
 
 @router.get("/admin/rewards", response_class=HTMLResponse)
-async def rewards(request:Request):
+async def rewards(request:Request, notice: str = ""):
     if r := guard(request): return r
     async with db.session_factory() as session:
         rows=(await session.scalars(select(Reward).order_by(Reward.active.desc(),Reward.min_xp))).all()
         claims=(await session.execute(select(RewardClaim,User,Reward).join(User,User.id==RewardClaim.user_id).join(Reward,Reward.id==RewardClaim.reward_id).where(RewardClaim.status=="requested").order_by(RewardClaim.requested_at.asc()))).all()
-        return templates.TemplateResponse(request=request,name="rewards.html",context=ctx(request,rows=rows,claims=claims))
+        return templates.TemplateResponse(request=request,name="rewards.html",context=ctx(request,rows=rows,claims=claims,notice=notice))
 
 
 @router.post("/admin/rewards/create")
@@ -461,6 +487,35 @@ async def reward_update(request:Request,reward_id:int,title:str=Form(...),descri
             if img: await delete_image(rw.image_path); rw.image_path=img
             await log_audit(session,"web_reward_update",actor_label=request.session.get("admin_name","web"),entity_type="reward",entity_id=rw.id,details=title); await session.commit()
     return RedirectResponse("/admin/rewards",303)
+
+
+@router.post("/admin/rewards/{reward_id}/delete")
+async def reward_delete(request: Request, reward_id: int):
+    if r := guard(request): return r
+    image_path = None
+    async with db.session_factory() as session:
+        reward = await session.get(Reward, reward_id)
+        if not reward:
+            return RedirectResponse("/admin/rewards", 303)
+        claim_count = int(await session.scalar(select(func.count(RewardClaim.id)).where(RewardClaim.reward_id == reward.id)) or 0)
+        if claim_count:
+            reward.active = False
+            await log_audit(
+                session, "web_reward_delete_blocked_history", actor_label=request.session.get("admin_name", "web"),
+                entity_type="reward", entity_id=reward.id, details=f"{reward.title}; claims={claim_count}; hidden=true",
+            )
+            await session.commit()
+            return RedirectResponse("/admin/rewards?notice=reward_history", 303)
+        image_path = reward.image_path
+        await log_audit(
+            session, "web_reward_delete", actor_label=request.session.get("admin_name", "web"),
+            entity_type="reward", entity_id=reward.id, details=reward.title,
+        )
+        await session.delete(reward)
+        await session.commit()
+    if image_path:
+        await delete_image(image_path)
+    return RedirectResponse("/admin/rewards?notice=reward_deleted", 303)
 
 
 @router.post("/admin/reward-claims/{claim_id}/{action}")

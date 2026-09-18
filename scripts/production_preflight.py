@@ -365,7 +365,8 @@ def main() -> None:
     if "timedelta(days=3)" not in opportunity_helper or any("opportunity_sort_key" not in src for src in (opportunity_web, opportunity_tg, opportunity_nav_tg)):
         raise SystemExit("Opportunity preflight failed: automatic ordering/3-day urgency missing")
     urgent_phrase = "У вас є остання можливість долучитись до"
-    if any(urgent_phrase not in src for src in (opportunity_tg, opportunity_nav_tg, opportunity_template)):
+    opportunity_detail_for_urgency = (root / "app" / "web" / "templates" / "opportunity_detail.html").read_text(encoding="utf-8")
+    if any(urgent_phrase not in src for src in (opportunity_tg, opportunity_nav_tg, opportunity_detail_for_urgency)):
         raise SystemExit("Opportunity preflight failed: deadline urgency messaging missing")
 
     requests_source = (root / "app" / "web" / "routes" / "requests.py").read_text(encoding="utf-8")
@@ -387,6 +388,49 @@ def main() -> None:
         raise SystemExit("Badge editing preflight failed: bootstrap still risks overwriting admin edits")
     if "preserve administrator-edited" not in donation_source:
         raise SystemExit("Badge editing preflight failed: donation badge presentation persistence missing")
+
+    # v1.15.1 management UX guards: easier survey audience selection, safe deletes,
+    # compact opportunity board and event-like opportunity detail/management page.
+    survey_detail_template = (root / "app" / "web" / "templates" / "survey_detail.html").read_text(encoding="utf-8")
+    for source in (surveys_template, survey_detail_template):
+        for token in ("survey-user-picker", "Пошук учасника", "Обрати показаних", "surveyAudienceCount"):
+            if token not in source:
+                raise SystemExit(f"Survey audience UX preflight failed: missing {token}")
+        if "Ctrl/Cmd + клік" in source:
+            raise SystemExit("Survey audience UX preflight failed: legacy multi-select instructions remain")
+    if ".survey-event-picker" not in admin_css or ".survey-audience-panel" not in admin_css:
+        raise SystemExit("Survey audience UX preflight failed: aligned audience panel CSS missing")
+
+    rewards_template_source = (root / "app" / "web" / "templates" / "rewards.html").read_text(encoding="utf-8")
+    if '@router.post("/admin/rewards/{reward_id}/delete")' not in badge_route_source or "web_reward_delete_blocked_history" not in badge_route_source:
+        raise SystemExit("Reward delete preflight failed: safe delete/history protection missing")
+    if 'action="/admin/rewards/{{r.id}}/delete"' not in rewards_template_source:
+        raise SystemExit("Reward delete preflight failed: delete UI missing")
+    badge_seed_helper = (root / "app" / "badge_seeds.py").read_text(encoding="utf-8")
+    badge_model_source = (root / "app" / "model_domains" / "gamification.py").read_text(encoding="utf-8")
+    badge_seed_migration = (root / "migrations" / "versions" / "20260918_0005_badge_seed_keys.py").read_text(encoding="utf-8")
+    if '@router.post("/admin/badges/{badge_id}/delete")' not in badge_route_source or "mark_badge_seed_deleted(session, badge.seed_key)" not in badge_route_source:
+        raise SystemExit("Badge delete preflight failed: durable delete/tombstone missing")
+    if 'action="/admin/badges/{{b.id}}/delete"' not in badges_template_source or "система не створить його повторно" not in badges_template_source:
+        raise SystemExit("Badge delete preflight failed: delete UI/durable delete explanation missing")
+    if "BADGE_DELETE_PREFIX" not in badge_seed_helper or "badge_seed_is_deleted" not in badge_seed_helper or "seed_key:" not in badge_model_source:
+        raise SystemExit("Badge delete preflight failed: stable seed identity/tombstone helper missing")
+    if 'revision: str = "20260918_0005"' not in badge_seed_migration or 'down_revision: Union[str, None] = "20260918_0004"' not in badge_seed_migration:
+        raise SystemExit("Badge delete preflight failed: Alembic 20260918_0005 chain missing")
+    if "badge_seed_is_deleted(session, seed_key)" not in badge_seed_source or "badge_seed_is_deleted(session, seed_key)" not in donation_source:
+        raise SystemExit("Badge delete preflight failed: bootstrap/donation seed recreation guard missing")
+
+    opportunity_detail_template = (root / "app" / "web" / "templates" / "opportunity_detail.html").read_text(encoding="utf-8")
+    opportunity_public_template = (root / "app" / "web" / "templates" / "opportunity_public.html").read_text(encoding="utf-8")
+    if '@router.get("/admin/opportunities/{opportunity_id}"' not in opportunity_web or '@router.get("/opportunity/{opportunity_id}"' not in opportunity_web:
+        raise SystemExit("Opportunity detail preflight failed: admin/public detail routes missing")
+    for token in ("Аналітика можливості", "Поділитися можливістю", "КЕРУВАННЯ МОЖЛИВІСТЮ", "Видалити можливість"):
+        if token not in opportunity_detail_template:
+            raise SystemExit(f"Opportunity detail preflight failed: missing {token}")
+    if "opportunity-board" not in opportunity_template or "opportunity-card-actions" not in opportunity_template:
+        raise SystemExit("Opportunity board preflight failed: compact equal-card board missing")
+    if "Долучитися / дізнатися більше" not in opportunity_public_template:
+        raise SystemExit("Opportunity share preflight failed: public action missing")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

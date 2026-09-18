@@ -68,6 +68,7 @@ class Badge(Base):
     automatic: Mapped[bool] = mapped_column(Boolean, default=False)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     badge_type: Mapped[str] = mapped_column(String(24), default="general", index=True)
+    seed_key: Mapped[str | None] = mapped_column(String(120), nullable=True, unique=True)
 
 class UserBadge(Base):
     __tablename__ = "user_badges"

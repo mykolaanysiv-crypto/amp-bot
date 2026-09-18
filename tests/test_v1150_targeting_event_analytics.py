@@ -70,7 +70,7 @@ def test_opportunities_sort_and_three_day_urgency():
     rows = [inactive, no_deadline, later, urgent]
     rows.sort(key=lambda item: opportunity_sort_key(item, now))
     assert rows == [urgent, later, no_deadline, inactive]
-    web = read("app/web/templates/opportunities.html")
+    web = read("app/web/templates/opportunity_detail.html")
     tg = read("app/handlers/participant_opportunities.py")
     nav_tg = read("app/handlers/participant_tasks.py")
     assert "У вас є остання можливість долучитись до" in web

@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .version import APP_VERSION
+from .badge_seeds import badge_seed_is_deleted
 from .models import Badge, DonationJarState, DonationTransaction, User, UserBadge, UserRole
 
 MONOBANK_API = "https://api.monobank.ua"
@@ -27,6 +28,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_first",
         "criteria_value": 5000,
         "badge_type": "general",
+        "seed_key": "donation:donation_first:5000:general",
     },
     {
         "name": "Мажор",
@@ -35,6 +37,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_single",
         "criteria_value": 20000,
         "badge_type": "general",
+        "seed_key": "donation:donation_single:20000:general",
     },
     {
         "name": "Мафіозі",
@@ -43,6 +46,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_single",
         "criteria_value": 50000,
         "badge_type": "general",
+        "seed_key": "donation:donation_single:50000:general",
     },
     {
         "name": "Меценат",
@@ -51,6 +55,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_single",
         "criteria_value": 100000,
         "badge_type": "general",
+        "seed_key": "donation:donation_single:100000:general",
     },
     {
         "name": "Почесний спонсор АМП",
@@ -59,6 +64,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_total_over",
         "criteria_value": 200000,
         "badge_type": "general",
+        "seed_key": "donation:donation_total_over:200000:general",
     },
     {
         "name": "Брюс Всемогутній",
@@ -67,6 +73,7 @@ DONATION_BADGES: tuple[dict[str, Any], ...] = (
         "criteria_type": "donation_total_over",
         "criteria_value": 500000,
         "badge_type": "ambassador",
+        "seed_key": "donation:donation_total_over:500000:ambassador",
     },
 )
 
@@ -193,11 +200,16 @@ def _api_get(path: str, token: str) -> Any:
 async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
     result: dict[str, Badge] = {}
     for spec in DONATION_BADGES:
-        badge = await session.scalar(select(Badge).where(
-            Badge.criteria_type == spec["criteria_type"],
-            Badge.criteria_value == int(spec["criteria_value"]),
-            Badge.badge_type == spec["badge_type"],
-        ))
+        seed_key = str(spec["seed_key"])
+        if await badge_seed_is_deleted(session, seed_key):
+            continue
+        badge = await session.scalar(select(Badge).where(Badge.seed_key == seed_key))
+        if not badge:
+            badge = await session.scalar(select(Badge).where(
+                Badge.criteria_type == spec["criteria_type"],
+                Badge.criteria_value == int(spec["criteria_value"]),
+                Badge.badge_type == spec["badge_type"],
+            ))
         if not badge:
             badge = await session.scalar(select(Badge).where(Badge.name == spec["name"]))
         if not badge:
@@ -210,6 +222,7 @@ async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
                 active=True,
                 automatic=True,
                 badge_type=spec["badge_type"],
+                seed_key=seed_key,
             )
             session.add(badge)
             await session.flush()
@@ -220,6 +233,8 @@ async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
             badge.criteria_value = int(spec["criteria_value"])
             badge.automatic = True
             badge.badge_type = spec["badge_type"]
+            if not badge.seed_key:
+                badge.seed_key = seed_key
         result[spec["name"]] = badge
     return result
 
@@ -247,7 +262,9 @@ async def award_donation_badges(session: AsyncSession, user_id: int) -> list[Bad
 
     newly_awarded: list[Badge] = []
     for spec in DONATION_BADGES:
-        badge = badges[spec["name"]]
+        badge = badges.get(spec["name"])
+        if not badge:
+            continue
         if not badge.active:
             continue
         if badge.badge_type == "ambassador" and user.role not in AMBASSADOR_ROLES:

@@ -31,9 +31,20 @@
     <label>XP<input name="xp_reward" type="number" min="0" max="40" value="{{survey.xp_reward}}"></label>
     <label>Дедлайн<input name="ends_at" type="datetime-local" value="{{survey.ends_at.strftime('%Y-%m-%dT%H:%M') if survey.ends_at else ''}}"></label>
     <label class="span2">Опис<textarea name="description">{{survey.description}}</textarea></label>
-    <label>Кому доступне<select name="audience_type" id="surveyAudienceEdit" onchange="toggleSurveyAudience('Edit')"><option value="all" {% if survey.audience_type=='all' %}selected{% endif %}>Усім активним учасникам</option><option value="users" {% if survey.audience_type=='users' %}selected{% endif %}>Обраним учасникам</option><option value="event" {% if survey.audience_type=='event' %}selected{% endif %}>Учасникам певної події</option></select></label>
-    <label id="surveyAudienceEventEdit" style="display:none">Подія<select name="audience_event_id"><option value="">Оберіть подію</option>{% for e in audience_events %}<option value="{{e.id}}" {% if survey.audience_event_id==e.id %}selected{% endif %}>{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
-    <label class="span2" id="surveyAudienceUsersEdit" style="display:none">Обрані учасники<select name="audience_user_ids" multiple size="9">{% for u in audience_users %}<option value="{{u.id}}" {% if u.id in selected_audience_ids %}selected{% endif %}>АМП-{{'%04d'|format(u.id)}} · {{u.full_name}} · {{label(u.role)}}</option>{% endfor %}</select><small>Опитування в Telegram побачать лише обрані люди.</small></label>
+    <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceEdit" onchange="toggleSurveyAudience('Edit')"><option value="all" {% if survey.audience_type=='all' %}selected{% endif %}>Усім активним учасникам</option><option value="users" {% if survey.audience_type=='users' %}selected{% endif %}>Обраним учасникам</option><option value="event" {% if survey.audience_type=='event' %}selected{% endif %}>Учасникам певної події</option></select></label>
+    <div class="span2 survey-audience-panel survey-audience-event" id="surveyAudienceEventEdit" style="display:none">
+      <div class="survey-audience-panel-head"><div><b>🎫 Оберіть подію</b><small>Опитування побачать учасники вибраної події.</small></div></div>
+      <label class="survey-event-picker">Подія<select name="audience_event_id"><option value="">Оберіть подію зі списку</option>{% for e in audience_events %}<option value="{{e.id}}" {% if survey.audience_event_id==e.id %}selected{% endif %}>{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
+    </div>
+    <div class="span2 survey-audience-panel survey-audience-users" id="surveyAudienceUsersEdit" style="display:none">
+      <div class="survey-audience-panel-head"><div><b>👥 Оберіть учасників</b><small>Клік по картці додає або прибирає учасника.</small></div><span class="tag"><b id="surveyAudienceCountEdit">0</b> обрано</span></div>
+      <div class="survey-audience-toolbar">
+        <input type="search" id="surveyAudienceSearchEdit" placeholder="🔎 Пошук учасника…" oninput="filterSurveyAudience('Edit')">
+        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceVisible('Edit',true)">Обрати показаних</button>
+        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceAll('Edit',false)">Очистити</button>
+      </div>
+      <div class="survey-user-picker" id="surveyUserPickerEdit">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}" {% if u.id in selected_audience_ids %}checked{% endif %} onchange="updateSurveyAudienceCount('Edit')"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div>
+    </div>
     <div class="span2 form-actions-row"><button class="soft-button">💾 Зберегти</button></div>
   </form>
   <div class="survey-publish-actions">
@@ -117,7 +128,12 @@ function toggleSurveyOptions(){const type=document.getElementById('surveyQuestio
 const surveyQuestionForm=document.querySelector('.survey-question-form');if(surveyQuestionForm){surveyQuestionForm.addEventListener('submit',e=>{const type=document.getElementById('surveyQuestionType').value;const values=surveyOptionRows().map(r=>r.querySelector('input').value.trim()).filter(Boolean);document.getElementById('surveyOptionsValue').value=values.join('\n');if(type!=='text'&&values.length<2){e.preventDefault();alert('Додайте щонайменше два варіанти відповіді.');}});toggleSurveyOptions();}
 </script>
 <script>
-function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'flex':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'flex':'none';}
+function surveyAudienceChecks(suffix){return Array.from(document.querySelectorAll('#surveyUserPicker'+suffix+' input[name="audience_user_ids"]'));}
+function updateSurveyAudienceCount(suffix){const el=document.getElementById('surveyAudienceCount'+suffix);if(el)el.textContent=surveyAudienceChecks(suffix).filter(x=>x.checked).length;}
+function filterSurveyAudience(suffix){const q=(document.getElementById('surveyAudienceSearch'+suffix)?.value||'').trim().toLowerCase();document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{row.hidden=q&&!row.dataset.search.includes(q);});}
+function setSurveyAudienceVisible(suffix,value){document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{if(!row.hidden)row.querySelector('input').checked=value;});updateSurveyAudienceCount(suffix);}
+function setSurveyAudienceAll(suffix,value){surveyAudienceChecks(suffix).forEach(x=>x.checked=value);updateSurveyAudienceCount(suffix);}
+function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'grid':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'grid':'none';updateSurveyAudienceCount(suffix);}
 toggleSurveyAudience('Edit');
 </script>
 {% endblock %}
