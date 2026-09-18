@@ -74,6 +74,7 @@
   <article class="card badge-card">
     <div class="big-icon">{{b.icon}}</div>
     <span class="tag">{% if b.automatic %}Автоматичний{% else %}Ручний{% endif %}</span>
+    {% if b.id in system_badge_ids and b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}<span class="tag">💙 Системний донатний бейдж</span>{% endif %}
     <h3>{{b.name}}</h3><p>{{b.description}}</p>
     {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format(b.criteria_value / 100) }} грн{% else %}{{b.criteria_value}}{% endif %}{% endif %}</p>{% endif %}
     <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>

@@ -1,4 +1,4 @@
-# AMP XP / «АМПасадори» v1.15.0 — Targeting, Event Analytics & Opportunity UX
+# AMP XP / «АМПасадори» v1.15.0.1 — Donation Badge CI Hotfix
 
 ## Що змінено
 

@@ -381,6 +381,8 @@ def main() -> None:
     badge_seed_source = (root / "app" / "domain_services" / "gamification.py").read_text(encoding="utf-8")
     if "_is_system_badge_rule" not in badge_route_source or "system_badge_ids" not in badges_template_source:
         raise SystemExit("Badge editing preflight failed: system/ambassador badge edit safeguards missing")
+    if "Системний донатний бейдж" not in badges_template_source:
+        raise SystemExit("Badge editing preflight failed: Ukrainian system donation badge label missing")
     if "Existing system badges are intentionally not overwritten here" not in badge_seed_source:
         raise SystemExit("Badge editing preflight failed: bootstrap still risks overwriting admin edits")
     if "preserve administrator-edited" not in donation_source:

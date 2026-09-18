@@ -15,8 +15,9 @@ def read(rel: str) -> str:
 
 
 def test_version_and_new_alembic_head():
-    assert read("VERSION.txt").strip() == "1.15.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.15.0"
+    version = read("VERSION.txt").strip()
+    assert version == read("VERSION_CHECK.txt").strip()
+    assert version.startswith("1.15.")
     src = read("migrations/versions/20260918_0004_survey_audience.py")
     assert 'revision: str = "20260918_0004"' in src
     assert 'down_revision: Union[str, None] = "20260917_0003"' in src

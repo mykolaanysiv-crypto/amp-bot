@@ -1,0 +1,24 @@
+AMP XP / «АМПасадори» v1.15.0.1 — QA REPORT
+
+Причина hotfix
+- GitHub CI падав на historical regression `test_donation_badges_have_ukrainian_labels_and_protected_rules`.
+- Після редизайну Web-картки донатного бейджа зник явний текст `Системний донатний бейдж`, хоча захист правила/порогу залишився.
+- Окремо historical `test_v1741_features.py` використовував deprecated `datetime.utcnow()` і генерував Python 3.13 warnings.
+
+Виправлено
+- У badges.html додано `💙 Системний донатний бейдж` для built-in donation badges.
+- Historical test узгоджено з canonical `DONATION_SYSTEM_CRITERIA`.
+- v1.15 version regression зроблено patch-compatible при збереженні перевірки VERSION.txt == VERSION_CHECK.txt.
+- `datetime.utcnow()` у test_v1741 замінено на canonical Clock (`clock.storage_utc()` / `clock.local_wall()`).
+- Production preflight перевіряє український системний донатний label.
+
+Перевірки
+1. python -m compileall -q app scripts tests migrations — PASS.
+2. python -m scripts.production_preflight — PASS: Production preflight OK for AMP v1.15.0.1.
+3. pytest -q tests/test_v1104_donations_registrations_ui.py tests/test_v1150_targeting_event_analytics.py — 23/23 PASS.
+4. `tests/test_v1741_features.py` більше не містить `datetime.utcnow()`. Runtime DB-тести цього файлу локально не запускались через відсутній `aiosqlite` у sandbox; GitHub requirements-dev містить відповідну test dependency.
+
+База даних
+- Нових schema changes немає.
+- Очікуваний Alembic head після deploy: 20260918_0004.
+- Кількість таблиць: 56.

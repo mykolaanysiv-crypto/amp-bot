@@ -1,6 +1,6 @@
-АМП XP / «АМПасадори» v1.15.0
+АМП XP / «АМПасадори» v1.15.0.1
 
-Поточний production candidate: v1.15.0 — Targeting, Event Analytics & Opportunity UX.
+Поточний production candidate: v1.15.0.1 — Donation Badge CI Hotfix.
 
 Ключові зміни:
 - цільові аудиторії опитувань: усі / обрані учасники / учасники події;

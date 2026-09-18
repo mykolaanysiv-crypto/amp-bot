@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.event_documents import fill_registration_template
 from app.models import EventRegistration, Referral, Reward, UserRole, UserStatus
+from app.time_utils import clock
 from app.services import (
     add_xp,
     create_event,
@@ -29,7 +30,7 @@ async def test_referral_reward_clawback_within_30_days_is_idempotent(db):
             invited_user_id=invited.id,
             status="rewarded",
             xp_reward=8,
-            rewarded_at=datetime.utcnow() - timedelta(days=10),
+            rewarded_at=clock.storage_utc() - timedelta(days=10),
         )
         session.add(referral)
         await add_xp(session, inviter, 8, "Тестовий реферальний бонус", category="referral")
@@ -38,7 +39,7 @@ async def test_referral_reward_clawback_within_30_days_is_idempotent(db):
         assert inviter.wallet_xp == 8
 
         invited.status = UserStatus.INACTIVE.value
-        result = await revoke_referral_reward_if_inactive(session, invited, now=datetime.utcnow())
+        result = await revoke_referral_reward_if_inactive(session, invited, now=clock.storage_utc())
         assert result is not None
         returned_inviter, removed_xp, days_after = result
         assert returned_inviter.id == inviter.id
@@ -50,7 +51,7 @@ async def test_referral_reward_clawback_within_30_days_is_idempotent(db):
         assert inviter.wallet_xp == 0
 
         # A repeated inactive/status callback must not remove XP twice.
-        assert await revoke_referral_reward_if_inactive(session, invited, now=datetime.utcnow()) is None
+        assert await revoke_referral_reward_if_inactive(session, invited, now=clock.storage_utc()) is None
         assert await xp_total(session, inviter.id) == 0
 
 
@@ -71,10 +72,10 @@ async def test_donor_xlsx_template_preserves_layout_and_fills_confirmation_code(
         user = await create_user(session, tg_id=174112, name="Учасник Тест")
         user.last_name = "Тест"
         user.first_name = "Учасник"
-        event = await create_event(session, "Подія донора", "", datetime.utcnow() + timedelta(days=1), "АМП", 10, 0, admin.id)
+        event = await create_event(session, "Подія донора", "", clock.local_wall() + timedelta(days=1), "АМП", 10, 0, admin.id)
         reg = await register_for_event(session, user.id, event.id)
         reg.status = "attended"
-        reg.confirmed_at = datetime.utcnow()
+        reg.confirmed_at = clock.storage_utc()
         reg.attendance_signature = "a" * 64
         await session.flush()
 
@@ -102,10 +103,10 @@ async def test_donor_docx_template_fills_existing_table_and_keeps_heading(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=174121, name="Адмін Word", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=174122, name="Учасник Word")
-        event = await create_event(session, "Word-подія", "", datetime.utcnow() + timedelta(days=2), "АМП", 10, 0, admin.id)
+        event = await create_event(session, "Word-подія", "", clock.local_wall() + timedelta(days=2), "АМП", 10, 0, admin.id)
         reg = await register_for_event(session, user.id, event.id)
         reg.status = "attended"
-        reg.confirmed_at = datetime.utcnow()
+        reg.confirmed_at = clock.storage_utc()
         reg.attendance_signature = "b" * 64
         await session.flush()
 

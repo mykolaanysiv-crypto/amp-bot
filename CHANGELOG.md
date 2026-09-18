@@ -1,3 +1,11 @@
+# v1.15.0.1 — Donation Badge CI Hotfix
+
+- Відновлено явний український маркер «Системний донатний бейдж» у Web-каталозі бейджів.
+- Historical v1.15 regression test більше не прив’язаний до одного patch-номера, але перевіряє узгодженість VERSION.txt / VERSION_CHECK.txt.
+- У test_v1741 прибрано deprecated datetime.utcnow() на користь canonical Clock, щоб Python 3.13 не генерував зайві warning.
+- Production preflight тепер контролює наявність українського маркера системного донатного бейджа.
+- Схема БД не змінюється; Alembic head залишається 20260918_0004.
+
 # v1.15.0 — Targeting, Event Analytics & Opportunity UX
 
 - Опитування отримали цільові аудиторії: всі активні, обрані учасники або учасники конкретної події.

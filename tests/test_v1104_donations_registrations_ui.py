@@ -158,7 +158,7 @@ def test_donation_badges_have_ukrainian_labels_and_protected_rules():
         assert f'"{code}": "{title}"' in labels
     assert "Системний донатний бейдж" in tpl
     assert "b.criteria_value / 100" in tpl
-    assert 'donation_criteria = {"donation_first", "donation_single", "donation_total_over"}' in route
+    assert 'DONATION_SYSTEM_CRITERIA = {"donation_first", "donation_single", "donation_total_over"}' in route
 
 
 def test_support_copy_uses_amp_code_not_english_id_label():
