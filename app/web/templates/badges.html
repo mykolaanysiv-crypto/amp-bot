@@ -76,16 +76,23 @@
     <span class="tag">{% if b.automatic %}Автоматичний{% else %}Ручний{% endif %}</span>
     <h3>{{b.name}}</h3><p>{{b.description}}</p>
     {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format(b.criteria_value / 100) }} грн{% else %}{{b.criteria_value}}{% endif %}{% endif %}</p>{% endif %}
-    {% if b.criteria_type not in ['donation_first','donation_single','donation_total_over'] %}<details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
       <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="badge_type" value="general">
         <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>
-        <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
-        <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
-        <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label><label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
+        {% if b.id in system_badge_ids %}
+          <label>Критерій<input value="{{label(b.criteria_type)}}" disabled></label><label>Поріг<input value="{% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format((b.criteria_value or 0) / 100) }} грн{% else %}{{b.criteria_value or '—'}}{% endif %}" disabled></label>
+          <input type="hidden" name="criteria_type" value="{{b.criteria_type}}"><input type="hidden" name="criteria_value" value="{{b.criteria_value or ''}}"><input type="hidden" name="automatic" value="1">
+          <div class="span2 alert info compact-alert">⚙️ Системне правило та поріг захищені, але назву, іконку, опис і активність можна редагувати.</div>
+        {% else %}
+          <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
+          <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
+          <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label>
+        {% endif %}
+        <label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
         <label class="span2">Опис<textarea name="description">{{b.description}}</textarea></label><button class="primary">Зберегти</button>
       </form>
-    </details>{% else %}<div class="alert info compact-alert">⚙️ Системний донатний бейдж: умова та поріг керуються автоматично.</div>{% endif %}
+    </details>
   </article>
   {% else %}<p class="empty">Загальних бейджів ще немає.</p>{% endfor %}
 </div>
@@ -97,19 +104,26 @@
     <div class="ambassador-badge-preview">{% if b.image_path %}<img src="{{b.image_path}}" alt="{{b.name}}">{% else %}<div class="big-icon">{{b.icon}}</div>{% endif %}</div>
     <span class="tag">АМПасадорський</span><h3>{{b.name}}</h3><p>{{b.description}}</p>
     {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format(b.criteria_value / 100) }} грн{% else %}{{b.criteria_value}}{% endif %}{% endif %}</p>{% endif %}
-    {% if b.criteria_type not in ['donation_first','donation_single','donation_total_over'] %}<details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
       <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="badge_type" value="ambassador">
         <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>
-        <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
-        <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
-        <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label><label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
+        {% if b.id in system_badge_ids %}
+          <label>Критерій<input value="{{label(b.criteria_type)}}" disabled></label><label>Поріг<input value="{% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format((b.criteria_value or 0) / 100) }} грн{% else %}{{b.criteria_value or '—'}}{% endif %}" disabled></label>
+          <input type="hidden" name="criteria_type" value="{{b.criteria_type}}"><input type="hidden" name="criteria_value" value="{{b.criteria_value or ''}}"><input type="hidden" name="automatic" value="1">
+          <div class="span2 alert info compact-alert">⚙️ Системне правило та поріг захищені, але оформлення та активність можна редагувати.</div>
+        {% else %}
+          <label>Критерій<select name="criteria_type"><option value="">Без критерію</option>{% for c in ['xp_total','volunteer_hours','referrals','events','quests','activities','tasks','surveys','ideas','weekly_streak','event_streak'] %}<option value="{{c}}" {% if b.criteria_type==c %}selected{% endif %}>{{label(c)}}</option>{% endfor %}</select></label>
+          <label>Значення<input name="criteria_value" type="number" value="{{b.criteria_value or ''}}"></label>
+          <label class="check-line"><input name="automatic" type="checkbox" {% if b.automatic %}checked{% endif %}> Авто</label>
+        {% endif %}
+        <label class="check-line"><input name="active" type="checkbox" {% if b.active %}checked{% endif %}> Активний</label>
         <label class="span2">Опис<textarea name="description">{{b.description}}</textarea></label>
         <label class="span2">Новий PNG<input name="badge_png" type="file" accept="image/png,.png"><small>Прозорий фон збережеться.</small></label>
         {% if b.image_path %}<label class="check-line span2"><input name="remove_image" type="checkbox" value="1"> Видалити PNG</label>{% endif %}
         <button class="primary">Зберегти</button>
       </form>
-    </details>{% else %}<div class="alert info compact-alert">⚙️ Системний донатний бейдж: умова та поріг керуються автоматично.</div>{% endif %}
+    </details>
   </article>
   {% else %}<p class="empty">Бейджів АМПасадора ще немає.</p>{% endfor %}
 </div>

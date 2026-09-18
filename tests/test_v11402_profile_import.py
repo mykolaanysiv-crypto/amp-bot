@@ -6,9 +6,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version_is_v11402():
-    assert read("VERSION.txt").strip() == "1.14.0.2"
-    assert read("VERSION_CHECK.txt").strip() == "1.14.0.2"
+def test_version_is_v11402_or_newer():
+    def parts(value: str) -> tuple[int, ...]:
+        return tuple(int(part) for part in value.split("."))
+    assert parts(read("VERSION.txt").strip()) >= (1, 14, 0, 2)
+    assert read("VERSION_CHECK.txt").strip() == read("VERSION.txt").strip()
 
 def test_telegram_profile_explicitly_imports_userrole():
     src = read("app/handlers/participant_home.py")

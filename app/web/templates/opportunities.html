@@ -15,7 +15,7 @@
   <label><span>Статус</span><select name="status"><option value="">Усі статуси</option><option value="active" {% if status=='active' %}selected{% endif %}>Активні</option><option value="inactive" {% if status=='inactive' %}selected{% endif %}>Неактивні</option></select></label>
   <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
   <label><span>Тип</span><select name="type"><option value="">Усі типи</option>{% for k in kinds %}<option value="{{k}}" {% if type==k %}selected{% endif %}>{{k}}</option>{% endfor %}</select></label>
-  <label><span>Сортування</span><select name="sort"><option value="deadline" {% if sort=='deadline' %}selected{% endif %}>За дедлайном</option><option value="newest" {% if sort=='newest' %}selected{% endif %}>Нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
+  <label><span>Сортування</span><select name="sort"><option value="auto" {% if sort=='auto' %}selected{% endif %}>Автоматично: актуальність і дедлайн</option><option value="deadline" {% if sort=='deadline' %}selected{% endif %}>За дедлайном</option><option value="newest" {% if sort=='newest' %}selected{% endif %}>Нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
   <button class="primary smart-filter-submit">Застосувати</button>
 </form>
 
@@ -41,13 +41,14 @@
 
 <div class="work-cards-grid opportunity-cards">
 {% for item in items %}
-<article class="card opportunity-card">
+<article class="card opportunity-card {% if opportunity_states.get(item.id, {}).get('urgent') %}opportunity-urgent{% elif opportunity_states.get(item.id, {}).get('expired') or not item.active %}opportunity-inactive{% endif %}">
   {% if item.image_path %}<img class="opportunity-cover" src="{{item.image_path}}" alt="Фото: {{item.title}}">{% endif %}
   <div class="entity-card-topline">
     <div><span class="tag">{{item.kind}}</span> <span class="tag {% if item.active %}good{% endif %}">{{'Активна' if item.active else 'Неактивна'}}</span></div>
     <span class="event-date-badge">{{item.deadline.strftime('%d.%m.%Y · %H:%M') if item.deadline else 'Без дедлайну'}}</span>
   </div>
   <h3>{{item.title}}</h3>
+  {% if opportunity_states.get(item.id, {}).get('urgent') %}<div class="opportunity-deadline-alert">🔥 <b>У вас є остання можливість долучитись до «{{item.title}}»</b> — до дедлайну залишилося менше 3 днів.</div>{% endif %}
   <div class="entity-card-info">
     <span>🧭 {{item.direction or 'Інше'}}</span><span>💻 {{item.format or '—'}}</span>
     <span>🎂 {% if item.age_min or item.age_max %}{{item.age_min or '—'}}–{{item.age_max or '—'}}{% else %}без обмежень{% endif %}</span>

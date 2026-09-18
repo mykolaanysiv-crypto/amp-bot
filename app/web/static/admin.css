@@ -3320,3 +3320,9 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 
 /* v1.14.0 — ambassador cabinets */
 .ambassador-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}.ambassador-report-card{margin:0}.ambassador-report-card .report-description{white-space:pre-wrap;line-height:1.55}.ambassador-report-photo{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;border:1px solid var(--line);margin:12px 0}.inline-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.inline-form select{min-width:190px}@media(max-width:900px){.ambassador-report-grid{grid-template-columns:1fr}.inline-form{align-items:stretch}.inline-form select,.inline-form button{width:100%}}
+
+/* v1.15.0 — event-level analytics */
+.event-basic-analytics{margin-top:16px}.event-analytics-kpis{margin-top:12px}.event-analytics-secondary{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.event-analytics-secondary span{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+
+/* v1.15.0 — opportunity urgency */
+.opportunity-card.opportunity-urgent{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.12)}.opportunity-deadline-alert{margin:10px 0;padding:10px 12px;border-radius:12px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.35)}.opportunity-card.opportunity-inactive{opacity:.72}

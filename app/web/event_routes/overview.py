@@ -120,6 +120,24 @@ async def event_detail(request: Request, event_id: int):
             "last_scan_actor": last_scanner_audit.actor_label if last_scanner_audit else "",
         }
         view_stat = await content_view_stat(session, "event", event.id)
+        registration_base = counts["registered"] + counts["reserved"] + counts["checked_in"] + counts["confirmed"] + counts["no_show"]
+        attendance_rate = round(counts["confirmed"] * 100 / registration_base, 1) if registration_base else 0.0
+        checkin_rate = round((counts["checked_in"] + counts["confirmed"]) * 100 / registration_base, 1) if registration_base else 0.0
+        no_show_rate = round(counts["no_show"] * 100 / registration_base, 1) if registration_base else 0.0
+        capacity_fill = round(counts["all"] * 100 / event.capacity, 1) if event.capacity else None
+        event_analytics = {
+            "registrations": registration_base,
+            "attendance_rate": attendance_rate,
+            "checkin_rate": checkin_rate,
+            "no_show_rate": no_show_rate,
+            "capacity_fill": capacity_fill,
+            "feedback_response_rate": feedback_stats["response_rate"],
+            "avg_rating": feedback_stats["avg_rating"],
+            "xp_total": sum(int(row.amount or 0) for row in xp_rows),
+            "views": int(view_stat.get("views", 0)),
+            "unique_views": int(view_stat.get("unique", 0)),
+            "repeat_views": max(0, int(view_stat.get("views", 0)) - int(view_stat.get("unique", 0))),
+        }
         operation_funnel = [
             {"key": "registered", "label": "Зареєстровані", "value": counts["registered"] + counts["reserved"] + counts["checked_in"] + counts["confirmed"] + counts["no_show"]},
             {"key": "waitlist", "label": "Черга / резерв", "value": counts["waitlisted"] + counts["reserved"]},
@@ -132,7 +150,7 @@ async def event_detail(request: Request, event_id: int):
             request=request, name="event_detail.html",
             context=ctx(
                 request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
-                xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat,
+                xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat, event_analytics=event_analytics,
                 share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token else "",
             )
         )

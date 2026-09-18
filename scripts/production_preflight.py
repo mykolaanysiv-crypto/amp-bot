@@ -290,7 +290,10 @@ def main() -> None:
         raise SystemExit("Alembic preflight failed: v1.12 content views migration missing")
     migration_source = (root / "migrations" / "versions" / "20260917_0003_ambassador_cabinets.py").read_text(encoding="utf-8")
     if 'revision: str = "20260917_0003"' not in migration_source or 'down_revision: Union[str, None] = "20260915_0002"' not in migration_source:
-        raise SystemExit("Alembic preflight failed: expected production head 20260917_0003 missing")
+        raise SystemExit("Alembic preflight failed: v1.14 ambassador migration 20260917_0003 missing")
+    survey_migration_source = (root / "migrations" / "versions" / "20260918_0004_survey_audience.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260918_0004"' not in survey_migration_source or 'down_revision: Union[str, None] = "20260917_0003"' not in survey_migration_source:
+        raise SystemExit("Alembic preflight failed: expected v1.15 production head 20260918_0004 missing")
 
     # v1.14.0.1 release-order guard.  Never run ORM bootstrap queries before
     # additive Alembic revisions are applied: mapped SELECTs include new columns
@@ -321,6 +324,67 @@ def main() -> None:
         )
         if not imported_user_role:
             raise SystemExit("Telegram profile preflight failed: UserRole is used but not explicitly imported")
+
+    # v1.15.0 targeting, event analytics, opportunity lifecycle and badge-edit guards.
+    survey_model_source = (root / "app" / "model_domains" / "engagement.py").read_text(encoding="utf-8")
+    survey_audience_source = (root / "app" / "survey_audience.py").read_text(encoding="utf-8")
+    survey_web_source = (root / "app" / "web" / "routes" / "surveys.py").read_text(encoding="utf-8")
+    survey_tg_source = (root / "app" / "handlers" / "surveys.py").read_text(encoding="utf-8")
+    surveys_template = (root / "app" / "web" / "templates" / "surveys.html").read_text(encoding="utf-8")
+    for token in ("audience_type", "audience_event_id", "class SurveyAudienceUser"):
+        if token not in survey_model_source:
+            raise SystemExit(f"Survey targeting preflight failed: model token {token} missing")
+    if "SurveyAudienceUser," not in models_source:
+        raise SystemExit("Survey targeting preflight failed: compatibility model facade does not import SurveyAudienceUser")
+    for token in ("EVENT_AUDIENCE_STATUSES", "eligible_user_ids", "survey_available_to_user", "eligible_users"):
+        if token not in survey_audience_source:
+            raise SystemExit(f"Survey targeting preflight failed: helper {token} missing")
+    if "eligible_users(session, survey)" not in survey_web_source or "survey_available_to_user" not in survey_tg_source:
+        raise SystemExit("Survey targeting preflight failed: web publish/Telegram access guard missing")
+    if 'value="users"' not in surveys_template or 'value="event"' not in surveys_template:
+        raise SystemExit("Survey targeting preflight failed: audience controls missing from web UI")
+
+    report_period_source = (root / "app" / "reporting" / "periods.py").read_text(encoding="utf-8")
+    reports_template = (root / "app" / "web" / "templates" / "reports.html").read_text(encoding="utf-8")
+    if "ISO-тиждень" in report_period_source + reports_template or "понеділок–неділя" not in report_period_source + reports_template:
+        raise SystemExit("Reporting preflight failed: week wording is not understandable Ukrainian")
+
+    event_overview_source = (root / "app" / "web" / "event_routes" / "overview.py").read_text(encoding="utf-8")
+    event_template = (root / "app" / "web" / "templates" / "event_detail.html").read_text(encoding="utf-8")
+    for token in ("attendance_rate", "feedback_response_rate", "xp_total", "unique_views"):
+        if token not in event_overview_source:
+            raise SystemExit(f"Event analytics preflight failed: {token} missing")
+    if "Базова аналітика події" not in event_template:
+        raise SystemExit("Event analytics preflight failed: event card analytics UI missing")
+
+    opportunity_helper = (root / "app" / "opportunity_utils.py").read_text(encoding="utf-8")
+    opportunity_web = (root / "app" / "web" / "routes" / "opportunities.py").read_text(encoding="utf-8")
+    opportunity_tg = (root / "app" / "handlers" / "participant_opportunities.py").read_text(encoding="utf-8")
+    opportunity_nav_tg = (root / "app" / "handlers" / "participant_tasks.py").read_text(encoding="utf-8")
+    opportunity_template = (root / "app" / "web" / "templates" / "opportunities.html").read_text(encoding="utf-8")
+    if "timedelta(days=3)" not in opportunity_helper or any("opportunity_sort_key" not in src for src in (opportunity_web, opportunity_tg, opportunity_nav_tg)):
+        raise SystemExit("Opportunity preflight failed: automatic ordering/3-day urgency missing")
+    urgent_phrase = "У вас є остання можливість долучитись до"
+    if any(urgent_phrase not in src for src in (opportunity_tg, opportunity_nav_tg, opportunity_template)):
+        raise SystemExit("Opportunity preflight failed: deadline urgency messaging missing")
+
+    requests_source = (root / "app" / "web" / "routes" / "requests.py").read_text(encoding="utf-8")
+    for role_token in ("UserRole.SUPERADMIN.value", "UserRole.ADMIN.value", "UserRole.COORDINATOR.value", "UserRole.AMBASSADOR.value"):
+        if role_token not in requests_source:
+            raise SystemExit(f"Case assignee preflight failed: {role_token} missing")
+    if "Відповідальним за кейс може бути лише активний" not in requests_source:
+        raise SystemExit("Case assignee preflight failed: server-side role validation missing")
+
+    badge_route_source = (root / "app" / "web" / "routes" / "gamification.py").read_text(encoding="utf-8")
+    badges_template_source = (root / "app" / "web" / "templates" / "badges.html").read_text(encoding="utf-8")
+    donation_source = (root / "app" / "donations.py").read_text(encoding="utf-8")
+    badge_seed_source = (root / "app" / "domain_services" / "gamification.py").read_text(encoding="utf-8")
+    if "_is_system_badge_rule" not in badge_route_source or "system_badge_ids" not in badges_template_source:
+        raise SystemExit("Badge editing preflight failed: system/ambassador badge edit safeguards missing")
+    if "Existing system badges are intentionally not overwritten here" not in badge_seed_source:
+        raise SystemExit("Badge editing preflight failed: bootstrap still risks overwriting admin edits")
+    if "preserve administrator-edited" not in donation_source:
+        raise SystemExit("Badge editing preflight failed: donation badge presentation persistence missing")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

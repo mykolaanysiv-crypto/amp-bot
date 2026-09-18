@@ -53,7 +53,7 @@ def test_reporting_2_supports_iso_week_and_dynamic_granularity():
     start, end, label = resolve_report_period("week", year=2026, month=38)
     assert (end - start).days == 7
     assert start.isocalendar().week == 38
-    assert "38 тиждень 2026" == label
+    assert label == "38-й тиждень 2026 (14.09–20.09)"
     source = reports_source()
     assert 'trend_granularity = "day"' in source
     assert 'trend_granularity = "week"' in source

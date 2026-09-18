@@ -1,5 +1,6 @@
 from aiogram.filters import Command
 from ..time_utils import clock
+from ..opportunity_utils import deadline_urgency, opportunity_sort_key
 from .participant_common import (
     CallbackQuery, Database, F, InlineKeyboardBuilder, Message, OPPORTUNITY_INTERESTS, Opportunity, OpportunityInterest, OpportunityMatch, UserStatus, active_month_streak, content_view_stat, datetime, entity_button_text, escape, get_user_by_tg, goals_for_user, log_extra, logging, record_content_view, refresh_matches_for_user, router, select, set_user_interests, telegram_photo_input, user_interests
 )
@@ -21,9 +22,9 @@ async def opportunities(message: Message, db: Database) -> None:
             select(Opportunity).where(
                 Opportunity.active == True,  # noqa: E712
                 (Opportunity.deadline.is_(None)) | (Opportunity.deadline >= clock.local_wall()),
-            ).order_by(Opportunity.deadline.asc().nullslast(), Opportunity.id.desc())
+            )
         )).all())
-        rows.sort(key=lambda o: (0 if o.id in matched_ids else 1, -int(matched_ids.get(o.id, 0)), o.deadline or datetime.max))
+        rows.sort(key=opportunity_sort_key)
         await session.commit()
         if not rows:
             await message.answer("🌍 Зараз немає актуальних можливостей для молоді.")
@@ -32,7 +33,7 @@ async def opportunities(message: Message, db: Database) -> None:
         interests = user_interests(user)
         lines = [
             "🌍 <b>Можливості для молоді</b>",
-            "Персональні збіги показуються першими.",
+            "Список автоматично впорядковано за актуальністю та дедлайном.",
             f"🎯 Інтереси: <b>{', '.join(interests) if interests else 'ще не обрано'}</b>",
             "",
             "<b>Оберіть можливість:</b>",
@@ -40,9 +41,11 @@ async def opportunities(message: Message, db: Database) -> None:
         for idx, o in enumerate(rows[:20], start=1):
             deadline = o.deadline.strftime("%d.%m.%Y") if o.deadline else "без дедлайну"
             score = matched_ids.get(o.id)
+            urgent = bool(deadline_urgency(o).get("urgent"))
             prefix = f"✨ Збіг {score}% · " if score else ""
-            lines.append(f"\n<b>{idx}. {escape(o.title)}</b>\n{prefix}📆 {deadline} • {escape(o.kind or 'можливість')}")
-            label_text = f"✨ {o.title}" if score else f"🌍 {o.title}"
+            urgent_text = f"\n🔥 <b>У вас є остання можливість долучитись до «{escape(o.title)}»</b>" if urgent else ""
+            lines.append(f"\n<b>{idx}. {escape(o.title)}</b>\n{prefix}📆 {deadline} • {escape(o.kind or 'можливість')}{urgent_text}")
+            label_text = f"🔥 {o.title}" if urgent else (f"✨ {o.title}" if score else f"🌍 {o.title}")
             b.button(text=entity_button_text(label_text), callback_data=f"opp:{o.id}")
         b.button(text="⚙️ Мої інтереси", callback_data="opp_prefs")
         b.adjust(1)
@@ -133,7 +136,10 @@ async def opportunity_detail(call: CallbackQuery, db: Database) -> None:
         match_text = f"\n✨ Персональний збіг: <b>{match.score}%</b>" if match else ""
         place_text = f"\n📍 Для: {escape(item.target_settlements)}" if item.target_settlements else ""
         safe_title = escape(item.title or "Можливість")
+        urgent = bool(deadline_urgency(item).get("urgent"))
+        urgency_text = f"🔥 <b>У вас є остання можливість долучитись до «{safe_title}»</b>\n\n" if urgent else ""
         text = (
+            urgency_text +
             f"🌍 <b>{safe_title}</b>\n"
             f"🏷 {escape(item.kind or 'можливість')} • {escape(item.direction or 'Інше')}\n"
             f"💻 Формат: {escape(item.format or 'Онлайн/офлайн')}{age_text}{place_text}{match_text}\n"

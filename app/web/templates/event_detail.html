@@ -50,6 +50,23 @@
   </section>
 </div>
 
+<section class="card event-basic-analytics">
+  <div class="section-title"><div><h2>📊 Базова аналітика події</h2><p class="muted">Короткий зріз саме цієї події: реєстрація, фактична участь, відгуки, XP та перегляди.</p></div></div>
+  <div class="kpis five event-analytics-kpis">
+    <div class="kpi"><span>Реєстрацій</span><strong>{{event_analytics.registrations}}</strong>{% if event_analytics.capacity_fill is not none %}<small>{{event_analytics.capacity_fill}}% місткості</small>{% endif %}</div>
+    <div class="kpi"><span>Підтверджена участь</span><strong>{{event_analytics.attendance_rate}}%</strong><small>{{counts.confirmed}} учасників</small></div>
+    <div class="kpi"><span>Не прийшли</span><strong>{{event_analytics.no_show_rate}}%</strong><small>{{counts.no_show}} осіб</small></div>
+    <div class="kpi"><span>Відгуки</span><strong>{{event_analytics.feedback_response_rate}}%</strong><small>Оцінка {{event_analytics.avg_rating or '—'}}</small></div>
+    <div class="kpi"><span>Нараховано XP</span><strong>{{event_analytics.xp_total}}</strong><small>{{counts.xp_awarded}} учасникам</small></div>
+  </div>
+  <div class="event-analytics-secondary">
+    <span>📍 Відмітка: <b>{{event_analytics.checkin_rate}}%</b></span>
+    <span>👁 Перегляди: <b>{{event_analytics.views}}</b></span>
+    <span>👤 Унікальні: <b>{{event_analytics.unique_views}}</b></span>
+    <span>🔁 Повторні: <b>{{event_analytics.repeat_views}}</b></span>
+  </div>
+</section>
+
 <section class="card event-operations-cockpit" id="event-operations">
   <div class="section-title event-ops-title">
     <div>

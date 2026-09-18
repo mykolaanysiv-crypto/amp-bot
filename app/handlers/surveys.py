@@ -21,6 +21,7 @@ from ..workflows import complete_survey_once
 from ..states import SurveyState
 from ..content_views import content_view_stat, record_content_view
 from ..observability import log_extra
+from ..survey_audience import survey_available_to_user
 
 router = Router(name="surveys")
 
@@ -67,7 +68,11 @@ async def _available_surveys(session, user_id: int) -> list[tuple[Survey, bool]]
     done_ids = set((await session.scalars(
         select(SurveyResponse.survey_id).where(SurveyResponse.user_id == user_id)
     )).all())
-    return [(survey, survey.id in done_ids) for survey in surveys]
+    visible = []
+    for survey in surveys:
+        if await survey_available_to_user(session, survey, user_id):
+            visible.append((survey, survey.id in done_ids))
+    return visible
 
 
 @router.message(F.text == "📋 Опитування")
@@ -99,15 +104,16 @@ async def survey_view(call: CallbackQuery, db: Database, state: FSMContext) -> N
         survey = await session.get(Survey, survey_id)
         existing = None if not user else await session.scalar(select(SurveyResponse).where(SurveyResponse.survey_id == survey_id, SurveyResponse.user_id == user.id))
         questions_count = int(await session.scalar(select(func.count(SurveyQuestion.id)).where(SurveyQuestion.survey_id == survey_id)) or 0)
-        if user and _survey_available(survey):
+        eligible = bool(user and await survey_available_to_user(session, survey, user.id))
+        if eligible and _survey_available(survey):
             await record_content_view(session, "survey", survey_id, user=user)
             await session.flush()
             view_stat = await content_view_stat(session, "survey", survey_id)
             await session.commit()
         else:
             view_stat = {"views": 0, "unique": 0}
-    if not user or not _survey_available(survey):
-        await call.answer("Опитування недоступне або його термін завершився", show_alert=True)
+    if not user or not eligible or not _survey_available(survey):
+        await call.answer("Опитування недоступне для вашого профілю або його термін завершився", show_alert=True)
         return
     b = InlineKeyboardBuilder()
     if existing:
@@ -152,7 +158,8 @@ async def _load_progress(session, state: FSMContext, tg_id: int):
     user = await _active(session, tg_id)
     survey = await session.get(Survey, survey_id) if survey_id else None
     questions = list((await session.scalars(select(SurveyQuestion).where(SurveyQuestion.survey_id == survey_id).order_by(SurveyQuestion.sort_order, SurveyQuestion.id))).all()) if survey else []
-    return data, survey, questions, idx, user
+    eligible = bool(user and survey and await survey_available_to_user(session, survey, user.id))
+    return data, survey, questions, idx, user, eligible
 
 
 async def _finish_survey(target, db: Database, state: FSMContext, user: User, survey: Survey, answers: dict) -> None:
@@ -182,8 +189,8 @@ async def _finish_survey(target, db: Database, state: FSMContext, user: User, su
 
 async def _send_question(target, db: Database, state: FSMContext, tg_id: int) -> None:
     async with db.session_factory() as session:
-        data, survey, questions, idx, user = await _load_progress(session, state, tg_id)
-    if not user or not _survey_available(survey):
+        data, survey, questions, idx, user, eligible = await _load_progress(session, state, tg_id)
+    if not user or not eligible or not _survey_available(survey):
         await state.clear()
         await target.answer("Опитування більше недоступне або його термін завершився.")
         return
@@ -228,7 +235,8 @@ async def survey_start(call: CallbackQuery, db: Database, state: FSMContext) -> 
         user = await _active(session, call.from_user.id)
         survey = await session.get(Survey, survey_id)
         existing = None if not user else await session.scalar(select(SurveyResponse).where(SurveyResponse.survey_id == survey_id, SurveyResponse.user_id == user.id))
-    if not user or not _survey_available(survey) or existing:
+        eligible = bool(user and survey and await survey_available_to_user(session, survey, user.id))
+    if not user or not eligible or not _survey_available(survey) or existing:
         await call.answer("Опитування недоступне, завершилося або вже пройдене", show_alert=True)
         return
     await state.clear()

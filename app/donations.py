@@ -193,7 +193,13 @@ def _api_get(path: str, token: str) -> Any:
 async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
     result: dict[str, Badge] = {}
     for spec in DONATION_BADGES:
-        badge = await session.scalar(select(Badge).where(Badge.name == spec["name"]))
+        badge = await session.scalar(select(Badge).where(
+            Badge.criteria_type == spec["criteria_type"],
+            Badge.criteria_value == int(spec["criteria_value"]),
+            Badge.badge_type == spec["badge_type"],
+        ))
+        if not badge:
+            badge = await session.scalar(select(Badge).where(Badge.name == spec["name"]))
         if not badge:
             badge = Badge(
                 name=spec["name"],
@@ -208,13 +214,11 @@ async def ensure_donation_badges(session: AsyncSession) -> dict[str, Badge]:
             session.add(badge)
             await session.flush()
         else:
-            # Keep the built-in donor badges self-healing if a legacy row exists.
-            badge.icon = spec["icon"]
-            badge.description = spec["description"]
+            # Keep the business rule stable, but preserve administrator-edited
+            # name/icon/description/active state and ambassador PNG.
             badge.criteria_type = spec["criteria_type"]
             badge.criteria_value = int(spec["criteria_value"])
             badge.automatic = True
-            badge.active = True
             badge.badge_type = spec["badge_type"]
         result[spec["name"]] = badge
     return result
@@ -244,6 +248,8 @@ async def award_donation_badges(session: AsyncSession, user_id: int) -> list[Bad
     newly_awarded: list[Badge] = []
     for spec in DONATION_BADGES:
         badge = badges[spec["name"]]
+        if not badge.active:
+            continue
         if badge.badge_type == "ambassador" and user.role not in AMBASSADOR_ROLES:
             continue
         threshold = int(spec["criteria_value"])

@@ -1,0 +1,62 @@
+АМП XP / «АМПасадори» v1.15.0 — команди production update
+
+1) Перейти в локальний Git-репозиторій:
+cd ~/Downloads/amp_bot_v1103
+
+2) ОБОВ'ЯЗКОВО створити backup перед schema update:
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+3) Розпакувати build:
+rm -rf /tmp/amp_bot_v1150
+mkdir -p /tmp/amp_bot_v1150
+unzip -q ~/Downloads/amp_bot_v1150.zip -d /tmp/amp_bot_v1150
+
+4) Накласти build поверх репозиторію, зберігши .git/.env/.venv:
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='__pycache__' \
+  --exclude='.pytest_cache' \
+  /tmp/amp_bot_v1150/amp_bot_v1150/ ./
+
+5) Перевірити версію:
+cat VERSION.txt
+# очікується 1.15.0
+
+6) Локальні перевірки:
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q tests/test_v1150_targeting_event_analytics.py
+
+7) Commit + GitHub Production Gate:
+git status --short
+git add -A
+git commit -m "Upgrade AMP to v1.15.0 targeting event analytics opportunity UX"
+git push origin main
+
+8) Після зеленого GitHub Actions / deploy:
+heroku ps -a amp-bot-ver-1-5-0
+# web.1: up
+# worker.1: up
+
+9) Alembic head:
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+# очікується 20260918_0004 (head)
+
+10) Health:
+curl -sS https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/ready | python3 -m json.tool
+curl -sS -o /tmp/amp_dependencies.json -w 'HTTP %{http_code}\n' https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/dependencies
+cat /tmp/amp_dependencies.json | python3 -m json.tool
+
+11) Worker log:
+heroku logs --dyno worker -n 150 -a amp-bot-ver-1-5-0
+
+12) Ручний smoke:
+- Web → Опитування → створити чернетку для обраних учасників; переконатися, що сторонній учасник її не бачить у Telegram.
+- Web → Опитування → створити чернетку для учасників конкретної події; перевірити доступ у Telegram.
+- Web → Звіти → Тиждень: бачимо зрозумілий формат «N-й тиждень YYYY (дата–дата)».
+- Web → Події → Детально: є «Базова аналітика події».
+- Web/TG → Можливості: порядок автоматичний; можливість з дедлайном <=3 днів має 🔥-підсвітку/текст.
+- Web → Кейси: у відповідальних лише Суперадмін/Адмін/Координатор/АМПасадор.
+- Web → Бейджі: системний та АМПасадорський бейдж редагуються; системне правило/поріг не змінюються.

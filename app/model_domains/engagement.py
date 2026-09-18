@@ -261,9 +261,23 @@ class Survey(Base):
     status: Mapped[str] = mapped_column(String(24), default="draft", index=True)  # draft|published|closed
     starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    audience_type: Mapped[str] = mapped_column(String(24), default="all", index=True)  # all|users|event
+    audience_event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     created_by_label: Mapped[str] = mapped_column(String(160), default="web")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+class SurveyAudienceUser(Base):
+    __tablename__ = "survey_audience_users"
+    __table_args__ = (UniqueConstraint("survey_id", "user_id", name="uq_survey_audience_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    survey_id: Mapped[int] = mapped_column(ForeignKey("surveys.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+    survey: Mapped[Survey] = relationship()
+    user: Mapped[User] = relationship()
 
 class SurveyQuestion(Base):
     __tablename__ = "survey_questions"

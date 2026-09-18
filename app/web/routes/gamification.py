@@ -16,6 +16,30 @@ from app.web.broadcast_runtime import (
 
 router = APIRouter()
 
+CORE_SYSTEM_BADGE_RULES = {
+    ("xp_transactions", 1),
+    ("xp_transactions", 10),
+    ("volunteer_hours", 50),
+    ("volunteer_hours", 100),
+    ("referrals", 3),
+    ("quests", 5),
+    ("xp_total", 300),
+    ("xp_total", 800),
+    ("xp_total", 1200),
+}
+DONATION_SYSTEM_CRITERIA = {"donation_first", "donation_single", "donation_total_over"}
+
+def _is_system_badge_rule(badge: Badge) -> bool:
+    return bool(
+        badge.criteria_type in DONATION_SYSTEM_CRITERIA
+        or (
+            badge.automatic
+            and badge.badge_type == "general"
+            and (badge.criteria_type, int(badge.criteria_value or 0)) in CORE_SYSTEM_BADGE_RULES
+        )
+    )
+
+
 @router.get("/admin/leaderboard", response_class=HTMLResponse)
 async def leaderboard_dashboard(request: Request):
     if r := guard(request): return r
@@ -324,7 +348,8 @@ async def badges(request:Request):
     async with db.session_factory() as session:
         rows=(await session.scalars(select(Badge).order_by(Badge.badge_type.asc(), Badge.automatic.desc(),Badge.name))).all()
         users=(await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value).order_by(User.full_name.asc()))).all()
-        return templates.TemplateResponse(request=request,name="badges.html",context=ctx(request,rows=rows,users=users))
+        system_badge_ids = {b.id for b in rows if _is_system_badge_rule(b)}
+        return templates.TemplateResponse(request=request,name="badges.html",context=ctx(request,rows=rows,users=users,system_badge_ids=system_badge_ids))
 
 
 @router.post("/admin/badges/create")
@@ -351,23 +376,28 @@ async def badge_update(
     async with db.session_factory() as session:
         b=await session.get(Badge,badge_id)
         if b:
-            donation_criteria = {"donation_first", "donation_single", "donation_total_over"}
-            if b.criteria_type in donation_criteria:
-                # Built-in donation badges are system rules. Keep their criterion,
-                # threshold, automatic flag and type protected from crafted form posts.
-                b.active = True
-            else:
-                b.name=name.strip(); b.icon=icon or "🏅"; b.description=description.strip(); b.criteria_type=criteria_type or None; b.criteria_value=opt_int(criteria_value); b.automatic=bool(automatic); b.active=bool(active); b.badge_type=badge_type
-            if b.criteria_type not in donation_criteria:
-                if badge_type == "general" and b.image_path:
-                    await delete_image(b.image_path); b.image_path=None
-                elif remove_image and b.image_path:
-                    await delete_image(b.image_path); b.image_path=None
-                if badge_type == "ambassador":
-                    img=await save_badge_png(badge_png)
-                    if img:
-                        if b.image_path: await delete_image(b.image_path)
-                        b.image_path=img
+            is_system_badge = _is_system_badge_rule(b)
+            b.name=name.strip() or b.name
+            b.icon=icon or "🏅"
+            b.description=description.strip()
+            b.active=bool(active)
+            if not is_system_badge:
+                b.criteria_type=criteria_type or None
+                b.criteria_value=opt_int(criteria_value)
+                b.automatic=bool(automatic)
+                b.badge_type=badge_type
+            # Built-in system rules keep criterion/threshold/type/automatic semantics,
+            # while their visible fields, active state and ambassador artwork remain editable.
+            effective_type = b.badge_type
+            if effective_type == "general" and b.image_path:
+                await delete_image(b.image_path); b.image_path=None
+            elif remove_image and b.image_path:
+                await delete_image(b.image_path); b.image_path=None
+            if effective_type == "ambassador":
+                img=await save_badge_png(badge_png)
+                if img:
+                    if b.image_path: await delete_image(b.image_path)
+                    b.image_path=img
             await log_audit(session,"web_badge_update",actor_label=request.session.get("admin_name","web"),entity_type="badge",entity_id=b.id,details=f"{b.name}; type={b.badge_type}"); await session.commit()
     return RedirectResponse("/admin/badges",303)
 

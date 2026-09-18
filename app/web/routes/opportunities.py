@@ -9,12 +9,13 @@ from app.web.dependencies import (
 from app.opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_opportunity
 from app.models import OpportunityMatch
 from app.content_views import content_view_stats
+from app.opportunity_utils import deadline_urgency, opportunity_sort_key
 
 router = APIRouter()
 
 
 @router.get("/admin/opportunities", response_class=HTMLResponse)
-async def opportunities_page(request: Request, q: str = "", status: str = "", period: str = "", type: str = "", sort: str = "deadline"):
+async def opportunities_page(request: Request, q: str = "", status: str = "", period: str = "", type: str = "", sort: str = "auto"):
     if r := guard(request): return r
     async with db.session_factory() as session:
         stmt = select(Opportunity)
@@ -30,13 +31,18 @@ async def opportunities_page(request: Request, q: str = "", status: str = "", pe
         if period in cutoff_map:
             stmt = stmt.where(Opportunity.created_at >= clock.storage_utc() - timedelta(days=cutoff_map[period]))
         order_map = {"newest": Opportunity.created_at.desc(), "oldest": Opportunity.created_at.asc(), "title": Opportunity.title.asc(), "deadline": Opportunity.deadline.asc().nullslast()}
-        items = list((await session.scalars(stmt.order_by(order_map.get(sort, Opportunity.deadline.asc().nullslast())))).all())
+        if sort == "auto":
+            items = list((await session.scalars(stmt)).all())
+            items.sort(key=opportunity_sort_key)
+        else:
+            items = list((await session.scalars(stmt.order_by(order_map.get(sort, Opportunity.deadline.asc().nullslast())))).all())
         counts = dict((await session.execute(select(OpportunityInterest.opportunity_id, func.count(OpportunityInterest.id)).where(OpportunityInterest.status == "interested").group_by(OpportunityInterest.opportunity_id))).all())
         match_counts = dict((await session.execute(select(OpportunityMatch.opportunity_id, func.count(OpportunityMatch.id)).where(OpportunityMatch.status.in_(["matched", "notified"])).group_by(OpportunityMatch.opportunity_id))).all())
         view_stats = await content_view_stats(session, "opportunity", [item.id for item in items])
+        opportunity_states = {item.id: deadline_urgency(item) for item in items}
         kinds = sorted(set((await session.scalars(select(Opportunity.kind).distinct())).all()))
         return templates.TemplateResponse(request=request, name="opportunities.html", context=ctx(
-            request, items=items, interest_counts=counts, match_counts=match_counts, view_stats=view_stats,
+            request, items=items, interest_counts=counts, match_counts=match_counts, view_stats=view_stats, opportunity_states=opportunity_states,
             q=q, status=status, period=period, type=type, sort=sort, kinds=kinds,
             opportunity_interests=OPPORTUNITY_INTERESTS,
         ))

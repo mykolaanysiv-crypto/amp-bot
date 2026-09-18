@@ -18,9 +18,9 @@ def resolve_report_period(period_type: str, *, year: int, month: int | None = No
         try:
             start_day = date.fromisocalendar(year, week, 1)
         except ValueError as exc:
-            raise ValueError("Некоректний ISO-тиждень") from exc
+            raise ValueError("Некоректний календарний тиждень (понеділок–неділя)") from exc
         start_dt = datetime.combine(start_day, datetime.min.time())
-        return start_dt, start_dt + timedelta(days=7), f"{week} тиждень {year}"
+        return start_dt, start_dt + timedelta(days=7), f"{week}-й тиждень {year} ({start_day.strftime('%d.%m')}–{(start_day + timedelta(days=6)).strftime('%d.%m')})"
     if period_type == "month":
         m = int(month or 1)
         if not 1 <= m <= 12: raise ValueError("Некоректний місяць")

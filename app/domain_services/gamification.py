@@ -211,7 +211,17 @@ async def seed_badges(session: AsyncSession) -> None:
         ("Легенда АМП", "🏆", "Досягнення 1200 XP", "xp_total", 1200),
     ]
     for name, icon, desc, criteria_type, criteria_value in defaults:
-        badge = await session.scalar(select(Badge).where(Badge.name == name))
+        # Match built-in automatic badges by their stable business rule first,
+        # then by legacy name. This lets admins rename/rewrite the visible badge
+        # without bootstrap recreating a duplicate on the next deploy.
+        badge = await session.scalar(select(Badge).where(
+            Badge.criteria_type == criteria_type,
+            Badge.criteria_value == criteria_value,
+            Badge.automatic == True,  # noqa: E712
+            Badge.badge_type == "general",
+        ))
+        if not badge:
+            badge = await session.scalar(select(Badge).where(Badge.name == name))
         if not badge:
             try:
                 async with session.begin_nested():
@@ -226,13 +236,15 @@ async def seed_badges(session: AsyncSession) -> None:
                     await session.flush()
             except IntegrityError:
                 pass
-            badge = await session.scalar(select(Badge).where(Badge.name == name))
-        if badge:
-            badge.icon = icon
-            badge.description = desc
-            badge.criteria_type = criteria_type
-            badge.criteria_value = criteria_value
-            badge.automatic = True
+            badge = await session.scalar(select(Badge).where(
+                Badge.criteria_type == criteria_type,
+                Badge.criteria_value == criteria_value,
+                Badge.automatic == True,  # noqa: E712
+                Badge.badge_type == "general",
+            ))
+        # Existing system badges are intentionally not overwritten here.
+        # From v1.15.0 their presentation and enabled state are administrator-editable;
+        # bootstrap only creates missing defaults.
 
     # Manual / thematic badges remain available to admins.
     manual = [

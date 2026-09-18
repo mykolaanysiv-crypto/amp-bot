@@ -20,6 +20,9 @@
     <label>XP за проходження<input name="xp_reward" type="number" min="0" max="40" value="5"></label>
     <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
     <label class="span2">Опис<textarea name="description" placeholder="Навіщо проводимо опитування та скільки часу воно займе"></textarea></label>
+    <label>Кому доступне<select name="audience_type" id="surveyAudienceCreate" onchange="toggleSurveyAudience('Create')"><option value="all">Усім активним учасникам</option><option value="users">Обраним учасникам</option><option value="event">Учасникам певної події</option></select></label>
+    <label class="survey-audience-event" id="surveyAudienceEventCreate" style="display:none">Подія<select name="audience_event_id"><option value="">Оберіть подію</option>{% for e in audience_events %}<option value="{{e.id}}">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
+    <label class="span2 survey-audience-users" id="surveyAudienceUsersCreate" style="display:none">Обрані учасники<select name="audience_user_ids" multiple size="8">{% for u in audience_users %}<option value="{{u.id}}">АМП-{{'%04d'|format(u.id)}} · {{u.full_name}} · {{label(u.role)}}</option>{% endfor %}</select><small>Можна обрати кількох учасників: Ctrl/Cmd + клік.</small></label>
     <div class="span2 form-actions-row"><button class="primary">Створити опитування</button></div>
   </form>
 </section>
@@ -29,9 +32,13 @@
   <article class="card survey-card">
     <div class="survey-card-head"><span class="tag survey-{{item.status}}">{% if item.status=='draft' %}Чернетка{% elif item.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span><span class="event-date-badge">{{ item.ends_at.strftime('%d.%m.%Y %H:%M') if item.ends_at else 'Без дедлайну' }}</span></div>
     <h2>{{item.title}}</h2><p class="muted">{{item.description or 'Без опису'}}</p>
-    <div class="survey-stats"><span>❓ {{qcounts.get(item.id,0)}} питань</span><span>👥 {{counts.get(item.id,0)}} відповідей</span><span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span><span>🎁 {{item.xp_reward}} XP</span></div>
+    <div class="survey-stats"><span>❓ {{qcounts.get(item.id,0)}} питань</span><span>👥 {{counts.get(item.id,0)}} відповідей</span><span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span><span>🎁 {{item.xp_reward}} XP</span><span>🎯 {{audience_meta.get(item.id, ('Усі активні учасники',0))[0]}} · {{audience_meta.get(item.id, ('',0))[1]}}</span></div>
     <a class="primary link-button" href="/admin/surveys/{{item.id}}">👁 Детально</a>
   </article>
 {% else %}<section class="card"><p class="muted">Опитувань ще немає.</p></section>{% endfor %}
 </div>
+<script>
+function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'flex':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'flex':'none';}
+toggleSurveyAudience('Create');
+</script>
 {% endblock %}

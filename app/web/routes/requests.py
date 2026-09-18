@@ -44,8 +44,12 @@ async def request_detail(request: Request, case_id: int):
             return HTMLResponse("Звернення не знайдено", status_code=404)
         author = await session.get(User, case.user_id)
         assigned = await session.get(User, case.assigned_user_id) if case.assigned_user_id else None
+        allowed_assignee_roles = {UserRole.SUPERADMIN.value, UserRole.ADMIN.value, UserRole.COORDINATOR.value, UserRole.AMBASSADOR.value}
         team = (await session.scalars(
-            select(User).where(User.status == UserStatus.ACTIVE.value).order_by(User.full_name.asc())
+            select(User).where(
+                User.status == UserStatus.ACTIVE.value,
+                User.role.in_(allowed_assignee_roles),
+            ).order_by(User.full_name.asc())
         )).all()
         message_rows = (await session.execute(
             select(RequestMessage, User)
@@ -110,7 +114,13 @@ async def request_update(
             case.category = category
         if priority in REQUEST_PRIORITIES:
             case.priority = priority
-        case.assigned_user_id = opt_int(assigned_user_id)
+        requested_assignee_id = opt_int(assigned_user_id)
+        if requested_assignee_id:
+            candidate = await session.get(User, requested_assignee_id)
+            allowed_assignee_roles = {UserRole.SUPERADMIN.value, UserRole.ADMIN.value, UserRole.COORDINATOR.value, UserRole.AMBASSADOR.value}
+            if not candidate or candidate.status != UserStatus.ACTIVE.value or candidate.role not in allowed_assignee_roles:
+                raise HTTPException(status_code=400, detail="Відповідальним за кейс може бути лише активний Суперадмін, Адмін, Координатор або АМПасадор")
+        case.assigned_user_id = requested_assignee_id
         raw_deadline = response_deadline.strip()
         if raw_deadline:
             try:

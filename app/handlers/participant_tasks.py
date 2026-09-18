@@ -1,5 +1,6 @@
 from ..observability import log_extra
 from ..time_utils import clock
+from ..opportunity_utils import deadline_urgency, opportunity_sort_key
 import logging
 
 from .participant_common import (
@@ -238,15 +239,18 @@ async def task_cancel_join(call: CallbackQuery, db: Database) -> None:
 async def nav_opportunities(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user=await get_user_by_tg(session,call.from_user.id)
-        rows=list((await session.scalars(select(Opportunity).where(Opportunity.active == True,(Opportunity.deadline.is_(None)) | (Opportunity.deadline >= clock.local_wall())).order_by(Opportunity.deadline.asc().nullslast(),Opportunity.id.desc()))).all())  # noqa: E712
+        rows=list((await session.scalars(select(Opportunity).where(Opportunity.active == True,(Opportunity.deadline.is_(None)) | (Opportunity.deadline >= clock.local_wall())))).all())  # noqa: E712
+        rows.sort(key=opportunity_sort_key)
         if not user or not rows:
             await call.message.answer("🌍 Зараз немає актуальних можливостей для молоді.")
         else:
             b=InlineKeyboardBuilder(); lines=["🌍 <b>Можливості для молоді</b>","","<b>Оберіть можливість:</b>"]
             for idx,o in enumerate(rows[:20],1):
                 deadline=o.deadline.strftime("%d.%m.%Y") if o.deadline else "без дедлайну"
-                lines.append(f"\n<b>{idx}. {escape(o.title)}</b>\n📆 {deadline} • {escape(o.kind or 'можливість')}")
-                b.button(text=entity_button_text(f"🌍 {o.title}"),callback_data=f"opp:{o.id}")
+                urgent=bool(deadline_urgency(o).get("urgent"))
+                urgent_text=f"\n🔥 <b>У вас є остання можливість долучитись до «{escape(o.title)}»</b>" if urgent else ""
+                lines.append(f"\n<b>{idx}. {escape(o.title)}</b>\n📆 {deadline} • {escape(o.kind or 'можливість')}{urgent_text}")
+                b.button(text=entity_button_text(f"{'🔥' if urgent else '🌍'} {o.title}"),callback_data=f"opp:{o.id}")
             b.adjust(1); await call.message.answer("\n".join(lines),reply_markup=b.as_markup())
     await call.answer()
 

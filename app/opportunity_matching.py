@@ -245,7 +245,7 @@ async def queue_pending_match_digests(session: AsyncSession, *, max_items: int =
             ids.append(item.id)
             deadline = item.deadline.strftime("%d.%m.%Y") if item.deadline else "без дедлайну"
             lines.append(f"{idx}. <b>{item.title}</b> · {deadline}")
-        lines.append("\nВідкрий «🌍 Можливості» — персональні збіги будуть зверху списку.")
+        lines.append("\nВідкрий «🌍 Можливості» — список автоматично впорядковано за актуальністю та дедлайном.")
         key = f"smart_opportunities:{user.id}:" + ",".join(map(str, ids))
         await queue_notification(
             session, user.tg_id, "\n".join(lines), source="opportunity_match",
