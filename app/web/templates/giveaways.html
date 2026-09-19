@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Розіграші • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Розіграші</b></nav>
+<div class="page-head"><div><span class="eyebrow">ГЕЙМІФІКАЦІЯ</span><h1>🎲 Розіграші</h1><p>Автоматична участь за аудиторією або участь після виконання завдання з фото-підтвердженням.</p></div><span class="upload-note">До 5 типів подарунків • фото до 20 МБ</span></div>
+
+<section class="card">
+  <div class="section-title"><div><h2>➕ Новий розіграш</h2><p class="muted">Налаштуйте аудиторію, спосіб участі, дедлайн і подарунки. Один учасник може виграти не більше одного подарунка в межах одного розіграшу.</p></div></div>
+  <form method="post" action="/admin/giveaways/create" enctype="multipart/form-data" class="form-grid three" id="giveawayCreateForm"><input type="hidden" name="_csrf" value="{{csrf_token}}">
+    <label class="span2">Назва<input name="title" maxlength="180" required placeholder="Наприклад: Осінній розіграш АМП"></label>
+    <label>Статус<select name="status"><option value="draft">Чернетка</option><option value="active">Активувати одразу</option></select></label>
+    <label>Початок<input type="datetime-local" name="starts_at"></label>
+    <label>Дедлайн<input type="datetime-local" name="ends_at" required></label>
+    <label>Спосіб участі<select name="participation_mode" id="createParticipationMode"><option value="automatic">🎟 Автоматично за аудиторією</option><option value="task">📷 Виконати завдання + фото</option></select></label>
+    <label>Аудиторія<select name="audience_type" id="createAudienceType"><option value="all">Усі активні учасники</option><option value="team">Команда АМП</option><option value="event">Учасники конкретної події</option><option value="roles">Обрані ролі</option><option value="users">Конкретні учасники</option></select></label>
+    <label class="span3">Опис<textarea name="description" maxlength="8000" placeholder="Що розігруємо, ключові умови та важлива інформація"></textarea></label>
+    <label class="span3 giveaway-task-block" style="display:none">Умова / завдання для участі<textarea name="task_text" maxlength="8000" placeholder="Що потрібно зробити до дедлайну. Учасник подасть текстовий звіт і обов'язкове фото-підтвердження."></textarea></label>
+
+    <label class="span3 giveaway-audience-event" style="display:none">Подія<select name="audience_event_id"><option value="">Оберіть подію</option>{% for e in events %}<option value="{{e.id}}">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
+    <div class="span3 giveaway-audience-roles" style="display:none"><b>Ролі</b><div class="checkbox-grid"><label class="check-line"><input type="checkbox" name="audience_roles" value="participant"> Учасники</label><label class="check-line"><input type="checkbox" name="audience_roles" value="ambassador"> АМПасадори</label><label class="check-line"><input type="checkbox" name="audience_roles" value="coordinator"> Координатори</label><label class="check-line"><input type="checkbox" name="audience_roles" value="admin"> Адміністратори</label><label class="check-line"><input type="checkbox" name="audience_roles" value="superadmin"> Суперадміністратори</label></div></div>
+    <div class="span3 giveaway-audience-users" style="display:none"><label>Пошук учасника<input type="search" class="giveaway-user-search" placeholder="ПІБ або АМП-код"></label><div class="survey-user-picker giveaway-user-picker">{% for u in users %}<label class="survey-user-option" data-search="{{(u.full_name ~ ' амп-' ~ '%04d'|format(u.id) ~ ' ' ~ u.role)|lower}}"><input type="checkbox" name="audience_users" value="{{u.id}}"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{role_label(u.role)}}</small></span></label>{% endfor %}</div></div>
+
+    <div class="span3"><h3>🎁 Подарунки</h3><p class="muted">Можна додати до 5 типів подарунків. Поле «Кількість» визначає, скільки переможців отримають саме цей подарунок.</p></div>
+    {% for i in range(1,6) %}
+    <fieldset class="card giveaway-prize-slot span3"><legend>Подарунок {{i}}</legend><div class="form-grid three"><label>Назва{% if i == 1 %}<input name="prize_title_{{i}}" required>{% else %}<input name="prize_title_{{i}}">{% endif %}</label><label>Кількість<input name="prize_quantity_{{i}}" type="number" min="1" max="100" value="1"></label><label>Фото<input name="prize_photo_{{i}}" type="file" accept="image/*"></label><label class="span3">Опис<textarea name="prize_description_{{i}}" maxlength="3000"></textarea></label></div></fieldset>
+    {% endfor %}
+    <div class="span3 form-actions-row form-actions-left"><button class="primary" type="submit">🎲 Створити розіграш</button></div>
+  </form>
+</section>
+
+<div class="cards giveaway-library-grid">
+{% for g in rows %}
+  <article class="card giveaway-card">
+    <div class="card-top"><span class="tag {{'active' if g.status=='active' else 'pending'}}">{% if g.status=='draft' %}Чернетка{% elif g.status=='active' %}Активний{% elif g.status=='closed' %}Закритий{% elif g.status=='drawn' %}Розіграно{% elif g.status=='cancelled' %}Скасовано{% else %}{{g.status}}{% endif %}</span><code>№{{g.id}}</code></div>
+    <h3>{{g.title}}</h3>
+    <p><b>{{participation_label(g)}}</b></p><p class="muted">👥 {{audience_label(g)}}{% if g.ends_at %} · ⏳ до {{display_dt(g.ends_at)}}{% endif %}</p>
+    <div class="giveaway-mini-stats"><span>🎁 <b>{{prize_counts.get(g.id,0) or 0}}</b> подарунків</span><span>🏆 <b>{{winner_counts.get(g.id,0) or 0}}</b> переможців</span></div>
+    <a class="primary button-link" href="/admin/giveaways/{{g.id}}">Детально</a>
+  </article>
+{% else %}<p class="empty">Розіграшів ще немає.</p>{% endfor %}
+</div>
+<script>
+(function(){
+  const form=document.getElementById('giveawayCreateForm'); if(!form) return;
+  const mode=form.querySelector('#createParticipationMode'), audience=form.querySelector('#createAudienceType');
+  function sync(){
+    form.querySelector('.giveaway-task-block').style.display=mode.value==='task'?'block':'none';
+    for(const el of form.querySelectorAll('[class*="giveaway-audience-"]')) if(!el.classList.contains('giveaway-task-block')) el.style.display='none';
+    const target=form.querySelector('.giveaway-audience-'+audience.value); if(target) target.style.display='block';
+  }
+  mode.addEventListener('change',sync); audience.addEventListener('change',sync); sync();
+  const search=form.querySelector('.giveaway-user-search'); if(search) search.addEventListener('input',()=>{const q=search.value.toLowerCase().trim(); form.querySelectorAll('.giveaway-user-picker .survey-user-option').forEach(el=>el.style.display=!q||el.dataset.search.includes(q)?'flex':'none');});
+})();
+</script>
+{% endblock %}

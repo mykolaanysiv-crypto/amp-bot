@@ -122,6 +122,82 @@ class RewardClaim(Base):
     requested_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+class Giveaway(Base):
+    """Configurable prize draw for AMP participants.
+
+    ``audience_type`` controls eligibility, while ``participation_mode`` decides
+    whether eligible users participate automatically or must submit proof.
+    Draw results are persisted separately so a completed draw is auditable and
+    cannot be silently re-randomized.
+    """
+    __tablename__ = "giveaways"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(180))
+    description: Mapped[str] = mapped_column(Text, default="")
+    participation_mode: Mapped[str] = mapped_column(String(24), default="automatic", index=True)  # automatic|task
+    task_text: Mapped[str] = mapped_column(Text, default="")
+    audience_type: Mapped[str] = mapped_column(String(24), default="all", index=True)  # all|team|event|roles|users
+    audience_value: Mapped[str] = mapped_column(Text, default="")  # event id or JSON list
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="draft", index=True)  # draft|active|closed|drawn|cancelled
+    created_by_label: Mapped[str] = mapped_column(String(160), default="web")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    drawn_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    draw_seed: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    draw_algorithm: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class GiveawayPrize(Base):
+    __tablename__ = "giveaway_prizes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    giveaway_id: Mapped[int] = mapped_column(ForeignKey("giveaways.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(180))
+    description: Mapped[str] = mapped_column(Text, default="")
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+
+class GiveawayEntry(Base):
+    __tablename__ = "giveaway_entries"
+    __table_args__ = (UniqueConstraint("giveaway_id", "user_id", name="uq_giveaway_entry_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    giveaway_id: Mapped[int] = mapped_column(ForeignKey("giveaways.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    source: Mapped[str] = mapped_column(String(24), default="task")  # automatic|task
+    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)  # pending|approved|returned|rejected
+    report_text: Mapped[str] = mapped_column(Text, default="")
+    proof_photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    review_note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+
+class GiveawayWinner(Base):
+    __tablename__ = "giveaway_winners"
+    __table_args__ = (
+        UniqueConstraint("giveaway_id", "user_id", name="uq_giveaway_winner_user"),
+        UniqueConstraint("giveaway_id", "draw_order", name="uq_giveaway_draw_order"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    giveaway_id: Mapped[int] = mapped_column(ForeignKey("giveaways.id", ondelete="CASCADE"), index=True)
+    prize_id: Mapped[int] = mapped_column(ForeignKey("giveaway_prizes.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    draw_order: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class ParticipationStreak(Base):
     __tablename__ = "participation_streaks"
     __table_args__ = (UniqueConstraint("user_id", name="uq_participation_streak_user"),)

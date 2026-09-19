@@ -1,0 +1,108 @@
+AMP XP / «АМПасадори» v1.17.0 — deployment commands
+
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+
+# 1. Production backup
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+# 2. Extract downloaded build
+rm -rf /tmp/amp_bot_v1170
+mkdir -p /tmp/amp_bot_v1170
+unzip -q ~/Downloads/amp_bot_v1170.zip -d /tmp/amp_bot_v1170
+
+# 3. Overlay while preserving repo/env
+rsync -av \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='__pycache__' \
+  --exclude='.pytest_cache' \
+  /tmp/amp_bot_v1170/amp_bot_v1170/ ./
+
+# 4. Local checks
+cat VERSION.txt
+cat VERSION_CHECK.txt
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+alembic heads
+
+pytest -q \
+  tests/test_v1170_giveaways.py \
+  tests/test_v1160_team_tasks_team_events.py \
+  tests/test_v1151_management_ux.py \
+  tests/test_v1150_targeting_event_analytics.py \
+  tests/test_v1140_ambassador_donation_xp.py \
+  tests/test_v11401_release_schema_order.py \
+  tests/test_v11402_profile_import.py \
+  tests/test_v1130_architecture_completion.py \
+  tests/test_v1104_donations_registrations_ui.py
+
+# Expected locally:
+# VERSION.txt = 1.17.0
+# VERSION_CHECK.txt = 1.17.0
+# alembic heads -> 20260919_0007 (head)
+# production_preflight -> PASS
+
+# Optional full suite before push
+pytest -q --ignore=tests/integration
+
+# 5. Commit + push
+
+git status --short
+git diff --stat
+git add -A
+git commit -m "Upgrade AMP to v1.17.0 configurable giveaways and auditable randomizer"
+git push origin main
+
+# 6. After GitHub Actions / deploy
+heroku releases -a amp-bot-ver-1-5-0 | head -10
+heroku ps -a amp-bot-ver-1-5-0
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+
+# Expected:
+# 20260919_0007 (head)
+
+# 7. Production health
+curl -sS https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/live | python3 -m json.tool
+curl -sS https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/ready | python3 -m json.tool
+curl -sS -o /tmp/amp_dependencies.json -w 'HTTP %{http_code}\n' https://amp-bot-ver-1-5-0-9632a1434a6d.herokuapp.com/health/dependencies
+cat /tmp/amp_dependencies.json | python3 -m json.tool
+
+# 8. Logs
+heroku logs --dyno web -n 120 -a amp-bot-ver-1-5-0
+heroku logs --dyno worker -n 180 -a amp-bot-ver-1-5-0
+
+# 9. Production smoke checklist
+# - Web і worker = up.
+# - Alembic current = 20260919_0007 (head).
+# - Web → Гейміфікація → «Розіграші» відкривається.
+# - Створити тестову чернетку з 1–5 типами подарунків і фото.
+# - Перевірити аудиторію «Усі активні».
+# - Перевірити аудиторію «Команда АМП».
+# - Перевірити аудиторію «Учасники події».
+# - Перевірити «Обрані ролі» та «Конкретні учасники».
+# - У Telegram → Мій профіль є кнопка «🎲 Розіграші».
+# - Participant бачить тільки активні розіграші, до аудиторії яких належить.
+# - В automatic-режимі показується «береш участь автоматично» без кнопки подання.
+# - У task-режимі без фото завершити подання неможливо.
+# - Після тексту + фото Web показує заявку «На перевірці».
+# - «Допустити» додає participant до пулу; «На доопрацювання» дозволяє повторне подання.
+# - До дедлайну active draw не запускається без ручного «Закрити».
+# - Якщо учасників менше за сумарну кількість подарунків, draw блокується.
+# - Після draw кількість переможців = сумі quantity усіх подарунків.
+# - Один participant не виграє два подарунки в одному draw.
+# - Під кожним подарунком видно список його переможців.
+# - Winner notification приходить через Telegram: назва розіграшу + подарунок + повідомлення, що адміністратор зв'яжеться.
+# - Повторний POST/клік draw не створює новий набір переможців.
+# - Проведений розіграш і подарунки не редагуються.
+# - /health/ready і /health/dependencies без critical errors.
+
+# 10. If deploy failed
+# НЕ очищати PostgreSQL і НЕ робити DROP/CREATE.
+heroku releases -a amp-bot-ver-1-5-0 | head -10
+heroku logs --source app -n 300 -a amp-bot-ver-1-5-0
+
+# За application regression — rollback через Heroku Releases.
+# Перед ручними діями з БД перевірити release logs і alembic current.

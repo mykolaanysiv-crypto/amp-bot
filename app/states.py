@@ -146,3 +146,8 @@ class AmbassadorReportState(StatesGroup):
 class TeamTaskReportState(StatesGroup):
     report_text = State()
     photo = State()
+
+
+class GiveawayEntryState(StatesGroup):
+    report_text = State()
+    photo = State()

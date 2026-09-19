@@ -19,10 +19,10 @@ OTP_MAX_ATTEMPTS = 5
 
 PUBLIC_MEDIA_CATEGORIES = frozenset({
     "events", "quests", "opportunities", "badges", "ambassador_badges",
-    "rewards", "survey_questions", "goals", "tasks", "donation_reports",
+    "rewards", "giveaway_prizes", "survey_questions", "goals", "tasks", "donation_reports",
 })
 PARTICIPANT_PRIVATE_MEDIA_CATEGORIES = frozenset({"activity_results", "qr_badges"})
-STAFF_PRIVATE_MEDIA_CATEGORIES = frozenset({"requests", "ideas", "moderation", "event_registration_templates", "ambassador_reports", "team_task_reports"})
+STAFF_PRIVATE_MEDIA_CATEGORIES = frozenset({"requests", "ideas", "moderation", "event_registration_templates", "ambassador_reports", "team_task_reports", "giveaway_proofs"})
 SUPERADMIN_PRIVATE_MEDIA_CATEGORIES = frozenset({"consents", "sensitive_documents", "admin_documents"})
 
 

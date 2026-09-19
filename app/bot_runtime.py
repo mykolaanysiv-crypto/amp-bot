@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import BotCommand, CallbackQuery
 
 from .db import Database
-from .handlers import admin, ambassadors, donations, events, feedback, participant, quests, start, surveys, v11
+from .handlers import admin, ambassadors, donations, events, feedback, giveaways, participant, quests, start, surveys, v11
 from .observability import log_extra
 from .telegram_middleware import (
     DeletedAccountMiddleware, FSMNavigationMiddleware, LastActivityMiddleware, TemporaryBanMiddleware,
@@ -16,7 +16,7 @@ async def configure_bot_profile(bot: Bot) -> None:
     try:
         await bot.set_my_name(name="АМПасадори")
         await bot.set_my_short_description(short_description="Активності, XP, квести, волонтерство та можливості АМП.")
-        await bot.set_my_description(description="Офіційний бот волонтерської групи «АМПасадори» Анисівського молодіжного простору: події, опитування, квести, досвід, винагороди та волонтерські задачі.")
+        await bot.set_my_description(description="Офіційний бот волонтерської групи «АМПасадори» Анисівського молодіжного простору: події, опитування, квести, розіграші, досвід, винагороди та волонтерські задачі.")
         await bot.set_my_commands([
             BotCommand(command="start", description="Запустити бота / реєстрація"),
             BotCommand(command="menu", description="Головне меню"),
@@ -53,6 +53,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
     dp.include_router(ambassadors.router)
     dp.include_router(feedback.router)
     dp.include_router(surveys.router)
+    dp.include_router(giveaways.router)
     dp.include_router(participant.router)
     dp.include_router(events.router)
     dp.include_router(quests.router)
@@ -76,6 +77,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
             "✅ Волонтерські задачі": lambda: participant.tasks(msg, db),
             "🏅 Бейджі": lambda: participant.badges(msg, db),
             "🎁 Винагороди": lambda: participant.rewards(msg, db),
+            "🎲 Розіграші": lambda: giveaways.list_giveaways(msg, db),
             "🎫 QR-бейдж": lambda: v11.my_qr(msg, db, state),
             "🎫 Мій QR-бейдж": lambda: v11.my_qr(msg, db, state),
             "🎫 Мій QR-код": lambda: v11.my_qr(msg, db, state),
@@ -146,6 +148,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
             "ux:mine:goals": lambda: participant.participant_goals(msg, db),
             "ux:mine:badges": lambda: participant.badges(msg, db),
             "ux:mine:rewards": lambda: participant.rewards(msg, db),
+            "ux:mine:giveaways": lambda: giveaways.list_giveaways(msg, db),
             "ux:mine:invite": lambda: v11.invite_friend(msg, db, bot),
             "ux:more:requests": lambda: participant.request_menu(msg, state),
             "ux:more:rules": lambda: participant.rules(msg),
