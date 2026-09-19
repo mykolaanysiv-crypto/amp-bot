@@ -1,0 +1,21 @@
+AMP v1.16.0 focused verification
+
+PASS  python -m compileall -q app scripts tests migrations
+PASS  python -m scripts.production_preflight
+PASS  alembic heads -> 20260919_0006 (head)
+PASS  Jinja parse -> 54/54 templates
+PASS  Base.metadata -> 57 tables
+PASS  team_tasks model present
+PASS  events.access_scope present
+PASS  focused regression suite:
+      tests/test_v1160_team_tasks_team_events.py
+      tests/test_v1151_management_ux.py
+      tests/test_v1150_targeting_event_analytics.py
+      tests/test_v1140_ambassador_donation_xp.py
+      total: 24 passed
+
+ENVIRONMENT LIMITATION
+Full runtime suite is not treated as production proof in this container because
+runtime dependencies such as aiogram / aiosqlite are not fully installed.
+The authoritative full release proof remains GitHub Actions with requirements-dev,
+PostgreSQL 16 integration, release smoke, alembic current, and verified Heroku backup.

@@ -12,6 +12,7 @@
   <label><span>Статус</span><select name="status"><option value="">Усі статуси</option>{% for st in ['draft','open','closed','postponed','completed','cancelled'] %}<option value="{{st}}" {% if status==st %}selected{% endif %}>{{lifecycle_status_label(st)}}</option>{% endfor %}</select></label>
   <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
   <label><span>Тип</span><select name="type"><option value="">Усі</option><option value="upcoming" {% if type=='upcoming' %}selected{% endif %}>Майбутні</option><option value="past" {% if type=='past' %}selected{% endif %}>Минулі</option></select></label>
+  <label><span>Аудиторія</span><select name="scope"><option value="">Усі події</option><option value="general" {% if scope=='general' %}selected{% endif %}>🌍 Загальні</option><option value="team" {% if scope=='team' %}selected{% endif %}>🧭 Для АМПасадорів</option></select></label>
   <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
   <button class="primary smart-filter-submit">Застосувати</button>
 </form>
@@ -34,6 +35,7 @@
     <label>Досвід за участь, XP<input name="xp_reward" type="number" min="5" max="25" value="10"><small>5–25 XP. Типова подія — 10 XP.</small></label>
     <label>Волонтерські години<input name="volunteer_hours" type="number" min="0" step="0.5" value="0"></label>
     <label>Максимум учасників<input name="capacity" type="number" min="1" placeholder="Без обмежень"></label>
+    <label>Доступ<select name="access_scope"><option value="general" selected>🌍 Загальна подія</option><option value="team">🧭 Подія для АМПасадорів</option></select><small>Закриті події бачать лише АМПасадори, координатори, адміністратори та суперадміністратори.</small></label>
     <label>Статус<select name="status"><option value="draft">Чернетка — не показувати учасникам</option><option value="open" selected>Відкрита реєстрація</option><option value="closed">Реєстрацію закрито</option></select></label>
     <label class="span2 upload-field">Фото<input name="photo" type="file" accept="image/*"><small>JPG, PNG або WebP до 20 МБ. Зображення не обрізається.</small></label>
     <label class="span2">Опис<textarea name="description" placeholder="Що відбудеться, для кого подія та що варто знати учаснику"></textarea></label>
@@ -50,6 +52,7 @@
     <div class="event-card-body">
       <div class="event-card-topline">
         <span class="tag {{e.status}}">{{lifecycle_status_label(e.status)}}</span>
+        <span class="tag">{{'🧭 Для АМПасадорів' if e.access_scope == 'team' else '🌍 Загальна'}}</span>
         <span class="event-date-badge">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.starts_at.strftime('%H:%M')}}</span>
       </div>
       <h3>{{e.title}}</h3>
@@ -64,7 +67,7 @@
       <div class="card-actions event-card-actions-v2">
         <a class="primary link-button" href="/admin/events/{{e.id}}">👁 Детально</a>
         <details class="event-edit-details">
-          <summary class="soft-button event-edit-trigger">✏️ Редагувати</summary>
+          <summary class="soft-button edit-action-button event-edit-trigger">✏️ Редагувати</summary>
           <form method="post" action="/admin/events/{{e.id}}/update" enctype="multipart/form-data" class="form-grid event-edit-form-v2"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label class="span2">Назва<input name="title" value="{{e.title}}" required></label>
             <div class="event-date-fields span2">
@@ -84,6 +87,7 @@
             <label>XP<input name="xp_reward" type="number" min="5" max="25" value="{{e.xp_reward}}"></label>
             <label>Години<input name="volunteer_hours" type="number" min="0" step="0.5" value="{{e.volunteer_hours}}"></label>
             <label>Місткість<input name="capacity" type="number" min="1" value="{{e.capacity or ''}}"></label>
+            <label>Доступ<select name="access_scope"><option value="general" {% if e.access_scope != 'team' %}selected{% endif %}>🌍 Загальна подія</option><option value="team" {% if e.access_scope == 'team' %}selected{% endif %}>🧭 Для АМПасадорів</option></select></label>
             {% if e.cancelled_at or e.status in ['cancelled','completed','postponed'] %}
             <input type="hidden" name="status" value="{{e.status}}">
             <div class="entity-action-locked"><b>{{lifecycle_status_label(e.status)}}</b><span>{% if e.status=='postponed' %}Статус перенесення керується на детальній сторінці.{% else %}Статус не можна повернути через звичайне редагування.{% endif %}</span></div>

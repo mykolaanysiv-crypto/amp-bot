@@ -24,7 +24,7 @@ web: python run_web.py
 worker: python run.py
 ```
 
-Release phase реально проходить `db.init() → bootstrap_defaults() → Alembic upgrade head → FastAPI lifespan`. Якщо startup падає, Heroku не промотує новий реліз.
+Release phase реально проходить `db.init() → Alembic upgrade head → bootstrap_defaults() → FastAPI lifespan`. Якщо startup падає, Heroku не промотує новий реліз.
 
 ## Перед deploy
 
@@ -51,8 +51,9 @@ Release phase реально проходить `db.init() → bootstrap_default
 
 Release phase виконує:
 
-1. legacy compatibility bootstrap для старих production DB;
+1. `db.init()` для підключення/legacy compatibility boundary;
 2. `alembic upgrade head`;
+3. `bootstrap_defaults()` вже після актуалізації schema;
 3. production preflight.
 
 ## Scale

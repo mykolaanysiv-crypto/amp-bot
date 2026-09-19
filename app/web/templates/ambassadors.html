@@ -1,25 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Кабінети АМПасадорів{% endblock %}
+{% block title %}Команда АМП{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>🧭 Кабінети АМПасадорів</h1><p>Напрями відповідальності та звітність команди АМП.</p></div></div>
+<div class="page-head"><div><h1>🧭 Команда АМП</h1><p>АМПасадори, координатори, адміністратори, суперадміністратори, персональні завдання та звітність.</p></div></div>
 
 <section class="card" id="team">
-  <div class="section-title"><div><h2>🎖 АМПасадори та відповідальність</h2><p class="muted">Напрям видно самому АМПасадору в Telegram і в його публічній картці.</p></div></div>
-  <div class="table-wrap"><table><thead><tr><th>АМП-код</th><th>ПІБ</th><th>Відповідальність</th><th>Змінити</th></tr></thead><tbody>
-  {% for u in ambassadors %}<tr><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><span class="tag">{{responsibility_label(u.ambassador_responsibility)}}</span></td><td>
-    <form method="post" action="/admin/ambassadors/{{u.id}}/responsibility" class="inline-form"><input type="hidden" name="_csrf" value="{{csrf_token}}"><select name="responsibility"><option value="">Не визначено</option>{% for item in responsibilities %}<option value="{{item}}" {% if u.ambassador_responsibility==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select><button class="soft-button" type="submit">Зберегти</button></form>
-  </td></tr>{% else %}<tr><td colspan="4" class="muted">АМПасадорів поки немає.</td></tr>{% endfor %}
+  <div class="section-title"><div><h2>👥 Команда та відповідальність</h2><p class="muted">У вкладці відображаються всі активні АМПасадори, координатори, адміністратори та суперадміністратори.</p></div><span class="tag">{{team_members|length}}</span></div>
+  <div class="table-wrap"><table><thead><tr><th>АМП-код</th><th>ПІБ</th><th>Роль</th><th>Відповідальність</th><th>Дія</th></tr></thead><tbody>
+  {% for u in team_members %}<tr><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><span class="tag">{{role_label(u.role)}}</span></td><td><span class="tag">{{responsibility_label(u.ambassador_responsibility)}}</span></td><td>
+    <form method="post" action="/admin/ambassadors/{{u.id}}/responsibility" class="inline-form"><input type="hidden" name="_csrf" value="{{csrf_token}}"><select name="responsibility"><option value="">Не визначено</option>{% for item in responsibilities %}<option value="{{item}}" {% if u.ambassador_responsibility==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select><button class="soft-button" type="submit">💾 Зберегти</button></form>
+  </td></tr>{% else %}<tr><td colspan="5" class="muted">Команда поки порожня.</td></tr>{% endfor %}
   </tbody></table></div>
 </section>
 
+<section class="card" id="tasks">
+  <div class="section-title"><div><h2>✅ Завдання для команди</h2><p class="muted">Персональні завдання з XP. Для завершення виконавець обов’язково подає звіт у Telegram.</p></div><span class="tag">{{task_rows|length}}</span></div>
+  <form method="post" action="/admin/ambassadors/tasks/create" class="form-grid team-task-create"><input type="hidden" name="_csrf" value="{{csrf_token}}">
+    <label class="span2">Назва завдання<input name="title" required maxlength="180" placeholder="Наприклад: Підготувати зал до події"></label>
+    <label>Виконавець<select name="assignee_user_id" required><option value="">Оберіть члена команди</option>{% for u in team_members %}<option value="{{u.id}}">{{u.full_name}} · {{role_label(u.role)}} · АМП-{{'%04d'|format(u.id)}}</option>{% endfor %}</select></label>
+    <label>XP за виконання<input name="xp_reward" type="number" min="0" max="500" value="10" required></label>
+    <label>Дедлайн<input name="deadline" type="datetime-local"></label>
+    <label class="span2">Опис<textarea name="description" maxlength="5000" placeholder="Що саме потрібно зробити, очікуваний результат та важливі умови"></textarea></label>
+    <div class="span2 form-actions-row"><button class="primary" type="submit">➕ Призначити завдання</button></div>
+  </form>
+
+  <div class="ambassador-report-grid team-task-grid">
+  {% for task,u in task_rows %}
+    <article class="card ambassador-report-card team-task-card">
+      <div class="card-top">
+        <span class="tag {{'active' if task.status=='approved' else 'pending'}}">{% if task.status=='assigned' %}Призначено{% elif task.status=='submitted' %}Звіт на перевірці{% elif task.status=='returned' %}На доопрацюванні{% elif task.status=='approved' %}Виконано{% elif task.status=='cancelled' %}Скасовано{% else %}{{task.status}}{% endif %}</span>
+        <code>№{{task.id}}</code>
+      </div>
+      <h3>{{task.title}}</h3>
+      <p><b>👤 {{u.full_name}}</b> · {{role_label(u.role)}}</p>
+      <p>⚡ <b>{{task.xp_reward}} XP</b>{% if task.deadline %} · 📅 до {{task.deadline.strftime('%d.%m.%Y %H:%M')}}{% else %} · без дедлайну{% endif %}</p>
+      {% if task.description %}<p>{{task.description}}</p>{% endif %}
+      {% if task.report_text %}
+        <div class="team-task-report"><b>📋 Звіт виконавця</b><p>{{task.report_text}}</p>{% if task.report_photo_path %}<a href="{{task.report_photo_path}}" target="_blank"><img class="ambassador-report-photo" src="{{task.report_photo_path}}" alt="Фото до звіту"></a>{% endif %}<small class="muted">Подано {{task.submitted_at.strftime('%d.%m.%Y %H:%M') if task.submitted_at else ''}}</small></div>
+      {% else %}<p class="muted">Звіт ще не подано.</p>{% endif %}
+      {% if task.status in ['submitted','returned','assigned'] %}
+      <form method="post" action="/admin/ambassadors/tasks/{{task.id}}/review" class="form-grid compact-review-form"><input type="hidden" name="_csrf" value="{{csrf_token}}"><label class="span2">Коментар<textarea name="review_note" placeholder="Коментар до перевірки"></textarea></label><div class="span2 form-actions-row">{% if task.status=='submitted' %}<button class="primary" name="action" value="approve" type="submit">✅ Підтвердити й нарахувати XP</button><button class="soft-button" name="action" value="return" type="submit">↩️ Повернути на доопрацювання</button>{% endif %}<button class="danger-btn" name="action" value="cancel" type="submit">🗑 Скасувати</button></div></form>
+      {% else %}<p class="muted">{% if task.status=='approved' %}✅ Перевірив: {{task.reviewed_by or 'Адміністратор'}}{% if task.review_note %} · {{task.review_note}}{% endif %}{% elif task.status=='cancelled' %}Скасовано{% if task.review_note %}: {{task.review_note}}{% endif %}{% endif %}</p>{% endif %}
+    </article>
+  {% else %}<p class="muted">Персональних завдань поки немає.</p>{% endfor %}
+  </div>
+</section>
+
 <section class="card" id="reports">
-  <div class="section-title"><div><h2>📋 Звіти про роботу</h2><p class="muted">Звіти, подані АМПасадорами через Telegram.</p></div><span class="tag">{{report_rows|length}}</span></div>
+  <div class="section-title"><div><h2>📋 Періодичні звіти команди</h2><p class="muted">Звіти, подані АМПасадорами, координаторами, адміністраторами та суперадміністраторами через Telegram.</p></div><span class="tag">{{report_rows|length}}</span></div>
   <div class="ambassador-report-grid">
   {% for report,u in report_rows %}
     <article class="card ambassador-report-card">
       <div class="card-top"><span class="tag {{'active' if report.status=='reviewed' else 'pending'}}">{{'Переглянуто' if report.status=='reviewed' else 'Новий звіт'}}</span><code>№{{report.id}}</code></div>
       <h3>{{u.full_name}}</h3>
-      <p><b>🧭 {{responsibility_label(u.ambassador_responsibility)}}</b></p>
+      <p><b>{{role_label(u.role)}}</b> · 🧭 {{responsibility_label(u.ambassador_responsibility)}}</p>
       <p>📅 {{report.period_start.strftime('%d.%m.%Y')}} — {{report.period_end.strftime('%d.%m.%Y')}}</p>
       <p class="report-description">{{report.description}}</p>
       {% if report.photo_path %}<a href="{{report.photo_path}}" target="_blank"><img class="ambassador-report-photo" src="{{report.photo_path}}" alt="Фото до звіту"></a>{% endif %}

@@ -31,9 +31,10 @@ async def overview(message: Message, db: Database) -> None:
         streak_row, _ = await refresh_user_streak(session, user)
         league = league_for_xp(sxp)
         level_name, next_threshold = get_level(xp)
-        next_event = await session.scalar(
-            select(Event).where(Event.status == "open", Event.starts_at >= local_now).order_by(Event.starts_at.asc()).limit(1)
-        )
+        next_event_stmt = select(Event).where(Event.status == "open", Event.starts_at >= local_now)
+        if user.role not in {UserRole.AMBASSADOR.value, UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value}:
+            next_event_stmt = next_event_stmt.where(Event.access_scope == "general")
+        next_event = await session.scalar(next_event_stmt.order_by(Event.starts_at.asc()).limit(1))
         day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         today_event = await session.scalar(

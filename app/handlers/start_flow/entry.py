@@ -132,14 +132,18 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
             share_token = payload.removeprefix("event_")
             event = await session.scalar(select(Event).where(Event.share_token == share_token))
             if event and event.status != "draft":
+                if getattr(event, "access_scope", "general") == "team" and user.role not in {UserRole.AMBASSADOR.value, UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value}:
+                    await message.answer("🔒 Ця подія доступна лише команді АМП.")
+                    await _show_access(message, user, db)
+                    return
                 if user.status != UserStatus.ACTIVE.value:
                     await message.answer("ℹ️ Це посилання на подію. Після активації профілю відкрийте його ще раз, щоб зареєструватися.")
                     await _show_access(message, user, db)
                     return
                 reg = await session.scalar(select(EventRegistration).where(EventRegistration.event_id == event.id, EventRegistration.user_id == user.id))
                 registered = bool(reg and reg.status != "cancelled")
-                public_url = f"{settings.public_base_url}/event/{event.share_token}"
-                share_button_url = "https://t.me/share/url?url=" + quote(public_url, safe="") + "&text=" + quote(f"Подія АМП: {event.title}", safe="")
+                public_url = f"{settings.public_base_url}/event/{event.share_token}" if getattr(event, "access_scope", "general") == "general" else ""
+                share_button_url = ("https://t.me/share/url?url=" + quote(public_url, safe="") + "&text=" + quote(f"Подія АМП: {event.title}", safe="")) if public_url else ""
                 keyboard = None
                 if event.status in {"open", "postponed"} and clock.event_utc(event.starts_at) >= clock.now_utc():
                     keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None)
@@ -178,6 +182,8 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                         f"⌛ Вікно check-in на подію <b>{event.title}</b> уже завершено.\n"
                         "Якщо це помилка, зверніться до координатора АМП."
                     )
+            elif status == "forbidden" and event:
+                await message.answer("🔒 Ця подія доступна лише команді АМП.")
             else:
                 await message.answer("❌ QR події недійсний або застарілий.")
 

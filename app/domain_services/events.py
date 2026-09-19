@@ -3,6 +3,7 @@ from .common import (
     AsyncSession, Event, EventRegistration, User, UserStatus, datetime, func, get_runtime_int, hashlib, label, normalize_event_xp, select, timedelta, token_urlsafe
 )
 from .gamification import add_xp, evaluate_automatic_badges
+from ..ambassadors import AMP_TEAM_ROLES
 
 # Registration states that consume event capacity.
 # Kept explicit here so the event domain does not depend on legacy wildcard exports.
@@ -256,6 +257,10 @@ async def checkin_for_event(
     event = await session.scalar(select(Event).where(Event.checkin_token == token))
     if not event or event.status not in {"open", "closed", "postponed"}:
         return None, "invalid"
+    if getattr(event, "access_scope", "general") == "team":
+        user = await session.get(User, user_id)
+        if not user or user.status != UserStatus.ACTIVE.value or user.role not in AMP_TEAM_ROLES:
+            return event, "forbidden"
     access = await event_checkin_window(session, event, now=now)
     if access["state"] == "too_early":
         return event, "too_early"
@@ -360,6 +365,8 @@ async def admin_scan_event_participant(
     user = await session.get(User, participant_id)
     if not user:
         return {"ok": False, "code": "user_not_found", "message": "Учасника не знайдено."}
+    if getattr(event, "access_scope", "general") == "team" and user.role not in AMP_TEAM_ROLES:
+        return {"ok": False, "code": "team_event_forbidden", "message": "Ця подія доступна лише команді АМП.", "event": event, "user": user}
     if user.status != UserStatus.ACTIVE.value:
         return {
             "ok": False, "code": "user_inactive", "message": f"Акаунт учасника не активний: {label(user.status)}.",

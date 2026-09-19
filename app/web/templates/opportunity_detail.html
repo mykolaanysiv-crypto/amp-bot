@@ -1,5 +1,23 @@
 {% extends "base.html" %}
-{% block title %}{{item.title}} • Можливість{% endblock %}
+{% block title %}{{item.title}} • Можливість<script>
+function copyOpportunityLink(button){
+  const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
+  navigator.clipboard.writeText(url).then(()=>{
+    const old=button.textContent; button.textContent='✅ Скопійовано';
+    setTimeout(()=>{button.textContent=old;},1800);
+  });
+}
+function shareOpportunity(button){
+  const url=button.dataset.shareUrl||document.getElementById('opportunity-share-link').value;
+  const title=button.dataset.shareTitle||'Можливість АМП';
+  if(navigator.share){navigator.share({title:title,url:url}).catch(()=>{});return;}
+  navigator.clipboard.writeText(url).then(()=>{
+    const old=button.textContent; button.textContent='✅ Скопійовано';
+    setTimeout(()=>{button.textContent=old;},1800);
+  });
+}
+</script>
+{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/opportunities">Можливості</a><span>›</span><b>{{item.title}}</b></nav>
 <div class="page-head opportunity-detail-head">
@@ -47,8 +65,8 @@
   <div class="section-title"><div><h2>📤 Поділитися можливістю</h2><p class="muted">Публічна картка містить опис, дедлайн та офіційне посилання без персональних даних учасників.</p></div></div>
   <div class="share-link-row">
     <input id="opportunity-share-link" type="text" value="{{share_url}}" readonly aria-label="Публічне посилання на можливість">
-    <button type="button" class="primary" onclick="const u=document.getElementById('opportunity-share-link').value;if(navigator.share){navigator.share({title:{{item.title|tojson}},url:u}).catch(()=>{});}else{navigator.clipboard.writeText(u).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='📤 Поділитися',1800)});}">📤 Поділитися</button>
-    <button type="button" class="soft-button" onclick="navigator.clipboard.writeText(document.getElementById('opportunity-share-link').value).then(()=>{this.textContent='✅ Скопійовано';setTimeout(()=>this.textContent='🔗 Копіювати',1800)});">🔗 Копіювати</button>
+    <button type="button" class="primary" data-share-url="{{share_url|e}}" data-share-title="{{item.title|e}}" onclick="shareOpportunity(this)">📤 Поділитися</button>
+    <button type="button" class="soft-button" data-copy-url="{{share_url|e}}" onclick="copyOpportunityLink(this)">🔗 Копіювати</button>
     <a class="soft-button" href="{{share_url}}" target="_blank" rel="noopener">👁 Відкрити</a>
   </div>
 </section>
@@ -56,7 +74,7 @@
 <section class="card opportunity-management-card">
   <div class="section-title"><div><span class="eyebrow">КЕРУВАННЯ МОЖЛИВІСТЮ</span><h2>🎛 Редагування та статус</h2><p class="muted">Тут зібрані всі адміністративні дії, щоб основна дошка залишалась компактною.</p></div></div>
   <details class="opportunity-edit-details" open>
-    <summary class="soft-button">✏️ Редагувати інформацію</summary>
+    <summary class="soft-button edit-action-button">✏️ Редагувати</summary>
     <form method="post" action="/admin/opportunities/{{item.id}}/update" class="form-grid entity-edit-form opportunity-detail-edit-form" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label class="span2">Назва<input name="title" value="{{item.title}}" required></label>
@@ -92,4 +110,22 @@
     <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Збіг</th><th>Сповіщення</th></tr></thead><tbody>{% for row,u in match_rows if row.status in ['matched','notified'] %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><b>{{row.score}}%</b></td><td>{{'✅ Надіслано' if row.notified_at or row.status=='notified' else 'Очікує'}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Персональних збігів поки немає.</td></tr>{% endfor %}</tbody></table></div>
   </section>
 </div>
+<script>
+function copyOpportunityLink(button){
+  const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
+  navigator.clipboard.writeText(url).then(()=>{
+    const old=button.textContent; button.textContent='✅ Скопійовано';
+    setTimeout(()=>{button.textContent=old;},1800);
+  });
+}
+function shareOpportunity(button){
+  const url=button.dataset.shareUrl||document.getElementById('opportunity-share-link').value;
+  const title=button.dataset.shareTitle||'Можливість АМП';
+  if(navigator.share){navigator.share({title:title,url:url}).catch(()=>{});return;}
+  navigator.clipboard.writeText(url).then(()=>{
+    const old=button.textContent; button.textContent='✅ Скопійовано';
+    setTimeout(()=>{button.textContent=old;},1800);
+  });
+}
+</script>
 {% endblock %}

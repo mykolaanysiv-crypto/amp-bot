@@ -14,6 +14,7 @@ from app.time_utils import clock
 from app.observability import log_extra
 from app.content_views import content_view_stat, content_view_stats
 from app.web.dependencies import _refresh_lifecycle
+from app.ambassadors import AMP_TEAM_ROLES
 from app.web.broadcast_runtime import (
     _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
@@ -26,7 +27,7 @@ from .context import router
 async def event_create(
     request: Request, title: str = Form(...), day: int = Form(...), month: int = Form(...), year: int = Form(...),
     event_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
-    volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"), photo: UploadFile | None = File(None),
+    volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"), access_scope: str = Form("general"), photo: UploadFile | None = File(None),
 ):
     if r := guard(request): return r
     starts_at = compose_event_datetime(day, month, year, event_time)
@@ -37,13 +38,16 @@ async def event_create(
         e = Event(
             title=title.strip(), description=description.strip(), starts_at=starts_at, location=location.strip() or "АМП",
             xp_reward=xp_reward, volunteer_hours=max(0, volunteer_hours), capacity=opt_int(capacity), status=status if status in {"draft", "open", "closed"} else "open",
+            access_scope=access_scope if access_scope in {"general", "team"} else "general",
             checkin_token=token_urlsafe(18), share_token=token_urlsafe(18), image_path=image,
         )
         session.add(e)
         await session.flush()
         await log_audit(session, "web_event_create", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=e.id, details=e.title)
         if e.status=="open":
-            users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
+            user_stmt=select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None))
+            if e.access_scope == "team": user_stmt=user_stmt.where(User.role.in_(AMP_TEAM_ROLES))
+            users=list((await session.scalars(user_stmt)).all())
             text=f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n⚡ {e.xp_reward} XP\n\nВідкрий у боті розділ «📅 Події», щоб переглянути деталі та зареєструватися."
             campaign_id=await _queue_system_broadcast(session,users,text,author_label=request.session.get("admin_name","web"),audience_label=f"Нова подія: {e.title}",template_code="event_created")
         await session.commit()
@@ -54,7 +58,7 @@ async def event_create(
 async def event_update(
     request: Request, event_id: int, title: str = Form(...), day: int = Form(...), month: int = Form(...), year: int = Form(...),
     event_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
-    volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"),
+    volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"), access_scope: str = Form("general"),
     remove_image: str | None = Form(None), photo: UploadFile | None = File(None),
 ):
     if r := guard(request): return r
@@ -66,6 +70,17 @@ async def event_update(
             was_public = e.status in {"open","postponed"}
             e.title = title.strip(); e.starts_at = starts_at; e.location = location.strip() or "АМП"; e.description = description.strip()
             e.xp_reward = normalize_event_xp(xp_reward); e.volunteer_hours = max(0, volunteer_hours); e.capacity = opt_int(capacity)
+            requested_scope = access_scope if access_scope in {"general", "team"} else "general"
+            if requested_scope == "team" and getattr(e, "access_scope", "general") != "team":
+                non_team_reg = await session.scalar(
+                    select(EventRegistration.id)
+                    .join(User, User.id == EventRegistration.user_id)
+                    .where(EventRegistration.event_id == e.id, EventRegistration.status != "cancelled", User.role.not_in(AMP_TEAM_ROLES))
+                    .limit(1)
+                )
+                if non_team_reg:
+                    raise HTTPException(status_code=409, detail="Не можна зробити подію закритою для команди: на неї вже зареєстровані звичайні учасники.")
+            e.access_scope = requested_scope
             if not e.cancelled_at and e.status not in {"postponed", "completed", "cancelled"} and status in {"draft", "open", "closed"}:
                 e.status = status
             if remove_image:
@@ -75,7 +90,9 @@ async def event_update(
                 await delete_image(e.image_path); e.image_path = img
             await log_audit(session, "web_event_update", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=e.id, details=e.title)
             if not was_public and e.status=="open":
-                users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
+                user_stmt=select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None))
+                if e.access_scope == "team": user_stmt=user_stmt.where(User.role.in_(AMP_TEAM_ROLES))
+                users=list((await session.scalars(user_stmt)).all())
                 campaign_id=await _queue_system_broadcast(session,users,f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n⚡ {e.xp_reward} XP\n\nВідкрий «📅 Події» у боті, щоб зареєструватися.",author_label=request.session.get("admin_name","web"),audience_label=f"Нова подія: {e.title}",template_code="event_published")
             await session.commit()
     if campaign_id: _schedule_broadcast(campaign_id)

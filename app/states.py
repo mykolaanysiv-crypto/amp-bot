@@ -141,3 +141,8 @@ class AmbassadorReportState(StatesGroup):
     period_end = State()
     description = State()
     photo = State()
+
+
+class TeamTaskReportState(StatesGroup):
+    report_text = State()
+    photo = State()

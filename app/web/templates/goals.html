@@ -54,7 +54,7 @@
     <div class="progress"><i style="width:{{pct}}%"></i></div>
     <p class="muted goal-reward-count">🎁 Нагороду вже отримали: <b>{{reward_count}}</b></p>
 
-    <details class="goal-editor"><summary class="soft-button">✏️ Редагувати</summary>
+    <details class="goal-editor"><summary class="soft-button edit-action-button">✏️ Редагувати</summary>
       <form class="form-grid goal-edit-form" method="post" action="/admin/goals/{{g.id}}/update" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label>Тип<select name="scope" class="goal-scope-edit"><option value="season" {% if g.scope=='season' %}selected{% endif %}>Сезонна</option><option value="personal" {% if g.scope=='personal' %}selected{% endif %}>Персональна</option><option value="team" {% if g.scope=='team' %}selected{% endif %}>Командна</option></select></label>
         <label>Вимірювання<select name="metric">{% for key,val in metric_labels.items() %}<option value="{{key}}" {% if g.metric==key %}selected{% endif %}>{{val}}</option>{% endfor %}</select></label>

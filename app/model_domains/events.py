@@ -19,6 +19,7 @@ class Event(Base):
     volunteer_hours: Mapped[float] = mapped_column(Float, default=0)
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="open")
+    access_scope: Mapped[str] = mapped_column(String(24), default="general", index=True)  # general|team
     checkin_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     share_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)

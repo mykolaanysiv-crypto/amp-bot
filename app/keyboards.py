@@ -81,8 +81,8 @@ def profile_hub_keyboard(role: str | None = None) -> InlineKeyboardMarkup:
         ("🕰 Історія сезонів", "ux:mine:seasons"),
         ("⚙️ Інтереси", "opp_prefs"),
     ]
-    if role == UserRole.AMBASSADOR.value:
-        buttons.append(("🧭 Кабінет АМПасадора", "ambassador:cabinet"))
+    if role in {UserRole.AMBASSADOR.value, UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value}:
+        buttons.append(("🧭 Кабінет команди АМП", "ambassador:cabinet"))
     return _admin_inline_menu(buttons, columns=2)
 
 
@@ -110,7 +110,7 @@ def events_keyboard(events) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None = None, registration_status: str | None = None, ambassador_qr: bool = False) -> InlineKeyboardMarkup:
+def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None = None, registration_status: str | None = None, ambassador_qr: bool = False, back_callback: str = "nav:events") -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     status = registration_status or ("registered" if registered else None)
     if status == "waitlisted":
@@ -133,7 +133,7 @@ def event_detail_keyboard(event_id: int, registered: bool, share_url: str | None
         b.button(text="🔳 QR-код події", callback_data=f"ambassador:event_qr:{event_id}")
     if share_url:
         b.button(text="📤 Переслати другу", url=share_url)
-    b.button(text="⬅️ Назад", callback_data="nav:events")
+    b.button(text="⬅️ Назад", callback_data=back_callback)
     b.adjust(1)
     return b.as_markup()
 

@@ -27,7 +27,7 @@ async def public_event_page(request: Request, share_token: str):
     """Public, data-minimized event card used for sharing and registration links."""
     async with db.session_factory() as session:
         event = await session.scalar(select(Event).where(Event.share_token == share_token))
-        if not event or event.status == "draft":
+        if not event or event.status == "draft" or getattr(event, "access_scope", "general") == "team":
             raise HTTPException(status_code=404, detail="Подію не знайдено")
         registered = int(await session.scalar(select(func.count(EventRegistration.id)).where(
             EventRegistration.event_id == event.id,
@@ -42,7 +42,7 @@ async def public_event_page(request: Request, share_token: str):
 async def public_event_register_redirect(share_token: str):
     async with db.session_factory() as session:
         event = await session.scalar(select(Event).where(Event.share_token == share_token))
-        if not event or event.status == "draft":
+        if not event or event.status == "draft" or getattr(event, "access_scope", "general") == "team":
             raise HTTPException(status_code=404, detail="Подію не знайдено")
     if not settings.bot_token:
         raise HTTPException(status_code=503, detail="Telegram-бот тимчасово недоступний")

@@ -1,0 +1,15 @@
+AMP v1.16.0 — recommended release checks
+
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+alembic heads
+pytest -q --ignore=tests/integration
+
+# production deploy is performed by GitHub Production Gate.
+# Heroku release must run migration before ORM/bootstrap use:
+# db.init() -> alembic upgrade head -> bootstrap_defaults() -> FastAPI lifespan
+
+# after deploy
+heroku logs --tail -a <APP_NAME>
+heroku run "alembic current" -a <APP_NAME>
+# verify /health/ready and /health/dependencies

@@ -3,22 +3,22 @@ from __future__ import annotations
 from ..observability import log_extra
 from ..time_utils import clock
 
-from datetime import datetime
 from io import BytesIO
 import logging
 from html import escape
 from urllib.parse import quote
 
 from aiogram import Bot, F, Router
-from aiogram.types import BufferedInputFile, CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import func, select
 import qrcode
 
+from ..ambassadors import AMP_TEAM_ROLES
 from ..config import Settings
 from ..db import Database
 from ..keyboards import event_detail_keyboard, event_waitlist_offer_keyboard, events_keyboard
 from ..media import telegram_photo_input
-from ..models import Event, EventRegistration, UserRole, UserStatus
+from ..models import Event, EventRegistration, UserStatus
 from ..services import accept_event_reservation, get_user_by_tg, join_event_waitlist, process_event_operations, register_for_event
 from ..ui_labels import lifecycle_status_label
 from ..engagement import process_expired_content
@@ -27,31 +27,78 @@ from ..content_views import content_view_stat, record_content_view
 router = Router(name="events")
 
 
-async def _send_events(target, db: Database) -> None:
+def _event_scope(event: Event) -> str:
+    return getattr(event, "access_scope", "general") or "general"
+
+
+def _can_access_event(user, event: Event) -> bool:
+    return _event_scope(event) != "team" or bool(user and user.status == UserStatus.ACTIVE.value and user.role in AMP_TEAM_ROLES)
+
+
+def _event_hub_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌍 Загальні події", callback_data="nav:events:general")],
+        [InlineKeyboardButton(text="🧭 Події для АМПасадорів", callback_data="nav:events:team")],
+    ])
+
+
+async def _send_events(target, db: Database, *, scope: str, tg_id: int) -> None:
     async with db.session_factory() as session:
+        user = await get_user_by_tg(session, tg_id)
+        if scope == "team" and (not user or user.status != UserStatus.ACTIVE.value or user.role not in AMP_TEAM_ROLES):
+            await target.answer("🔒 Події для АМПасадорів доступні лише команді АМП.")
+            return
         changed = await process_expired_content(session)
-        if changed: await session.commit()
+        if changed:
+            await session.commit()
         events = (await session.scalars(
-            select(Event).where(Event.status.in_(["open", "closed", "postponed"]), Event.starts_at >= clock.local_wall()).order_by(Event.starts_at.asc()).limit(20)
+            select(Event).where(
+                Event.status.in_(["open", "closed", "postponed"]),
+                Event.starts_at >= clock.local_wall(),
+                Event.access_scope == scope,
+            ).order_by(Event.starts_at.asc()).limit(20)
         )).all()
         if not events:
-            await target.answer("📅 Найближчих відкритих подій поки немає.")
+            label = "подій для команди АМП" if scope == "team" else "загальних подій"
+            await target.answer(f"📅 Найближчих {label} поки немає.")
             return
-        lines=["📅 <b>Найближчі події АМП</b>","","<b>Оберіть подію:</b>"]
+        title = "🧭 <b>Події для АМПасадорів</b>" if scope == "team" else "🌍 <b>Загальні події АМП</b>"
+        lines=[title, "", "<b>Оберіть подію:</b>"]
         for idx,event in enumerate(events,start=1):
             status_note = "" if event.status == "open" else (" • 🔒 реєстрацію закрито" if event.status == "closed" else " • 📅 перенесено")
             lines.append(f"\n<b>{idx}. {escape(event.title)}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')} • 📍 {escape(event.location or 'АМП')}{status_note}")
         await target.answer("\n".join(lines),reply_markup=events_keyboard(events))
 
 
+async def _open_events_hub(target, db: Database, tg_id: int) -> None:
+    async with db.session_factory() as session:
+        user = await get_user_by_tg(session, tg_id)
+    if user and user.status == UserStatus.ACTIVE.value and user.role in AMP_TEAM_ROLES:
+        await target.answer("📅 <b>Події</b>\n\nОбери категорію:", reply_markup=_event_hub_keyboard())
+    else:
+        await _send_events(target, db, scope="general", tg_id=tg_id)
+
+
 @router.message(F.text == "📅 Події")
 async def list_events(message: Message, db: Database) -> None:
-    await _send_events(message, db)
+    await _open_events_hub(message, db, message.from_user.id)
 
 
 @router.callback_query(F.data == "nav:events")
 async def nav_events(call: CallbackQuery, db: Database) -> None:
-    await _send_events(call.message, db)
+    await _open_events_hub(call.message, db, call.from_user.id)
+    await call.answer()
+
+
+@router.callback_query(F.data == "nav:events:general")
+async def nav_events_general(call: CallbackQuery, db: Database) -> None:
+    await _send_events(call.message, db, scope="general", tg_id=call.from_user.id)
+    await call.answer()
+
+
+@router.callback_query(F.data == "nav:events:team")
+async def nav_events_team(call: CallbackQuery, db: Database) -> None:
+    await _send_events(call.message, db, scope="team", tg_id=call.from_user.id)
     await call.answer()
 
 
@@ -64,9 +111,6 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         return
 
     async with db.session_factory() as session:
-        # Opening a card must not be blocked by an unrelated lifecycle job.
-        # A scheduler regression used to make event buttons appear dead because
-        # this call raised before the detail card was rendered.
         try:
             changed = await process_expired_content(session)
             if changed:
@@ -83,6 +127,9 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         if not user or not event:
             await call.answer("Не знайдено", show_alert=True)
             return
+        if not _can_access_event(user, event):
+            await call.answer("Ця подія доступна лише команді АМП", show_alert=True)
+            return
 
         reg = await session.scalar(
             select(EventRegistration).where(EventRegistration.event_id == event.id, EventRegistration.user_id == user.id)
@@ -96,8 +143,10 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         safe_title = escape(event.title or "Подія")
         safe_location = escape(event.location or "АМП")
         safe_description = escape(event.description or "Без додаткового опису.")
+        scope_line = "🧭 Лише для команди АМП\n" if _event_scope(event) == "team" else ""
         text = (
             f"📅 <b>{safe_title}</b>\n"
+            f"{scope_line}"
             f"🕒 {date_text}\n"
             f"📍 {safe_location}\n"
             f"📌 Статус: {escape(lifecycle_status_label(event.status))}\n"
@@ -109,29 +158,24 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         photo = await telegram_photo_input(db, event.image_path)
         registered = bool(reg and reg.status != "cancelled")
         keyboard = None
-        public_url = f"{settings.public_base_url}/event/{event.share_token}" if event.share_token else ""
+        public_url = f"{settings.public_base_url}/event/{event.share_token}" if event.share_token and _event_scope(event) == "general" else ""
         share_button_url = ""
         if public_url:
             share_button_url = (
                 "https://t.me/share/url?url=" + quote(public_url, safe="") +
                 "&text=" + quote(f"Подія АМП: {event.title}", safe="")
             )
+        back_callback = "nav:events:team" if _event_scope(event) == "team" else "nav:events:general"
         if clock.event_utc(event.starts_at) >= clock.now_utc():
             if event.status in {"open", "postponed"}:
-                keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None, ambassador_qr=(user.role == UserRole.AMBASSADOR.value and registered))
+                keyboard = event_detail_keyboard(event.id, registered, share_button_url, reg.status if reg else None, ambassador_qr=(user.role in AMP_TEAM_ROLES and registered), back_callback=back_callback)
             elif event.status == "closed" and registered:
-                keyboard = event_detail_keyboard(event.id, True, share_button_url, reg.status if reg else None)
+                keyboard = event_detail_keyboard(event.id, True, share_button_url, reg.status if reg else None, ambassador_qr=(user.role in AMP_TEAM_ROLES), back_callback=back_callback)
 
-        # Telegram media captions are substantially shorter than ordinary
-        # messages.  Long event descriptions used to make the callback fail
-        # silently for cards with a photo.
         if photo and len(text) <= 950:
             await call.message.answer_photo(photo, caption=text, reply_markup=keyboard)
         elif photo:
-            await call.message.answer_photo(
-                photo,
-                caption=f"📅 <b>{safe_title}</b>\n🕒 {date_text}\n👁 {view_stat['views']} переглядів",
-            )
+            await call.message.answer_photo(photo, caption=f"📅 <b>{safe_title}</b>\n🕒 {date_text}\n👁 {view_stat['views']} переглядів")
             await call.message.answer(text, reply_markup=keyboard)
         else:
             await call.message.answer(text, reply_markup=keyboard)
@@ -147,9 +191,9 @@ async def ambassador_event_qr(call: CallbackQuery, db: Database, bot: Bot) -> No
         reg = await session.scalar(select(EventRegistration).where(
             EventRegistration.event_id == event_id, EventRegistration.user_id == user.id if user else -1
         )) if user else None
-        if (not user or user.role != UserRole.AMBASSADOR.value or not event or not reg
+        if (not user or user.role not in AMP_TEAM_ROLES or not event or not reg
                 or reg.status not in {"registered", "checked_in", "attended"}):
-            await call.answer("QR доступний зареєстрованим АМПасадорам", show_alert=True)
+            await call.answer("QR доступний зареєстрованим членам команди АМП", show_alert=True)
             return
     username = (await bot.get_me()).username
     deep_link = f"https://t.me/{username}?start=checkin_{event.checkin_token}"
@@ -174,7 +218,7 @@ async def event_join(call: CallbackQuery, db: Database) -> None:
             await call.answer("Профіль не активований", show_alert=True)
             return
         event = await session.get(Event, event_id)
-        if not event or event.status not in {"open", "postponed"} or clock.event_utc(event.starts_at) < clock.now_utc():
+        if not event or not _can_access_event(user, event) or event.status not in {"open", "postponed"} or clock.event_utc(event.starts_at) < clock.now_utc():
             await call.answer("Реєстрація недоступна", show_alert=True)
             return
         if event.capacity:
@@ -203,7 +247,7 @@ async def event_waitlist(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, call.from_user.id)
         event = await session.get(Event, event_id)
-        if not user or user.status != UserStatus.ACTIVE.value or not event or event.status not in {"open", "postponed"}:
+        if not user or user.status != UserStatus.ACTIVE.value or not event or not _can_access_event(user, event) or event.status not in {"open", "postponed"}:
             await call.answer("Черга недоступна", show_alert=True)
             return
         if not event.capacity:
@@ -222,7 +266,7 @@ async def event_waitlist(call: CallbackQuery, db: Database) -> None:
             await call.message.answer(f"🎉 Місце вже вільне — тебе одразу зареєстровано на <b>{event.title}</b>.")
             await call.answer()
             return
-        reg = await join_event_waitlist(session, user.id, event.id)
+        await join_event_waitlist(session, user.id, event.id)
         await session.commit()
         await call.message.answer(f"⏳ Тебе додано в чергу на <b>{event.title}</b>.\n\nЯк тільки звільниться місце, бот автоматично повідомить і зарезервує його для тебе на 2 години.")
         await call.answer("Додано в чергу")
@@ -234,7 +278,7 @@ async def event_reserve_accept(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, call.from_user.id)
         event = await session.get(Event, event_id)
-        if not user or not event:
+        if not user or not event or not _can_access_event(user, event):
             await call.answer("Не знайдено", show_alert=True)
             return
         reg, state = await accept_event_reservation(session, user.id, event.id)
@@ -258,6 +302,10 @@ async def event_cancel(call: CallbackQuery, db: Database) -> None:
     async with db.session_factory() as session:
         user = await get_user_by_tg(session, call.from_user.id)
         if not user:
+            return
+        event = await session.get(Event, event_id)
+        if not event or not _can_access_event(user, event):
+            await call.answer("Недоступно", show_alert=True)
             return
         reg = await session.scalar(
             select(EventRegistration).where(EventRegistration.event_id == event_id, EventRegistration.user_id == user.id)

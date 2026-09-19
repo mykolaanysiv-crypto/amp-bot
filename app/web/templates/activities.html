@@ -50,7 +50,7 @@
       <p>{{a.description}}</p>
       <div class="activity-meta"><span>⏱ {{a.hours_reward}} год.</span><span>👁 {{view_stats.get(a.id, {}).get('views', 0)}} перегл.</span><span>{% if a.active %}🟢 Доступна{% else %}⚪ Вимкнена{% endif %}</span></div>
       <details>
-        <summary>Редагувати</summary>
+        <summary class="soft-button edit-action-button">✏️ Редагувати</summary>
         <form method="post" action="/admin/activities/{{a.id}}/update" class="form-grid activity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <label>Назва<input name="title" value="{{a.title}}" required></label>
           <label>Категорія<select name="category">{% for value, title in activity_category_options %}<option value="{{value}}" {% if a.category==value %}selected{% endif %}>{{title}}</option>{% endfor %}</select></label>

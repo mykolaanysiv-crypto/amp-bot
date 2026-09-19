@@ -3407,3 +3407,8 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
   .opportunity-detail-statuses{justify-content:flex-start}
   .opportunity-management-actions{grid-template-columns:1fr}
 }
+
+/* v1.16.0 unified edit control */
+.edit-action-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-height:44px!important;padding:10px 16px!important;border-radius:12px!important;font-weight:800!important;line-height:1.15!important;cursor:pointer!important;background:var(--surface-2)!important;color:var(--teal-deep)!important;border:1px solid var(--line)!important;text-decoration:none!important;width:auto!important;}
+.edit-action-button:hover{transform:translateY(-1px);}
+.team-task-create{margin-bottom:22px}.team-task-grid{margin-top:18px}.team-task-report{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}.team-task-report p{white-space:pre-line}.compact-review-form{margin-top:14px}

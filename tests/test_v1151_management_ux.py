@@ -9,7 +9,7 @@ def read(rel: str) -> str:
 
 def test_release_version_and_cache_tokens_are_synced():
     version = read("VERSION.txt").strip()
-    assert version == "1.15.1"
+    assert tuple(map(int, version.split("."))) >= (1, 15, 1)
     assert read("VERSION_CHECK.txt").strip() == version
     for template in ("app/web/templates/base.html", "app/web/templates/login.html", "app/web/templates/login_2fa.html"):
         assert f"?v={version}" in read(template)

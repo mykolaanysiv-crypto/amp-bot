@@ -5,7 +5,7 @@
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/tasks">Волонтерські задачі</a><span>›</span><b>{{task.title}}</b></nav>
 <div class="page-head">
   <div><span class="eyebrow">ЗАДАЧА №{{task.id}}</span><h1>{{task.title}}</h1><p>{{lifecycle_status_label(task.status)}}{% if task.deadline %} • дедлайн {{task.deadline.strftime('%d.%m.%Y о %H:%M')}}{% endif %}</p></div>
-  <a class="soft-button page-edit-button" href="#task-edit">✏️ Редагувати</a>
+  <a class="soft-button edit-action-button page-edit-button" href="#task-edit">✏️ Редагувати</a>
 </div>
 
 {% if task.status=='postponed' %}

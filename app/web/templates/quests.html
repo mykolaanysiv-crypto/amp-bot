@@ -53,7 +53,7 @@
       <div class="unified-card-actions">
         <a class="primary link-button unified-action-button" href="/admin/quests/{{q.id}}">👁 Детально</a>
         <details class="event-edit-details unified-edit-details">
-          <summary class="soft-button event-edit-trigger unified-action-button">✏️ Редагувати</summary>
+          <summary class="soft-button edit-action-button event-edit-trigger unified-action-button">✏️ Редагувати</summary>
           <form method="post" action="/admin/quests/{{q.id}}/update" enctype="multipart/form-data" class="form-grid entity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label class="span2">Назва<input name="title" value="{{q.title}}" required></label>
             <label>Тип<select name="quest_type"><option value="individual" {% if q.quest_type=='individual' %}selected{% endif %}>Індивідуальний</option><option value="team" {% if q.quest_type=='team' %}selected{% endif %}>Командний</option></select></label>

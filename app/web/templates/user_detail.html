@@ -115,7 +115,7 @@
 
   {% if has_permission("participants.edit") and not sensitive %}
   <details class="profile-editor">
-    <summary class="primary edit-profile-trigger">✏️ Редагувати базові дані</summary>
+    <summary class="soft-button edit-action-button edit-profile-trigger">✏️ Редагувати базові дані</summary>
     <div class="profile-editor-panel">
       <div class="editor-intro"><div><b>Базові дані учасника</b><p>Доступні лише нечутливі робочі поля. Контакти, дата народження, категорії вразливості та згоди тут не редагуються.</p></div><span class="pill">participants.edit</span></div>
       <form action="/admin/users/{{ user.id }}/basic-profile" method="post" class="form-grid profile-edit-form">
@@ -132,7 +132,7 @@
 
   {% if sensitive %}
   <details class="profile-editor">
-    <summary class="primary edit-profile-trigger">✏️ Редагувати картку учасника</summary>
+    <summary class="soft-button edit-action-button edit-profile-trigger">✏️ Редагувати картку учасника</summary>
     <div class="profile-editor-panel">
       <div class="editor-intro">
         <div>
@@ -216,7 +216,7 @@
   </div>
 
   <details class="profile-editor consent-editor">
-    <summary class="primary edit-profile-trigger">✏️ Оновити статуси / додати документ</summary>
+    <summary class="soft-button edit-action-button edit-profile-trigger">✏️ Оновити статуси / додати документ</summary>
     <form method="post" action="/admin/users/{{user.id}}/consents" enctype="multipart/form-data" class="form-grid profile-edit-form consent-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Статус згоди батьків
         <select name="parental_status">

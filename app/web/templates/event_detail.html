@@ -8,7 +8,7 @@
     <h1>{{event.title}}</h1>
     <p>{{event.starts_at.strftime('%d.%m.%Y о %H:%M')}} • {{event.location}}</p>
   </div>
-  <span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span>
+  <div class="opportunity-detail-statuses"><span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span><span class="tag">{{'🧭 Для АМПасадорів' if event.access_scope == 'team' else '🌍 Загальна подія'}}</span></div>
 </div>
 
 {% if event.status == 'postponed' %}
@@ -40,6 +40,7 @@
       <div><span>Досвід</span><b>{{event.xp_reward}} XP</b></div>
       <div><span>Волонтерські години</span><b>{{event.volunteer_hours}} год.</b></div>
       <div><span>Місткість</span><b>{{event.capacity or 'Без обмежень'}}</b></div>
+      <div><span>Доступ</span><b>{{'Команда АМП' if event.access_scope == 'team' else 'Усі активні учасники'}}</b></div>
       <div><span>Зареєстровано</span><b>{{counts.all}}</b></div>
       <div><span>Перегляди в боті</span><b>{{view_stat.views}}</b></div>
       <div><span>Унікальні глядачі</span><b>{{view_stat.unique}}</b></div>

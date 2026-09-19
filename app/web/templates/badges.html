@@ -78,7 +78,7 @@
     {% if b.id in system_badge_ids and b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}<span class="tag">💙 Системний донатний бейдж</span>{% endif %}
     <h3>{{b.name}}</h3><p>{{b.description}}</p>
     {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format(b.criteria_value / 100) }} грн{% else %}{{b.criteria_value}}{% endif %}{% endif %}</p>{% endif %}
-    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+    <details class="badge-edit-details"><summary class="soft-button edit-action-button badge-edit-trigger">✏️ Редагувати</summary>
       <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="badge_type" value="general">
         <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>
@@ -109,7 +109,7 @@
     <div class="ambassador-badge-preview">{% if b.image_path %}<img src="{{b.image_path}}" alt="{{b.name}}">{% else %}<div class="big-icon">{{b.icon}}</div>{% endif %}</div>
     <span class="tag">АМПасадорський</span><h3>{{b.name}}</h3><p>{{b.description}}</p>
     {% if b.criteria_type %}<p class="muted">Умова: {{label(b.criteria_type)}}{% if b.criteria_value %} — {% if b.criteria_type in ['donation_first','donation_single','donation_total_over'] %}{{ '%.0f'|format(b.criteria_value / 100) }} грн{% else %}{{b.criteria_value}}{% endif %}{% endif %}</p>{% endif %}
-    <details class="badge-edit-details"><summary class="soft-button badge-edit-trigger">✏️ Редагувати</summary>
+    <details class="badge-edit-details"><summary class="soft-button edit-action-button badge-edit-trigger">✏️ Редагувати</summary>
       <form method="post" action="/admin/badges/{{b.id}}/update" enctype="multipart/form-data" class="form-grid badge-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="badge_type" value="ambassador">
         <label>Назва<input name="name" value="{{b.name}}"></label><label>Іконка<input name="icon" value="{{b.icon}}"></label>

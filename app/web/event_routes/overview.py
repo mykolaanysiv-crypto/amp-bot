@@ -23,13 +23,14 @@ from .context import router
 
 
 @router.get("/admin/events", response_class=HTMLResponse)
-async def events(request: Request, q: str = "", status: str = "", period: str = "", type: str = "", sort: str = "newest"):
+async def events(request: Request, q: str = "", status: str = "", period: str = "", type: str = "", scope: str = "", sort: str = "newest"):
     if r := guard(request): return r
     async with db.session_factory() as session:
         await _refresh_lifecycle(session)
         stmt = select(Event)
         if q: stmt = stmt.where(or_(Event.title.ilike(f"%{q}%"), Event.location.ilike(f"%{q}%"), Event.description.ilike(f"%{q}%")))
         if status: stmt = stmt.where(Event.status == status)
+        if scope in {"general", "team"}: stmt = stmt.where(Event.access_scope == scope)
         now_utc = clock.now_utc()
         now = clock.local_wall(now_utc)
         if type == "upcoming": stmt = stmt.where(Event.starts_at >= now)
@@ -42,7 +43,7 @@ async def events(request: Request, q: str = "", status: str = "", period: str = 
         order_map = {"oldest": Event.starts_at.asc(), "title": Event.title.asc(), "newest": Event.starts_at.desc()}
         rows=(await session.scalars(stmt.order_by(order_map.get(sort, Event.starts_at.desc())).limit(250))).all()
         view_stats = await content_view_stats(session, "event", [row.id for row in rows])
-        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort))
+        return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,scope=scope,sort=sort))
 
 @router.get("/admin/events/{event_id}", response_class=HTMLResponse)
 async def event_detail(request: Request, event_id: int):
@@ -151,6 +152,6 @@ async def event_detail(request: Request, event_id: int):
             context=ctx(
                 request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
                 xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat, event_analytics=event_analytics,
-                share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token else "",
+                share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token and getattr(event, "access_scope", "general") == "general" else "",
             )
         )

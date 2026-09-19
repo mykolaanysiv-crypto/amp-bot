@@ -26,8 +26,8 @@ def test_support_explains_xp_rate_and_amp_code():
 
 def test_ambassador_cabinet_reporting_and_responsibility():
     handler=read('app/handlers/ambassadors.py')
-    assert 'Кабінет АМПасадора' in handler
-    assert 'Подати звіт' in handler
+    assert 'Кабінет команди АМП' in handler
+    assert 'Подати періодичний звіт' in handler
     assert 'AmbassadorReportState' in handler
     assert 'save_telegram_photo' in handler
     route=read('app/web/routes/ambassadors.py')
@@ -38,7 +38,7 @@ def test_registered_ambassador_can_generate_event_qr():
     events=read('app/handlers/events.py')
     kb=read('app/keyboards.py')
     assert 'ambassador:event_qr:' in events
-    assert 'UserRole.AMBASSADOR.value' in events
+    assert 'AMP_TEAM_ROLES' in events
     assert 'QR-код події' in kb
 
 def test_public_and_own_profile_show_responsibility():
