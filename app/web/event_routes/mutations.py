@@ -98,6 +98,123 @@ async def event_update(
     if campaign_id: _schedule_broadcast(campaign_id)
     return RedirectResponse("/admin/events", 303)
 
+
+def _event_feedback_next_step(feedback: EventFeedback) -> tuple[str | None, str | None]:
+    """Return the next unanswered micro-feedback question for a participant."""
+    if feedback.rating is None:
+        return "event_feedback_rating", "Обери оцінку від 1 до 5."
+    if feedback.useful is None:
+        return "event_feedback_useful", "Було корисно?"
+    if feedback.new_knowledge is None:
+        return "event_feedback_knowledge", "Дізнався/дізналася щось нове?"
+    if feedback.felt_safe is None:
+        return "event_feedback_safe", "Почувався/почувалася безпечно?"
+    if feedback.would_return is None:
+        return "event_feedback_return", "Хочеш прийти на події АМП ще?"
+    return None, None
+
+
+@router.post("/admin/events/{event_id}/feedback/resend")
+async def event_feedback_resend(request: Request, event_id: int):
+    """Manually resend the next feedback question to attended participants who have not completed it."""
+    if r := guard_permission(request, "events.edit"):
+        return r
+
+    now = clock.storage_utc()
+    # One explicit resend batch per minute prevents accidental double-click duplicates,
+    # while still allowing an administrator to repeat the mailing later if needed.
+    batch_key = now.strftime("%Y%m%d%H%M")
+    sent = 0
+    skipped_completed = 0
+
+    async with db.session_factory() as session:
+        event = await session.get(Event, event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="Подію не знайдено.")
+        if event.cancelled_at or event.status == "cancelled":
+            raise HTTPException(status_code=409, detail="Для скасованої події розсилку відгуку недоступно.")
+
+        rows = (await session.execute(
+            select(EventRegistration, User)
+            .join(User, User.id == EventRegistration.user_id)
+            .where(
+                EventRegistration.event_id == event.id,
+                EventRegistration.status == "attended",
+                User.status == UserStatus.ACTIVE.value,
+                User.tg_id.is_not(None),
+            )
+            .order_by(EventRegistration.confirmed_at.asc().nullsfirst(), EventRegistration.id.asc())
+        )).all()
+
+        user_ids = [user.id for _, user in rows]
+        feedback_by_user: dict[int, EventFeedback] = {}
+        if user_ids:
+            feedback_by_user = {
+                feedback.user_id: feedback
+                for feedback in (await session.scalars(
+                    select(EventFeedback).where(
+                        EventFeedback.event_id == event.id,
+                        EventFeedback.user_id.in_(user_ids),
+                    )
+                )).all()
+            }
+
+        for _registration, user in rows:
+            feedback = feedback_by_user.get(user.id)
+            if feedback and feedback.status == "completed":
+                skipped_completed += 1
+                continue
+
+            if not feedback:
+                feedback = EventFeedback(
+                    event_id=event.id, user_id=user.id, status="pending",
+                    prompted_at=now, created_at=now, updated_at=now,
+                )
+                session.add(feedback)
+                await session.flush()
+                feedback_by_user[user.id] = feedback
+            else:
+                if feedback.prompted_at is None:
+                    feedback.prompted_at = now
+                feedback.updated_at = now
+
+            entity_type, question = _event_feedback_next_step(feedback)
+            if not entity_type:
+                feedback.status = "completed"
+                feedback.completed_at = feedback.completed_at or now
+                feedback.updated_at = now
+                skipped_completed += 1
+                continue
+
+            intro = "Повторне нагадування" if feedback.rating is not None or feedback.status == "in_progress" else "Запит відгуку"
+            await queue_telegram_delivery(
+                session, user.tg_id,
+                f"⭐ <b>{intro} про подію «{event.title}»</b>\n\n"
+                f"{question}\n\n"
+                "Ваш відгук займе менше хвилини та допоможе АМП покращувати наступні активності.",
+                source="event_feedback_manual_resend",
+                notification_type="event",
+                title=f"Відгук: {event.title}",
+                recipient_user_id=user.id,
+                entity_type=entity_type, entity_id=feedback.id,
+                dedupe_key=f"event_feedback:manual:{event.id}:{user.id}:{batch_key}",
+            )
+            sent += 1
+
+        await log_audit(
+            session, "web_event_feedback_resend",
+            actor_label=request.session.get("admin_name", "web"),
+            entity_type="event", entity_id=event.id,
+            details=f"Повторна розсилка відгуку: у черзі {sent}; уже завершили {skipped_completed}; підтверджених учасників {len(rows)}.",
+        )
+        await session.commit()
+
+    notice = "feedback_resent" if sent else "feedback_none"
+    return RedirectResponse(
+        f"/admin/events/{event_id}?notice={notice}&sent={sent}#event-feedback",
+        status_code=303,
+    )
+
 @router.post("/admin/events/{event_id}/postpone")
 async def event_postpone(request: Request, event_id: int, reason: str = Form(...), day: int = Form(...), month: int = Form(...), year: int = Form(...), event_time: str = Form(...)):
     if r := guard(request): return r

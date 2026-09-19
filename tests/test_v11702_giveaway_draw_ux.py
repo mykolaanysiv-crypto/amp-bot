@@ -28,4 +28,6 @@ def test_draw_button_is_gated_and_explains_why():
 
 
 def test_version_bumped_for_hotfix():
-    assert read("VERSION.txt").strip() == "1.17.0.2"
+    version = read("VERSION.txt").strip()
+    assert read("VERSION_CHECK.txt").strip() == version
+    assert tuple(map(int, version.split("."))) >= (1, 17, 0, 2)

@@ -1,0 +1,29 @@
+AMP XP / «АМПасадори» v1.17.0.3 — звіт перевірки
+Дата: 2026-09-19
+
+Зміни:
+- Додано ручну повторну розсилку відгуку з детальної сторінки події.
+- Розсилка адресована лише attended + active + Telegram користувачам без завершеного відгуку.
+- Для нового EventFeedback створюється перше питання; для частково заповненого — наступне незавершене.
+- Завершені відгуки повторно не отримують повідомлення.
+- Повідомлення йдуть через Notification Center/outbox з feedback-кнопками.
+- Додано audit log і Web-підтвердження кількості поставлених у чергу повідомлень.
+- Міграцій БД немає; Alembic head 20260919_0007.
+
+Перевірено:
+- python -m compileall -q app scripts: OK
+- python -m scripts.production_preflight: OK (AMP v1.17.0.3)
+- alembic heads: 20260919_0007 (head)
+- Цільовий regression-набір: 44 passed
+  tests/test_v11703_event_feedback_resend.py
+  tests/test_v11702_giveaway_draw_ux.py
+  tests/test_v190_notification_center.py
+  tests/test_v1110_ux_conversion.py
+  tests/test_v1150_targeting_event_analytics.py
+  tests/test_v1821_calendar_event_ops.py
+  tests/test_v1823_runtime_fixes.py
+  tests/test_v1824_telegram_scanner.py
+
+Обмеження sandbox:
+- Повний pytest не запускається через відсутні локальні залежності aiogram та aiosqlite; встановити їх неможливо через відсутність мережі в sandbox.
+- Production preflight та цільові статичні/регресійні тести пройдені.

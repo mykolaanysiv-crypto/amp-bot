@@ -46,7 +46,7 @@ async def events(request: Request, q: str = "", status: str = "", period: str = 
         return templates.TemplateResponse(request=request,name="events.html",context=ctx(request,rows=rows,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,scope=scope,sort=sort))
 
 @router.get("/admin/events/{event_id}", response_class=HTMLResponse)
-async def event_detail(request: Request, event_id: int):
+async def event_detail(request: Request, event_id: int, notice: str = "", sent: int = 0):
     if r := guard(request): return r
     async with db.session_factory() as session:
         await _refresh_lifecycle(session)
@@ -103,6 +103,14 @@ async def event_detail(request: Request, event_id: int):
         for row in xp_rows:
             xp_by_user[row.user_id] = xp_by_user.get(row.user_id, 0) + int(row.amount or 0)
         feedback_by_user = {row.user_id: row for row in all_feedback_rows}
+        feedback_stats["pending"] = sum(
+            1
+            for reg, user in registrations
+            if reg.status == "attended"
+            and user.status == UserStatus.ACTIVE.value
+            and user.tg_id is not None
+            and not (feedback_by_user.get(user.id) and feedback_by_user[user.id].status == "completed")
+        )
         counts["xp_awarded"] = len(xp_by_user)
         counts["feedback_completed"] = len(feedback_rows)
 
@@ -152,6 +160,7 @@ async def event_detail(request: Request, event_id: int):
             context=ctx(
                 request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
                 xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat, event_analytics=event_analytics,
+                notice=notice, feedback_resend_sent=max(0, sent),
                 share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token and getattr(event, "access_scope", "general") == "general" else "",
             )
         )

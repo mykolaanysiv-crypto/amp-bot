@@ -11,6 +11,12 @@
   <div class="opportunity-detail-statuses"><span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span><span class="tag">{{'🧭 Для АМПасадорів' if event.access_scope == 'team' else '🌍 Загальна подія'}}</span></div>
 </div>
 
+{% if notice == 'feedback_resent' %}
+<div class="alert success">✅ Повторний запит відгуку поставлено в чергу для <b>{{ feedback_resend_sent }}</b> учасників.</div>
+{% elif notice == 'feedback_none' %}
+<div class="alert warning">ℹ️ Немає учасників, яким потрібно повторно надсилати відгук: усі підтверджені учасники вже відповіли або не мають активного Telegram-профілю.</div>
+{% endif %}
+
 {% if event.status == 'postponed' %}
 <section class="card postponed-banner"><div class="cancellation-icon">📅</div><div><h2>Подію перенесено</h2><p><b>Нова дата:</b> {{event.starts_at.strftime('%d.%m.%Y о %H:%M')}}</p><p><b>Причина:</b> {{event.postponed_reason or 'Причину не зазначено.'}}</p></div></section>
 {% endif %}
@@ -187,9 +193,21 @@
   {% if attendance_window.state == 'too_early' %}<p class="muted">QR-відмітка та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток можливий лише з причиною й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайну відмітку закрито. Для виправлення помилки адміністратор може застосувати ручний виняток з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR-відмітка та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
 </section>
 
-<section class="card event-feedback-analytics">
+<section class="card event-feedback-analytics" id="event-feedback">
   <div class="section-title"><div><h2>⭐ Зворотний зв’язок та вплив</h2><p class="muted">Показники результату після події. Враховуються лише завершені анкети.</p></div><span>{{ feedback_stats.responses }} / {{ feedback_stats.invited }} · {{ feedback_stats.response_rate }}%</span></div>
   <p class="muted"><b>Конверсія відгуків:</b> {{ feedback_stats.responses }} завершено з {{ feedback_stats.invited }} запрошених — <b>{{ feedback_stats.response_rate }}%</b>.</p>
+  <div class="event-ops-inline-actions">
+    {% if feedback_stats.pending > 0 and not event.cancelled_at and event.status != 'cancelled' %}
+    <form method="post" action="/admin/events/{{event.id}}/feedback/resend" onsubmit="return confirm('Повторно надіслати запит відгуку всім підтвердженим учасникам, які ще не завершили анкету?');">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <button class="soft-button" type="submit">🔁 Повторно надіслати відгук ({{ feedback_stats.pending }})</button>
+    </form>
+    {% elif feedback_stats.responses > 0 %}
+    <span class="tag active">✅ Немає незавершених відгуків</span>
+    {% else %}
+    <span class="muted">Повторна розсилка стане доступною після підтвердження участі хоча б одного учасника.</span>
+    {% endif %}
+  </div>
   <div class="kpis five feedback-kpis">
     <div class="kpi"><span>Середня оцінка</span><strong>{{ feedback_stats.avg_rating }}</strong></div>
     <div class="kpi"><span>Було корисно</span><strong>{{ feedback_stats.useful }}%</strong></div>
