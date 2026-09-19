@@ -43,7 +43,11 @@ def test_scanner_is_telegram_miniapp_and_continuous():
     assert '@router.get("/tg/event-scanner/{event_id}"' in routes
     assert '@router.post("/tg/event-scanner/{event_id}/scan")' in routes
     assert "showScanQrPopup" in template
-    assert "return false" in template
+    assert "/tg/event-scanner/{{ event.id }}/scan" in template
+    assert "/tg/event-сканер/" not in template
+    assert "Код скановано успішно" in template
+    assert "return true" in template
+    assert "scheduleNextScan" in template
     assert "window.addEventListener('load'" in template
     assert "miniapp_scan:" in routes
     assert "Бейдж відскановано" in routes

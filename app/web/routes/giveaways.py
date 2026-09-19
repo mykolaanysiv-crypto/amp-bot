@@ -63,6 +63,34 @@ def _input_local_dt(value: datetime | None) -> str:
     return clock.utc_to_local(aware).strftime("%Y-%m-%dT%H:%M") if aware else ""
 
 
+def _draw_block_reason(
+    giveaway: Giveaway,
+    *,
+    eligible_count: int,
+    prize_unit_count: int,
+    now: datetime | None = None,
+) -> str:
+    """Return a human-readable reason why a draw cannot run yet.
+
+    This is intentionally shared by GET and POST so the admin never lands on a
+    raw JSON HTTPException page for an expected business-rule validation.
+    """
+    if giveaway.status == "cancelled":
+        return "Скасований розіграш не можна проводити."
+    if giveaway.status == "drawn":
+        return ""
+    if giveaway.status == "draft":
+        return "Розіграш ще у статусі «Чернетка». Спочатку активуйте його або закрийте вручну, якщо хочете провести розіграш одразу."
+    current = now or clock.storage_utc()
+    if giveaway.status == "active" and giveaway.ends_at and current < giveaway.ends_at:
+        return f"Дедлайн ще не настав — { _display_local_dt(giveaway.ends_at) }. Щоб провести розіграш зараз, спочатку натисніть «⏹ Закрити» вище."
+    if prize_unit_count < 1:
+        return "У розіграші немає подарунків із доступною кількістю."
+    if eligible_count < prize_unit_count:
+        return f"Недостатньо допущених учасників: потрібно щонайменше {prize_unit_count}, зараз {eligible_count}."
+    return ""
+
+
 def _audience_from_form(form) -> tuple[str, str]:
     kind = str(form.get("audience_type") or "all").strip()
     if kind not in GIVEAWAY_AUDIENCE_TYPES:
@@ -205,6 +233,10 @@ async def giveaway_detail(request: Request, giveaway_id: int):
         eligible_ids = await eligible_user_ids(session, giveaway)
         eligible_users = list((await session.scalars(select(User).where(User.id.in_(eligible_ids)).order_by(User.full_name.asc()))).all()) if eligible_ids else []
         draw_ids = await approved_draw_user_ids(session, giveaway)
+        prize_unit_count = sum(max(0, int(p.quantity or 0)) for p in prizes)
+        draw_block_reason = _draw_block_reason(
+            giveaway, eligible_count=len(draw_ids), prize_unit_count=prize_unit_count
+        )
         events = list((await session.scalars(select(Event).order_by(Event.starts_at.desc()).limit(100))).all())
         users = list((await session.scalars(select(User).where(User.status == UserStatus.ACTIVE.value).order_by(User.full_name))).all())
     winners_by_prize: dict[int, list[tuple[GiveawayWinner, User]]] = {}
@@ -227,6 +259,7 @@ async def giveaway_detail(request: Request, giveaway_id: int):
         name="giveaway_detail.html",
         context=ctx(request, giveaway=giveaway, prizes=prizes, entry_rows=entry_rows, winner_rows=winner_rows,
                     winners_by_prize=winners_by_prize, eligible_users=eligible_users, draw_eligible_count=len(draw_ids),
+                    prize_unit_count=prize_unit_count, draw_block_reason=draw_block_reason, can_draw=not bool(draw_block_reason),
                     events=events, users=users, audience_label=audience_label, participation_label=participation_label,
                     role_label=label, selected_roles=selected_roles, selected_users=selected_users, display_dt=_display_local_dt, input_dt=_input_local_dt),
     )
@@ -414,22 +447,31 @@ async def giveaway_draw(request: Request, giveaway_id: int):
     if r := _guard(request): return r
     form = await request.form()
     if str(form.get("confirm") or "") != "yes":
-        raise HTTPException(status_code=400, detail="Підтвердіть проведення розіграшу.")
+        return RedirectResponse(f"/admin/giveaways/{giveaway_id}?notice=draw_confirm#results", status_code=303)
     async with db.session_factory() as session:
         giveaway = await session.scalar(select(Giveaway).where(Giveaway.id == giveaway_id).with_for_update())
         if not giveaway:
             raise HTTPException(status_code=404, detail="Розіграш не знайдено.")
         if giveaway.status == "drawn":
             return RedirectResponse(f"/admin/giveaways/{giveaway.id}#results", status_code=303)
-        if giveaway.status == "cancelled":
-            raise HTTPException(status_code=409, detail="Скасований розіграш не можна проводити.")
+
+        draw_ids = await approved_draw_user_ids(session, giveaway)
+        prize_unit_count = int(await session.scalar(
+            select(func.coalesce(func.sum(GiveawayPrize.quantity), 0)).where(GiveawayPrize.giveaway_id == giveaway.id)
+        ) or 0)
         now = clock.storage_utc()
-        if giveaway.status == "active" and giveaway.ends_at and now < giveaway.ends_at:
-            raise HTTPException(status_code=409, detail="Дедлайн ще не настав. Спочатку закрийте розіграш достроково або дочекайтеся дедлайну.")
+        block_reason = _draw_block_reason(
+            giveaway, eligible_count=len(draw_ids), prize_unit_count=prize_unit_count, now=now
+        )
+        if block_reason:
+            return RedirectResponse(f"/admin/giveaways/{giveaway.id}?notice=draw_blocked#results", status_code=303)
+
         try:
             winners, seed = await run_draw(session, giveaway)
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ValueError:
+            # Expected draw validation should stay inside the admin UI, not leak
+            # a raw JSON error response into the browser.
+            return RedirectResponse(f"/admin/giveaways/{giveaway.id}?notice=draw_blocked#results", status_code=303)
         for winner in winners:
             user = await session.get(User, winner.user_id)
             prize = await session.get(GiveawayPrize, winner.prize_id)
@@ -443,4 +485,4 @@ async def giveaway_draw(request: Request, giveaway_id: int):
                 winner.notified_at = now
         await log_audit(session, "web_giveaway_draw", actor_label=request.session.get("admin_name", "web"), entity_type="giveaway", entity_id=giveaway.id, details=f"winners={len(winners)}; algorithm={giveaway.draw_algorithm}; seed={seed}")
         await session.commit()
-    return RedirectResponse(f"/admin/giveaways/{giveaway_id}#results", status_code=303)
+    return RedirectResponse(f"/admin/giveaways/{giveaway_id}?notice=draw_success#results", status_code=303)

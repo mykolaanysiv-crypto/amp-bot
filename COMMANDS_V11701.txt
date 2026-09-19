@@ -1,0 +1,11 @@
+AMP v1.17.0.1 — recommended release checks
+
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+alembic heads
+pytest -q tests/test_v1824_telegram_scanner.py
+pytest -q --ignore=tests/integration
+
+# Expected version: 1.17.0.1
+# Expected alembic head: 20260919_0007 (head)
+# production deploy: GitHub Production Gate

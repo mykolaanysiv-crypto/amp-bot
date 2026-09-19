@@ -21,8 +21,8 @@
   <main class="card">
     <h1>📷 QR-сканер</h1>
     <p><b>{{ event.title }}</b></p>
-    <p class="muted">Камера має відкритися автоматично. Після сканування одного бейджа сканер залишається відкритим — одразу наводьте камеру на наступний.</p>
-    <div class="counter"><div class="pill">Сканів<br><b id="scan-count">0</b></div><div class="pill">Успішних<br><b id="ok-count">0</b></div></div>
+    <p class="muted">Камера відкривається автоматично. Після кожного сканування на мить з’явиться результат, а потім камера автоматично відкриється для наступного бейджа.</p>
+    <div class="counter"><div class="pill">Сканів<br><b id="scan-count">0</b></div><div class="pill">Відмічено<br><b id="ok-count">0</b></div></div>
     <div id="status" class="status">⏳ Запускаємо камеру…</div>
     <button id="open-сканер" type="button">📷 Відкрити камеру</button>
     <button id="close-app" type="button">✅ Завершити сканування</button>
@@ -33,59 +33,92 @@
   const statusEl = document.getElementById('status');
   const scanCountEl = document.getElementById('scan-count');
   const okCountEl = document.getElementById('ok-count');
-  let scanCount = 0, okCount = 0, busy = false, lastCode = '', lastAt = 0;
+  let scanCount = 0, okCount = 0, busy = false, lastCode = '', lastAt = 0, manualStop = false, autoCycle = false;
 
   function setStatus(text, error=false){ statusEl.textContent=text; statusEl.className='status'+(error?' error':''); }
   function scanId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 
+  function scheduleNextScan(delay=1150){
+    if (manualStop) return;
+    window.setTimeout(() => {
+      autoCycle = false;
+      openNativeScanner();
+    }, delay);
+  }
+
   async function processScan(text){
     const now = Date.now();
-    if (!text || busy || (text === lastCode && now - lastAt < 2200)) return;
+    if (!text || busy || (text === lastCode && now - lastAt < 2200)) return false;
     busy = true; lastCode = text; lastAt = now; scanCount++; scanCountEl.textContent=scanCount;
-    setStatus('⏳ Обробляємо бейдж…');
+    setStatus('⏳ Код зчитано. Перевіряємо учасника…');
+    let reopenDelay = 1150;
     try{
-      const response = await fetch('/tg/event-сканер/{{ event.id }}/scan', {
+      const response = await fetch('/tg/event-scanner/{{ event.id }}/scan', {
         method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({init_data: tg ? tg.initData : '', code:text, scan_id:scanId()})
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok && data.ok){
-        okCount++; okCountEl.textContent=okCount;
-        const reg = data.registered ? 'зареєстрований' : 'не зареєстрований';
-        const att = data.attended ? 'відмічений' : 'не відмічений';
-        setStatus(`✅ ${data.name || 'Учасник'} • ${reg} • ${att}. Скануйте наступний бейдж.`);
-        try{ tg.HapticFeedback.notificationOccurred(data.attended ? 'success' : 'warning'); }catch(e){}
+        if (data.attended){
+          okCount++; okCountEl.textContent=okCount;
+          const suffix = data.state === 'already_attended' ? 'Участь уже була підтверджена.' : 'Учасника відмічено на події.';
+          setStatus(`✅ Код скановано успішно. ${data.name || 'Учасник'} — ${suffix}`);
+          try{ tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
+        } else {
+          reopenDelay = 1700;
+          setStatus(`⚠️ Код скановано. ${data.name || 'Учасник'} не зареєстрований на подію. Кнопку підтвердження надіслано в чат.`);
+          try{ tg.HapticFeedback.notificationOccurred('warning'); }catch(e){}
+        }
       } else {
+        reopenDelay = 1700;
         setStatus('❌ ' + (data.error || 'Не вдалося обробити QR.'), true);
         try{ tg.HapticFeedback.notificationOccurred('error'); }catch(e){}
       }
     }catch(err){
-      setStatus('❌ Помилка мережі. Камера лишається активною — спробуйте ще раз.', true);
-    }finally{ busy=false; }
+      reopenDelay = 1700;
+      setStatus('❌ Помилка мережі. Спробуйте ще раз.', true);
+      try{ tg.HapticFeedback.notificationOccurred('error'); }catch(e){}
+    }finally{
+      busy=false;
+      scheduleNextScan(reopenDelay);
+    }
+    return true;
   }
 
   function openNativeScanner(){
+    if (manualStop) return;
     if (!tg){ setStatus('❌ Відкрийте сканер саме з Telegram-бота.', true); return; }
     tg.ready(); tg.expand();
     if (typeof tg.showScanQrPopup !== 'function'){
       setStatus('❌ Ця версія Telegram не підтримує вбудований QR-сканер. Оновіть Telegram.', true); return;
     }
-    setStatus('📷 Камера активна. Скануйте бейджі один за одним.');
+    setStatus('📷 Камера активна. Скануйте персональний QR-бейдж.');
     try{
-      tg.showScanQrPopup({text:'Скануйте персональні QR-бейджі АМП'}, (text) => {
+      tg.showScanQrPopup({text:'Скануйте персональний QR-бейдж АМП'}, (text) => {
+        const now = Date.now();
+        if (!text || busy || (text === lastCode && now - lastAt < 2200)) return false;
+        autoCycle = true;
         processScan(text);
-        return false; // keep Telegram native camera open for the next badge
+        return true; // close camera so the success/error message is visible, then reopen automatically
       });
-    }catch(err){ setStatus('❌ Не вдалося відкрити камеру. Натисніть «Відкрити камеру».', true); }
+    }catch(err){
+      autoCycle = false;
+      setStatus('❌ Не вдалося відкрити камеру. Натисніть «Відкрити камеру».', true);
+    }
   }
 
-  document.getElementById('open-сканер').addEventListener('click', openNativeScanner);
+  document.getElementById('open-сканер').addEventListener('click', () => { manualStop=false; openNativeScanner(); });
   document.getElementById('close-app').addEventListener('click', () => {
+    manualStop=true; autoCycle=false;
     try{ tg.closeScanQrPopup(); }catch(e){}
     tg.close();
   });
   if (tg){
-    try{ tg.onEvent('scanQrPopupClosed', () => setStatus('⏸ Камеру закрито. Натисніть «Відкрити камеру», щоб продовжити.')); }catch(e){}
+    try{
+      tg.onEvent('scanQrPopupClosed', () => {
+        if (!autoCycle && !manualStop) setStatus('⏸ Камеру закрито. Натисніть «Відкрити камеру», щоб продовжити.');
+      });
+    }catch(e){}
   }
   window.addEventListener('load', () => setTimeout(openNativeScanner, 120));
 })();
