@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Reward, SystemSetting
+from .model_domains import Reward, SystemSetting
 
 
 @dataclass(frozen=True, slots=True)

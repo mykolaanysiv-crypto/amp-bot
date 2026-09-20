@@ -4,7 +4,7 @@ import json
 from collections import OrderedDict
 from typing import Iterable
 
-from .models import UserRole
+from .model_domains import UserRole
 
 # v1.10.2: permissions are intentionally explicit strings.  They are stored as
 # JSON arrays so new permissions can be introduced additively without schema

@@ -2,46 +2,36 @@ from __future__ import annotations
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import inspect
 
 from app.config import get_settings
 
 
-def _cfg() -> Config:
+def _cfg(database_url: str | None = None) -> Config:
     cfg = Config("alembic.ini")
-    settings = get_settings(require_bot_token=False)
-    cfg.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+    url = (database_url or get_settings(require_bot_token=False).database_url).strip()
+    cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return cfg
 
 
-def stamp_baseline_if_needed() -> str:
-    """Adopt Alembic after the legacy compatibility bootstrap.
+def upgrade(revision: str, database_url: str | None = None) -> None:
+    command.upgrade(_cfg(database_url), revision)
 
-    v1.12.0 has no new schema delta, so existing databases can be safely stamped
-    at the baseline. Future releases run normal ``upgrade head`` migrations.
+
+def upgrade_head(database_url: str | None = None) -> None:
+    """Apply the canonical Alembic chain to head.
+
+    v1.17.1 removes the legacy schema bootstrap. This is the only supported
+    schema-mutation path for production and CI.
     """
-    from sqlalchemy import create_engine
-    settings = get_settings(require_bot_token=False)
-    url = settings.database_url
-    if url.startswith("postgresql+asyncpg://"):
-        # Alembic itself handles asyncpg; inspection here uses Alembic command
-        # path instead of opening a second synchronous driver.
-        try:
-            command.current(_cfg())
-        except Exception:
-            command.stamp(_cfg(), "head")
-            return "stamped"
-        # command.current succeeds even when no version rows exist, so upgrade
-        # is harmless for our no-op baseline and creates the version table.
-        command.upgrade(_cfg(), "head")
-        return "upgraded"
-    # SQLite path: direct inspection is available through sqlite3-compatible URL
-    command.upgrade(_cfg(), "head")
-    return "upgraded"
+    upgrade("head", database_url)
 
 
-def upgrade_head() -> None:
-    command.upgrade(_cfg(), "head")
+def downgrade(revision: str, database_url: str | None = None) -> None:
+    command.downgrade(_cfg(database_url), revision)
+
+
+def current(database_url: str | None = None) -> None:
+    command.current(_cfg(database_url))
 
 
 if __name__ == "__main__":

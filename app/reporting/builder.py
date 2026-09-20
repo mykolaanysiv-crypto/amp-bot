@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import (
+from ..model_domains import (
     ActivityApplication, Event, EventRegistration, EventFeedback, Idea, OpportunityInterest, ParticipationStreak, Quest, RegistrationJourney,
     QuestParticipation, RequestCase, Season, StreakFreeze, Survey, SurveyResponse, User, UserBadge, VolunteerTask, VolunteerTaskParticipation,
     XPTransaction,

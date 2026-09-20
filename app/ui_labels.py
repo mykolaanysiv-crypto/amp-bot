@@ -164,7 +164,7 @@ LABELS = {
 
 # Canonical workflow values used by the web admin routes. Keeping these
 # lists next to their labels prevents runtime NameError failures when feature
-# routes are loaded through the transitional app.web.app wildcard imports.
+# routes are loaded through the canonical FastAPI factory/router composition.
 IDEA_STATUSES = (
     "new", "review", "shortlisted", "approved", "in_progress",
     "paused", "implemented", "rejected", "archived",

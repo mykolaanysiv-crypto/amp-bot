@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from app.models import Idea, RequestCase, RequestMessage, Survey
-from app.services import xp_total
+from app.model_domains import Idea, RequestCase, RequestMessage, Survey
+from app.domain_services import xp_total
 from app.workflows import award_idea_approval_once, complete_survey_once
 from tests.conftest import create_user
 

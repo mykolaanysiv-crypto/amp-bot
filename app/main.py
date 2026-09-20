@@ -12,7 +12,7 @@ from .config import get_settings
 from .db import Database
 from .jobs import scheduler_factories
 from .runtime_health import heartbeat_loop, supervise_scheduler
-from .services import bootstrap_defaults
+from .domain_services import bootstrap_defaults
 
 
 async def main() -> None:

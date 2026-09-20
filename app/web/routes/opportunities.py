@@ -10,7 +10,7 @@ from app.web.dependencies import (
     templates, timedelta,
 )
 from app.opportunity_matching import OPPORTUNITY_INTERESTS, refresh_matches_for_opportunity
-from app.models import OpportunityMatch
+from app.model_domains import OpportunityMatch
 from app.content_views import content_view_stat, content_view_stats
 from app.opportunity_utils import deadline_urgency, opportunity_sort_key
 

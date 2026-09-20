@@ -13,12 +13,12 @@ def test_version_is_v11401_or_newer():
 
 def test_release_smoke_migrates_before_orm_bootstrap():
     src = read("scripts/startup_smoke.py")
-    db_init = src.index("asyncio.run(_db_init_phase())")
-    migrate = src.index("upgrade_head()", db_init)
-    bootstrap = src.index("asyncio.run(_bootstrap_defaults_phase())", migrate)
+    migrate = src.index("upgrade_head()")
+    db_init = src.index("asyncio.run(_db_init_phase())", migrate)
+    bootstrap = src.index("asyncio.run(_bootstrap_defaults_phase())", db_init)
     web = src.index("asyncio.run(_web_startup_phase())", bootstrap)
-    assert db_init < migrate < bootstrap < web
-    assert "UndefinedColumnError" in src
+    assert migrate < db_init < bootstrap < web
+    assert "Alembic is the single schema authority" in src
 
 def test_v1140_schema_head_is_preserved():
     migration = read("migrations/versions/20260917_0003_ambassador_cabinets.py")

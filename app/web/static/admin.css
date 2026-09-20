@@ -3428,7 +3428,7 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 @media(max-width:1100px){.giveaway-library-grid,.giveaway-prize-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.giveaway-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.giveaway-library-grid,.giveaway-prize-grid,.giveaway-summary-grid{grid-template-columns:1fr}.giveaway-state-actions form>*{width:100%}}
 
-/* v1.17.0.4 event commitment XP + superadmin status override */
+/* v1.17.1 event commitment XP + superadmin status override */
 .superadmin-status-override{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:grid;gap:6px;min-width:230px}
 .superadmin-status-override select,.superadmin-status-override input{min-width:0;width:100%}
 .superadmin-status-override small{line-height:1.35}

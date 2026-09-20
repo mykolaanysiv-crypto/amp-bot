@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import date
+import asyncio
 
 import pytest_asyncio
 
 from app.config import Settings
 from app.db import Database
-from app.models import Season, User, UserRole, UserStatus
+from app.model_domains import Season, User, UserRole, UserStatus
+from scripts.alembic_bootstrap import upgrade_head
 
 
 @pytest_asyncio.fixture
@@ -32,6 +34,7 @@ async def db(tmp_path):
         season_start=date(2026, 1, 1),
         season_end=date(2026, 12, 31),
     )
+    await asyncio.to_thread(upgrade_head, settings.database_url)
     database = Database(settings)
     await database.init()
     async with database.session_factory() as session:

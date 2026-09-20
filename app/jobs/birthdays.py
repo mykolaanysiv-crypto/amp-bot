@@ -6,7 +6,7 @@ from ..db import Database
 from ..observability import log_extra
 from ..reliability import job_lock, queue_telegram_delivery
 from ..runtime_health import scheduler_heartbeat
-from ..services import process_birthdays, process_expired_bans
+from ..domain_services import process_birthdays, process_expired_bans
 from ..time_utils import clock
 
 async def _birthday_scheduler(bot: Bot, db: Database, settings) -> None:

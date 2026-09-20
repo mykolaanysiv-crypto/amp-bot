@@ -11,8 +11,8 @@ from sqlalchemy import select
 from app.config import Settings
 from app.db import Database
 from app.media import load_file_bytes
-from app.models import DonationJarState, DonationReport, SupportPageView, User
-from app.services import get_user_by_tg
+from app.model_domains import DonationJarState, DonationReport, SupportPageView, User
+from app.domain_services import get_user_by_tg
 from app.observability import log_extra
 
 router = Router()

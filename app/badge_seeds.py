@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import SystemSetting
+from .model_domains import SystemSetting
 
 BADGE_DELETE_PREFIX = "badge_seed_deleted:"
 

@@ -33,13 +33,13 @@ def test_startup_smoke_covers_required_order_and_real_web_lifespan():
     ]
     for token in required:
         assert token in src
-    # Additive Alembic revisions must be applied before bootstrap_defaults can
-    # issue ORM SELECTs against models containing the new mapped columns.
-    db_init = src.index("asyncio.run(_db_init_phase())")
-    migrate = src.index("upgrade_head()", db_init)
-    bootstrap = src.index("asyncio.run(_bootstrap_defaults_phase())", migrate)
+    # v1.17.1 makes Alembic the only schema authority, so migration precedes
+    # even runtime DB initialization.
+    migrate = src.index("upgrade_head()")
+    db_init = src.index("asyncio.run(_db_init_phase())", migrate)
+    bootstrap = src.index("asyncio.run(_bootstrap_defaults_phase())", db_init)
     web = src.index("asyncio.run(_web_startup_phase())", bootstrap)
-    assert db_init < migrate < bootstrap < web
+    assert migrate < db_init < bootstrap < web
 
 
 def test_ci_has_postgres16_real_release_gate_and_deploy_dependency():
@@ -100,4 +100,5 @@ def test_postgres_integration_test_is_real_db_test():
     assert "TEST_DATABASE_URL" in src
     assert "await db.init()" in src
     assert "Base.metadata.drop_all" in src
+    assert "upgrade_head" in src
     assert "notifications" in src

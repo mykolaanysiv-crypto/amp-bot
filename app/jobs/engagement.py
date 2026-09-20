@@ -7,14 +7,14 @@ from sqlalchemy import select
 from ..db import Database
 from ..engagement import process_goal_rewards, process_expired_content
 from ..leagues import refresh_all_streaks
-from ..models import ActivityApplication, EventRegistration, Idea, QuestParticipation, Season, SurveyResponse, User, VolunteerTaskParticipation
+from ..model_domains import ActivityApplication, EventRegistration, Idea, QuestParticipation, Season, SurveyResponse, User, VolunteerTaskParticipation
 from ..observability import log_extra
 from ..opportunity_matching import queue_pending_match_digests
 from ..reliability import job_lock, queue_telegram_delivery
 from ..runtime_config import get_runtime_int
 from ..runtime_health import scheduler_heartbeat
 from ..season_history import finalize_season
-from ..services import log_audit, process_event_operations, revoke_referral_reward_if_inactive
+from ..domain_services import log_audit, process_event_operations, revoke_referral_reward_if_inactive
 from ..time_utils import clock
 
 async def _streak_scheduler(bot: Bot, db: Database) -> None:

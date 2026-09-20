@@ -1,5 +1,5 @@
-from app.models import User, UserStatus, UserStatusChangeRequest
-from app.services import ensure_user_tokens
+from app.model_domains import User, UserStatus, UserStatusChangeRequest
+from app.domain_services import ensure_user_tokens
 
 
 async def test_registration_pending_to_approved_active(db):

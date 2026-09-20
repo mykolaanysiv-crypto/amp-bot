@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from .gamification import normalize_quest_xp, normalize_task_xp
-from .models import (
+from .model_domains import (
     Idea,
     Quest,
     QuestParticipation,
@@ -19,7 +19,7 @@ from .models import (
     VolunteerTaskParticipation,
 )
 from .runtime_config import get_runtime_int
-from .services import add_xp, evaluate_automatic_badges
+from .domain_services import add_xp, evaluate_automatic_badges
 
 
 async def approve_quest_participation(

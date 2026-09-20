@@ -12,7 +12,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import RegistrationJourney
+from .model_domains import RegistrationJourney
 
 REGISTRATION_STEPS = (
     "privacy_notice",

@@ -11,9 +11,9 @@ from sqlalchemy import select
 from ..ambassadors import AMP_TEAM_ROLES, responsibility_label
 from ..db import Database
 from ..media import save_telegram_photo
-from ..models import AmbassadorReport, TeamTask, User, UserRole, UserStatus
+from ..model_domains import AmbassadorReport, TeamTask, User, UserRole, UserStatus
 from ..reliability import queue_telegram_delivery
-from ..services import get_user_by_tg
+from ..domain_services import get_user_by_tg
 from ..states import AmbassadorReportState, TeamTaskReportState
 from ..time_utils import clock
 from ..ui_labels import label

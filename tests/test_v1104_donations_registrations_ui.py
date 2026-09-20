@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.model_domains import Base
 from tests.source_layout import analytics_source, models_source, reports_source
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -140,14 +141,20 @@ def test_superadmin_reports_can_use_exact_aggregate_counts():
     assert "ПІБ, контакти й списки конкретних осіб не формуються" in reports
 
 
-def test_opportunity_photo_column_has_existing_database_migration():
+def test_opportunity_photo_column_is_alembic_owned():
+    # v1.17.1 removed the runtime migrations mapping from app/db.py. The frozen
+    # Alembic baseline must own the opportunity image column for fresh schema
+    # creation, while current production upgrades are covered by PostgreSQL CI.
+    baseline = text("migrations/versions/20260915_0001_v1111_baseline.py")
+    start = baseline.index("op.create_table('opportunities'")
+    end = baseline.index("op.create_table('rewards'", start)
+    opp = baseline[start:end]
+    assert "sa.Column('image_path', sa.String(length=500), nullable=True)" in opp
+    assert "image_path" in Base.metadata.tables["opportunities"].c
+
     db = text("app/db.py")
-    # The migrations mapping must have a single opportunities key; duplicate keys
-    # would silently drop image_path for databases upgraded from v1.10.3.
-    migration_block = db[db.index("migrations: dict"):db.index("for table, specs in migrations.items()") if "for table, specs in migrations.items()" in db else len(db)]
-    assert migration_block.count('"opportunities": [') == 1
-    opp = migration_block[migration_block.index('"opportunities": ['):migration_block.index('"ideas": [') ]
-    assert '("image_path", "VARCHAR(500)")' in opp
+    assert "migrations: dict" not in db
+    assert "_migrate_v10_to_v11" not in db
 
 
 def test_donation_badges_have_ukrainian_labels_and_protected_rules():

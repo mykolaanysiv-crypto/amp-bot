@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.reports import resolve_report_period
+from app.reporting import resolve_report_period
 from tests.source_layout import event_routes_source, reports_source
 
 ROOT = Path(__file__).resolve().parents[1]

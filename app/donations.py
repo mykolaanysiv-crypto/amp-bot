@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .version import APP_VERSION
 from .badge_seeds import badge_seed_is_deleted
-from .models import Badge, DonationJarState, DonationTransaction, User, UserBadge, UserRole
+from .model_domains import Badge, DonationJarState, DonationTransaction, User, UserBadge, UserRole
 
 MONOBANK_API = "https://api.monobank.ua"
 AMP_ID_RE = re.compile(r"(?:АМП|AMP)[\s\-#:]*(\d{1,8})", re.IGNORECASE)
@@ -94,7 +94,7 @@ async def award_donation_xp_for_transaction(session: AsyncSession, row: Donation
     if xp <= 0:
         return 0
     marker = f"donation:{row.provider_transaction_id}"
-    from .models import XPTransaction
+    from .model_domains import XPTransaction
     exists = await session.scalar(select(XPTransaction.id).where(
         XPTransaction.user_id == row.linked_user_id,
         XPTransaction.category == "donation",

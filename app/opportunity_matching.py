@@ -10,9 +10,9 @@ from typing import Iterable
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Opportunity, OpportunityMatch, User, UserStatus
+from .model_domains import Opportunity, OpportunityMatch, User, UserStatus
 from .observability import log_extra
-from .services import age_on
+from .domain_services import age_on
 from .settlements import settlement_key
 
 OPPORTUNITY_INTERESTS: tuple[str, ...] = (

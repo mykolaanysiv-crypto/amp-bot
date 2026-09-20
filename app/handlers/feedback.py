@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from ..db import Database
-from ..models import Event, EventFeedback, User
+from ..model_domains import Event, EventFeedback, User
 from ..states import EventFeedbackState
 from ..observability import log_extra
 

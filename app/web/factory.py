@@ -8,7 +8,7 @@ from ..observability import RequestContextMiddleware
 from .dependencies import db, settings
 from .lifespan import lifespan
 from .security_middleware import AdminSessionValidationMiddleware, CSRFMiddleware, SecurityHeadersMiddleware
-from . import auth_routes, health_routes, media_routes
+from . import auth_routes, health_routes, media_routes, event_routes
 from .routes import (
     dashboard as dashboard_routes,
     gamification as gamification_routes,
@@ -17,7 +17,6 @@ from .routes import (
     surveys as surveys_routes,
     opportunities as opportunities_routes,
     users as users_routes,
-    events as events_routes,
     quests as quests_routes,
     activities as activities_routes,
     tasks as tasks_routes,
@@ -66,7 +65,7 @@ def create_app() -> FastAPI:
         surveys_routes,
         opportunities_routes,
         users_routes,
-        events_routes,
+        event_routes,
         quests_routes,
         activities_routes,
         tasks_routes,

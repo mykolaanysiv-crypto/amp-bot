@@ -8,7 +8,7 @@ from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Event, EventRegistration, User, UserRole, UserStatus
+from .model_domains import Event, EventRegistration, User, UserRole, UserStatus
 from .settlements import settlement_key
 
 

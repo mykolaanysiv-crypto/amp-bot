@@ -7,9 +7,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from app.ambassadors import AMP_TEAM_ROLES, AMBASSADOR_RESPONSIBILITIES, responsibility_label
-from app.models import AmbassadorReport, TeamTask, User, UserRole, UserStatus
+from app.model_domains import AmbassadorReport, TeamTask, User, UserRole, UserStatus
 from app.reliability import queue_telegram_delivery
-from app.services import add_xp
+from app.domain_services import add_xp
 from app.time_utils import clock
 from app.ui_labels import label
 from app.web.dependencies import ctx, db, guard, log_audit, templates, web_role

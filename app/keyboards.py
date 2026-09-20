@@ -3,7 +3,7 @@ from __future__ import annotations
 from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from .models import UserRole
+from .model_domains import UserRole
 from .permissions import effective_permissions
 
 ADMIN_ROLES = {UserRole.ADMIN.value, UserRole.SUPERADMIN.value, UserRole.COORDINATOR.value}

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select, update
 
-from app.models import Notification, ScheduledJob
+from app.model_domains import Notification, ScheduledJob
 from app.reliability import acquire_job_lock, finish_job_lock, process_due_telegram_deliveries, queue_telegram_delivery
 
 

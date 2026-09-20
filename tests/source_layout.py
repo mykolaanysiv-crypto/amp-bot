@@ -1,9 +1,8 @@
 """Canonical source-layout helpers for regression tests.
 
-v1.13 split several historical monolith modules into domain packages while
-keeping small compatibility facades.  Older regression tests intentionally
-inspect source code for safety/UX invariants; they should inspect the canonical
-implementation, not require those implementation strings to remain in facades.
+v1.17.1 retires the transitional facades introduced by the v1.13 split.
+Older regression tests inspect canonical implementation packages through these
+helpers instead of depending on removed historical files.
 
 Keep all source-location knowledge here so the next architecture move requires
 one test-layout update instead of dozens of brittle path edits.
@@ -43,14 +42,13 @@ def main_source() -> str:
 
 
 def start_source() -> str:
-    """Registration/start compatibility facade plus canonical start flow."""
-    return concat("app/handlers/start.py", *_package_sources("app/handlers/start_flow"))
+    """Canonical registration/start flow."""
+    return concat(*_package_sources("app/handlers/start_flow"))
 
 
 def web_app_source() -> str:
     """FastAPI composition/runtime source after the application-factory split."""
     return concat(
-        "app/web/app.py",
         "app/web/factory.py",
         "app/web/dependencies.py",
         "app/web/auth_routes.py",
@@ -62,8 +60,8 @@ def web_app_source() -> str:
 
 
 def event_routes_source() -> str:
-    """Event compatibility facade plus all canonical event route modules."""
-    return concat("app/web/routes/events.py", *_package_sources("app/web/event_routes"))
+    """Canonical event route modules."""
+    return concat(*_package_sources("app/web/event_routes"))
 
 
 def models_source() -> str:
@@ -80,17 +78,17 @@ def models_source() -> str:
         "app/model_domains/communications.py",
         "app/model_domains/__init__.py",
     )
-    return concat("app/models.py", *ordered)
+    return concat(*ordered)
 
 
 def analytics_source() -> str:
-    """Analytics facade plus canonical analytics implementation/export modules."""
-    return concat("app/analytics.py", *_package_sources("app/analytics_modules"))
+    """Canonical analytics implementation/export modules."""
+    return concat(*_package_sources("app/analytics_modules"))
 
 
 def reports_source() -> str:
-    """Reporting facade plus canonical period/builder/export modules."""
-    return concat("app/reports.py", *_package_sources("app/reporting"))
+    """Canonical reporting period/builder/export modules."""
+    return concat(*_package_sources("app/reporting"))
 
 
 def broadcast_runtime_source() -> str:

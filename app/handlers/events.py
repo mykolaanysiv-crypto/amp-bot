@@ -18,8 +18,8 @@ from ..config import Settings
 from ..db import Database
 from ..keyboards import event_detail_keyboard, event_waitlist_offer_keyboard, events_keyboard
 from ..media import telegram_photo_input
-from ..models import Event, EventRegistration, UserStatus
-from ..services import accept_event_reservation, get_user_by_tg, join_event_waitlist, process_event_operations, register_for_event
+from ..model_domains import Event, EventRegistration, UserStatus
+from ..domain_services import accept_event_reservation, get_user_by_tg, join_event_waitlist, process_event_operations, register_for_event
 from ..ui_labels import lifecycle_status_label
 from ..engagement import process_expired_content
 from ..content_views import content_view_stat, record_content_view

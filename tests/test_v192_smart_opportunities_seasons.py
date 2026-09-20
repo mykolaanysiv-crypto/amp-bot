@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from pathlib import Path
 
-from app.models import Base, Opportunity, OpportunityMatch, Season, User
+from app.model_domains import Base, Opportunity, OpportunityMatch, Season, User
 from app.opportunity_matching import match_opportunity, set_user_interests
 from app.time_utils import clock
 from tests.source_layout import main_source

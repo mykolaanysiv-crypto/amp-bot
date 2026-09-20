@@ -8,9 +8,9 @@ from openpyxl import Workbook, load_workbook
 from sqlalchemy import select
 
 from app.event_documents import fill_registration_template
-from app.models import EventRegistration, Referral, Reward, UserRole, UserStatus
+from app.model_domains import EventRegistration, Referral, Reward, UserRole, UserStatus
 from app.time_utils import clock
-from app.services import (
+from app.domain_services import (
     add_xp,
     create_event,
     register_for_event,

@@ -1,5 +1,5 @@
-from app.models import ActivityApplication, ActivityType, Quest, QuestParticipation, VolunteerTask, VolunteerTaskParticipation
-from app.services import complete_activity_application, xp_total
+from app.model_domains import ActivityApplication, ActivityType, Quest, QuestParticipation, VolunteerTask, VolunteerTaskParticipation
+from app.domain_services import complete_activity_application, xp_total
 from app.workflows import approve_quest_participation, approve_volunteer_task_participation
 from tests.conftest import create_user
 

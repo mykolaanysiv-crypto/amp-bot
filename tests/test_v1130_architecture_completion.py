@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from app.models import Base
+from app.model_domains import Base
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,21 +16,18 @@ def test_v1130_version_manifest_and_schema_continuity():
     version = read("VERSION.txt").strip()
     assert version.startswith("1.")
     assert read("VERSION_CHECK.txt").strip() == version
-    assert len(Base.metadata.tables) >= 55  # later additive migrations may add tables
+    assert len(Base.metadata.tables) >= 55
     assert "content_views" in Base.metadata.tables
     versions = sorted(path.name for path in (ROOT / "migrations" / "versions").glob("*.py"))
     assert any("20260915_0002_content_views" in name for name in versions)
-    assert not any("1130" in name.lower() for name in versions)
+    assert any("20260920_0009_alembic_full_adoption" in name for name in versions)
 
 
-def test_web_uses_application_factory_and_keeps_small_compatibility_facade():
+def test_web_uses_application_factory_without_compatibility_facade():
     factory = read("app/web/factory.py")
-    facade = read("app/web/app.py")
     runner = read("run_web.py")
     assert "def create_app() -> FastAPI:" in factory
-    assert "from .factory import create_app" in facade
-    assert "app = create_app()" in facade
-    assert len(facade.splitlines()) < 80
+    assert not (ROOT / "app/web/app.py").exists()
     assert '"app.web.factory:create_app"' in runner
     assert "factory=True" in runner
 
@@ -52,86 +49,55 @@ def test_web_dependencies_health_lifespan_and_broadcast_runtime_are_split():
     assert "JSONResponse(jsonable_encoder(payload)" in health
 
 
-def test_event_routes_are_domain_split_behind_compatibility_facade():
-    facade = read("app/web/routes/events.py")
-    assert "from app.web.event_routes import router" in facade
-    assert len(facade.splitlines()) < 80
+def test_event_routes_are_domain_split_without_compatibility_facade():
+    assert not (ROOT / "app/web/routes/events.py").exists()
     expected = {
-        "context.py",
-        "scanner_common.py",
-        "telegram_scanner.py",
-        "public.py",
-        "overview.py",
-        "participants.py",
-        "operations.py",
-        "mutations.py",
+        "context.py", "scanner_common.py", "telegram_scanner.py", "public.py",
+        "overview.py", "participants.py", "operations.py", "mutations.py",
     }
-    actual = {path.name for path in (ROOT / "app" / "web" / "event_routes").glob("*.py")}
+    actual = {path.name for path in (ROOT / "app/web/event_routes").glob("*.py")}
     assert expected <= actual
+    factory = read("app/web/factory.py")
+    assert "event_routes" in factory
 
 
-def test_analytics_and_reports_are_split_behind_explicit_facades():
-    analytics = read("app/analytics.py")
-    reports = read("app/reports.py")
-    assert "from .analytics_modules import" in analytics
-    assert "from .reporting import" in reports
-    assert "import *" not in analytics
-    assert "import *" not in reports
-    assert len(analytics.splitlines()) < 80
-    assert len(reports.splitlines()) < 80
-    assert (ROOT / "app" / "analytics_modules" / "core.py").exists()
-    assert (ROOT / "app" / "analytics_modules" / "exports.py").exists()
-    assert (ROOT / "app" / "reporting" / "periods.py").exists()
-    assert (ROOT / "app" / "reporting" / "builder.py").exists()
-    assert (ROOT / "app" / "reporting" / "exports.py").exists()
-
-
-def test_models_are_split_by_domain_with_explicit_compatibility_exports():
-    facade = read("app/models.py")
-    assert "from .model_domains import (" in facade
-    assert "import *" not in facade
-    assert len(facade.splitlines()) < 180
-    expected = {
-        "base.py",
-        "identity.py",
-        "gamification.py",
-        "events.py",
-        "engagement.py",
-        "donations.py",
-        "communications.py",
+def test_analytics_reports_and_models_use_canonical_packages_only():
+    for retired in ("app/analytics.py", "app/reports.py", "app/models.py", "app/services.py"):
+        assert not (ROOT / retired).exists(), retired
+    assert (ROOT / "app/analytics_modules/core.py").exists()
+    assert (ROOT / "app/analytics_modules/exports.py").exists()
+    assert (ROOT / "app/reporting/periods.py").exists()
+    assert (ROOT / "app/reporting/builder.py").exists()
+    assert (ROOT / "app/reporting/exports.py").exists()
+    expected_models = {
+        "base.py", "identity.py", "gamification.py", "events.py", "engagement.py",
+        "donations.py", "communications.py",
     }
-    actual = {path.name for path in (ROOT / "app" / "model_domains").glob("*.py")}
-    assert expected <= actual
+    actual_models = {path.name for path in (ROOT / "app/model_domains").glob("*.py")}
+    assert expected_models <= actual_models
 
 
-def test_start_and_main_are_small_orchestration_facades_and_jobs_are_split():
-    start = read("app/handlers/start.py")
+def test_start_and_main_use_canonical_modules_and_jobs_are_split():
+    assert not (ROOT / "app/handlers/start.py").exists()
     main = read("app/main.py")
+    bot_runtime = read("app/bot_runtime.py")
     registry = read("app/jobs/registry.py")
-    assert "from .start_flow import router, help_command" in start
-    assert len(start.splitlines()) < 80
     assert len(main.splitlines()) < 140
     assert "scheduler_factories" in main
+    assert "start_flow" in bot_runtime
     scheduler_names = (
-        "birthday_scheduler",
-        "event_reminder_scheduler",
-        "event_feedback_scheduler",
-        "goal_reward_scheduler",
-        "streak_scheduler",
-        "notification_retry_scheduler",
-        "participant_inactivity_scheduler",
-        "smart_opportunities_scheduler",
-        "season_history_scheduler",
-        "donation_sync_scheduler",
-        "notification_health_scheduler",
-        "backup_health_scheduler",
+        "birthday_scheduler", "event_reminder_scheduler", "event_feedback_scheduler",
+        "goal_reward_scheduler", "streak_scheduler", "notification_retry_scheduler",
+        "participant_inactivity_scheduler", "smart_opportunities_scheduler",
+        "season_history_scheduler", "donation_sync_scheduler",
+        "notification_health_scheduler", "backup_health_scheduler",
         "content_lifecycle_scheduler",
     )
     for name in scheduler_names:
         assert f'"{name}"' in registry
     assert len(scheduler_names) == 13
-    assert (ROOT / "app" / "bot_runtime.py").exists()
-    assert (ROOT / "app" / "telegram_middleware.py").exists()
+    assert (ROOT / "app/bot_runtime.py").exists()
+    assert (ROOT / "app/telegram_middleware.py").exists()
 
 
 def test_application_code_has_no_wildcard_imports():
@@ -144,32 +110,36 @@ def test_application_code_has_no_wildcard_imports():
     assert hits == []
 
 
-def test_compatibility_facades_declare_transition_window():
-    for rel in (
-        "app/models.py",
-        "app/analytics.py",
-        "app/reports.py",
-        "app/web/app.py",
-        "app/web/routes/events.py",
-        "app/handlers/start.py",
-    ):
-        text = read(rel).lower()
-        assert "compatibility" in text
-        assert "1–2" in text or "1-2" in text
+def test_internal_code_does_not_import_retired_facades():
+    banned = {"app.models", "app.services", "app.analytics", "app.reports", "app.web.app", "app.web.routes.events", "app.handlers.start"}
+    hits: list[str] = []
+    for base in (ROOT / "app", ROOT / "scripts"):
+        for path in base.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module in banned:
+                    hits.append(f"{path.relative_to(ROOT)}:{node.lineno}:{node.module}")
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in banned:
+                            hits.append(f"{path.relative_to(ROOT)}:{node.lineno}:{alias.name}")
+    assert hits == []
 
 
-def test_startup_smoke_exercises_factory_and_compatibility_import():
+def test_startup_smoke_exercises_canonical_factory_only():
     smoke = read("scripts/startup_smoke.py")
     assert 'importlib.import_module("app.web.factory")' in smoke
     assert "factory_module.create_app()" in smoke
-    assert 'importlib.import_module("app.web.app")' in smoke
+    assert 'importlib.import_module("app.web.app")' not in smoke
     assert 'importlib.import_module("app.main")' in smoke
+    assert smoke.index("upgrade_head()") < smoke.index("asyncio.run(_db_init_phase())")
 
 
-def test_production_preflight_guards_architecture_completion():
+def test_production_preflight_guards_architecture_and_alembic_adoption():
     src = read("scripts/production_preflight.py")
     assert "Architecture preflight failed" in src
     assert "wildcard imports remain" in src
     assert "app.web.factory.create_app missing" in src
-    assert "facade_limits" in src
-    assert '20260915_0002_content_views.py' in src
+    assert "retired_facades" in src
+    assert "_migrate_v10_to_v11" in src
+    assert "schema_drift_check.py" in src

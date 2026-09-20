@@ -131,16 +131,12 @@ def main() -> None:
         if token not in observability_source:
             raise SystemExit(f"Observability preflight failed: {token} missing")
 
-    # v1.13.0 architecture completion gates.  The old monolith modules remain
-    # only as explicit compatibility facades; canonical implementation lives in
-    # focused packages/modules.
+    # v1.17.1 architecture cleanup: canonical packages are now the only
+    # production import surface; transitional v1.13 compatibility facades are retired.
     factory_source = (root / "app" / "web" / "factory.py").read_text(encoding="utf-8")
-    web_facade_source = (root / "app" / "web" / "app.py").read_text(encoding="utf-8")
     run_web_source = (root / "run_web.py").read_text(encoding="utf-8")
     if "def create_app()" not in factory_source:
         raise SystemExit("Architecture preflight failed: app.web.factory.create_app missing")
-    if "from .factory import create_app" not in web_facade_source or "app = create_app()" not in web_facade_source:
-        raise SystemExit("Architecture preflight failed: app.web.app compatibility facade is not factory-backed")
     if '"app.web.factory:create_app"' not in run_web_source or "factory=True" not in run_web_source:
         raise SystemExit("Architecture preflight failed: web runtime does not start through create_app factory mode")
 
@@ -165,22 +161,41 @@ def main() -> None:
     if missing_architecture:
         raise SystemExit(f"Architecture preflight failed: missing split components {missing_architecture}")
 
-    facade_limits = {
-        root / "app" / "web" / "app.py": 80,
-        root / "app" / "analytics.py": 80,
-        root / "app" / "reports.py": 80,
-        root / "app" / "web" / "routes" / "events.py": 80,
-        root / "app" / "models.py": 180,
-        root / "app" / "handlers" / "start.py": 80,
-        root / "app" / "main.py": 140,
+    retired_facades = (
+        root / "app" / "models.py",
+        root / "app" / "services.py",
+        root / "app" / "analytics.py",
+        root / "app" / "reports.py",
+        root / "app" / "web" / "app.py",
+        root / "app" / "web" / "routes" / "events.py",
+        root / "app" / "handlers" / "start.py",
+    )
+    remaining_facades = [str(path.relative_to(root)) for path in retired_facades if path.exists()]
+    if remaining_facades:
+        raise SystemExit("Architecture preflight failed: retired compatibility facades remain: " + ", ".join(remaining_facades))
+
+    # Production code must not import the retired module names indirectly.
+    banned_modules = {
+        "app.models", "app.services", "app.analytics", "app.reports",
+        "app.web.app", "app.web.routes.events", "app.handlers.start",
     }
-    oversized_facades: list[str] = []
-    for path, max_lines in facade_limits.items():
-        line_count = len(path.read_text(encoding="utf-8").splitlines())
-        if line_count > max_lines:
-            oversized_facades.append(f"{path.relative_to(root)}={line_count}>{max_lines}")
-    if oversized_facades:
-        raise SystemExit("Architecture preflight failed: oversized compatibility/composition modules: " + ", ".join(oversized_facades))
+    retired_import_hits: list[str] = []
+    for scan_root in (root / "app", root / "scripts"):
+        for path in scan_root.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module in banned_modules:
+                    retired_import_hits.append(f"{path.relative_to(root)}:{node.lineno}:{node.module}")
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in banned_modules:
+                            retired_import_hits.append(f"{path.relative_to(root)}:{node.lineno}:{alias.name}")
+    if retired_import_hits:
+        raise SystemExit("Architecture preflight failed: retired facade imports remain: " + ", ".join(retired_import_hits))
+
+    main_lines = len((root / "app" / "main.py").read_text(encoding="utf-8").splitlines())
+    if main_lines > 140:
+        raise SystemExit(f"Architecture preflight failed: app/main.py={main_lines}>140")
 
     wildcard_imports: list[str] = []
     for path in (root / "app").rglob("*.py"):
@@ -281,10 +296,24 @@ def main() -> None:
     if "/admin/ambassadors" not in ambassador_route or "AMBASSADOR_RESPONSIBILITIES" not in ambassador_route:
         raise SystemExit("Ambassador web preflight failed: admin/superadmin cabinet missing")
 
-    # Schema continuity and the additive v1.14.0 migration.
-    models_source = (root / "app" / "models.py").read_text(encoding="utf-8")
-    if "model_domains" not in models_source or "Compatibility facade" not in models_source:
-        raise SystemExit("Architecture preflight failed: app.models is not the explicit compatibility facade")
+    # v1.17.1 Alembic full-adoption + schema continuity guards.
+    db_source = (root / "app" / "db.py").read_text(encoding="utf-8")
+    if "_migrate_v10_to_v11" in db_source or "Base.metadata.create_all" in db_source:
+        raise SystemExit("Alembic preflight failed: runtime legacy schema mutation remains in app/db.py")
+    startup_smoke_source = (root / "scripts" / "startup_smoke.py").read_text(encoding="utf-8")
+    try:
+        migrate_pos = startup_smoke_source.index("upgrade_head()")
+        db_init_pos = startup_smoke_source.index("asyncio.run(_db_init_phase())", migrate_pos)
+        bootstrap_pos = startup_smoke_source.index("asyncio.run(_bootstrap_defaults_phase())", db_init_pos)
+        web_pos = startup_smoke_source.index("asyncio.run(_web_startup_phase())", bootstrap_pos)
+    except ValueError as exc:
+        raise SystemExit("Release-order preflight failed: canonical startup phases are missing") from exc
+    if not (migrate_pos < db_init_pos < bootstrap_pos < web_pos):
+        raise SystemExit("Release-order preflight failed: expected Alembic -> db.init -> bootstrap -> web lifespan")
+
+    baseline_source = (root / "migrations" / "versions" / "20260915_0001_v1111_baseline.py").read_text(encoding="utf-8")
+    if "op.create_table(" not in baseline_source or "Base.metadata.create_all" in baseline_source:
+        raise SystemExit("Alembic preflight failed: baseline is not a frozen Alembic schema bootstrap")
     legacy_content_views_migration = (root / "migrations" / "versions" / "20260915_0002_content_views.py").read_text(encoding="utf-8")
     if 'revision: str = "20260915_0002"' not in legacy_content_views_migration:
         raise SystemExit("Alembic preflight failed: v1.12 content views migration missing")
@@ -293,21 +322,18 @@ def main() -> None:
         raise SystemExit("Alembic preflight failed: v1.14 ambassador migration 20260917_0003 missing")
     survey_migration_source = (root / "migrations" / "versions" / "20260918_0004_survey_audience.py").read_text(encoding="utf-8")
     if 'revision: str = "20260918_0004"' not in survey_migration_source or 'down_revision: Union[str, None] = "20260917_0003"' not in survey_migration_source:
-        raise SystemExit("Alembic preflight failed: expected v1.15 production head 20260918_0004 missing")
+        raise SystemExit("Alembic preflight failed: v1.15 migration chain broken")
+    adoption_migration = (root / "migrations" / "versions" / "20260920_0009_alembic_full_adoption.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260920_0009"' not in adoption_migration or 'down_revision: Union[str, None] = "20260920_0008"' not in adoption_migration:
+        raise SystemExit("Alembic preflight failed: v1.17.1 adoption head 20260920_0009 missing")
 
-    # v1.14.0.1 release-order guard.  Never run ORM bootstrap queries before
-    # additive Alembic revisions are applied: mapped SELECTs include new columns
-    # immediately and will fail against the previous production schema.
-    startup_smoke_source = (root / "scripts" / "startup_smoke.py").read_text(encoding="utf-8")
-    try:
-        db_init_pos = startup_smoke_source.index("asyncio.run(_db_init_phase())")
-        migrate_pos = startup_smoke_source.index("upgrade_head()", db_init_pos)
-        bootstrap_pos = startup_smoke_source.index("asyncio.run(_bootstrap_defaults_phase())", migrate_pos)
-        web_pos = startup_smoke_source.index("asyncio.run(_web_startup_phase())", bootstrap_pos)
-    except ValueError as exc:
-        raise SystemExit("Release-order preflight failed: canonical startup phases are missing") from exc
-    if not (db_init_pos < migrate_pos < bootstrap_pos < web_pos):
-        raise SystemExit("Release-order preflight failed: expected db.init -> Alembic -> bootstrap -> web lifespan")
+    schema_guard = root / "scripts" / "schema_drift_check.py"
+    if not schema_guard.exists():
+        raise SystemExit("Alembic preflight failed: schema_drift_check.py missing")
+    ci_source = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for required_ci_token in ("schema_drift_check", "test_alembic_upgrade_from_previous_production_schema", "test_latest_revision_downgrade_upgrade_roundtrip"):
+        if required_ci_token not in ci_source:
+            raise SystemExit(f"Alembic preflight failed: CI gate {required_ci_token} missing")
 
     # v1.14.0.2 Telegram profile guard.  The profile handler renders the
     # ambassador responsibility condition with UserRole.AMBASSADOR.  Because
@@ -334,8 +360,9 @@ def main() -> None:
     for token in ("audience_type", "audience_event_id", "class SurveyAudienceUser"):
         if token not in survey_model_source:
             raise SystemExit(f"Survey targeting preflight failed: model token {token} missing")
-    if "SurveyAudienceUser," not in models_source:
-        raise SystemExit("Survey targeting preflight failed: compatibility model facade does not import SurveyAudienceUser")
+    model_init_source = (root / "app" / "model_domains" / "__init__.py").read_text(encoding="utf-8")
+    if "SurveyAudienceUser" not in model_init_source:
+        raise SystemExit("Survey targeting preflight failed: canonical model package does not export SurveyAudienceUser")
     for token in ("EVENT_AUDIENCE_STATUSES", "eligible_user_ids", "survey_available_to_user", "eligible_users"):
         if token not in survey_audience_source:
             raise SystemExit(f"Survey targeting preflight failed: helper {token} missing")

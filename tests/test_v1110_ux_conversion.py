@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base
+from app.model_domains import Base
 from app.registration_ux import decrypt_draft, encrypt_draft, registration_progress
 from tests.source_layout import event_routes_source, main_source, models_source, start_source
 

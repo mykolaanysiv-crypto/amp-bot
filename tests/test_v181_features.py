@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base, User, UserStatus
+from app.model_domains import Base, User, UserStatus
 from tests.source_layout import analytics_source, event_routes_source, main_source, reports_source, start_source
 
 ROOT = Path(__file__).resolve().parents[1]

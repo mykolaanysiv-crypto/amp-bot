@@ -12,7 +12,7 @@ Production deploy через GitHub Actions тепер перед `git push` у 
 
 Опційно: `BACKUP_UNKNOWN_GRACE_HOURS=24`. Якщо marker ще ніколи не створювався, система не надсилає false-positive Telegram alarm протягом grace, але й не позначає backup як перевірений.
 
-# Heroku deployment — АМПасадори v1.12.1.2
+# Heroku deployment — АМПасадори v1.17.1
 
 > **Production Stability Gate:** рекомендований production deploy тепер проходить через GitHub Actions. PostgreSQL 16 CI виконує compile, tests, integration tests і реальний release/startup smoke; deploy job стартує лише після PASS.
 
@@ -24,7 +24,7 @@ web: python run_web.py
 worker: python run.py
 ```
 
-Release phase реально проходить `db.init() → Alembic upgrade head → bootstrap_defaults() → FastAPI lifespan`. Якщо startup падає, Heroku не промотує новий реліз.
+Release phase реально проходить `Alembic upgrade head → db.init() → bootstrap_defaults() → FastAPI lifespan`. Якщо startup падає, Heroku не промотує новий реліз.
 
 ## Перед deploy
 
@@ -51,10 +51,11 @@ Release phase реально проходить `db.init() → Alembic upgrade h
 
 Release phase виконує:
 
-1. `db.init()` для підключення/legacy compatibility boundary;
-2. `alembic upgrade head`;
-3. `bootstrap_defaults()` вже після актуалізації schema;
-3. production preflight.
+1. `alembic upgrade head` — єдиний production-шлях зміни схеми;
+2. `db.init()` — лише перевірка підключення/runtime PRAGMA, без DDL;
+3. `bootstrap_defaults()` після актуалізації schema;
+4. реальний FastAPI/worker startup smoke;
+5. production preflight.
 
 ## Scale
 
@@ -113,4 +114,4 @@ System Health вважає verified backup актуальним протягом
 
 ## Rollback
 
-У разі application regression використовуйте Heroku Releases rollback. Не очищайте production PostgreSQL. Alembic baseline v1.12.0 є no-op; schema залишається сумісною з v1.11.1.
+У разі application regression використовуйте Heroku Releases rollback. Не очищайте production PostgreSQL. v1.17.1 використовує Alembic як єдине джерело схеми; runtime legacy upgrader видалено. Перед rollback не відкочуйте БД вручну без перевіреної процедури.

@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from app.config import get_settings
 from app.db import Database
-from app.models import User, UserRole
+from app.model_domains import User, UserRole
 
 
 async def run(query: str, role: str) -> None:

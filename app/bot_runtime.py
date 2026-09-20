@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import BotCommand, CallbackQuery
 
 from .db import Database
-from .handlers import admin, ambassadors, donations, events, feedback, giveaways, participant, quests, start, surveys, v11
+from .handlers import admin, ambassadors, donations, events, feedback, giveaways, participant, quests, start_flow, surveys, v11
 from .observability import log_extra
 from .telegram_middleware import (
     DeletedAccountMiddleware, FSMNavigationMiddleware, LastActivityMiddleware, TemporaryBanMiddleware,
@@ -47,7 +47,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
     dp.callback_query.outer_middleware(deleted_guard)
     # Navigation routers come before admin FSM handlers so menu buttons always
     # work even if an administrator left an unfinished creation wizard.
-    dp.include_router(start.router)
+    dp.include_router(start_flow.router)
     dp.include_router(v11.router)
     dp.include_router(donations.router)
     dp.include_router(ambassadors.router)
@@ -152,7 +152,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
             "ux:mine:invite": lambda: v11.invite_friend(msg, db, bot),
             "ux:more:requests": lambda: participant.request_menu(msg, state),
             "ux:more:rules": lambda: participant.rules(msg),
-            "ux:more:help": lambda: start.help_command(msg),
+            "ux:more:help": lambda: start_flow.help_command(msg),
         }
         if action == "ux:mine:seasons":
             await v11.season_history(call, db)

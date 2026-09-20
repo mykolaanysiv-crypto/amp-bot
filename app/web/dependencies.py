@@ -32,7 +32,7 @@ from ..config import get_settings
 from ..observability import RequestContextMiddleware, log_extra
 from ..db import Database
 from ..gamification import AUTOMATIC_XP_GUIDE, get_level, normalize_event_xp, normalize_manual_xp, normalize_quest_xp, normalize_task_xp
-from ..models import (
+from ..model_domains import (
     ActivityApplication, ActivityType,
     AuditLog, BanRecord, Badge, BroadcastCampaign, BroadcastRecipient, BroadcastTemplate, Event, EventRegistration, Goal, Idea, MediaAsset, Opportunity, OpportunityInterest, Quest, QuestParticipation, Referral, RequestCase, Reward, RewardClaim, Season, SystemSetting, Team, TeamQuestContribution,
     User, UserBadge, UserRole, UserStatus, VolunteerTask, VolunteerTaskParticipation, XPTransaction, RequestMessage, GoalReward, ConsentHistory,
@@ -51,8 +51,8 @@ from ..security import (
 )
 from .security_middleware import AdminSessionValidationMiddleware, CSRFMiddleware, SecurityHeadersMiddleware
 from ..broadcasts import BROADCAST_TEMPLATES, audience_description, personalize_message, resolve_broadcast_audience, template_options
-from ..analytics import METRIC_META, analytics_bot_text, analytics_excel, analytics_pdf, analytics_png, build_analytics
-from ..reports import build_period_report, report_excel, report_pdf, resolve_report_period
+from ..analytics_modules import METRIC_META, analytics_bot_text, analytics_excel, analytics_pdf, analytics_png, build_analytics
+from ..reporting import build_period_report, report_excel, report_pdf, resolve_report_period
 from ..engagement import GOAL_METRIC_LABELS, goal_progress, process_expired_content
 from ..leagues import LEAGUES, MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_counts, league_for_xp, refresh_all_streaks, refresh_user_streak, season_leaderboard_rows, streak_freeze_summary
 from ..version import APP_VERSION
@@ -63,7 +63,7 @@ from ..runtime_health import (
 )
 from ..survey_exports import build_survey_stats, survey_excel, survey_pdf, survey_question_png
 from ..workflows import approve_quest_participation, approve_volunteer_task_participation, award_idea_approval_once
-from ..services import (
+from ..domain_services import (
     add_active_users_to_default_team, add_xp, age_on, bootstrap_defaults, complete_activity_application, complete_team_quest, confirm_event_attendance,
     confirm_single_event_attendance,
     current_season, evaluate_automatic_badges, export_basic_excel, export_event_participants_excel, export_event_participants_pdf, export_excel, log_audit, process_expired_bans, process_event_operations,

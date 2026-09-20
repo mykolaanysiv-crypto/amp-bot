@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
 from .dependencies import db, is_superadmin, logged_in, log_audit, media_access_level, settings
-from ..models import MediaAsset
+from ..model_domains import MediaAsset
 
 router = APIRouter()
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..time_utils import utc_storage_now
@@ -221,7 +221,10 @@ class Opportunity(Base):
 
 class OpportunityMatch(Base):
     __tablename__ = "opportunity_matches"
-    __table_args__ = (UniqueConstraint("opportunity_id", "user_id", name="uq_opportunity_match_user"),)
+    __table_args__ = (
+        UniqueConstraint("opportunity_id", "user_id", name="uq_opportunity_match_user"),
+        Index("ix_opportunity_matches_user_notified", "user_id", "notified_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id"), index=True)

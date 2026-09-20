@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-from .models import SystemSetting
+from .model_domains import SystemSetting
 from .observability import log_extra
 
 log = logging.getLogger(__name__)

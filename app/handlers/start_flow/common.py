@@ -20,9 +20,9 @@ from ...config import Settings
 from ...observability import log_extra
 from ...db import Database
 from ...keyboards import event_detail_keyboard, main_menu, registration_phone_keyboard
-from ...models import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
+from ...model_domains import ConsentHistory, Event, EventRegistration, SettlementReference, User, UserRole, UserStatus
 from ...profile_data import MEDIA_CONSENT_VERSION, PRIVACY_NOTICE_VERSION, VULNERABILITY_OPTIONS, dump_vulnerabilities, parse_vulnerability_numbers, privacy_notice_text, vulnerability_prompt
-from ...services import (
+from ...domain_services import (
     age_on,
     checkin_for_event,
     event_checkin_window,

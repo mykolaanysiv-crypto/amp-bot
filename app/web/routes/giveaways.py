@@ -17,7 +17,7 @@ from app.giveaways import (
     participation_label,
     run_draw,
 )
-from app.models import Event, Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserStatus
+from app.model_domains import Event, Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserStatus
 from app.reliability import queue_telegram_delivery
 from app.time_utils import clock
 from app.ui_labels import label

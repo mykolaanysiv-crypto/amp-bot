@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot
 from ..db import Database
 from ..donations import sync_monobank_donations
-from ..models import User
+from ..model_domains import User
 from ..observability import log_extra
 from ..reliability import job_lock, queue_telegram_delivery
 from ..runtime_health import scheduler_heartbeat

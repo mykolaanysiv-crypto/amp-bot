@@ -9,7 +9,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import ContentView, User
+from .model_domains import ContentView, User
 
 CONTENT_ENTITY_TYPES = {
     "event",

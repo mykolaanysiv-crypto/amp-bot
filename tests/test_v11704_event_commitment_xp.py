@@ -4,8 +4,8 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from app.models import EventRegistration, UserRole
-from app.services import (
+from app.model_domains import EventRegistration, UserRole
+from app.domain_services import (
     checkin_for_event,
     confirm_single_event_attendance,
     create_event,

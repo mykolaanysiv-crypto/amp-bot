@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.config import get_settings
 from app.db import Database
-from app.models import WebStaffAccount
+from app.model_domains import WebStaffAccount
 from app.security import generate_temporary_password, hash_password, password_errors
 
 APP_DEFAULT = "amp-bot-ver-1-5-0"

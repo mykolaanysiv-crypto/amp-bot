@@ -1,21 +1,23 @@
-# AMP XP / «АМПасадори» v1.15.1 — Survey & Opportunity Management UX
+# AMP XP / «АМПасадори» v1.17.1 — Core Cleanup & Alembic Full Adoption
 
-v1.15.1 робить адресні опитування, керування бейджами/винагородами та розділ можливостей зручнішими для щоденної роботи адміністратора.
+v1.17.1 завершує технічний перехід на canonical architecture та робить Alembic єдиним production-механізмом зміни схеми БД.
 
 ## Основне
 
-- Опитування: пошук учасників, checkbox-вибір, лічильник, масовий вибір видимих результатів; блок вибору події вирівняний.
-- Винагороди: додано безпечне видалення; історичні отримання не руйнуються.
-- Бейджі: видалення звичайних, системних і АМПасадорських бейджів; seeded-бейдж після видалення не відновлюється на restart/deploy.
-- Можливості: компактні однакові картки на борді та окрема detail-сторінка з повною інформацією.
-- Detail можливості: статистика/аналітика, перегляди, зацікавлені учасники, персональні збіги, share, редагування, перенесення дедлайну, publish/hide, refresh matches і delete.
-- Публічна сторінка можливості для поширення.
+- `Database.init()` більше не створює таблиці, колонки чи індекси і не виконує legacy `_migrate_v10_to_v11`;
+- release-order: `Alembic upgrade head → db.init() → bootstrap_defaults() → FastAPI lifespan`;
+- Alembic baseline містить frozen schema bootstrap для чистої БД;
+- новий head: `20260920_0009`;
+- CI перевіряє `previous production head → upgrade head`, latest `downgrade → upgrade`, PostgreSQL 16 startup smoke та model/schema drift;
+- `scripts/schema_drift_check.py` блокує модельну зміну без Alembic revision;
+- retired compatibility facades видалені: `app.models`, `app.services`, `app.analytics`, `app.reports`, `app.web.app`, `app.web.routes.events`, `app.handlers.start`;
+- production код використовує `model_domains`, `domain_services`, `analytics_modules`, `reporting`, `event_routes`, `start_flow` напряму.
 
 ## Production
 
-- PostgreSQL schema: 56 SQLAlchemy tables.
-- Alembic head: `20260918_0005`.
-- Release flow: GitHub Production Gate → verified backup → Heroku release/web/worker.
-- Перед deploy обов’язково створити PGBackup, оскільки v1.15.1 містить additive schema migration.
+- Перед deploy: verified PostgreSQL backup.
+- Deploy: GitHub Production Gate → Heroku release.
+- Після deploy: `alembic current` має показати `20260920_0009 (head)`.
+- Не запускайте ручні DDL-зміни production БД.
 
-Деталі: `SERVER_UPDATE_V1151.md`, `TEST_REPORT_V1151.txt`, `COMMANDS_V1151.txt`.
+Деталі: `SERVER_UPDATE_V1171.md`, `TEST_REPORT_V1171.txt`, `HEROKU_DEPLOY.md`.

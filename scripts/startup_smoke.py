@@ -5,13 +5,12 @@ from __future__ import annotations
 This script deliberately executes the same critical sequence used during a
 release:
 
-    db.init() -> Alembic upgrade head -> bootstrap_defaults() -> FastAPI lifespan
+    Alembic upgrade head -> db.init() -> bootstrap_defaults() -> FastAPI lifespan
 
-Schema migrations MUST run before any ORM bootstrap query that loads a full
-model row.  This matters for additive columns introduced by a new release:
-SQLAlchemy SELECTs include mapped columns immediately, while PostgreSQL does not
-have those columns until Alembic applies the revision.  The sequence remains
-safe for production data: db.init() is idempotent, Alembic only moves forward,
+Schema migrations MUST run before runtime DB initialization/bootstrap. v1.17.1
+removes all schema mutation from ``Database.init()``: Alembic is now the only
+production schema authority. The sequence remains safe for production data:
+Alembic only moves forward, db.init() performs connectivity/runtime PRAGMAs only,
 bootstrap defaults are idempotent, and AMP_STARTUP_SMOKE disables participant-
 facing startup broadcasts and long-running background tasks while the real web
 lifespan is entered.
@@ -45,7 +44,7 @@ def _smoke_environment():
 
 
 async def _db_init_phase() -> None:
-    """Initialize legacy-compatible base schema without issuing ORM bootstrap queries."""
+    """Verify runtime DB connectivity after Alembic has applied the schema."""
     settings = get_settings(require_bot_token=False)
     db = Database(settings)
     try:
@@ -66,14 +65,10 @@ async def _bootstrap_defaults_phase() -> None:
 
 async def _web_startup_phase() -> None:
     # Import only after Alembic so web objects are created against the schema
-    # the release will actually expose. v1.13.0 exercises the canonical factory
-    # directly and then imports the compatibility facade as an import-regression
-    # check for the planned 1–2 release transition window.
+    # the release will actually expose. v1.17.1 uses the canonical factory only;
+    # the transitional app.web.app facade has been retired.
     factory_module = importlib.import_module("app.web.factory")
     app = factory_module.create_app()
-    compatibility_module = importlib.import_module("app.web.app")
-    if not hasattr(compatibility_module, "app"):
-        raise RuntimeError("app.web.app compatibility facade missing module-level app")
     async with app.router.lifespan_context(app):
         if not bool(getattr(app.state, "startup_complete", False)):
             raise RuntimeError("FastAPI lifespan entered without startup_complete")
@@ -84,21 +79,18 @@ async def _web_startup_phase() -> None:
 
 
 def run() -> None:
-    # v1.14.0.1: migrate the database before bootstrap_defaults performs ORM
-    # SELECTs.  v1.14.0 exposed the new mapped ambassador_responsibility column
-    # before revision 20260917_0003 was applied, so the release smoke could fail
-    # with UndefinedColumnError on an otherwise healthy existing production DB.
-    asyncio.run(_db_init_phase())
-
+    # v1.17.1: Alembic is the single schema authority. Runtime DB init must never
+    # create/alter schema, so migrate first, then verify connectivity and seed.
     from scripts.alembic_bootstrap import upgrade_head
     upgrade_head()
 
+    asyncio.run(_db_init_phase())
     asyncio.run(_bootstrap_defaults_phase())
 
     with _smoke_environment():
         asyncio.run(_web_startup_phase())
 
-    log.info("Production lifecycle smoke PASS: db.init -> Alembic -> bootstrap -> web lifespan")
+    log.info("Production lifecycle smoke PASS: Alembic -> db.init -> bootstrap -> web lifespan")
 
 
 def main() -> None:

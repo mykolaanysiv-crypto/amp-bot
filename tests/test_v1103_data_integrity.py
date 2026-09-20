@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 
-from app.models import EventRegistration, UserRole
-from app.reports import build_period_report, resolve_report_period
-from app.services import (
+from app.model_domains import EventRegistration, UserRole
+from app.reporting import build_period_report, resolve_report_period
+from app.domain_services import (
     checkin_for_event,
     confirm_single_event_attendance,
     create_event,

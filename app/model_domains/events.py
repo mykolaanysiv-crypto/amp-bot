@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..time_utils import utc_storage_now
@@ -39,7 +39,10 @@ class Event(Base):
 
 class EventRegistration(Base):
     __tablename__ = "event_registrations"
-    __table_args__ = (UniqueConstraint("event_id", "user_id", name="uq_event_user"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", name="uq_event_user"),
+        Index("ux_event_registrations_attendance_signature", "attendance_signature", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)

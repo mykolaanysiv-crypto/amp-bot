@@ -8,10 +8,8 @@ def test_procfile_splits_web_and_worker():
     assert "web: python run_all.py" not in text
 
 
-def test_services_is_compatibility_facade():
-    text = Path("app/services.py").read_text()
-    assert "Compatibility" in text or "compatib" in text.lower()
-    assert "import *" not in text
+def test_domain_services_are_canonical_and_legacy_facade_is_retired():
+    assert not Path("app/services.py").exists()
     expected = {"users.py", "events.py", "gamification.py", "referrals.py", "exports.py", "bootstrap.py"}
     assert expected.issubset({p.name for p in Path("app/domain_services").glob("*.py")})
 
@@ -27,7 +25,7 @@ def test_alembic_baseline_present():
     assert Path("alembic.ini").exists()
     versions = list(Path("migrations/versions").glob("*.py"))
     assert versions
-    assert "20260915_0001" in versions[0].read_text()
+    assert any("20260915_0001" in path.read_text() for path in versions)
 
 
 def test_ci_has_postgres_service():

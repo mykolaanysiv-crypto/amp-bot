@@ -7,9 +7,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 
 from .keyboards import MAIN_MENU_TEXTS
-from .models import User
+from .model_domains import User
 from .observability import log_extra
-from .services import get_user_by_tg
+from .domain_services import get_user_by_tg
 from .time_utils import clock
 
 class FSMNavigationMiddleware(BaseMiddleware):

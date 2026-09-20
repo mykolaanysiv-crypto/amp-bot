@@ -8,24 +8,29 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import get_settings
-from app.models import Base
+from app.model_domains import Base
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings(require_bot_token=False)
-config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+# Programmatic callers (tests/schema gates) may inject an explicit URL.
+# Normal CLI/Heroku execution falls back to DATABASE_URL from Settings.
+configured_url = (config.get_main_option("sqlalchemy.url") or "").strip()
+if not configured_url:
+    configured_url = settings.database_url
+config.set_main_option("sqlalchemy.url", configured_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.database_url,
+        url=configured_url,
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
-        render_as_batch=settings.database_url.startswith("sqlite"),
+        render_as_batch=configured_url.startswith("sqlite"),
     )
     with context.begin_transaction():
         context.run_migrations()

@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.opportunity_utils import deadline_urgency, opportunity_sort_key
-from app.models import Base
+from app.model_domains import Base
 
 ROOT = Path(__file__).resolve().parents[1]
 

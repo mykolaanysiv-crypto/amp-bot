@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
 from app.donations import award_donation_badges, award_donation_xp_for_transaction, sync_monobank_donations
-from app.models import DonationJarState, DonationReport, DonationTransaction, SupportPageView, User, UserStatus
+from app.model_domains import DonationJarState, DonationReport, DonationTransaction, SupportPageView, User, UserStatus
 from app.web.dependencies import (
     ctx, db, delete_image, guard_permission, is_superadmin, log_audit, notify_telegram,
     save_document, settings, templates,

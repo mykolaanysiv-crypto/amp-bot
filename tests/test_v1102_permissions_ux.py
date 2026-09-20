@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base, UserRole
+from app.model_domains import Base, UserRole
 from app.permissions import ALL_PERMISSIONS, effective_permissions, has_permission, required_web_permission, required_web_any_permissions
 from app.profile_data import split_display_name
 from tests.source_layout import event_routes_source, web_app_source
@@ -19,9 +19,15 @@ def test_version_and_schema_stay_additive():
     assert len(Base.metadata.tables) >= 53
     assert "staff_permissions_json" in Base.metadata.tables["users"].c
     assert "permissions_json" in Base.metadata.tables["web_staff_accounts"].c
+
+    # v1.17.1 Full Alembic Adoption: historical schema ownership lives in
+    # Alembic, never in Database.init()/a runtime migrations mapping.
+    baseline = text("migrations/versions/20260915_0001_v1111_baseline.py")
+    assert "sa.Column('staff_permissions_json', sa.Text(), nullable=True)" in baseline
+    assert "sa.Column('permissions_json', sa.Text(), nullable=True)" in baseline
     db = text("app/db.py")
-    assert '("staff_permissions_json", "TEXT")' in db
-    assert '("permissions_json", "TEXT")' in db
+    assert "_migrate_v10_to_v11" not in db
+    assert "Base.metadata.create_all" not in db
 
 
 def test_granular_permissions_defaults_and_explicit_override():

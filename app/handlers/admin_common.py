@@ -18,12 +18,12 @@ from ..config import Settings
 from ..observability import log_extra
 from ..db import Database
 from ..gamification import get_level, normalize_event_xp, normalize_manual_xp, normalize_quest_xp, normalize_task_xp
-from ..analytics import analytics_bot_text, build_analytics
+from ..analytics_modules import analytics_bot_text, build_analytics
 from ..reliability import queue_telegram_delivery
 from ..opportunity_matching import refresh_matches_for_opportunity
 from ..keyboards import ADMIN_ROLES, admin_menu, admin_section_menu, compact_button_text, main_menu, pending_user_keyboard
 from ..permissions import effective_permissions, has_permission
-from ..models import (
+from ..model_domains import (
     ActivityApplication,
     ActivityType,
     BanRecord,
@@ -43,7 +43,7 @@ from ..models import (
     VolunteerTask,
     VolunteerTaskParticipation,
 )
-from ..services import (
+from ..domain_services import (
     add_active_users_to_default_team,
     add_xp,
     complete_activity_application,

@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from .models import SettlementReference, User
+from .model_domains import SettlementReference, User
 from .observability import log_extra
 
 # v1.10.3 canonical directory.  The list is deliberately conservative: only

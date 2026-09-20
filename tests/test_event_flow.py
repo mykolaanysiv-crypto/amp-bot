@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from app.models import UserRole
-from app.services import checkin_for_event, confirm_single_event_attendance, create_event, register_for_event, xp_total
+from app.model_domains import UserRole
+from app.domain_services import checkin_for_event, confirm_single_event_attendance, create_event, register_for_event, xp_total
 from tests.conftest import create_user
 
 

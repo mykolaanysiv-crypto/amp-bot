@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import EventRegistration, Survey, SurveyAudienceUser, User, UserStatus
+from .model_domains import EventRegistration, Survey, SurveyAudienceUser, User, UserStatus
 
 SURVEY_AUDIENCE_TYPES = {"all", "users", "event"}
 EVENT_AUDIENCE_STATUSES = {"registered", "reserved", "checked_in", "attended"}

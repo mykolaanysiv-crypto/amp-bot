@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..time_utils import utc_storage_now
@@ -112,6 +112,7 @@ class Notification(Base):
     but new producers use this table through queue_telegram_delivery().
     """
     __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_status_type", "status", "type"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     dedupe_key: Mapped[str | None] = mapped_column(String(220), unique=True, index=True, nullable=True)

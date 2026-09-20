@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base, ContentView
+from app.model_domains import Base, ContentView
 
 ROOT = Path(__file__).resolve().parents[1]
 

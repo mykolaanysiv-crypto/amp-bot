@@ -10,9 +10,9 @@ from sqlalchemy import select
 from ..db import Database
 from ..giveaways import audience_label, is_open_now, participation_label, user_is_eligible
 from ..media import delete_stored_image, save_telegram_photo, telegram_photo_input
-from ..models import Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserRole, UserStatus
+from ..model_domains import Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserRole, UserStatus
 from ..reliability import queue_telegram_delivery
-from ..services import get_user_by_tg
+from ..domain_services import get_user_by_tg
 from ..states import GiveawayEntryState
 from ..time_utils import clock
 

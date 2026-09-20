@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.models import BroadcastCampaign, BroadcastRecipient
+from app.model_domains import BroadcastCampaign, BroadcastRecipient
 from tests.conftest import create_user
 
 

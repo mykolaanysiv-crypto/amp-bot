@@ -1,0 +1,13 @@
+AMP XP / АМПасадори v1.17.0.4 — CI compatibility correction
+
+Виправлено:
+- VERSION_CHECK.txt: 1.17.0.3 -> 1.17.0.4.
+- tests/test_v11703_event_feedback_resend.py: exact-version assertion замінено на forward-compatible перевірку та синхронізацію VERSION_CHECK.
+- app/web/templates/event_detail.html: `xp_by_user.get(u.id) or 0` зберігає поточну поведінку та сумісність із cockpit regression-тестом.
+
+Перевірки у sandbox:
+- python -m compileall -q app scripts: PASS
+- python -m scripts.production_preflight: PASS (AMP v1.17.0.4)
+- 31 файлів тестів, які падали у наданому логові: 184 passed
+
+Повний pytest у sandbox не запускався через відсутній aiogram і недоступний інтернет для встановлення залежностей. У наданому користувачем локальному логові залежності встановлені, а всі зафіксовані функціональні падіння покриті цим виправленням.

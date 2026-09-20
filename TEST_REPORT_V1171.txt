@@ -1,0 +1,14 @@
+AMP XP / АМПасадори v1.17.1 — Core Cleanup & Alembic Full Adoption
+
+Local build checks in artifact environment:
+- python -m compileall -q app scripts tests migrations: PASS
+- python -m scripts.production_preflight: PASS
+- focused architecture/stability regressions: PASS
+- tests/test_v1171_core_cleanup.py: 6 passed
+- manual Alembic chain smoke on in-memory SQLite: 0001 -> 0009 PASS
+- metadata table parity after migrations: 61/61 tables, column parity PASS
+- Alembic compare_metadata after full chain: 0 diffs
+
+Environment limitation:
+- full runtime pytest/PostgreSQL 16 was not executable in the artifact container because aiogram/aiosqlite/asyncpg are not installed and outbound package installation is unavailable.
+- authoritative full gate remains the included GitHub Actions PostgreSQL 16 workflow before production deploy.

@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from app.donations import award_donation_badges
-from app.models import Badge, DonationTransaction, UserBadge, UserRole
+from app.model_domains import Badge, DonationTransaction, UserBadge, UserRole
 from tests.conftest import create_user
 
 

@@ -48,8 +48,8 @@ def test_start_flow_uses_correct_package_depth_for_root_app_modules():
     entry = read("app/handlers/start_flow/entry.py")
     assert "from ...time_utils import clock" in common
     assert "from ...config import Settings" in common
-    assert "from ...models import" in common
-    assert "from ...services import (" in common
+    assert "from ...model_domains import" in common
+    assert "from ...domain_services import (" in common
     assert "from ...gamification import get_level" in entry
     assert "from ..time_utils import clock" not in common
     assert "from ..config import Settings" not in common

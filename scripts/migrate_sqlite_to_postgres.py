@@ -13,7 +13,7 @@ from pathlib import Path
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, Integer, LargeBinary, String, Text, func, select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.models import Base, MediaAsset
+from app.model_domains import Base, MediaAsset
 
 IMAGE_TABLES = ("events", "quests", "volunteer_tasks", "rewards", "request_cases")
 
@@ -81,10 +81,13 @@ async def migrate(args) -> None:
     src.row_factory = sqlite3.Row
     src_tables, src_columns = source_schema(src)
 
+    # v1.17.1: target schema is provisioned exclusively through Alembic.
+    from scripts.alembic_bootstrap import upgrade_head
+    await asyncio.to_thread(upgrade_head, target_url)
+
     engine = create_async_engine(target_url, pool_pre_ping=True)
     try:
         async with engine.begin() as target:
-            await target.run_sync(Base.metadata.create_all)
 
             existing_users = 0
             if "users" in Base.metadata.tables:

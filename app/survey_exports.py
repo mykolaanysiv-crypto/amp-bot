@@ -6,7 +6,7 @@ from io import BytesIO
 from textwrap import wrap
 from typing import Any
 
-from .models import Survey, SurveyQuestion, SurveyResponse, User
+from .model_domains import Survey, SurveyQuestion, SurveyResponse, User
 
 
 def parse_answers(response: SurveyResponse) -> dict[str, Any]:

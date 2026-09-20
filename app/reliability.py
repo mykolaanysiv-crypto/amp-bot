@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from aiogram.exceptions import TelegramForbiddenError
 
-from .models import (
+from .model_domains import (
     BroadcastCampaign,
     BroadcastRecipient,
     Notification,
@@ -375,7 +375,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                         user.deleted_at = clock.storage_utc()
                         user.deletion_reason = "TelegramForbiddenError: бот заблоковано або деактивовано"
                         user.restoration_request_status = None
-                        from .services import log_audit, revoke_referral_reward_if_inactive
+                        from .domain_services import log_audit, revoke_referral_reward_if_inactive
                         await log_audit(session, "telegram_user_auto_deleted", actor_label="system", entity_type="user", entity_id=user.id, details="TelegramForbiddenError: bot blocked/deactivated for this user")
                         revoked = await revoke_referral_reward_if_inactive(session, user, reason="Telegram повідомив, що бот заблоковано/видалено користувачем")
                         if revoked:

@@ -15,7 +15,7 @@ from ..gamification import LEVELS, get_level, progress_text
 from ..keyboards import (compact_button_text, entity_button_text, events_keyboard, rewards_keyboard, tasks_keyboard,
                          main_menu, join_hub_keyboard, profile_hub_keyboard, more_hub_keyboard)
 from ..media import telegram_photo_input, save_telegram_photo
-from ..models import (
+from ..model_domains import (
     ActivityApplication,
     ActivityType,
     Badge,
@@ -40,7 +40,7 @@ from ..models import (
     XPTransaction,
 )
 from ..profile_data import participant_first_name
-from ..services import current_season, get_user_by_tg, log_audit, season_xp, xp_total
+from ..domain_services import current_season, get_user_by_tg, log_audit, season_xp, xp_total
 from ..engagement import active_month_streak, goals_for_user, process_expired_content
 from ..leagues import (
     MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_for_xp, league_leaderboard_rows,

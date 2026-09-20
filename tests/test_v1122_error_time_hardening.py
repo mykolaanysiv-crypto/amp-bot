@@ -4,9 +4,9 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app.models import Event
+from app.model_domains import Event
 from app.observability import JsonLogFormatter, log_extra
-from app.reports import resolve_report_period, resolve_report_storage_bounds
+from app.reporting import resolve_report_period, resolve_report_storage_bounds
 from app.domain_services import events as events_module
 from app.time_utils import Clock
 
@@ -150,7 +150,7 @@ def test_source_has_no_silent_broad_exception_or_direct_wall_clock_calls():
 
 def test_orm_timestamp_defaults_use_zero_argument_clock_adapter():
     import inspect
-    from app.models import ContentView, User
+    from app.model_domains import ContentView, User
 
     for model, column in ((User, "created_at"), (ContentView, "first_viewed_at")):
         default = model.__table__.c[column].default

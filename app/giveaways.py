@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from .ambassadors import AMP_TEAM_ROLES
-from .models import EventRegistration, Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserRole, UserStatus
+from .model_domains import EventRegistration, Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, User, UserRole, UserStatus
 from .time_utils import clock
 
 GIVEAWAY_AUDIENCE_TYPES = {"all", "team", "event", "roles", "users"}

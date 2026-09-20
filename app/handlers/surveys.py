@@ -14,9 +14,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
 
 from ..db import Database
-from ..models import Survey, SurveyQuestion, SurveyResponse, User, UserStatus
+from ..model_domains import Survey, SurveyQuestion, SurveyResponse, User, UserStatus
 from ..media import telegram_photo_input
-from ..services import get_user_by_tg
+from ..domain_services import get_user_by_tg
 from ..workflows import complete_survey_once
 from ..states import SurveyState
 from ..content_views import content_view_stat, record_content_view

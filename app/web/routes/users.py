@@ -7,7 +7,7 @@ from datetime import datetime as dt_datetime, time as dt_time, timedelta as dt_t
 
 from fastapi import APIRouter
 from sqlalchemy.orm import selectinload
-from app.services import revoke_referral_reward_if_inactive
+from app.domain_services import revoke_referral_reward_if_inactive
 from app.profile_data import split_display_name
 from app.season_history import user_season_history
 from app.web.dependencies import (

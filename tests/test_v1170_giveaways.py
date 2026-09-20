@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.giveaways import eligible_user_ids, run_draw
-from app.models import Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, UserRole
+from app.model_domains import Giveaway, GiveawayEntry, GiveawayPrize, GiveawayWinner, UserRole
 from app.time_utils import clock
 from tests.conftest import create_user
 

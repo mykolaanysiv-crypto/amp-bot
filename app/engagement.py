@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .runtime_config import get_runtime_int
-from .models import (
+from .model_domains import (
     ActivityApplication, Event, EventRegistration, Goal, Idea, Opportunity, Quest, Survey, SurveyResponse,
     QuestParticipation, Referral, User, UserBadge, UserRole, UserStatus, VolunteerTask,
     VolunteerTaskParticipation, XPTransaction, GoalReward, ParticipationStreak,
@@ -149,7 +149,7 @@ async def process_goal_rewards(session: AsyncSession, *, now: datetime | None = 
     participants after the transaction is committed.  GoalReward's unique
     constraint makes repeated scheduler runs idempotent.
     """
-    from .services import add_xp
+    from .domain_services import add_xp
 
     now = now or clock.storage_utc()
     goals = list((await session.scalars(

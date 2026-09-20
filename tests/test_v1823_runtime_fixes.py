@@ -1,3 +1,4 @@
+from tests.source_layout import start_source, event_routes_source
 from pathlib import Path
 
 from app.ui_labels import IDEA_STATUSES, REQUEST_CATEGORIES, REQUEST_PRIORITIES, REQUEST_STATUSES
@@ -27,7 +28,7 @@ def test_calendar_uses_entries_not_dict_items_attribute():
 def test_telegram_qr_scanner_flow_is_wired():
     keyboard = (ROOT / "app/keyboards.py").read_text(encoding="utf-8")
     admin = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
-    start = (ROOT / "app/handlers/start.py").read_text(encoding="utf-8")
+    start = start_source()
     states = (ROOT / "app/states.py").read_text(encoding="utf-8")
     services = (ROOT / "app/domain_services/events.py").read_text(encoding="utf-8")
     assert '("📷 QR-сканер", "admin:event_scanner")' in keyboard
@@ -41,7 +42,7 @@ def test_telegram_qr_scanner_flow_is_wired():
 
 
 def test_web_scanner_has_cross_browser_telegram_path_and_no_duplicate_title_script():
-    route = (ROOT / "app/web/routes/events.py").read_text(encoding="utf-8")
+    route = event_routes_source()
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
     assert '@router.get("/admin/events/{event_id}/scanner/telegram")' in route
     assert "adminscan_" in route

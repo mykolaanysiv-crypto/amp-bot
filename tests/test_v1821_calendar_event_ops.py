@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base, EventRegistration
+from app.model_domains import Base, EventRegistration
 from tests.source_layout import event_routes_source
 
 ROOT = Path(__file__).resolve().parents[1]

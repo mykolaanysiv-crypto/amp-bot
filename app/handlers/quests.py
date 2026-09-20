@@ -14,8 +14,8 @@ from sqlalchemy import select
 from ..db import Database
 from ..keyboards import quest_detail_keyboard, quests_keyboard
 from ..media import telegram_photo_input
-from ..models import Quest, QuestParticipation, UserStatus
-from ..services import get_user_by_tg
+from ..model_domains import Quest, QuestParticipation, UserStatus
+from ..domain_services import get_user_by_tg
 from ..engagement import process_expired_content
 from ..content_views import content_view_stat, record_content_view
 

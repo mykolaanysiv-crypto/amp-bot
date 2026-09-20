@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from aiogram import Bot
 from sqlalchemy import select
 from ..db import Database
-from ..models import Event, EventFeedback, EventRegistration, Notification, SystemSetting, User, UserStatus
+from ..model_domains import Event, EventFeedback, EventRegistration, Notification, SystemSetting, User, UserStatus
 from ..observability import log_extra
 from ..reliability import job_lock, queue_notification, queue_telegram_delivery
 from ..runtime_config import get_runtime_int

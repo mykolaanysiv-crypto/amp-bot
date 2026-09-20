@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection
 from docx import Document
 
-from .models import Event, EventRegistration, User
+from .model_domains import Event, EventRegistration, User
 from .profile_data import gender_label, media_consent_label
 from .ui_labels import label, event_registration_status_label
 

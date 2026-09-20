@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .leagues import LEAGUES, league_for_xp
-from .models import (
+from .model_domains import (
     OpportunityInterest,
     OpportunityMatch,
     Referral,

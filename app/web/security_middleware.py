@@ -9,7 +9,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
-from ..models import WebAdminSession, WebStaffAccount
+from ..model_domains import WebAdminSession, WebStaffAccount
 from ..security import token_hash
 from ..permissions import effective_permissions, required_web_permission, required_web_any_permissions
 

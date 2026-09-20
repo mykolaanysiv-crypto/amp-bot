@@ -9,7 +9,7 @@ from typing import Iterable
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import (
+from .model_domains import (
     Badge,
     Event,
     EventRegistration,

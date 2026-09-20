@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.models import Base
+from app.model_domains import Base
 from tests.source_layout import (
     analytics_source,
     broadcast_runtime_source,

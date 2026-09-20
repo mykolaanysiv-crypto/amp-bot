@@ -14,9 +14,9 @@ from ..db import Database
 from ..media import delete_stored_image, load_image_bytes, save_telegram_photo
 from ..keyboards import main_menu
 from ..states import QRBadgeState
-from ..models import User, UserStatus, XPTransaction
+from ..model_domains import User, UserStatus, XPTransaction
 from ..season_history import user_season_history
-from ..services import (
+from ..domain_services import (
     build_profile_qr_png,
     current_season,
     ensure_user_tokens,

@@ -11,7 +11,7 @@ from sqlalchemy import delete
 
 from .config import get_settings
 from .db import Database
-from .models import MediaAsset
+from .model_domains import MediaAsset
 from .security import media_access_level
 
 

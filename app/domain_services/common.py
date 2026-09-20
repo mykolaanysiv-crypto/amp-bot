@@ -27,7 +27,7 @@ from ..ui_labels import label, event_registration_status_label
 from ..security import hash_password
 from ..runtime_config import ensure_runtime_defaults, get_runtime_int
 from ..time_utils import event_local_now
-from ..models import (
+from ..model_domains import (
     ActivityApplication,
     ActivityType,
     AuditLog,

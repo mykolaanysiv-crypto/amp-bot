@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import asyncio
 from dataclasses import replace
 
 import pytest
@@ -8,9 +9,10 @@ from sqlalchemy import func, inspect, select
 
 from app.config import get_settings
 from app.db import Database
-from app.models import Base, Notification, User, UserStatus
+from app.model_domains import Base, Notification, User, UserStatus
 from app.reliability import queue_notification
-from app.services import ensure_user_tokens
+from app.domain_services import ensure_user_tokens
+from scripts.alembic_bootstrap import upgrade_head
 
 
 def _test_url() -> str:
@@ -30,6 +32,8 @@ async def test_postgres_schema_and_notification_outbox(monkeypatch):
     try:
         async with db.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
+            await conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+        await asyncio.to_thread(upgrade_head, url)
         await db.init()
         async with db.engine.begin() as conn:
             table_names = await conn.run_sync(lambda c: set(inspect(c).get_table_names()))
@@ -58,4 +62,5 @@ async def test_postgres_schema_and_notification_outbox(monkeypatch):
     finally:
         async with db.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
+            await conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
         await db.close()

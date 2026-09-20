@@ -56,6 +56,12 @@ jobs:
       - name: PostgreSQL integration tests
         run: pytest -q tests/integration
 
+      - name: Alembic previous-production + downgrade/upgrade gates
+        run: |
+          pytest -q \
+            tests/integration/test_alembic_full_adoption.py::test_alembic_upgrade_from_previous_production_schema \
+            tests/integration/test_alembic_full_adoption.py::test_latest_revision_downgrade_upgrade_roundtrip
+
       - name: Real release/startup smoke on PostgreSQL 16
         env:
           DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
@@ -66,6 +72,11 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
         run: alembic current
+
+      - name: Reject model/schema drift without Alembic revision
+        env:
+          DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
+        run: python -m scripts.schema_drift_check
 
   deploy:
     name: Deploy to Heroku after CI

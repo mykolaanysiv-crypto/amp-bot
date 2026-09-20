@@ -1,4 +1,24 @@
+# v1.17.1 — Core Cleanup & Alembic Full Adoption
+
+- Production schema тепер змінюється **лише через Alembic**: з `Database.init()` прибрано `Base.metadata.create_all()` та legacy `_migrate_v10_to_v11`.
+- Release/startup lifecycle переведено на порядок `Alembic upgrade head → db.init() → bootstrap_defaults() → FastAPI lifespan → worker import smoke`.
+- Історичний baseline Alembic перетворено на frozen explicit schema bootstrap для чистої БД без імпорту поточних SQLAlchemy models.
+- Додано revision `20260920_0009_alembic_full_adoption.py`, який забирає останній legacy durable-outbox backfill зі startup у керовану Alembic-міграцію.
+- Додано schema-drift gate: CI падає, якщо SQLAlchemy metadata відрізняється від Alembic head, тобто нову колонку/таблицю/індекс неможливо непомітно додати без revision.
+- Додано PostgreSQL migration gates: `previous production head → upgrade head → current models` та `head → downgrade → upgrade head`.
+- Вилучено застарілі compatibility facades `app.models`, `app.services`, `app.analytics`, `app.reports`, `app.web.app`, `app.web.routes.events`, `app.handlers.start`; внутрішні імпорти переведено на canonical modules.
+- Одноразовий SQLite→PostgreSQL migration helper тепер також створює/оновлює target schema тільки через Alembic.
+- Очікуваний Alembic head: `20260920_0009`.
+
+---
+
 # v1.17.0.4 — Event Commitment XP
+
+## CI compatibility correction
+- Синхронізовано `VERSION_CHECK.txt` з `VERSION.txt` (`1.17.0.4`).
+- Зроблено regression-test v1.17.0.3 forward-compatible з новішими patch-релізами.
+- Відновлено сумісність cockpit regression-перевірки для `xp_by_user.get(u.id)` без зміни поведінки UI.
+
 
 - Події мають три окремі налаштування мотивації: базовий XP за фактичну участь, бонус XP за попередню реєстрацію + участь та штраф XP за неявку без скасування.
 - Попередня реєстрація визначається за фактичним часом реєстрації до старту події; реєстрація на вході через scanner не отримує бонус.

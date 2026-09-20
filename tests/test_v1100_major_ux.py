@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from tests.source_layout import analytics_source, main_source, reports_source
+from tests.source_layout import analytics_source, main_source, reports_source, start_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def test_my_amp_today_dashboard_exists():
     assert 'F.text.in_({"🏠 Головна", "🏠 Огляд"})' in participant
     for token in ["Привіт", "До наступного рівня", "Найближче", "Квест", "персональних можливостей"]:
         assert token in participant
-    start = text("app/handlers/start.py")
+    start = start_source()
     assert "await participant.overview(message, db)" in start
 
 
@@ -66,7 +66,7 @@ def test_runtime_settings_are_editable_and_used():
     assert "guard_permission" in settings_route
     assert "settings.manage" in settings_route
     usages = "\n".join(text(p) for p in [
-        "app/services.py", "app/domain_services/gamification.py", "app/domain_services/referrals.py", "app/domain_services/events.py", "app/workflows.py", "app/leagues.py",
+        "app/domain_services/__init__.py", "app/domain_services/gamification.py", "app/domain_services/referrals.py", "app/domain_services/events.py", "app/workflows.py", "app/leagues.py",
         "app/web/routes/gamification.py",
     ]) + "\n" + main_source() + "\n" + analytics_source() + "\n" + reports_source()
     for key in [

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.models import Base, EventFeedback, Notification
+from app.model_domains import Base, EventFeedback, Notification
 from tests.source_layout import analytics_source, event_routes_source, main_source, reports_source
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,11 +69,16 @@ def test_runtime_health_direct_delivery_is_superadmin_only_emergency_channel():
 
 
 def test_legacy_outbox_migrates_idempotently():
+    # v1.17.1 moved the one-time legacy outbox consolidation from startup into
+    # Alembic revision 0009. Keep the original idempotency guarantees there.
+    migration = (ROOT / "migrations/versions/20260920_0009_alembic_full_adoption.py").read_text(encoding="utf-8")
+    assert "legacy_notification_delivery:" in migration
+    assert "LEFT JOIN users u ON u.tg_id = nd.recipient_tg_id" in migration
+    assert "INSERT INTO notifications" in migration
+    assert "NOT EXISTS" in migration
+
     db = (ROOT / "app/db.py").read_text(encoding="utf-8")
-    assert "legacy_notification_delivery:" in db
-    assert "LEFT JOIN users u ON u.tg_id = nd.recipient_tg_id" in db
-    assert "INSERT INTO notifications" in db
-    assert "NOT EXISTS" in db
+    assert "legacy_notification_delivery:" not in db
 
 
 def test_feedback_scheduler_and_telegram_flow():

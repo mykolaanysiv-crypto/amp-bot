@@ -1,0 +1,37 @@
+AMP XP / АМПасадори v1.17.1 — deploy
+
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+rm -rf /tmp/amp_bot_v1171
+mkdir -p /tmp/amp_bot_v1171
+unzip -q ~/Downloads/amp_bot_v1171.zip -d /tmp/amp_bot_v1171
+
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='__pycache__' \
+  --exclude='.pytest_cache' \
+  /tmp/amp_bot_v1171/amp_bot_v1171/ ./
+
+cat VERSION.txt
+cat VERSION_CHECK.txt
+pip install -r requirements.txt
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q
+
+git diff --check
+git status --short
+git add -A
+git commit -m "AMP XP v1.17.1 Alembic full adoption and core cleanup"
+git push origin main
+
+# After GitHub Actions deploy
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+heroku ps -a amp-bot-ver-1-5-0
+heroku logs -n 200 -a amp-bot-ver-1-5-0
+
+# Expected Alembic head: 20260920_0009

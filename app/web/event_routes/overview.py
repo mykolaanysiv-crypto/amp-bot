@@ -9,7 +9,7 @@ from app.web.dependencies import (
 from app.media import load_file_bytes
 from app.event_documents import fill_registration_template
 from app.telegram_webapp import validate_webapp_init_data
-from app.services import admin_scan_event_participant, event_checkin_window
+from app.domain_services import admin_scan_event_participant, event_checkin_window
 from app.time_utils import clock
 from app.observability import log_extra
 from app.content_views import content_view_stat, content_view_stats
