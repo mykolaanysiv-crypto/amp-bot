@@ -97,3 +97,13 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - Heroku API key залишається тільки в GitHub Actions Secrets; застосунок не отримує його у Config Vars.
 - AMP зберігає лише timestamp/label підтвердженої копії, а не backup-файл чи Heroku credential.
 - Initial grace не підміняє backup: статус лишається непідтвердженим, просто без негайного false-positive paging.
+
+
+## v1.17.2 — field encryption, retention та restore verification
+- Найчутливіші текстові поля профілю зберігаються через application-level Fernet encryption (`EncryptedText`).
+- Рекомендований окремий root secret: `FIELD_ENCRYPTION_KEY`; якщо його немає, використовується `WEB_SESSION_SECRET`.
+- Для rotation спочатку вкажіть старий ключ у `FIELD_ENCRYPTION_PREVIOUS_KEYS`, новий — у `FIELD_ENCRYPTION_KEY`, запустіть `python -m scripts.rotate_field_encryption`, а після перевірки приберіть previous key.
+- Не логувати значення encryption keys: observability redaction включає обидва encryption Config Vars.
+- Retention cleanup не видаляє audit/consent/XP/attendance history або профілі.
+- Backup вважається verified лише після restore в ізольований PostgreSQL та перевірки `users` + `alembic_version`.
+- Data Integrity Center не виконує автоматичне злиття дублікатів чи видалення orphan records.

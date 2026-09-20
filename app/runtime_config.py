@@ -41,6 +41,11 @@ RULE_SPECS: tuple[RuleSpec, ...] = (
     RuleSpec("events.waitlist_reservation_minutes", "events", "Резерв черги очікування", 120, 5, 10080, "хв", "На скільки хвилин резервується місце після просування з черги очікування."),
     RuleSpec("privacy.suppression_threshold", "privacy", "Поріг приховування малих груп", 5, 2, 50, "осіб", "Малі чутливі групи 1…N-1 відображаються як <N."),
     RuleSpec("privacy.retention_days", "privacy", "Строк зберігання даних", 0, 0, 36500, "днів", "Політика строку зберігання. 0 = без автоматичного фізичного видалення історичних даних і записів аудиту."),
+    RuleSpec("privacy.registration_draft_days", "privacy", "Чернетки реєстрації", 30, 1, 3650, "днів", "Через скільки днів видаляти покинуті чернетки реєстрації без submitted_at."),
+    RuleSpec("privacy.completed_journey_days", "privacy", "Завершені реєстраційні journey", 180, 30, 3650, "днів", "Строк зберігання завершених registration_journeys після останнього оновлення."),
+    RuleSpec("privacy.session_history_days", "privacy", "Історія web-сесій", 30, 1, 3650, "днів", "Строк зберігання вже відкликаних або прострочених web-сесій."),
+    RuleSpec("privacy.service_records_days", "privacy", "Службові записи доставки", 180, 30, 3650, "днів", "Строк зберігання завершених/невдалих службових delivery-записів."),
+    RuleSpec("privacy.temp_files_days", "privacy", "Тимчасові файли", 7, 1, 365, "днів", "Строк зберігання файлів у тимчасових категоріях/каталогах."),
 )
 
 RULES = {spec.key: spec for spec in RULE_SPECS}

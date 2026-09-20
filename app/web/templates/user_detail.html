@@ -206,7 +206,7 @@
       <span>👪 Згода батьків / законного представника</span>
       <strong>{% if not user.parental_consent_required %}Не потрібна{% elif user.parental_consent_status=='received' %}Отримана{% elif user.parental_consent_status=='revoked' %}Відкликана{% else %}Очікується{% endif %}</strong>
       <small>{% if user.parental_consent_received_at %}Дата: {{user.parental_consent_received_at.strftime('%d.%m.%Y %H:%M')}}{% elif user.parental_consent_required %}Документ ще не зафіксований{% endif %}</small>
-      {% if user.parental_consent_file_path %}<a class="soft-button" href="/admin/users/{{user.id}}/consent-file" target="_blank">📎 Відкрити файл / скан</a>{% endif %}
+      {% if user.parental_consent_file_path %}<a class="soft-button" href="/admin/users/{{user.id}}/consent-file" target="_blank">📎 Відкрити файл / скан</a> <a class="soft-button" href="/admin/users/{{user.id}}/consent-file?download=1">⬇️ Завантажити</a>{% endif %}
     </div>
     <div class="consent-status-tile {% if user.media_consent_status=='granted' %}ok{% elif user.media_consent_status in ['revoked','declined'] %}danger{% else %}waiting{% endif %}">
       <span>📷 Фото- та відеозгода</span>

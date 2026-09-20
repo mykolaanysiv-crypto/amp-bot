@@ -19,7 +19,7 @@ class SensitiveDataFilter(logging.Filter):
     """Redact configured secrets from all log records before serialization."""
 
     SECRET_NAMES = (
-        "BOT_TOKEN", "MONOBANK_TOKEN", "DATABASE_URL", "WEB_SESSION_SECRET",
+        "BOT_TOKEN", "MONOBANK_TOKEN", "DATABASE_URL", "WEB_SESSION_SECRET", "FIELD_ENCRYPTION_KEY", "FIELD_ENCRYPTION_PREVIOUS_KEYS",
         "SENTRY_DSN", "HEROKU_API_KEY",
     )
 
@@ -84,7 +84,7 @@ class JsonLogFormatter(logging.Formatter):
 
 _SENSITIVE_CONTEXT_KEYS = {
     "authorization", "cookie", "password", "secret", "token", "bot_token",
-    "monobank_token", "database_url", "web_session_secret", "sentry_dsn",
+    "monobank_token", "database_url", "web_session_secret", "field_encryption_key", "field_encryption_previous_keys", "sentry_dsn",
     "heroku_api_key",
 }
 

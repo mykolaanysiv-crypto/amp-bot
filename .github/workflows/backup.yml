@@ -12,22 +12,43 @@ concurrency:
 
 jobs:
   backup:
-    name: Verified Heroku PostgreSQL backup
+    name: Capture + real restore verification
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: amp
+          POSTGRES_PASSWORD: amp
+          POSTGRES_DB: amp_restore_verify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amp -d amp_restore_verify"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
       HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+      RESTORE_DATABASE_URL: postgresql://amp:amp@127.0.0.1:5432/amp_restore_verify
+      AMP_ALLOW_TEMP_RESTORE: "1"
     steps:
+      - uses: actions/checkout@v4
+
       - name: Require Heroku backup secrets
         shell: bash
         run: |
           test -n "$HEROKU_API_KEY" || { echo "HEROKU_API_KEY secret is required"; exit 1; }
           test -n "$HEROKU_APP_NAME" || { echo "HEROKU_APP_NAME secret is required"; exit 1; }
 
-      - name: Install Heroku CLI
+      - name: Install Heroku CLI and PostgreSQL client
         shell: bash
-        run: curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+        run: |
+          curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
 
       - name: Capture PostgreSQL backup
         shell: bash
@@ -36,10 +57,14 @@ jobs:
           heroku pg:backups:capture -a "$HEROKU_APP_NAME"
           heroku pg:backups -a "$HEROKU_APP_NAME" | sed -n '1,14p'
 
-      - name: Record and verify AMP backup marker
+      - name: Restore latest backup into isolated PostgreSQL 16 and validate
+        shell: bash
+        run: ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
+
+      - name: Record restore-verified AMP backup marker
         shell: bash
         run: |
           set -euo pipefail
-          LABEL="GitHub scheduled PGBackup ${GITHUB_RUN_ID} $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          LABEL="GitHub restore-verified PGBackup ${GITHUB_RUN_ID} $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.mark_backup_verified "$LABEL"
           heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.verify_backup_marker

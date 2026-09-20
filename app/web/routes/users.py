@@ -406,7 +406,7 @@ async def user_consents_update(
 
 
 @router.get("/admin/users/{user_id}/consent-file")
-async def user_consent_file(request: Request, user_id: int):
+async def user_consent_file(request: Request, user_id: int, download: int = 0):
     if r := guard_superadmin(request): return r
     async with db.session_factory() as session:
         user=await session.get(User,user_id)
@@ -418,14 +418,29 @@ async def user_consent_file(request: Request, user_id: int):
             except ValueError as exc: raise HTTPException(status_code=404,detail="Документ не знайдено") from exc
             asset=await session.get(MediaAsset,asset_id)
             if not asset: raise HTTPException(status_code=404,detail="Документ не знайдено")
-            return Response(content=asset.data,media_type=asset.content_type or "application/octet-stream",headers={"Cache-Control":"private, no-store","Content-Disposition":f'inline; filename="{asset.filename or "consent"}"'})
+            await log_audit(
+                session, "web_sensitive_document_download" if download else "web_sensitive_document_view",
+                actor_label=request.session.get("admin_name","web"), entity_type="user", entity_id=user.id,
+                details=f"parental_consent; media_asset={asset.id}",
+            )
+            await session.commit()
+            disposition = "attachment" if download else "inline"
+            return Response(content=asset.data,media_type=asset.content_type or "application/octet-stream",headers={"Cache-Control":"private, no-store","Content-Disposition":f'{disposition}; filename="{asset.filename or "consent"}"'})
     # Local development fallback. Resolve only inside AMP data/uploads.
     safe=(Path(settings.data_dir)/path.lstrip("/")).resolve()
     allowed_roots=[(Path(settings.data_dir)/"private"/"consents").resolve(), (Path(settings.data_dir)/"uploads"/"consents").resolve()]
     if not any(root == safe.parent or root in safe.parents for root in allowed_roots) or not safe.exists():
         raise HTTPException(status_code=404,detail="Документ не знайдено")
     suffix=safe.suffix.lower(); content_type={".pdf":"application/pdf",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".webp":"image/webp"}.get(suffix,"application/octet-stream")
-    return Response(content=safe.read_bytes(),media_type=content_type,headers={"Cache-Control":"private, no-store","Content-Disposition":f'inline; filename="{safe.name}"'})
+    async with db.session_factory() as session:
+        await log_audit(
+            session, "web_sensitive_document_download" if download else "web_sensitive_document_view",
+            actor_label=request.session.get("admin_name","web"), entity_type="user", entity_id=user_id,
+            details=f"parental_consent; local={safe.name}",
+        )
+        await session.commit()
+    disposition = "attachment" if download else "inline"
+    return Response(content=safe.read_bytes(),media_type=content_type,headers={"Cache-Control":"private, no-store","Content-Disposition":f'{disposition}; filename="{safe.name}"'})
 
 
 @router.post("/admin/users/{user_id}/xp")

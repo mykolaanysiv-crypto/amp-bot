@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Data Integrity Center — АМПасадори{% endblock %}
+{% block content %}
+<div class="page-shell data-integrity-page">
+  <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Data Integrity Center</b></div>
+  <div class="page-heading-row">
+    <div>
+      <h1>🧹 Data Integrity Center</h1>
+      <p class="muted">Безпечна діагностика профілів, XP, подій, винагород, зв’язків БД і медіа. Система не зливає профілі й не видаляє історичні дані автоматично.</p>
+    </div>
+    <a class="soft-button" href="/admin/data-integrity">↻ Пересканувати</a>
+  </div>
+
+  {% if notice %}
+  <div class="notice success">
+    {% if notice.startswith('retention:') %}Retention cleanup завершено. Видалено службових/тимчасових записів: <b>{{ notice.split(':')[1] }}</b>.
+    {% elif notice.startswith('events:') %}Lifecycle подій оновлено. Змінено записів: <b>{{ notice.split(':')[1] }}</b>.
+    {% else %}Операцію виконано.{% endif %}
+  </div>
+  {% endif %}
+
+  <section class="health-grid integrity-summary-grid">
+    <article class="health-card {{ 'health-bad' if report.totals.critical else 'health-ok' }}"><div class="health-icon">🛑</div><div><span>Критичні</span><strong>{{ report.totals.critical }}</strong><small>потребують першочергової перевірки</small></div></article>
+    <article class="health-card {{ 'health-warn' if report.totals.high else 'health-ok' }}"><div class="health-icon">⚠️</div><div><span>Високий ризик</span><strong>{{ report.totals.high }}</strong><small>профілі / XP / статуси</small></div></article>
+    <article class="health-card {{ 'health-warn' if report.totals.medium else 'health-ok' }}"><div class="health-icon">🔎</div><div><span>Перевірити</span><strong>{{ report.totals.medium }}</strong><small>операційні аномалії</small></div></article>
+    <article class="health-card health-ok"><div class="health-icon">📦</div><div><span>Груп проблем</span><strong>{{ report.issue_groups }}</strong><small>усього сигналів</small></div></article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Політика retention</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує privacy-retention scheduler.</p></div></div>
+    <form method="post" action="/admin/data-integrity/retention-cleanup" onsubmit="return confirm('Запустити очищення прострочених чернеток, старих сесій, завершених службових delivery-записів і тимчасових файлів? Історія XP, attendance, audit та профілі не видаляються.')">
+      <button class="soft-button" type="submit">🧹 Запустити retention cleanup</button>
+    </form>
+  </section>
+
+  {% if report.issues %}
+    <div class="integrity-list">
+    {% for issue in report.issues %}
+      <section class="panel integrity-card integrity-{{ issue.severity }}">
+        <div class="panel-heading">
+          <div><h2>{{ issue.title }}</h2><p>{{ issue.category }} · {{ issue.detail }}</p></div>
+          <span class="status-pill {{ 'status-danger' if issue.severity in ['critical','high'] else 'status-warning' }}">{{ issue.count }}</span>
+        </div>
+        {% if issue.samples %}
+          <ul class="integrity-samples">{% for sample in issue.samples %}<li>{{ sample }}</li>{% endfor %}</ul>
+        {% endif %}
+        <div class="integrity-actions">
+          {% if issue.href %}<a class="soft-button" href="{{ issue.href }}">Відкрити для перевірки</a>{% endif %}
+          {% if issue.action == 'refresh_event_operations' %}
+          <form method="post" action="/admin/data-integrity/refresh-event-operations"><button class="soft-button" type="submit">Оновити lifecycle подій</button></form>
+          {% endif %}
+        </div>
+      </section>
+    {% endfor %}
+    </div>
+  {% else %}
+    <section class="panel"><div class="empty-state"><b>✅ Критичних проблем не виявлено</b><span>Повторюйте скан після імпортів, міграцій і великих адміністративних змін.</span></div></section>
+  {% endif %}
+</div>
+{% endblock %}

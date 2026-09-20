@@ -3432,3 +3432,6 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 .superadmin-status-override{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:grid;gap:6px;min-width:230px}
 .superadmin-status-override select,.superadmin-status-override input{min-width:0;width:100%}
 .superadmin-status-override small{line-height:1.35}
+
+/* v1.17.2 — Privacy & Data Integrity Center */
+.integrity-list{display:grid;gap:14px}.integrity-card{border-left:4px solid var(--border)}.integrity-card.integrity-critical{border-left-color:#b42318}.integrity-card.integrity-high{border-left-color:#d92d20}.integrity-card.integrity-medium{border-left-color:#dc8b09}.integrity-samples{margin:0;padding-left:22px;display:grid;gap:6px;font-size:13px}.integrity-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.integrity-actions form{margin:0}.integrity-summary-grid{margin-bottom:18px}

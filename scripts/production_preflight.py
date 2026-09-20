@@ -326,6 +326,9 @@ def main() -> None:
     adoption_migration = (root / "migrations" / "versions" / "20260920_0009_alembic_full_adoption.py").read_text(encoding="utf-8")
     if 'revision: str = "20260920_0009"' not in adoption_migration or 'down_revision: Union[str, None] = "20260920_0008"' not in adoption_migration:
         raise SystemExit("Alembic preflight failed: v1.17.1 adoption head 20260920_0009 missing")
+    privacy_migration = (root / "migrations" / "versions" / "20260920_0010_privacy_data_integrity.py").read_text(encoding="utf-8")
+    if 'revision: str = "20260920_0010"' not in privacy_migration or 'down_revision: Union[str, None] = "20260920_0009"' not in privacy_migration:
+        raise SystemExit("Alembic preflight failed: v1.17.2 privacy head 20260920_0010 missing")
 
     schema_guard = root / "scripts" / "schema_drift_check.py"
     if not schema_guard.exists():
@@ -458,6 +461,34 @@ def main() -> None:
         raise SystemExit("Opportunity board preflight failed: compact equal-card board missing")
     if "Долучитися / дізнатися більше" not in opportunity_public_template:
         raise SystemExit("Opportunity share preflight failed: public action missing")
+
+
+    # v1.17.2 Privacy & Data Integrity 2.0 guards.
+    crypto_source = (root / "app" / "field_crypto.py").read_text(encoding="utf-8")
+    identity_source = (root / "app" / "model_domains" / "identity.py").read_text(encoding="utf-8")
+    integrity_source = (root / "app" / "data_integrity.py").read_text(encoding="utf-8")
+    retention_source = (root / "app" / "privacy_retention.py").read_text(encoding="utf-8")
+    media_source = (root / "app" / "web" / "media_routes.py").read_text(encoding="utf-8")
+    backup_workflow = (root / ".github" / "workflows" / "backup.yml").read_text(encoding="utf-8")
+    for token in ("FIELD_ENCRYPTION_KEY", "FIELD_ENCRYPTION_PREVIOUS_KEYS", "enc:v1:", "def reencrypt_field"):
+        if token not in crypto_source:
+            raise SystemExit(f"Privacy preflight failed: field encryption token {token} missing")
+    for field_name in ("vulnerability_categories", "restoration_answers_json", "deletion_reason", "registration_rejection_reason"):
+        if f"{field_name}: Mapped[str | None] = mapped_column(EncryptedText()" not in identity_source:
+            raise SystemExit(f"Privacy preflight failed: {field_name} is not EncryptedText")
+    for token in ("duplicate_phone", "duplicate_email", "orphan_records", "wallet_xp_mismatch", "attendance_anomaly", "expired_reservation", "missing_media"):
+        if token not in integrity_source:
+            raise SystemExit(f"Data-integrity preflight failed: {token} check missing")
+    for token in ("RegistrationJourney", "WebAdminSession", "NotificationDelivery", "TEMP_MEDIA_CATEGORIES"):
+        if token not in retention_source:
+            raise SystemExit(f"Retention preflight failed: {token} cleanup missing")
+    if "web_sensitive_media_download" not in media_source:
+        raise SystemExit("Privacy preflight failed: sensitive media download audit missing")
+    for token in ("verify_backup_restore.sh", "pg_restore", "restore-verified"):
+        if token not in backup_workflow and token != "pg_restore":
+            raise SystemExit(f"Backup restore preflight failed: {token} missing")
+    if not (root / "scripts" / "verify_backup_restore.sh").exists():
+        raise SystemExit("Backup restore preflight failed: verify_backup_restore.sh missing")
 
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 

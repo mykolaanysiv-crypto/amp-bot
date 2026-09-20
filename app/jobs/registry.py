@@ -10,6 +10,7 @@ from .engagement import (
 )
 from .delivery import _notification_retry_scheduler, _notification_health_scheduler, _backup_health_scheduler
 from .donations import _donation_sync_scheduler
+from .privacy import _privacy_retention_scheduler
 
 
 def scheduler_factories(bot: Bot, db: Database, settings):
@@ -27,4 +28,5 @@ def scheduler_factories(bot: Bot, db: Database, settings):
         "notification_health_scheduler": lambda: _notification_health_scheduler(bot, db, settings),
         "backup_health_scheduler": lambda: _backup_health_scheduler(bot, db, settings),
         "content_lifecycle_scheduler": lambda: _content_lifecycle_scheduler(db),
+        "privacy_retention_scheduler": lambda: _privacy_retention_scheduler(bot, db, settings),
     }

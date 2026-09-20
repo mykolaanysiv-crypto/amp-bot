@@ -5,6 +5,7 @@ from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, I
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..time_utils import utc_storage_now
+from ..secure_types import EncryptedText
 from .base import Base, UserRole, UserStatus
 
 class MediaAsset(Base):
@@ -43,7 +44,7 @@ class User(Base):
     settlement: Mapped[str | None] = mapped_column(String(120), nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(24), nullable=True)
-    vulnerability_categories: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vulnerability_categories: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     media_consent: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     media_consent_status: Mapped[str] = mapped_column(String(24), default="pending")
     media_consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -52,7 +53,7 @@ class User(Base):
     privacy_acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     birthday_reward_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blocked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    block_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    block_reason: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     role: Mapped[str] = mapped_column(String(32), default=UserRole.PARTICIPANT.value)
     status: Mapped[str] = mapped_column(String(24), default=UserStatus.PENDING.value)
     parental_consent_required: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -70,10 +71,10 @@ class User(Base):
     last_activity_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     badge_photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    deletion_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deletion_reason: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     restoration_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     restoration_request_status: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
-    restoration_answers_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    restoration_answers_json: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     restoration_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     restoration_reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
     restored_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -85,7 +86,7 @@ class User(Base):
     registration_review_status: Mapped[str] = mapped_column(String(24), default="approved", index=True)
     registration_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     registration_reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
-    registration_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registration_rejection_reason: Mapped[str | None] = mapped_column(EncryptedText(), nullable=True)
     ambassador_responsibility: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     xp_transactions: Mapped[list["XPTransaction"]] = relationship(back_populates="user", foreign_keys="XPTransaction.user_id")

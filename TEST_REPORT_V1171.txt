@@ -5,6 +5,8 @@ Local build checks in artifact environment:
 - python -m scripts.production_preflight: PASS
 - focused architecture/stability regressions: PASS
 - tests/test_v1171_core_cleanup.py: 6 passed
+- legacy regression tests updated for Full Alembic Adoption: runtime-migration assertions now validate Alembic ownership
+- full local unit/regression suite: PASS after stale-test conversion (PostgreSQL-only integration tests remain CI-gated)
 - manual Alembic chain smoke on in-memory SQLite: 0001 -> 0009 PASS
 - metadata table parity after migrations: 61/61 tables, column parity PASS
 - Alembic compare_metadata after full chain: 0 diffs

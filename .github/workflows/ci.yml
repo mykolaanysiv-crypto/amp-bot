@@ -102,15 +102,13 @@ jobs:
         shell: bash
         run: curl -fsSL https://cli-assets.heroku.com/install.sh | sh
 
-      - name: Capture and verify PostgreSQL backup before deploy
+      - name: Capture PostgreSQL backup before deploy
         shell: bash
         run: |
           set -euo pipefail
           heroku pg:backups:capture -a "$HEROKU_APP_NAME"
           heroku pg:backups -a "$HEROKU_APP_NAME" | sed -n '1,14p'
-          LABEL="GitHub pre-deploy PGBackup ${GITHUB_SHA:0:7} $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.mark_backup_verified "$LABEL"
-          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.verify_backup_marker
+          echo "Backup captured. Restore-verified marker is updated only by the isolated restore workflow."
 
       - name: Deploy tested commit to Heroku
         shell: bash

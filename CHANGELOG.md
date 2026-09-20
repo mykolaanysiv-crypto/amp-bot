@@ -1,3 +1,14 @@
+# v1.17.2 — Privacy & Data Integrity 2.0
+
+- Додано transparent field-level encryption для `vulnerability_categories`, `restoration_answers_json`, `block_reason`, `deletion_reason`, `registration_rejection_reason`.
+- Додано keyring/rotation: `FIELD_ENCRYPTION_KEY`, `FIELD_ENCRYPTION_PREVIOUS_KEYS`, `python -m scripts.rotate_field_encryption`.
+- Новий Alembic head `20260920_0010` backfill-шифрує existing plaintext sensitive fields.
+- Додано granular retention policy та щоденний `privacy_retention_scheduler`.
+- Додано Data Integrity Center для superadmin: duplicate profile/phone/email, orphan records, XP/wallet/reward, attendance/status, expired reservations, missing media.
+- Sensitive profile views, sensitive media downloads і consent document downloads мають окремий audit trail.
+- Backup marker більше не означає лише capture: scheduled workflow робить реальний `pg_restore` у ephemeral PostgreSQL 16 і лише після цього записує restore-verified marker.
+- Автоматичні небезпечні data fixes не додані; remediation залишається ручною.
+
 # v1.17.1 — Core Cleanup & Alembic Full Adoption
 
 - Production schema тепер змінюється **лише через Alembic**: з `Database.init()` прибрано `Base.metadata.create_all()` та legacy `_migrate_v10_to_v11`.

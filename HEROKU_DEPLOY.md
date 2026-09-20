@@ -12,7 +12,7 @@ Production deploy через GitHub Actions тепер перед `git push` у 
 
 Опційно: `BACKUP_UNKNOWN_GRACE_HOURS=24`. Якщо marker ще ніколи не створювався, система не надсилає false-positive Telegram alarm протягом grace, але й не позначає backup як перевірений.
 
-# Heroku deployment — АМПасадори v1.17.1
+# Heroku deployment — АМПасадори v1.17.2
 
 > **Production Stability Gate:** рекомендований production deploy тепер проходить через GitHub Actions. PostgreSQL 16 CI виконує compile, tests, integration tests і реальний release/startup smoke; deploy job стартує лише після PASS.
 
@@ -114,4 +114,4 @@ System Health вважає verified backup актуальним протягом
 
 ## Rollback
 
-У разі application regression використовуйте Heroku Releases rollback. Не очищайте production PostgreSQL. v1.17.1 використовує Alembic як єдине джерело схеми; runtime legacy upgrader видалено. Перед rollback не відкочуйте БД вручну без перевіреної процедури.
+У разі application regression використовуйте Heroku Releases rollback. Не очищайте production PostgreSQL. v1.17.2 використовує Alembic як єдине джерело схеми; runtime legacy upgrader видалено. Перед rollback не відкочуйте БД вручну без перевіреної процедури.

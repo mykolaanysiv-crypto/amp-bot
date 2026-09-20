@@ -1,0 +1,57 @@
+AMP XP / АМПасадори v1.17.2 — deploy
+===================================
+
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+
+# 1. Backup before changes
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+# 2. Recommended: create a dedicated encryption key BEFORE the 0010 migration
+FIELD_KEY=$(openssl rand -base64 48 | tr -d '\n')
+heroku config:set FIELD_ENCRYPTION_KEY="$FIELD_KEY" -a amp-bot-ver-1-5-0
+unset FIELD_KEY
+
+# 3. Unpack/apply
+rm -rf /tmp/amp_bot_v1172
+mkdir -p /tmp/amp_bot_v1172
+unzip -q ~/Downloads/amp_bot_v1172.zip -d /tmp/amp_bot_v1172
+rsync -av --delete \
+  --exclude='.git' --exclude='.env' --exclude='.venv' \
+  --exclude='__pycache__' --exclude='.pytest_cache' \
+  /tmp/amp_bot_v1172/amp_bot_v1172/ ./
+
+cat VERSION.txt
+cat VERSION_CHECK.txt
+
+# 4. Local gate
+pip install -r requirements.txt
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q
+git diff --check
+
+# 5. Commit/deploy through GitHub CI
+git add -A
+git commit -m "AMP XP v1.17.2 Privacy and Data Integrity 2.0"
+git push origin main
+
+# 6. After GitHub Actions / Heroku deploy
+heroku ps -a amp-bot-ver-1-5-0
+heroku releases -a amp-bot-ver-1-5-0
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+# Expected: 20260920_0010
+
+# 7. Health
+curl -s https://amp-bot-ver-1-5-0.herokuapp.com/health/ready ; echo
+curl -s https://amp-bot-ver-1-5-0.herokuapp.com/health/dependencies ; echo
+
+# 8. Open as superadmin
+# /admin/data-integrity
+
+# Future encryption-key rotation (NOT needed for first deploy):
+# OLD=<current FIELD_ENCRYPTION_KEY>
+# NEW=$(openssl rand -base64 48 | tr -d '\n')
+# heroku config:set FIELD_ENCRYPTION_PREVIOUS_KEYS="$OLD" FIELD_ENCRYPTION_KEY="$NEW" -a amp-bot-ver-1-5-0
+# heroku run -a amp-bot-ver-1-5-0 -- python -m scripts.rotate_field_encryption
+# After verification: heroku config:unset FIELD_ENCRYPTION_PREVIOUS_KEYS -a amp-bot-ver-1-5-0

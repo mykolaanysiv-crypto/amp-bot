@@ -24,21 +24,23 @@ def test_verified_backup_resets_initial_unknown_state():
     assert "await session.delete(marker)" in source
 
 
-def test_ci_captures_verified_backup_before_deploy():
+def test_ci_captures_backup_before_deploy_without_false_verified_marker():
     workflow = Path(".github/workflows/ci.yml").read_text()
-    assert "Capture and verify PostgreSQL backup before deploy" in workflow
+    assert "Capture PostgreSQL backup before deploy" in workflow
     assert 'heroku pg:backups:capture -a "$HEROKU_APP_NAME"' in workflow
-    assert "scripts.mark_backup_verified" in workflow
-    assert "scripts.verify_backup_marker" in workflow
-    assert workflow.index("Capture and verify PostgreSQL backup before deploy") < workflow.index("Deploy tested commit to Heroku")
+    block = workflow[workflow.index("Capture PostgreSQL backup before deploy"):workflow.index("Deploy tested commit to Heroku")]
+    assert "scripts.mark_backup_verified" not in block
+    assert "restore-verified marker" in block.lower()
 
 
-def test_daily_backup_workflow_exists():
+def test_daily_backup_workflow_restores_before_verified_marker():
     workflow = Path(".github/workflows/backup.yml").read_text()
     assert "schedule:" in workflow
     assert "workflow_dispatch:" in workflow
     assert "heroku pg:backups:capture" in workflow
-    assert "scripts.mark_backup_verified" in workflow
+    assert "verify_backup_restore.sh" in workflow
+    assert "postgres:16" in workflow
+    assert workflow.index("verify_backup_restore.sh") < workflow.index("scripts.mark_backup_verified")
     assert "scripts.verify_backup_marker" in workflow
 
 

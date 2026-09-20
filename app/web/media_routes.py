@@ -10,7 +10,7 @@ from ..model_domains import MediaAsset
 router = APIRouter()
 
 @router.get("/media/{asset_id}")
-async def media_asset(request: Request, asset_id: int):
+async def media_asset(request: Request, asset_id: int, download: int = 0):
     """Serve DB media according to explicit access classification.
 
     Public artwork is cacheable. Evidence, case attachments and documents are
@@ -28,7 +28,7 @@ async def media_asset(request: Request, asset_id: int):
                 raise HTTPException(status_code=404, detail="Файл не знайдено")
             await log_audit(
                 session,
-                "web_sensitive_media_view",
+                "web_sensitive_media_download" if download else "web_sensitive_media_view",
                 actor_label=request.session.get("admin_name", "web"),
                 entity_type="media_asset",
                 entity_id=asset.id,
@@ -41,12 +41,13 @@ async def media_asset(request: Request, asset_id: int):
             headers={
                 "Cache-Control": "public, max-age=86400" if level == "public" else "private, no-store",
                 "X-Content-Type-Options": "nosniff",
+                **({"Content-Disposition": f'attachment; filename="{asset.filename or "document"}"'} if download else {}),
             },
         )
 
 
 @router.get("/uploads/{category}/{filename}")
-async def categorized_upload_file(request: Request, category: str, filename: str):
+async def categorized_upload_file(request: Request, category: str, filename: str, download: int = 0):
     """Serve legacy/local uploads through the same category access policy.
 
     This intentionally replaces the old public StaticFiles /uploads mount so
@@ -69,7 +70,7 @@ async def categorized_upload_file(request: Request, category: str, filename: str
     if level != "public":
         async with db.session_factory() as session:
             await log_audit(
-                session, "web_sensitive_media_view", actor_label=request.session.get("admin_name", "web"),
+                session, "web_sensitive_media_download" if download else "web_sensitive_media_view", actor_label=request.session.get("admin_name", "web"),
                 entity_type="legacy_media", details=f"category={category}; file={filename}; access={level}",
             )
             await session.commit()
@@ -78,12 +79,13 @@ async def categorized_upload_file(request: Request, category: str, filename: str
         headers={
             "Cache-Control": "public, max-age=86400" if level == "public" else "private, no-store",
             "X-Content-Type-Options": "nosniff",
+            **({"Content-Disposition": f'attachment; filename="{filename}"'} if download else {}),
         },
     )
 
 
 @router.get("/private/{category}/{filename}")
-async def private_media_file(request: Request, category: str, filename: str):
+async def private_media_file(request: Request, category: str, filename: str, download: int = 0):
     """Serve local-development private media through the same role policy."""
     level = media_access_level(category)
     if level == "public":
@@ -102,11 +104,11 @@ async def private_media_file(request: Request, category: str, filename: str):
     }.get(path.suffix.lower(), "application/octet-stream")
     async with db.session_factory() as session:
         await log_audit(
-            session, "web_sensitive_media_view", actor_label=request.session.get("admin_name", "web"),
+            session, "web_sensitive_media_download" if download else "web_sensitive_media_view", actor_label=request.session.get("admin_name", "web"),
             entity_type="private_media", details=f"category={category}; file={filename}; access={level}",
         )
         await session.commit()
     return Response(
         content=path.read_bytes(), media_type=content_type,
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", **({"Content-Disposition": f'attachment; filename="{filename}"'} if download else {})},
     )

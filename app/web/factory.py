@@ -29,6 +29,7 @@ from .routes import (
     donations as donations_routes,
     ambassadors as ambassadors_routes,
     giveaways as giveaways_routes,
+    data_integrity as data_integrity_routes,
 )
 
 
@@ -78,6 +79,7 @@ def create_app() -> FastAPI:
         donations_routes,
         ambassadors_routes,
         giveaways_routes,
+        data_integrity_routes,
     ):
         app.include_router(module.router)
     return app

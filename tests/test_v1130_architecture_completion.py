@@ -91,11 +91,11 @@ def test_start_and_main_use_canonical_modules_and_jobs_are_split():
         "participant_inactivity_scheduler", "smart_opportunities_scheduler",
         "season_history_scheduler", "donation_sync_scheduler",
         "notification_health_scheduler", "backup_health_scheduler",
-        "content_lifecycle_scheduler",
+        "content_lifecycle_scheduler", "privacy_retention_scheduler",
     )
     for name in scheduler_names:
         assert f'"{name}"' in registry
-    assert len(scheduler_names) == 13
+    assert len(scheduler_names) == 14
     assert (ROOT / "app/bot_runtime.py").exists()
     assert (ROOT / "app/telegram_middleware.py").exists()
 
