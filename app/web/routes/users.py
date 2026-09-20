@@ -38,7 +38,12 @@ async def users(request: Request, q: str = "", role: str = "", status: str = "",
             if is_superadmin(request): searchable.extend([User.email.ilike(like), User.phone.ilike(like)])
             stmt = stmt.where(or_(*searchable))
         if role: stmt = stmt.where(User.role == role)
-        if status: stmt = stmt.where(User.status == status)
+        if status:
+            stmt = stmt.where(User.status == status)
+        else:
+            # Permanently deleted/duplicate-archived profiles remain available
+            # through the explicit status filter, but do not clutter the default list.
+            stmt = stmt.where(User.permanent_deleted_at.is_(None))
         if consent == "pending": stmt = stmt.where(User.parental_consent_required == True, User.parental_consent_confirmed == False)
         cutoff_map = {"7d": 7, "30d": 30, "90d": 90}
         if period in cutoff_map: stmt = stmt.where(User.created_at >= clock.storage_utc() - timedelta(days=cutoff_map[period]))
@@ -564,6 +569,88 @@ async def user_update(request: Request, user_id: int, role: str = Form(...), sta
             await log_audit(session,"web_user_update",actor_label=actor,entity_type="user",entity_id=user.id,details=f"role={user.role}; current_status={user.status}; requested_status={status}")
             await session.commit()
     return RedirectResponse(f"/admin/users/{user_id}",303)
+
+
+def _safe_user_return_to(value: str, user_id: int) -> str:
+    target = (value or "").strip()
+    if target.startswith("/admin/") and not target.startswith("//"):
+        return target
+    return f"/admin/users/{user_id}"
+
+
+@router.post("/admin/users/{user_id}/status-direct")
+async def user_status_direct_change(
+    request: Request,
+    user_id: int,
+    status: str = Form(...),
+    return_to: str = Form(""),
+):
+    """Superadmin-only immediate participant lifecycle change.
+
+    The route intentionally supports only pending/active/inactive. Blocked is
+    managed by Moderation and deleted states by their dedicated workflows.
+    """
+    if r := guard_superadmin(request):
+        return r
+    allowed = {UserStatus.PENDING.value, UserStatus.ACTIVE.value, UserStatus.INACTIVE.value}
+    if status not in allowed:
+        raise HTTPException(status_code=400, detail="Дозволені статуси: очікує, активний, неактивний.")
+
+    actor = request.session.get("admin_name", "superadmin")
+    async with db.session_factory() as session:
+        user = await session.scalar(select(User).where(User.id == user_id).with_for_update())
+        if not user:
+            raise HTTPException(status_code=404, detail="Учасника не знайдено")
+        if user.status == UserStatus.BLOCKED.value:
+            raise HTTPException(status_code=409, detail="Заблокований профіль змінюється лише через модуль «Модерація».")
+        if user.status in {UserStatus.DELETED.value, UserStatus.DELETED_PERMANENT.value}:
+            raise HTTPException(status_code=409, detail="Видалений профіль змінюється лише через workflow відновлення.")
+
+        previous = user.status
+        if previous != status:
+            was_active = previous == UserStatus.ACTIVE.value
+            user.status = status
+            await session.execute(
+                update(UserStatusChangeRequest)
+                .where(UserStatusChangeRequest.user_id == user.id, UserStatusChangeRequest.status == "pending")
+                .values(
+                    status="rejected",
+                    review_note="Суперадміністратор змінив статус напряму",
+                    reviewed_by_label=actor,
+                    reviewed_at=clock.storage_utc(),
+                )
+            )
+
+            if status == UserStatus.INACTIVE.value:
+                revoked = await revoke_referral_reward_if_inactive(
+                    session, user, reason=f"Суперадміністратор змінив статус на неактивний ({actor})"
+                )
+                if revoked:
+                    inviter, removed_xp, days_after = revoked
+                    await queue_telegram_delivery(
+                        session, inviter.tg_id,
+                        f"🤝 <b>Реферальний бонус скориговано</b>\n\n"
+                        f"Запрошений учасник <b>{user.full_name}</b> став неактивним через {days_after} дн. після активації. "
+                        f"Скасовано <b>{removed_xp} XP</b> реферального бонусу.",
+                        source="referral_clawback", dedupe_key=f"referral_clawback:{user.id}",
+                    )
+            elif status == UserStatus.ACTIVE.value:
+                user.registration_review_status = "approved"
+                user.registration_reviewed_at = clock.storage_utc()
+                user.registration_reviewed_by = actor
+                user.registration_rejection_reason = None
+                await mark_registration_approved(session, user.id)
+                await add_active_users_to_default_team(session)
+                if not was_active:
+                    await reward_referral_if_ready(session, user, settings)
+
+            await log_audit(
+                session, "web_user_status_direct_change", actor_label=actor, entity_type="user", entity_id=user.id,
+                details=f"{previous}->{status}",
+            )
+            await session.commit()
+
+    return RedirectResponse(_safe_user_return_to(return_to, user_id), 303)
 
 
 @router.post("/admin/users/{user_id}/status-request/{request_id}/approve")

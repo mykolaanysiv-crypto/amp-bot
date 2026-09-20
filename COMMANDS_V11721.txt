@@ -1,0 +1,39 @@
+AMP XP / АМПасадори v1.17.2.1 — deploy
+=====================================
+
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+
+# 1. Backup
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+
+# 2. Apply build
+rm -rf /tmp/amp_bot_v11721
+mkdir -p /tmp/amp_bot_v11721
+unzip -q ~/Downloads/amp_bot_v11721.zip -d /tmp/amp_bot_v11721
+rsync -av --delete \
+  --exclude='.git' --exclude='.env' --exclude='.venv' \
+  --exclude='__pycache__' --exclude='.pytest_cache' \
+  /tmp/amp_bot_v11721/amp_bot_v11721/ ./
+
+cat VERSION.txt
+cat VERSION_CHECK.txt
+# Expected: 1.17.2.1 / 1.17.2.1
+
+# 3. Local gate
+pip install -r requirements.txt
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q
+git diff --check
+
+# 4. Commit/deploy
+git add -A
+git commit -m "AMP XP v1.17.2.1 duplicate management and participant status"
+git push origin main
+
+# 5. Post deploy
+heroku ps -a amp-bot-ver-1-5-0
+heroku releases -a amp-bot-ver-1-5-0
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+# Expected head: 20260920_0010

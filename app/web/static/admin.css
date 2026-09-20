@@ -3435,3 +3435,19 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 
 /* v1.17.2 — Privacy & Data Integrity Center */
 .integrity-list{display:grid;gap:14px}.integrity-card{border-left:4px solid var(--border)}.integrity-card.integrity-critical{border-left-color:#b42318}.integrity-card.integrity-high{border-left-color:#d92d20}.integrity-card.integrity-medium{border-left-color:#dc8b09}.integrity-samples{margin:0;padding-left:22px;display:grid;gap:6px;font-size:13px}.integrity-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.integrity-actions form{margin:0}.integrity-summary-grid{margin-bottom:18px}
+
+/* v1.17.2.1 — duplicate management & participant status controls */
+.participant-row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inline-status-form{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inline-status-form select{min-width:130px}
+.duplicate-groups{display:grid;gap:16px}
+.duplicate-group-card{border:1px solid var(--border, #e6e8ec);border-radius:16px;padding:14px;background:var(--card-bg, #fff)}
+.duplicate-group-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.duplicate-group-head span{font-size:.9rem;color:var(--muted, #6b7280)}
+.duplicate-table td{vertical-align:top}
+.duplicate-delete-details{min-width:240px}
+.duplicate-delete-details summary{cursor:pointer;font-weight:700}
+.duplicate-delete-form{display:grid;gap:8px;margin-top:10px;padding:10px;border:1px solid rgba(180,35,45,.22);border-radius:12px;background:rgba(180,35,45,.04)}
+.duplicate-delete-form label{display:grid;gap:5px;font-size:.86rem}
+.danger-link{color:#a7232f}
+@media (max-width:800px){.inline-status-form{align-items:stretch}.inline-status-form select{width:100%}.duplicate-delete-details{min-width:0}.duplicate-table{min-width:760px}}

@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from .media import media_file
 from .model_domains import (
-    ActivityApplication, AuditLog, Event, EventRegistration, MediaAsset, Opportunity,
+    ActivityApplication, AuditLog, Base, Event, EventRegistration, MediaAsset, Opportunity,
     Quest, RequestCase, RequestMessage, Reward, RewardClaim, User, VolunteerTask,
     XPTransaction,
 )
@@ -57,6 +57,120 @@ def _group_duplicates(users: list[User], extractor, *, minimum_len: int = 1) -> 
     return [rows for rows in groups.values() if len(rows) > 1]
 
 
+
+
+def duplicate_match_reasons(left: User, right: User) -> list[str]:
+    """Return conservative reasons why two participant profiles look duplicated."""
+    reasons: list[str] = []
+    left_phone, right_phone = _norm_phone(left.phone), _norm_phone(right.phone)
+    if left_phone and right_phone and len(left_phone) >= 7 and left_phone == right_phone:
+        reasons.append("phone")
+    left_email, right_email = _norm_email(left.email), _norm_email(right.email)
+    if left_email and right_email and left_email == right_email:
+        reasons.append("email")
+    if (
+        left.birth_date
+        and right.birth_date
+        and left.birth_date == right.birth_date
+        and _norm_name(left.full_name)
+        and _norm_name(left.full_name) == _norm_name(right.full_name)
+    ):
+        reasons.append("name_birth")
+    return reasons
+
+
+def build_duplicate_groups(users: list[User]) -> list[dict]:
+    """Build connected duplicate groups for safe manual review in the web center."""
+    by_id = {u.id: u for u in users}
+    parent = {u.id: u.id for u in users}
+    reasons_by_root: dict[int, set[str]] = defaultdict(set)
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int, reason: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+            reasons_by_root[ra].update(reasons_by_root.pop(rb, set()))
+        reasons_by_root[find(a)].add(reason)
+
+    def connect(groups: list[list[User]], reason: str) -> None:
+        for rows in groups:
+            first = rows[0].id
+            for row in rows[1:]:
+                union(first, row.id, reason)
+
+    connect(_group_duplicates(users, lambda u: _norm_phone(u.phone), minimum_len=7), "Однаковий телефон")
+    connect(_group_duplicates(users, lambda u: _norm_email(u.email), minimum_len=3), "Однаковий email")
+    profile_groups: dict[tuple[str, object], list[User]] = defaultdict(list)
+    for u in users:
+        if u.birth_date and _norm_name(u.full_name):
+            profile_groups[(_norm_name(u.full_name), u.birth_date)].append(u)
+    connect([rows for rows in profile_groups.values() if len(rows) > 1], "Однакові ПІБ + дата народження")
+
+    components: dict[int, list[User]] = defaultdict(list)
+    for uid, user in by_id.items():
+        components[find(uid)].append(user)
+
+    result: list[dict] = []
+    for root, members in components.items():
+        if len(members) < 2:
+            continue
+        member_ids = {m.id for m in members}
+        reasons = set(reasons_by_root.get(find(root), set()))
+        # Re-evaluate pair reasons after union so mixed phone/email components are described fully.
+        ordered = sorted(members, key=lambda u: (u.created_at or clock.storage_utc(), u.id))
+        for idx, left in enumerate(ordered):
+            for right in ordered[idx + 1:]:
+                for code in duplicate_match_reasons(left, right):
+                    reasons.add({
+                        "phone": "Однаковий телефон",
+                        "email": "Однаковий email",
+                        "name_birth": "Однакові ПІБ + дата народження",
+                    }[code])
+        result.append({
+            "member_ids": sorted(member_ids),
+            "reasons": sorted(reasons),
+            "members": [
+                {
+                    "id": u.id,
+                    "full_name": u.full_name,
+                    "status": u.status,
+                    "role": u.role,
+                    "phone": u.phone,
+                    "email": u.email,
+                    "created_at": u.created_at,
+                    "last_activity_at": u.last_activity_at,
+                }
+                for u in ordered
+            ],
+        })
+    return sorted(result, key=lambda g: (-len(g["members"]), g["member_ids"]))
+
+
+async def user_reference_summary(session, user_id: int) -> list[dict]:
+    """Count direct FK references to a user across current SQLAlchemy metadata."""
+    refs: list[dict] = []
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            targets_user = any(
+                fk.column.table.name == "users" and fk.column.name == "id"
+                for fk in column.foreign_keys
+            )
+            if not targets_user:
+                continue
+            stmt = select(func.count()).select_from(table).where(column == user_id)
+            if table.name == "users" and "id" in table.c:
+                stmt = stmt.where(table.c.id != user_id)
+            count = int(await session.scalar(stmt) or 0)
+            if count:
+                refs.append({"table": table.name, "column": column.name, "count": count})
+    return refs
+
 def _sample_user_groups(groups: list[list[User]], limit: int = 8) -> list[str]:
     samples: list[str] = []
     for group in groups[:limit]:
@@ -94,6 +208,7 @@ async def scan_data_integrity(session) -> dict:
     now = clock.storage_utc()
     users = list((await session.scalars(select(User).where(User.permanent_deleted_at.is_(None)))).all())
     issues: list[IntegrityIssue] = []
+    duplicate_groups = build_duplicate_groups(users)
 
     phone_groups = _group_duplicates(users, lambda u: _norm_phone(u.phone), minimum_len=7)
     if phone_groups:
@@ -261,4 +376,4 @@ async def scan_data_integrity(session) -> dict:
         "medium": sum(i.count for i in issues if i.severity == "medium"),
         "low": sum(i.count for i in issues if i.severity == "low"),
     }
-    return {"issues": issues, "issue_groups": len(issues), "affected": sum(i.count for i in issues), "totals": totals}
+    return {"issues": issues, "issue_groups": len(issues), "affected": sum(i.count for i in issues), "totals": totals, "duplicate_groups": duplicate_groups}

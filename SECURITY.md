@@ -107,3 +107,12 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - Retention cleanup не видаляє audit/consent/XP/attendance history або профілі.
 - Backup вважається verified лише після restore в ізольований PostgreSQL та перевірки `users` + `alembic_version`.
 - Data Integrity Center не виконує автоматичне злиття дублікатів чи видалення orphan records.
+
+
+## v1.17.2.1 — duplicate-removal safeguards
+
+- Видалення дубліката доступне лише суперадміністратору та лише для participant/ambassador профілів.
+- Server-side повторно перевіряється фактичний duplicate match; одного прихованого form field недостатньо.
+- Потрібне явне підтвердження словом `ВИДАЛИТИ`.
+- Профіль з історичними FK-зв’язками не hard-delete: він архівується як `deleted_permanent`, щоб зберегти цілісність історії.
+- Пряма зміна статусу через quick control дозволяє лише `pending / active / inactive`; блокування та видалення не обходять існуючі workflow.

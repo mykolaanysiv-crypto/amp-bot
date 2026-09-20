@@ -15,6 +15,9 @@
   <div class="notice success">
     {% if notice.startswith('retention:') %}Retention cleanup завершено. Видалено службових/тимчасових записів: <b>{{ notice.split(':')[1] }}</b>.
     {% elif notice.startswith('events:') %}Lifecycle подій оновлено. Змінено записів: <b>{{ notice.split(':')[1] }}</b>.
+    {% elif notice.startswith('duplicate:') %}
+      {% set parts = notice.split(':') %}
+      Дублікат АМП-{{ '%04d'|format(parts[2]|int) }} видалено. {% if parts[1]=='physical' %}Порожній запис фізично видалено з БД.{% else %}Історичний профіль безпечно архівовано, щоб не втратити XP/attendance/audit-зв’язки.{% endif %} Основний профіль: <b>АМП-{{ '%04d'|format(parts[3]|int) }}</b>.
     {% else %}Операцію виконано.{% endif %}
   </div>
   {% endif %}
@@ -25,6 +28,68 @@
     <article class="health-card {{ 'health-warn' if report.totals.medium else 'health-ok' }}"><div class="health-icon">🔎</div><div><span>Перевірити</span><strong>{{ report.totals.medium }}</strong><small>операційні аномалії</small></div></article>
     <article class="health-card health-ok"><div class="health-icon">📦</div><div><span>Груп проблем</span><strong>{{ report.issue_groups }}</strong><small>усього сигналів</small></div></article>
   </section>
+
+  {% if report.duplicate_groups %}
+  <section class="panel duplicate-management-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>👥 Керування дублікатами учасників</h2>
+        <p>Суперадміністратор сам обирає, який профіль залишити основним. Якщо дублікат не має історичних зв’язків — запис видаляється фізично. Якщо має XP, attendance, документи чи інші FK-зв’язки — профіль архівується назавжди, а історія зберігається.</p>
+      </div>
+      <span class="status-pill status-warning">{{ report.duplicate_groups|length }} груп</span>
+    </div>
+    <div class="duplicate-groups">
+      {% for group in report.duplicate_groups %}
+      <article class="duplicate-group-card">
+        <div class="duplicate-group-head"><b>Група {{ loop.index }}</b><span>{{ group.reasons|join(' · ') }}</span></div>
+        <div class="table-wrap">
+          <table class="duplicate-table">
+            <thead><tr><th>Профіль</th><th>Контакти</th><th>Статус</th><th>Створено</th><th>Дії</th></tr></thead>
+            <tbody>
+            {% for member in group.members %}
+              <tr>
+                <td><a href="/admin/users/{{member.id}}"><b>АМП-{{ '%04d'|format(member.id) }} · {{member.full_name}}</b></a><br><small>{{ label(member.role) }}</small></td>
+                <td><small>{{ member.phone or '—' }}</small><br><small>{{ member.email or '—' }}</small></td>
+                <td>
+                  {% if member.status in ['pending','active','inactive'] %}
+                  <form method="post" action="/admin/users/{{member.id}}/status-direct" class="inline-status-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <input type="hidden" name="return_to" value="/admin/data-integrity">
+                    <select name="status">{% for st in ['pending','active','inactive'] %}<option value="{{st}}" {% if member.status==st %}selected{% endif %}>{{label(st)}}</option>{% endfor %}</select>
+                    <button class="soft-button compact-action" type="submit">↻ Змінити</button>
+                  </form>
+                  {% else %}<span class="tag {{member.status}}">{{label(member.status)}}</span>{% endif %}
+                </td>
+                <td><small>{{ member.created_at.strftime('%d.%m.%Y %H:%M') if member.created_at else '—' }}</small></td>
+                <td>
+                  {% if member.role in ['participant','ambassador'] %}
+                  <details class="duplicate-delete-details">
+                    <summary class="danger-link">🗑 Видалити як дублікат</summary>
+                    <form method="post" action="/admin/data-integrity/duplicate-delete" class="duplicate-delete-form" onsubmit="return confirm('Ви впевнені? Профіль буде фізично видалено лише якщо він не має історичних зв’язків; інакше — архівовано назавжди.')">
+                      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                      <input type="hidden" name="duplicate_user_id" value="{{member.id}}">
+                      <label>Основний профіль, який залишаємо
+                        <select name="canonical_user_id" required>
+                          <option value="">Оберіть профіль</option>
+                          {% for keep in group.members %}{% if keep.id != member.id %}<option value="{{keep.id}}">АМП-{{ '%04d'|format(keep.id) }} · {{keep.full_name}}</option>{% endif %}{% endfor %}
+                        </select>
+                      </label>
+                      <label>Підтвердження<input name="confirmation" placeholder="Введіть ВИДАЛИТИ" autocomplete="off" required></label>
+                      <button class="danger-btn" type="submit">Підтвердити видалення дубліката</button>
+                    </form>
+                  </details>
+                  {% else %}<small class="muted">Staff-профіль не видаляється тут.</small>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 
   <section class="panel">
     <div class="panel-heading"><div><h2>Політика retention</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує privacy-retention scheduler.</p></div></div>

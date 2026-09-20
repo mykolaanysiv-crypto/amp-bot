@@ -1,3 +1,14 @@
+# v1.17.2.1 — Duplicate Management & Participant Status
+
+- Data Integrity Center тепер показує керовані групи дублікатів із причинами збігу.
+- Суперадміністратор може вибрати основний профіль та видалити інший як дублікат з повторною server-side перевіркою збігу.
+- Порожній duplicate profile видаляється фізично; профіль з історичними FK-зв’язками безпечно архівується як `deleted_permanent`, щоб не ламати XP/attendance/audit history.
+- Додано обов’язкове підтвердження словом `ВИДАЛИТИ`, staff-protection та audit `web_duplicate_user_removed`.
+- Додано швидку пряму зміну статусу `pending / active / inactive` для суперадміна у списку учасників і Data Integrity Center.
+- Прямі зміни статусу проходять existing referral/default-team/registration lifecycle та журналюються як `web_user_status_direct_change`.
+- `deleted_permanent` профілі приховані зі стандартного списку учасників, але доступні через явний status filter.
+- Нової міграції немає; Alembic head залишається `20260920_0010`.
+
 # v1.17.2 — Privacy & Data Integrity 2.0
 
 - Додано transparent field-level encryption для `vulnerability_categories`, `restoration_answers_json`, `block_reason`, `deletion_reason`, `registration_rejection_reason`.

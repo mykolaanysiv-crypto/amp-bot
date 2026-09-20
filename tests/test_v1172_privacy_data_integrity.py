@@ -12,8 +12,8 @@ def read(rel: str) -> str:
 
 
 def test_v1172_version_and_alembic_head():
-    assert read("VERSION.txt").strip() == "1.17.2"
-    assert read("VERSION_CHECK.txt").strip() == "1.17.2"
+    assert read("VERSION.txt").strip() == "1.17.2.1"
+    assert read("VERSION_CHECK.txt").strip() == "1.17.2.1"
     migration = read("migrations/versions/20260920_0010_privacy_data_integrity.py")
     assert 'revision: str = "20260920_0010"' in migration
     assert 'down_revision: Union[str, None] = "20260920_0009"' in migration
@@ -59,6 +59,8 @@ def test_data_integrity_center_contains_requested_checks():
     assert 'guard_superadmin(request)' in route
     assert '/admin/data-integrity/retention-cleanup' in route
     assert '/admin/data-integrity/refresh-event-operations' in route
+    assert '/admin/data-integrity/duplicate-delete' in route
+    assert 'web_duplicate_user_removed' in route
 
 
 def test_retention_is_conservative_and_auditable():
