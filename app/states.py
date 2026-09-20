@@ -63,6 +63,8 @@ class AdminEventState(StatesGroup):
     event_time = State()
     location = State()
     xp_reward = State()
+    preregistration_bonus_xp = State()
+    no_show_penalty_xp = State()
     volunteer_hours = State()
 
 

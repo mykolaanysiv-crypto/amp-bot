@@ -33,11 +33,14 @@
         <div class="public-event-meta">
           <span class="tag">🕒 {{event.starts_at.strftime('%d.%m.%Y %H:%M')}}</span>
           <span class="tag">📍 {{event.location or 'АМП'}}</span>
-          <span class="tag">⚡ {{event.xp_reward}} XP</span>
+          <span class="tag">⚡ +{{event.xp_reward}} XP за участь</span>
+          {% if event.preregistration_bonus_xp %}<span class="tag">🎟 +{{event.preregistration_bonus_xp}} XP за попередню реєстрацію</span>{% endif %}
+          {% if event.no_show_penalty_xp %}<span class="tag">🚫 -{{event.no_show_penalty_xp}} XP за неявку</span>{% endif %}
           {% if event.volunteer_hours %}<span class="tag">⏱ {{event.volunteer_hours}} год.</span>{% endif %}
           {% if event.capacity %}<span class="tag">👥 {{registered}} / {{event.capacity}}</span>{% else %}<span class="tag">👥 {{registered}} зареєстровано</span>{% endif %}
         </div>
         <p class="preline">{{event.description or 'Деталі події уточнюйте в команді АМП.'}}</p>
+        <p class="muted"><b>Правило участі:</b> бонус за попередню реєстрацію нараховується лише після фактичного відвідування. Якщо плани зміняться, скасуйте реєстрацію до початку події — інакше статус «Не прийшов» передбачає списання XP.</p>
         <div class="public-event-actions">
           {% if event.status in ['open','postponed'] %}<a class="primary" href="/event/{{event.share_token}}/register">🙋 Зареєструватися через Telegram</a>{% endif %}
           <a class="soft-button" href="https://t.me/share/url?url={{share_url|urlencode}}&text={{('Подія АМП: ' ~ event.title)|urlencode}}">📤 Поділитися в Telegram</a>

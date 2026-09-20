@@ -44,7 +44,10 @@ async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
                                 f"⏰ <b>Нагадування про подію</b>\n\n"
                                 f"До початку «<b>{event.title}</b>» залишилось приблизно <b>{reminder_minutes} хв</b>.\n"
                                 f"🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n"
-                                f"📍 {event.location or 'АМП'}\n\nДо зустрічі 💙",
+                                f"📍 {event.location or 'АМП'}\n\n"
+                                f"🎟 Якщо прийдеш після попередньої реєстрації: +{int(getattr(event, 'preregistration_bonus_xp', 0) or 0)} бонусних XP.\n"
+                                f"🚫 Якщо плани змінилися — скасуй реєстрацію до початку. Неявка без скасування: -{int(getattr(event, 'no_show_penalty_xp', 0) or 0)} XP.\n\n"
+                                "До зустрічі 💙",
                                 source="event_reminder",
                                 dedupe_key=f"event_reminder:{reg.id}",
                             )

@@ -1,0 +1,17 @@
+AMP XP / АМПасадори v1.17.0.4 — звіт перевірки
+Дата: 2026-09-20
+
+Статичні перевірки:
+- Python compileall: OK
+- Jinja parse усіх web templates: OK
+- production_preflight: OK for AMP v1.17.0.4
+- v1.17.0.4 source regression tests: 5 passed
+- Alembic chain: 20260919_0007 -> 20260920_0008
+
+Додані інтеграційні regression tests для CI:
+- preregistered attendee: base XP + bonus;
+- scanner/door registration: без preregistration bonus;
+- no-show penalty: рівно один раз;
+- superadmin correction: повернення штрафу + XP/години, без дублювання.
+
+Локальний sandbox не має aiogram/aiosqlite, а мережеве встановлення пакетів недоступне, тому DB integration pytest тут не запускався. Ці тести залишені у стандартному pytest suite і мають виконатися в GitHub Actions/production CI, де встановлюються requirements.

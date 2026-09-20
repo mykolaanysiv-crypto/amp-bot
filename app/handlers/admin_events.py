@@ -99,6 +99,36 @@ async def event_xp(message: Message, state: FSMContext) -> None:
         return
     xp = normalize_event_xp(xp)
     await state.update_data(xp_reward=xp)
+    await state.set_state(AdminEventState.preregistration_bonus_xp)
+    await message.answer("🎟 Скільки бонусних XP дати за попередню реєстрацію + фактичну участь? Вкажіть 0–25. Рекомендовано 5 XP.")
+
+
+@router.message(AdminEventState.preregistration_bonus_xp)
+async def event_preregistration_bonus(message: Message, state: FSMContext) -> None:
+    try:
+        bonus = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("Вкажіть ціле число від 0 до 25.")
+        return
+    if not 0 <= bonus <= 25:
+        await message.answer("Вкажіть число від 0 до 25.")
+        return
+    await state.update_data(preregistration_bonus_xp=bonus)
+    await state.set_state(AdminEventState.no_show_penalty_xp)
+    await message.answer("🚫 Скільки XP списувати за неявку без скасування до початку події? Вкажіть 0–25. Рекомендовано 5 XP.")
+
+
+@router.message(AdminEventState.no_show_penalty_xp)
+async def event_no_show_penalty(message: Message, state: FSMContext) -> None:
+    try:
+        penalty = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("Вкажіть ціле число від 0 до 25.")
+        return
+    if not 0 <= penalty <= 25:
+        await message.answer("Вкажіть число від 0 до 25.")
+        return
+    await state.update_data(no_show_penalty_xp=penalty)
     await state.set_state(AdminEventState.volunteer_hours)
     await message.answer("⏱ Скільки волонтерських годин зарахувати? Наприклад 2 або 0.")
 
@@ -123,8 +153,17 @@ async def event_finish(message: Message, state: FSMContext, db: Database, bot: B
             session,
             data["title"], data["description"], datetime.fromisoformat(data["starts_at"]),
             data["location"], data["xp_reward"], hours, admin.id,
+            preregistration_bonus_xp=int(data.get("preregistration_bonus_xp", 5)),
+            no_show_penalty_xp=int(data.get("no_show_penalty_xp", 5)),
         )
-        await _queue_new_entity_notice(session,f"📅 <b>Нова подія в АМП</b>\n\n<b>{event.title}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {event.location}\n⚡ {event.xp_reward} XP\n\nВідкрий «📅 Події» у боті, щоб зареєструватися.","event_created",f"event_created:{event.id}")
+        await _queue_new_entity_notice(
+            session,
+            f"📅 <b>Нова подія в АМП</b>\n\n<b>{event.title}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {event.location}\n"
+            f"⚡ За участь: +{event.xp_reward} XP\n🎟 За попередню реєстрацію: +{event.preregistration_bonus_xp} XP\n"
+            f"🚫 Неявка без скасування до початку: -{event.no_show_penalty_xp} XP\n\n"
+            "Відкрий «📅 Події» у боті, щоб зареєструватися.",
+            "event_created", f"event_created:{event.id}",
+        )
         await session.commit()
         username = (await bot.get_me()).username
         deep_link = f"https://t.me/{username}?start=checkin_{event.checkin_token}"
@@ -135,7 +174,10 @@ async def event_finish(message: Message, state: FSMContext, db: Database, bot: B
             BufferedInputFile(bio.getvalue(), filename=f"event_{event.id}_qr.png"),
             caption=(
                 f"✅ Подію <b>{event.title}</b> створено.\n"
-                f"Номер: {event.id}\n⚡ {event.xp_reward} XP • ⏱ {hours:g} год.\n\n"
+                f"Номер: {event.id}\n⚡ За участь: +{event.xp_reward} XP\n"
+                f"🎟 За попередню реєстрацію: +{event.preregistration_bonus_xp} XP\n"
+                f"🚫 Неявка без скасування: -{event.no_show_penalty_xp} XP\n"
+                f"⏱ {hours:g} волонтерських годин\n\n"
                 "QR-код використовується для відмітки присутності. XP нарахуються лише після підтвердження адміністратором."
             ),
         )
@@ -215,7 +257,11 @@ async def _telegram_scanner_result(message: Message, state: FSMContext, db: Data
             return
         if code == "confirmed" and user and event:
             await log_audit(session, "telegram_event_qr_scanner_attendance", admin_db, entity_type="event", entity_id=event.id, details=f"АМП-{user.id:04d}")
-            notice = f"✅ Участь у події «{event.title}» підтверджено.\n+{event.xp_reward} XP"
+            base_xp = int(result.get("base_xp") or 0)
+            bonus_xp = int(result.get("preregistration_bonus_xp") or 0)
+            notice = f"✅ Участь у події «{event.title}» підтверджено.\n⚡ За участь: +{base_xp} XP"
+            if bonus_xp:
+                notice += f"\n🎟 Бонус за попередню реєстрацію: +{bonus_xp} XP"
             if event.volunteer_hours:
                 notice += f"\n+{event.volunteer_hours:g} волонтерських годин"
             notice += f"\nВсього: {result.get('total_xp', 0)} XP"
@@ -225,7 +271,7 @@ async def _telegram_scanner_result(message: Message, state: FSMContext, db: Data
                 f"✅ <b>{user.full_name}</b>\n"
                 f"🪪 АМП-{user.id:04d}\n"
                 f"📅 {event.title}\n\n"
-                f"<b>Присутність підтверджено</b> • +{event.xp_reward} XP\n\n"
+                f"<b>Присутність підтверджено</b> • +{base_xp + bonus_xp} XP\n\n"
                 "Скануйте наступний QR.",
                 reply_markup=_scanner_controls(),
             )
@@ -507,7 +553,12 @@ async def confirm_attendance(call: CallbackQuery, db: Database, bot: Bot) -> Non
             return
         count, results = await confirm_event_attendance(session, event, admin)
         for user, total, level, leveled in results:
-            text = f"✅ Участь у <b>{event.title}</b> підтверджено.\n+{event.xp_reward} XP"
+            reg = await session.scalar(select(EventRegistration).where(EventRegistration.event_id == event.id, EventRegistration.user_id == user.id))
+            base_xp = int(reg.attendance_xp_awarded or 0) if reg else int(event.xp_reward or 0)
+            bonus_xp = int(reg.preregistration_bonus_xp_awarded or 0) if reg else 0
+            text = f"✅ Участь у <b>{event.title}</b> підтверджено.\n⚡ За участь: +{base_xp} XP"
+            if bonus_xp:
+                text += f"\n🎟 Бонус за попередню реєстрацію: +{bonus_xp} XP"
             if event.volunteer_hours:
                 text += f"\n+{event.volunteer_hours:g} волонтерських годин"
             text += f"\nВсього: {total} XP"

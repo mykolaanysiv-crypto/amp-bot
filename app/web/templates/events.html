@@ -32,7 +32,9 @@
       <label class="time-field">Час<input name="event_time" type="time" required></label>
     </div>
     <label>Локація<input name="location" value="АМП" placeholder="АМП / парк / онлайн"></label>
-    <label>Досвід за участь, XP<input name="xp_reward" type="number" min="5" max="25" value="10"><small>5–25 XP. Типова подія — 10 XP.</small></label>
+    <label>XP за фактичну участь<input name="xp_reward" type="number" min="5" max="25" value="10"><small>Нараховується після підтвердження присутності.</small></label>
+    <label>Бонус за попередню реєстрацію, XP<input name="preregistration_bonus_xp" type="number" min="0" max="25" value="5"><small>Додається, якщо учасник зареєструвався до початку й реально прийшов.</small></label>
+    <label>Штраф за неявку без скасування, XP<input name="no_show_penalty_xp" type="number" min="0" max="25" value="5"><small>Списується, якщо реєстрацію не скасовано до початку, а статус після події — «Не прийшов».</small></label>
     <label>Волонтерські години<input name="volunteer_hours" type="number" min="0" step="0.5" value="0"></label>
     <label>Максимум учасників<input name="capacity" type="number" min="1" placeholder="Без обмежень"></label>
     <label>Доступ<select name="access_scope"><option value="general" selected>🌍 Загальна подія</option><option value="team">🧭 Подія для АМПасадорів</option></select><small>Закриті події бачать лише АМПасадори, координатори, адміністратори та суперадміністратори.</small></label>
@@ -58,7 +60,7 @@
       <h3>{{e.title}}</h3>
       <div class="event-card-info">
         <span>📍 {{e.location or 'АМП'}}</span>
-        <span>⚡ {{e.xp_reward}} XP</span>
+        <span>⚡ {{e.xp_reward}} XP + {{e.preregistration_bonus_xp}} бонус</span>
         <span>⏱ {{e.volunteer_hours}} год.</span>
         <span>👥 {{e.capacity or '∞'}}</span>
         <span>👁 {{view_stats.get(e.id, {}).get('views', 0)}} перегл.</span>
@@ -84,7 +86,9 @@
               <label class="time-field">Час<input name="event_time" type="time" value="{{e.starts_at.strftime('%H:%M')}}" required></label>
             </div>
             <label>Локація<input name="location" value="{{e.location}}"></label>
-            <label>XP<input name="xp_reward" type="number" min="5" max="25" value="{{e.xp_reward}}"></label>
+            <label>XP за участь<input name="xp_reward" type="number" min="5" max="25" value="{{e.xp_reward}}"></label>
+            <label>Бонус за реєстрацію<input name="preregistration_bonus_xp" type="number" min="0" max="25" value="{{e.preregistration_bonus_xp}}"></label>
+            <label>Штраф за неявку<input name="no_show_penalty_xp" type="number" min="0" max="25" value="{{e.no_show_penalty_xp}}"></label>
             <label>Години<input name="volunteer_hours" type="number" min="0" step="0.5" value="{{e.volunteer_hours}}"></label>
             <label>Місткість<input name="capacity" type="number" min="1" value="{{e.capacity or ''}}"></label>
             <label>Доступ<select name="access_scope"><option value="general" {% if e.access_scope != 'team' %}selected{% endif %}>🌍 Загальна подія</option><option value="team" {% if e.access_scope == 'team' %}selected{% endif %}>🧭 Для АМПасадорів</option></select></label>

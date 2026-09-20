@@ -43,7 +43,9 @@
   <section class="card">
     <h2>Основне</h2>
     <div class="facts">
-      <div><span>Досвід</span><b>{{event.xp_reward}} XP</b></div>
+      <div><span>XP за участь</span><b>+{{event.xp_reward}} XP</b></div>
+      <div><span>Бонус за попередню реєстрацію</span><b>+{{event.preregistration_bonus_xp}} XP</b></div>
+      <div><span>Неявка без скасування</span><b>-{{event.no_show_penalty_xp}} XP</b></div>
       <div><span>Волонтерські години</span><b>{{event.volunteer_hours}} год.</b></div>
       <div><span>Місткість</span><b>{{event.capacity or 'Без обмежень'}}</b></div>
       <div><span>Доступ</span><b>{{'Команда АМП' if event.access_scope == 'team' else 'Усі активні учасники'}}</b></div>
@@ -51,6 +53,7 @@
       <div><span>Перегляди в боті</span><b>{{view_stat.views}}</b></div>
       <div><span>Унікальні глядачі</span><b>{{view_stat.unique}}</b></div>
     </div>
+    <div class="privacy-inline-note"><b>Правило відповідальності:</b> бонус за попередню реєстрацію нараховується лише тим, хто зареєструвався до початку події та фактично відвідав її. Якщо учасник не може прийти, реєстрацію потрібно скасувати до початку; інакше після статусу «Не прийшов» застосовується штраф.</div>
     <hr>
     <h3>Опис</h3>
     <p class="preline">{{event.description or 'Опис не додано.'}}</p>
@@ -111,13 +114,13 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button class="soft-button event-ops-full" type="submit">🔄 Оновити чергу та резерви</button>
       </form>
-      {% if counts.checked_in > 0 %}
+      {% if counts.checked_in > 0 and (attendance_window.state == 'open' or is_superadmin) %}
       <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}>
         <input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value="">
         <button class="primary event-ops-full" type="submit">✅ Підтвердити всіх відмічених ({{counts.checked_in}})</button>
       </form>
       {% endif %}
-      {% if attendance_window.state == 'closed' and (counts.registered + counts.reserved) > 0 %}
+      {% if (attendance_window.state == 'closed' or is_superadmin) and (counts.registered + counts.reserved) > 0 %}
       <form method="post" action="/admin/events/{{event.id}}/operations/mark-no-show" onsubmit="return confirm('Позначити всіх зареєстрованих без відмітки як «Не прийшов»?');">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button class="soft-button event-ops-full" type="submit">🚫 Позначити «Не прийшов» ({{counts.registered + counts.reserved}})</button>
@@ -190,7 +193,7 @@
     {% if attendance_window.state == 'open' %}<span class="tag active">Відкрито</span>{% elif attendance_window.state == 'too_early' %}<span class="tag pending">Ще не відкрито</span>{% else %}<span class="tag inactive">Закрито</span>{% endif %}
   </div>
   <p>Вікно: <b>{{attendance_window.opens_at.strftime('%d.%m.%Y %H:%M')}}</b> — <b>{{attendance_window.closes_at.strftime('%d.%m.%Y %H:%M')}}</b>.</p>
-  {% if attendance_window.state == 'too_early' %}<p class="muted">QR-відмітка та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток можливий лише з причиною й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайну відмітку закрито. Для виправлення помилки адміністратор може застосувати ручний виняток з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR-відмітка та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
+  {% if attendance_window.state == 'too_early' %}<p class="muted">QR-відмітка та звичайне підтвердження участі відкриються автоматично у вказаний час. Ручний виняток доступний лише суперадміністратору, потребує причини й потрапляє в аудит.</p>{% elif attendance_window.state == 'closed' %}<p class="muted">Звичайну відмітку закрито. Для виправлення помилки суперадміністратор може застосувати ручний виняток з обов’язковою причиною; дія буде записана в аудит.</p>{% else %}<p class="muted">QR-відмітка та підтвердження участі доступні у звичайному режимі.</p>{% endif %}
 </section>
 
 <section class="card event-feedback-analytics" id="event-feedback">
@@ -268,7 +271,7 @@
   <p class="muted"><b>Цифрове підтвердження участі:</b> після підтвердження адміністратором кожній присутності створюється унікальний SHA-256 код. Це внутрішній технічний код цілісності/підтвердження АМП, а не КЕП чи власноручний юридичний підпис учасника.</p>
 </section>
 
-<section class="card table-wrap event-participants-card">
+<section class="card table-wrap event-participants-card" id="event-participants">
   <div class="event-participants-head">
     <div class="event-participants-heading">
       <h2>👥 Учасники події</h2>
@@ -290,7 +293,7 @@
         <td><code>АМП-{{'%04d'|format(u.id)}}</code></td>
         <td><span class="tag {{reg.status}}">{{event_registration_status_label(reg.status)}}</span></td>
         <td>{% if reg.checkin_at %}{{reg.checkin_at.strftime('%d.%m.%Y %H:%M')}}{% elif reg.status == 'reserved' and reg.reservation_expires_at %}<span class="muted">Резерв до {{reg.reservation_expires_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'waitlisted' and reg.waitlisted_at %}<span class="muted">Черга з {{reg.waitlisted_at.strftime('%d.%m %H:%M')}}</span>{% elif reg.status == 'no_show' %}<span class="muted">Не відмічався</span>{% else %}<span class="muted">Ще не відмічено</span>{% endif %}</td>
-        <td>{% if xp_by_user.get(u.id) %}<span class="tag active">+{{xp_by_user.get(u.id)}} XP</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% set event_xp = xp_by_user.get(u.id) or 0 %}{% if event_xp > 0 %}<span class="tag active">+{{event_xp}} XP</span>{% elif event_xp < 0 %}<span class="tag no_show">{{event_xp}} XP</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>{% set fb = feedback_by_user.get(u.id) %}{% if fb and fb.status == 'completed' %}<span class="tag active">✅ Завершено</span>{% elif fb and fb.prompted_at %}<span class="tag pending">⏳ Очікується</span>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>{% if reg.attendance_signature %}<code title="{{reg.attendance_signature}}">{{reg.attendance_signature[:12]}}…</code>{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>
@@ -299,14 +302,14 @@
           {% else %}
           <div class="attendance-actions">
             {% if reg.status in ['registered','reserved'] %}
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити вручну{% else %}📍 Відмітити присутність{% endif %}</button></form>
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" onsubmit="return confirm('Позначити учасника як такого, що не прийшов?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати реєстрацію цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
+              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити вручну{% else %}📍 Відмітити присутність{% endif %}</button></form>{% endif %}
+              {% if attendance_window.state == 'closed' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" onsubmit="return confirm('Позначити учасника як такого, що не прийшов? Буде застосовано налаштований штраф XP.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>{% endif %}
+              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати реєстрацію цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
             {% elif reg.status == 'waitlisted' %}
               <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Прибрати учасника з черги?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Прибрати з черги</button></form>
             {% elif reg.status == 'checked_in' %}
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити вручну{% else %}✅ Підтвердити участь{% endif %}</button></form>
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати участь цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>
+              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити вручну{% else %}✅ Підтвердити участь{% endif %}</button></form>{% endif %}
+              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати участь цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
             {% elif reg.status == 'attended' %}
               <span class="tag active">✅ Був присутній</span>
             {% elif reg.status == 'no_show' %}
@@ -318,6 +321,23 @@
               </div>
             {% endif %}
           </div>
+          {% endif %}
+          {% if is_superadmin %}
+          <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/status" class="superadmin-status-override" onsubmit="return confirm('Змінити статус вручну? XP та години будуть автоматично перераховані відповідно до нового статусу.');">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <select name="status" aria-label="Новий статус участі">
+              <option value="registered" {% if reg.status == 'registered' %}selected{% endif %}>Зареєстрований</option>
+              <option value="waitlisted" {% if reg.status == 'waitlisted' %}selected{% endif %}>У черзі</option>
+              <option value="reserved" {% if reg.status == 'reserved' %}selected{% endif %}>Місце зарезервовано</option>
+              <option value="checked_in" {% if reg.status == 'checked_in' %}selected{% endif %}>Відмічений</option>
+              <option value="attended" {% if reg.status == 'attended' %}selected{% endif %}>Був присутній</option>
+              <option value="no_show" {% if reg.status == 'no_show' %}selected{% endif %}>Не прийшов</option>
+              <option value="cancelled" {% if reg.status == 'cancelled' %}selected{% endif %}>Скасовано</option>
+            </select>
+            <input name="reason" minlength="5" maxlength="300" required placeholder="Причина зміни статусу">
+            <button class="soft-button" type="submit">🛡 Змінити статус</button>
+            <small class="muted">Суперадмін: доступно незалежно від дати й часу. XP/години коригуються автоматично.</small>
+          </form>
           {% endif %}
         </td>
       </tr>

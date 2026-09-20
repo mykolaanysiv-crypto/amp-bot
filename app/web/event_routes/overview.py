@@ -95,8 +95,7 @@ async def event_detail(request: Request, event_id: int, notice: str = "", sent: 
         xp_rows = list((await session.scalars(
             select(XPTransaction).where(
                 XPTransaction.event_id == event.id,
-                XPTransaction.category == "event",
-                XPTransaction.amount > 0,
+                XPTransaction.category.in_(["event", "event_prereg_bonus", "event_no_show"]),
             )
         )).all())
         xp_by_user = {}
@@ -111,7 +110,7 @@ async def event_detail(request: Request, event_id: int, notice: str = "", sent: 
             and user.tg_id is not None
             and not (feedback_by_user.get(user.id) and feedback_by_user[user.id].status == "completed")
         )
-        counts["xp_awarded"] = len(xp_by_user)
+        counts["xp_awarded"] = sum(1 for value in xp_by_user.values() if value > 0)
         counts["feedback_completed"] = len(feedback_rows)
 
         scanner_actions = {"web_event_qr_scanner_attendance", "telegram_miniapp_qr_scanner_attendance"}
@@ -155,10 +154,11 @@ async def event_detail(request: Request, event_id: int, notice: str = "", sent: 
             {"key": "xp", "label": "XP нараховано", "value": counts["xp_awarded"]},
             {"key": "feedback", "label": "Відгук", "value": counts["feedback_completed"]},
         ]
+        event_started = bool(clock.event_utc(event.starts_at) and clock.event_utc(event.starts_at) <= clock.now_utc())
         return templates.TemplateResponse(
             request=request, name="event_detail.html",
             context=ctx(
-                request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window,
+                request, event=event, registrations=registrations, counts=counts, feedback_stats=feedback_stats, attendance_window=attendance_window, event_started=event_started,
                 xp_by_user=xp_by_user, feedback_by_user=feedback_by_user, scanner_status=scanner_status, operation_funnel=operation_funnel, view_stat=view_stat, event_analytics=event_analytics,
                 notice=notice, feedback_resend_sent=max(0, sent),
                 share_url=f"{settings.public_base_url}/event/{event.share_token}" if event.share_token and getattr(event, "access_scope", "general") == "general" else "",

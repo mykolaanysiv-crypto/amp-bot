@@ -35,6 +35,25 @@ def _can_access_event(user, event: Event) -> bool:
     return _event_scope(event) != "team" or bool(user and user.status == UserStatus.ACTIVE.value and user.role in AMP_TEAM_ROLES)
 
 
+def _event_commitment_lines(event: Event) -> str:
+    lines = [f"⚡ За фактичну участь: <b>+{int(event.xp_reward or 0)} XP</b>"]
+    bonus = int(getattr(event, "preregistration_bonus_xp", 0) or 0)
+    penalty = int(getattr(event, "no_show_penalty_xp", 0) or 0)
+    if bonus:
+        lines.append(f"🎟 За попередню реєстрацію + участь: <b>+{bonus} XP</b>")
+    if penalty:
+        lines.append(f"🚫 Неявка без скасування до початку: <b>-{penalty} XP</b>")
+    return "\n".join(lines)
+
+
+def _registration_success_text(event: Event, prefix: str = "✅ Реєстрацію підтверджено.") -> str:
+    return (
+        f"{prefix}\n\n{_event_commitment_lines(event)}\n\n"
+        f"Якщо плани зміняться — скасуй реєстрацію <b>до {event.starts_at.strftime('%d.%m.%Y %H:%M')}</b>. "
+        "Так місце зможе отримати інший учасник, а штраф за неявку не застосовуватиметься."
+    )
+
+
 def _event_hub_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🌍 Загальні події", callback_data="nav:events:general")],
@@ -150,7 +169,7 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
             f"🕒 {date_text}\n"
             f"📍 {safe_location}\n"
             f"📌 Статус: {escape(lifecycle_status_label(event.status))}\n"
-            f"⚡ {event.xp_reward} XP\n"
+            f"{_event_commitment_lines(event)}\n"
             f"⏱ {event.volunteer_hours:g} волонтерських годин\n"
             f"👁 Переглядів: <b>{view_stat['views']}</b>\n\n"
             f"{safe_description}"
@@ -237,7 +256,7 @@ async def event_join(call: CallbackQuery, db: Database) -> None:
                 return
         await register_for_event(session, user.id, event.id)
         await session.commit()
-        await call.message.answer(f"✅ Реєстрацію на <b>{event.title}</b> підтверджено.")
+        await call.message.answer(f"✅ <b>{event.title}</b>\n\n" + _registration_success_text(event))
         await call.answer()
 
 
@@ -253,7 +272,7 @@ async def event_waitlist(call: CallbackQuery, db: Database) -> None:
         if not event.capacity:
             await register_for_event(session, user.id, event.id)
             await session.commit()
-            await call.message.answer(f"✅ Реєстрацію на <b>{event.title}</b> підтверджено.")
+            await call.message.answer(f"✅ <b>{event.title}</b>\n\n" + _registration_success_text(event))
             await call.answer()
             return
         count = int(await session.scalar(select(func.count(EventRegistration.id)).where(
@@ -263,7 +282,7 @@ async def event_waitlist(call: CallbackQuery, db: Database) -> None:
         if count < event.capacity:
             await register_for_event(session, user.id, event.id)
             await session.commit()
-            await call.message.answer(f"🎉 Місце вже вільне — тебе одразу зареєстровано на <b>{event.title}</b>.")
+            await call.message.answer(f"🎉 Місце вже вільне — тебе одразу зареєстровано на <b>{event.title}</b>.\n\n" + _registration_success_text(event, "✅ Місце підтверджено."))
             await call.answer()
             return
         await join_event_waitlist(session, user.id, event.id)
@@ -284,7 +303,7 @@ async def event_reserve_accept(call: CallbackQuery, db: Database) -> None:
         reg, state = await accept_event_reservation(session, user.id, event.id)
         if state == "accepted":
             await session.commit()
-            await call.message.answer(f"✅ Місце підтверджено. Ти зареєстрований/а на <b>{event.title}</b>.")
+            await call.message.answer(f"✅ Ти зареєстрований/а на <b>{event.title}</b>.\n\n" + _registration_success_text(event, "✅ Місце з черги підтверджено."))
             await call.answer("Місце підтверджено")
             return
         if state == "expired":
@@ -312,12 +331,23 @@ async def event_cancel(call: CallbackQuery, db: Database) -> None:
         )
         if reg and reg.status in {"registered", "reserved", "waitlisted", "checked_in"}:
             previous = reg.status
+            event_started = bool(clock.event_utc(event.starts_at) and clock.event_utc(event.starts_at) <= clock.now_utc())
+            if previous != "waitlisted" and event_started:
+                penalty = int(getattr(event, "no_show_penalty_xp", 0) or 0)
+                warning = (f" Якщо після завершення буде статус «Не прийшов», система спише {penalty} XP." if penalty else "")
+                await call.answer("Після початку події скасування недоступне", show_alert=True)
+                await call.message.answer(
+                    "⛔ <b>Подія вже почалася.</b>\n\n"
+                    "Самостійно скасувати реєстрацію можна лише до початку події." + warning +
+                    "\nЯкщо статус потрібно виправити через помилку — звернися до команди АМП."
+                )
+                return
             reg.status = "cancelled"
             reg.checkin_at = None
             reg.reservation_expires_at = None
             await process_event_operations(session)
             await session.commit()
-            await call.message.answer("❌ " + ("Тебе прибрано з черги." if previous == "waitlisted" else "Реєстрацію скасовано. Історія участі збережена."))
+            await call.message.answer("❌ " + ("Тебе прибрано з черги." if previous == "waitlisted" else "Реєстрацію скасовано вчасно. Штраф за неявку не застосовуватиметься."))
         else:
             await call.message.answer("ℹ️ Цю реєстрацію вже не можна скасувати.")
         await call.answer()

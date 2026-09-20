@@ -154,7 +154,9 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                     f"🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n"
                     f"📍 {escape(event.location or 'АМП')}\n"
                     f"📌 Статус: {lifecycle_status_label(event.status)}\n"
-                    f"⚡ {event.xp_reward} XP\n"
+                    f"⚡ За фактичну участь: +{event.xp_reward} XP\n"
+                    f"🎟 За попередню реєстрацію + участь: +{int(getattr(event, 'preregistration_bonus_xp', 0) or 0)} XP\n"
+                    f"🚫 Неявка без скасування до початку: -{int(getattr(event, 'no_show_penalty_xp', 0) or 0)} XP\n"
                     f"⏱ {event.volunteer_hours:g} волонтерських годин\n\n"
                     f"{escape(event.description or '')}"
                 )
@@ -169,7 +171,11 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
             event, status = await checkin_for_event(session, user.id, token)
             if status == "ok" and event:
                 await session.commit()
-                await message.answer(f"✅ Відмітку присутності зафіксовано на події <b>{event.title}</b>.\nXP буде нараховано після підтвердження координатором.")
+                await message.answer(
+                    f"✅ Відмітку присутності зафіксовано на події <b>{event.title}</b>.\n"
+                    "XP буде нараховано після підтвердження координатором. "
+                    f"Якщо ти реєструвався/лась до початку події, додатково діє бонус +{int(getattr(event, 'preregistration_bonus_xp', 0) or 0)} XP."
+                )
             elif status in {"too_early", "window_closed"} and event:
                 window = await event_checkin_window(session, event)
                 if status == "too_early":

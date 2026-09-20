@@ -8,8 +8,9 @@ def read(path: str) -> str:
 
 
 def test_version_and_schema_are_stable():
-    assert read("VERSION.txt").strip() == "1.17.0.3"
-    assert read("VERSION_CHECK.txt").strip() == "1.17.0.3"
+    version = read("VERSION.txt").strip()
+    assert tuple(map(int, version.split("."))) >= (1, 17, 0, 3)
+    assert read("VERSION_CHECK.txt").strip() == version
     migration = read("migrations/versions/20260919_0007_giveaways.py")
     assert 'revision: str = "20260919_0007"' in migration
 
