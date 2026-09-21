@@ -64,10 +64,16 @@ async def test_checkin_window_boundaries_are_inclusive(db):
         await register_for_event(session, user_open.id, event.id)
         await register_for_event(session, user_close.id, event.id)
 
-        opens_at = event.starts_at - timedelta(minutes=60)
-        closes_at = event.starts_at + timedelta(minutes=360)
-        _, open_state = await checkin_for_event(session, user_open.id, event.checkin_token, now=opens_at)
-        _, close_state = await checkin_for_event(session, user_close.id, event.checkin_token, now=closes_at)
+        window = await event_checkin_window(session, event, now=now)
+        opens_at = window["opens_at"]
+        closes_at = window["closes_at"]
+
+        _, open_state = await checkin_for_event(
+            session, user_open.id, event.checkin_token, now=opens_at
+        )
+        _, close_state = await checkin_for_event(
+            session, user_close.id, event.checkin_token, now=closes_at
+        )
 
         assert open_state == "ok"
         assert close_state == "ok"

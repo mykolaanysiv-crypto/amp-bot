@@ -8,13 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.17.2.3">
+  <link rel="stylesheet" href="/static/admin.css?v=1.17.2.4">
 </head>
 <body>
 <div class="mobile-topbar">
   <button class="mobile-menu-button" type="button" aria-label="Відкрити меню" aria-controls="adminSidebar" aria-expanded="false" onclick="toggleSidebar()">☰</button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.17.2.3" alt="АМПасадори" width="36" height="36">
+    <img src="/static/amp_logo.png?v=1.17.2.4" alt="АМПасадори" width="36" height="36">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
   <span class="mobile-topbar-spacer" aria-hidden="true"></span>
@@ -23,7 +23,7 @@
 <div class="sidebar-backdrop" onclick="closeSidebar()" aria-hidden="true"></div>
 <aside class="sidebar" id="adminSidebar">
   <a class="brand" href="/admin/dashboard">
-    <img class="sidebar-logo" src="/static/amp_logo.png?v=1.17.2.3" alt="Логотип АМПасадорів" width="44" height="44" style="width:44px;height:44px;max-width:44px;max-height:44px;object-fit:contain;display:block;flex:0 0 44px;background:#fff;border-radius:12px;padding:4px;">
+    <img class="sidebar-logo" src="/static/amp_logo.png?v=1.17.2.4" alt="Логотип АМПасадорів" width="44" height="44" style="width:44px;height:44px;max-width:44px;max-height:44px;object-fit:contain;display:block;flex:0 0 44px;background:#fff;border-radius:12px;padding:4px;">
     <div><b>АМПасадори</b><span>панель керування</span></div>
   </a>
   <nav class="sidebar-nav">
@@ -183,6 +183,44 @@ function closeSidebar(){
   }
   document.querySelectorAll('form').forEach(ensure);
   document.addEventListener('submit',function(e){ensure(e.target)},true);
+})();
+
+/* v1.17.2.4 — lightweight live sync for operational regions.
+   Only marked regions are refreshed, so the page, camera/scanner state and
+   unrelated forms are not reloaded. A form being edited is never replaced. */
+(function ampLiveRegions(){
+  const POLL_MS=5000;
+  let inFlight=false;
+  document.addEventListener('input',function(e){const f=e.target && e.target.closest ? e.target.closest('form') : null;if(f) f.dataset.liveDirty='1';},true);
+  document.addEventListener('change',function(e){const f=e.target && e.target.closest ? e.target.closest('form') : null;if(f) f.dataset.liveDirty='1';},true);
+  document.addEventListener('submit',function(e){const f=e.target;if(f && f.dataset) delete f.dataset.liveDirty;},true);
+
+  async function sync(){
+    if(inFlight || document.hidden) return;
+    const regions=[...document.querySelectorAll('[data-live-region][id]')];
+    if(!regions.length) return;
+    inFlight=true;
+    try{
+      const response=await fetch(location.href,{credentials:'same-origin',headers:{'X-AMP-Live':'1','Cache-Control':'no-cache'}});
+      if(!response.ok) return;
+      const html=await response.text();
+      const next=new DOMParser().parseFromString(html,'text/html');
+      let changed=0;
+      for(const current of regions){
+        const active=document.activeElement;
+        if(active && current.contains(active)) continue;
+        if(current.querySelector('form[data-live-dirty="1"]')) continue;
+        const fresh=next.getElementById(current.id);
+        if(!fresh || !fresh.hasAttribute('data-live-region')) continue;
+        if(current.innerHTML!==fresh.innerHTML){
+          current.innerHTML=fresh.innerHTML;
+          changed++;
+        }
+      }
+      if(changed) document.dispatchEvent(new CustomEvent('amp:live-updated',{detail:{count:changed}}));
+    }catch(_err){}finally{inFlight=false;}
+  }
+  window.setInterval(sync,POLL_MS);
 })();
 </script>
 </body>

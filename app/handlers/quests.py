@@ -7,17 +7,19 @@ from datetime import datetime
 import logging
 from html import escape
 
-from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram import Bot, F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import select
 
 from ..db import Database
 from ..keyboards import quest_detail_keyboard, quests_keyboard
-from ..media import telegram_photo_input
+from ..media import delete_stored_image, save_telegram_photo, telegram_photo_input
 from ..model_domains import Quest, QuestParticipation, UserStatus
-from ..domain_services import get_user_by_tg
+from ..domain_services import get_user_by_tg, log_audit
 from ..engagement import process_expired_content
 from ..content_views import content_view_stat, record_content_view
+from ..states import QuestProofState
 
 router = Router(name="quests")
 
@@ -130,26 +132,118 @@ async def quest_join(call: CallbackQuery, db: Database) -> None:
         await call.answer()
 
 
+async def _quest_submission_context(session, tg_id: int, quest_id: int):
+    user = await get_user_by_tg(session, tg_id)
+    quest = await session.get(Quest, quest_id)
+    part = None
+    if user:
+        part = await session.scalar(select(QuestParticipation).where(
+            QuestParticipation.quest_id == quest_id, QuestParticipation.user_id == user.id
+        ))
+    return user, quest, part
+
+
+def _quest_photo_choice_keyboard(quest_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="📷 Так, додати фото", callback_data=f"quest_proof_yes:{quest_id}"),
+        InlineKeyboardButton(text="➡️ Ні, без фото", callback_data=f"quest_proof_no:{quest_id}"),
+    ]])
+
+
+async def _mark_quest_submitted(session, quest: Quest, part: QuestParticipation, user, *, proof: str | None) -> None:
+    part.status = "completed"
+    part.completed_at = clock.storage_utc()
+    if proof is not None:
+        part.proof_photo_path = proof
+    await log_audit(
+        session, "quest_submission", actor_label=f"tg:{user.tg_id}", entity_type="quest_participation", entity_id=part.id,
+        details=f"quest={quest.id}; proof={'yes' if part.proof_photo_path else 'no'}",
+    )
+
+
 @router.callback_query(F.data.startswith("quest_done:"))
-async def quest_done(call: CallbackQuery, db: Database) -> None:
+async def quest_done(call: CallbackQuery, db: Database, state: FSMContext) -> None:
     quest_id = int(call.data.split(":")[1])
     async with db.session_factory() as session:
-        user = await get_user_by_tg(session, call.from_user.id)
+        user, quest, part = await _quest_submission_context(session, call.from_user.id, quest_id)
         if not user:
+            await call.answer("Профіль не знайдено", show_alert=True)
             return
-        quest = await session.get(Quest, quest_id)
-        part = await session.scalar(select(QuestParticipation).where(QuestParticipation.quest_id == quest_id, QuestParticipation.user_id == user.id))
         if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and clock.local_wall_to_utc(quest.ends_at) < clock.now_utc()):
             await call.answer("Дедлайн квесту завершено", show_alert=True)
             return
         if not part or part.status not in {"joined", "returned"}:
             await call.answer("Спочатку візьми квест", show_alert=True)
             return
-        part.status = "completed"
-        part.completed_at = clock.storage_utc()
-        await session.commit()
-        await call.message.answer("✅ Виконання надіслано на підтвердження координатору.")
+        await state.clear()
+        await state.update_data(quest_proof_quest_id=quest_id)
+        await call.message.answer(
+            "✅ <b>Квест виконано?</b>\n\nЄ фото, яке підтверджує виконання?",
+            reply_markup=_quest_photo_choice_keyboard(quest_id),
+        )
         await call.answer()
+
+
+@router.callback_query(F.data.startswith("quest_proof_no:"))
+async def quest_proof_no(call: CallbackQuery, db: Database, state: FSMContext) -> None:
+    quest_id = int(call.data.split(":")[1])
+    async with db.session_factory() as session:
+        user, quest, part = await _quest_submission_context(session, call.from_user.id, quest_id)
+        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+            await call.answer("Запит уже неактуальний", show_alert=True)
+            return
+        old_proof = part.proof_photo_path
+        part.proof_photo_path = None
+        await _mark_quest_submitted(session, quest, part, user, proof=None)
+        await session.commit()
+    if old_proof:
+        await delete_stored_image(db, old_proof)
+    await state.clear()
+    await call.message.answer("🙏 Дякуємо! Ваш запит на виконання квесту передано на обробку координатору.")
+    await call.answer("Надіслано")
+
+
+@router.callback_query(F.data.startswith("quest_proof_yes:"))
+async def quest_proof_yes(call: CallbackQuery, db: Database, state: FSMContext) -> None:
+    quest_id = int(call.data.split(":")[1])
+    async with db.session_factory() as session:
+        user, quest, part = await _quest_submission_context(session, call.from_user.id, quest_id)
+        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+            await call.answer("Запит уже неактуальний", show_alert=True)
+            return
+    await state.set_state(QuestProofState.photo)
+    await state.update_data(quest_proof_quest_id=quest_id)
+    await call.message.answer("📷 Надішліть одне фото-підтвердження виконання квесту.")
+    await call.answer()
+
+
+@router.message(QuestProofState.photo, F.photo)
+async def quest_proof_photo(message: Message, db: Database, bot: Bot, state: FSMContext) -> None:
+    data = await state.get_data()
+    quest_id = int(data.get("quest_proof_quest_id") or 0)
+    async with db.session_factory() as session:
+        user, quest, part = await _quest_submission_context(session, message.from_user.id, quest_id)
+        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+            await state.clear()
+            await message.answer("ℹ️ Цей запит уже неактуальний.")
+            return
+        try:
+            proof = await save_telegram_photo(bot, message.photo[-1].file_id, "quest_proofs", db, max_mb=20)
+        except ValueError as exc:
+            await message.answer(f"⚠️ {escape(str(exc))}")
+            return
+        old = part.proof_photo_path
+        await _mark_quest_submitted(session, quest, part, user, proof=proof)
+        await session.commit()
+    if old and old != proof:
+        await delete_stored_image(db, old)
+    await state.clear()
+    await message.answer("🙏 Дякуємо! Фото додано, а ваш запит на виконання квесту передано на обробку координатору.")
+
+
+@router.message(QuestProofState.photo)
+async def quest_proof_wrong_type(message: Message) -> None:
+    await message.answer("📷 Будь ласка, надішліть саме фото. Якщо фото немає — поверніться до квесту й оберіть «Ні, без фото».")
 
 
 @router.callback_query(F.data.startswith("quest_cancel_join:"))

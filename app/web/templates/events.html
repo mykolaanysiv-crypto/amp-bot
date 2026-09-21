@@ -21,6 +21,7 @@
   <div class="section-title"><div><h2>➕ Нова подія</h2><p class="muted">Дата вводиться окремими полями, щоб уникнути помилок формату.</p></div></div>
   <form method="post" action="/admin/events/create" enctype="multipart/form-data" class="form-grid event-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="event-title-field">Назва події<input name="title" required placeholder="Наприклад: Толока АМП"></label>
+    <div class="span2 form-subtitle"><b>🟢 Початок події</b></div>
     <div class="event-date-fields span2">
       <label>День<input name="day" type="number" min="1" max="31" required value="{{today.day}}"></label>
       <label>Місяць<select name="month" required>
@@ -30,6 +31,17 @@
       </select></label>
       <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{today.year}}" required></label>
       <label class="time-field">Час<input name="event_time" type="time" required></label>
+    </div>
+    <div class="span2 form-subtitle"><b>🔴 Завершення події</b></div>
+    <div class="event-date-fields span2">
+      <label>День<input name="end_day" type="number" min="1" max="31" required value="{{today.day}}"></label>
+      <label>Місяць<select name="end_month" required>
+        <option value="1" {% if today.month==1 %}selected{% endif %}>Січень</option><option value="2" {% if today.month==2 %}selected{% endif %}>Лютий</option><option value="3" {% if today.month==3 %}selected{% endif %}>Березень</option><option value="4" {% if today.month==4 %}selected{% endif %}>Квітень</option>
+        <option value="5" {% if today.month==5 %}selected{% endif %}>Травень</option><option value="6" {% if today.month==6 %}selected{% endif %}>Червень</option><option value="7" {% if today.month==7 %}selected{% endif %}>Липень</option><option value="8" {% if today.month==8 %}selected{% endif %}>Серпень</option>
+        <option value="9" {% if today.month==9 %}selected{% endif %}>Вересень</option><option value="10" {% if today.month==10 %}selected{% endif %}>Жовтень</option><option value="11" {% if today.month==11 %}selected{% endif %}>Листопад</option><option value="12" {% if today.month==12 %}selected{% endif %}>Грудень</option>
+      </select></label>
+      <label>Рік<input name="end_year" type="number" min="2026" max="2100" value="{{today.year}}" required></label>
+      <label class="time-field">Час<input name="end_time" type="time" required></label>
     </div>
     <label>Локація<input name="location" value="АМП" placeholder="АМП / парк / онлайн"></label>
     <label>XP за фактичну участь<input name="xp_reward" type="number" min="5" max="25" value="10"><small>Нараховується після підтвердження присутності.</small></label>
@@ -45,8 +57,9 @@
   </form>
 </section>
 
-<div class="event-cards-grid">
+<div class="event-cards-grid" id="event-cards-live" data-live-region="event-cards-live">
 {% for e in rows %}
+  {% set event_end = e.ends_at or e.starts_at %}
   <article class="card media-card event-card-v2">
     <div class="event-card-media">
       {% if e.image_path %}<img src="{{e.image_path}}" alt="Фото події">{% else %}<div class="event-placeholder">📅</div>{% endif %}
@@ -55,7 +68,7 @@
       <div class="event-card-topline">
         <span class="tag {{e.status}}">{{lifecycle_status_label(e.status)}}</span>
         <span class="tag">{{'🧭 Для АМПасадорів' if e.access_scope == 'team' else '🌍 Загальна'}}</span>
-        <span class="event-date-badge">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.starts_at.strftime('%H:%M')}}</span>
+        <span class="event-date-badge">{{e.starts_at.strftime('%d.%m.%Y %H:%M')}} — {{event_end.strftime('%d.%m.%Y %H:%M')}}</span>
       </div>
       <h3>{{e.title}}</h3>
       <div class="event-card-info">
@@ -72,6 +85,7 @@
           <summary class="soft-button edit-action-button event-edit-trigger">✏️ Редагувати</summary>
           <form method="post" action="/admin/events/{{e.id}}/update" enctype="multipart/form-data" class="form-grid event-edit-form-v2"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label class="span2">Назва<input name="title" value="{{e.title}}" required></label>
+            <div class="span2 form-subtitle"><b>🟢 Початок події</b></div>
             <div class="event-date-fields span2">
               <label>День<input name="day" type="number" min="1" max="31" value="{{e.starts_at.day}}" required></label>
               <label>Місяць<select name="month" required>
@@ -84,6 +98,20 @@
               </select></label>
               <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{e.starts_at.year}}" required></label>
               <label class="time-field">Час<input name="event_time" type="time" value="{{e.starts_at.strftime('%H:%M')}}" required></label>
+            </div>
+            <div class="span2 form-subtitle"><b>🔴 Завершення події</b></div>
+            <div class="event-date-fields span2">
+              <label>День<input name="end_day" type="number" min="1" max="31" value="{{event_end.day}}" required></label>
+              <label>Місяць<select name="end_month" required>
+                <option value="1" {% if event_end.month==1 %}selected{% endif %}>Січень</option><option value="2" {% if event_end.month==2 %}selected{% endif %}>Лютий</option>
+                <option value="3" {% if event_end.month==3 %}selected{% endif %}>Березень</option><option value="4" {% if event_end.month==4 %}selected{% endif %}>Квітень</option>
+                <option value="5" {% if event_end.month==5 %}selected{% endif %}>Травень</option><option value="6" {% if event_end.month==6 %}selected{% endif %}>Червень</option>
+                <option value="7" {% if event_end.month==7 %}selected{% endif %}>Липень</option><option value="8" {% if event_end.month==8 %}selected{% endif %}>Серпень</option>
+                <option value="9" {% if event_end.month==9 %}selected{% endif %}>Вересень</option><option value="10" {% if event_end.month==10 %}selected{% endif %}>Жовтень</option>
+                <option value="11" {% if event_end.month==11 %}selected{% endif %}>Листопад</option><option value="12" {% if event_end.month==12 %}selected{% endif %}>Грудень</option>
+              </select></label>
+              <label>Рік<input name="end_year" type="number" min="2026" max="2100" value="{{event_end.year}}" required></label>
+              <label class="time-field">Час<input name="end_time" type="time" value="{{event_end.strftime('%H:%M')}}" required></label>
             </div>
             <label>Локація<input name="location" value="{{e.location}}"></label>
             <label>XP за участь<input name="xp_reward" type="number" min="5" max="25" value="{{e.xp_reward}}"></label>

@@ -44,6 +44,7 @@ class QuestParticipation(Base):
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    proof_photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     quest: Mapped[Quest] = relationship(back_populates="participations")
     user: Mapped[User] = relationship(back_populates="quest_participations")

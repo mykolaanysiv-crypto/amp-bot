@@ -79,6 +79,25 @@ async def event_date(message: Message, state: FSMContext) -> None:
         await state.clear()
         return
     await state.update_data(starts_at=dt.isoformat())
+    await state.set_state(AdminEventState.end_time)
+    await message.answer("🔴 Вкажіть <b>час завершення</b> у форматі ГГ:ХХ. Якщо час менший або дорівнює часу початку — завершення буде наступного дня.")
+
+
+@router.message(AdminEventState.end_time)
+async def event_end_time(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip()
+    try:
+        hour, minute = [int(x) for x in raw.split(":", 1)]
+        if not (0 <= hour <= 23 and 0 <= minute <= 59): raise ValueError
+    except Exception:
+        await message.answer("Формат часу: 20:30")
+        return
+    data = await state.get_data()
+    starts_at = datetime.fromisoformat(data["starts_at"])
+    ends_at = starts_at.replace(hour=hour, minute=minute)
+    if ends_at <= starts_at:
+        ends_at += timedelta(days=1)
+    await state.update_data(ends_at=ends_at.isoformat())
     await state.set_state(AdminEventState.location)
     await message.answer("📍 Локація? Наприклад: АМП / парк с. Анисів / онлайн.")
 
@@ -155,10 +174,11 @@ async def event_finish(message: Message, state: FSMContext, db: Database, bot: B
             data["location"], data["xp_reward"], hours, admin.id,
             preregistration_bonus_xp=int(data.get("preregistration_bonus_xp", 5)),
             no_show_penalty_xp=int(data.get("no_show_penalty_xp", 5)),
+            ends_at=datetime.fromisoformat(data["ends_at"]),
         )
         await _queue_new_entity_notice(
             session,
-            f"📅 <b>Нова подія в АМП</b>\n\n<b>{event.title}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {event.location}\n"
+            f"📅 <b>Нова подія в АМП</b>\n\n<b>{event.title}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')} — {event.ends_at.strftime('%d.%m.%Y %H:%M')}\n📍 {event.location}\n"
             f"⚡ За участь: +{event.xp_reward} XP\n🎟 За попередню реєстрацію: +{event.preregistration_bonus_xp} XP\n"
             f"🚫 Неявка без скасування до початку: -{event.no_show_penalty_xp} XP\n\n"
             "Відкрий «📅 Події» у боті, щоб зареєструватися.",

@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from aiogram import Bot, F, Router
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 import qrcode
 
 from ..ambassadors import AMP_TEAM_ROLES
@@ -23,6 +23,7 @@ from ..domain_services import accept_event_reservation, get_user_by_tg, join_eve
 from ..ui_labels import lifecycle_status_label
 from ..engagement import process_expired_content
 from ..content_views import content_view_stat, record_content_view
+from ..event_schedule import event_end_local
 
 router = Router(name="events")
 
@@ -73,7 +74,7 @@ async def _send_events(target, db: Database, *, scope: str, tg_id: int) -> None:
         events = (await session.scalars(
             select(Event).where(
                 Event.status.in_(["open", "closed", "postponed"]),
-                Event.starts_at >= clock.local_wall(),
+                or_(Event.ends_at.is_(None), Event.ends_at >= clock.local_wall()),
                 Event.access_scope == scope,
             ).order_by(Event.starts_at.asc()).limit(20)
         )).all()
@@ -85,7 +86,7 @@ async def _send_events(target, db: Database, *, scope: str, tg_id: int) -> None:
         lines=[title, "", "<b>Оберіть подію:</b>"]
         for idx,event in enumerate(events,start=1):
             status_note = "" if event.status == "open" else (" • 🔒 реєстрацію закрито" if event.status == "closed" else " • 📅 перенесено")
-            lines.append(f"\n<b>{idx}. {escape(event.title)}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')} • 📍 {escape(event.location or 'АМП')}{status_note}")
+            lines.append(f"\n<b>{idx}. {escape(event.title)}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')} — {event_end_local(event).strftime('%d.%m.%Y %H:%M')} • 📍 {escape(event.location or 'АМП')}{status_note}")
         await target.answer("\n".join(lines),reply_markup=events_keyboard(events))
 
 
@@ -158,7 +159,7 @@ async def event_detail(call: CallbackQuery, db: Database, settings: Settings) ->
         view_stat = await content_view_stat(session, "event", event.id)
         await session.commit()
 
-        date_text = event.starts_at.strftime("%d.%m.%Y %H:%M")
+        date_text = f"{event.starts_at.strftime('%d.%m.%Y %H:%M')} — {event_end_local(event).strftime('%d.%m.%Y %H:%M')}"
         safe_title = escape(event.title or "Подія")
         safe_location = escape(event.location or "АМП")
         safe_description = escape(event.description or "Без додаткового опису.")

@@ -9,7 +9,7 @@ def read(path: str) -> str:
 
 def test_v11723_version_and_migration():
     version = read("VERSION.txt").strip()
-    assert version == "1.17.2.3"
+    assert tuple(map(int, version.split("."))) >= (1, 17, 2, 3)
     assert read("VERSION_CHECK.txt").strip() == version
     migration = read("migrations/versions/20260921_0012_quick_xp_multi_question.py")
     assert 'revision: str = "20260921_0012"' in migration

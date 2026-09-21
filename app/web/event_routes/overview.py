@@ -33,8 +33,8 @@ async def events(request: Request, q: str = "", status: str = "", period: str = 
         if scope in {"general", "team"}: stmt = stmt.where(Event.access_scope == scope)
         now_utc = clock.now_utc()
         now = clock.local_wall(now_utc)
-        if type == "upcoming": stmt = stmt.where(Event.starts_at >= now)
-        elif type == "past": stmt = stmt.where(Event.starts_at < now)
+        if type == "upcoming": stmt = stmt.where(Event.ends_at >= now)
+        elif type == "past": stmt = stmt.where(Event.ends_at < now)
         cutoff_map = {"7d": 7, "30d": 30, "90d": 90}
         if period in cutoff_map:
             before = clock.local_wall(now_utc - timedelta(days=cutoff_map[period]))
@@ -105,7 +105,7 @@ async def event_detail(request: Request, event_id: int, notice: str = "", sent: 
         feedback_stats["pending"] = sum(
             1
             for reg, user in registrations
-            if reg.status == "attended"
+            if reg.status in {"checked_in", "attended"}
             and user.status == UserStatus.ACTIVE.value
             and user.tg_id is not None
             and not (feedback_by_user.get(user.id) and feedback_by_user[user.id].status == "completed")

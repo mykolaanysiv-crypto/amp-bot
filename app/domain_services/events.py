@@ -4,6 +4,7 @@ from .common import (
 )
 from .gamification import add_xp, evaluate_automatic_badges, xp_total
 from ..ambassadors import AMP_TEAM_ROLES
+from ..event_schedule import event_end_utc
 
 # Registration states that consume event capacity.
 # Kept explicit here so the event domain does not depend on legacy wildcard exports.
@@ -129,12 +130,14 @@ async def create_event(
     created_by: int,
     preregistration_bonus_xp: int = 0,
     no_show_penalty_xp: int = 0,
+    ends_at: datetime | None = None,
 ) -> Event:
     xp_reward = normalize_event_xp(xp_reward)
     event = Event(
         title=title,
         description=description,
         starts_at=starts_at,
+        ends_at=ends_at or (starts_at + timedelta(hours=2)),
         location=location,
         xp_reward=xp_reward,
         preregistration_bonus_xp=_event_modifier_xp(preregistration_bonus_xp),
@@ -261,11 +264,11 @@ async def process_event_operations(session: AsyncSession, *, now: datetime | Non
     if event_id is not None:
         events_stmt = events_stmt.where(Event.id == int(event_id))
     events = list((await session.scalars(events_stmt.order_by(Event.starts_at.asc()))).all())
-    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
+    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_end_minutes")
     for event in events:
         # Do not promote people after the configured operational window has ended.
-        event_start_utc = clock.event_utc(event.starts_at)
-        if event.cancelled_at or (event_start_utc and event_start_utc + timedelta(minutes=checkin_close_minutes) < now_utc):
+        event_finish_utc = event_end_utc(event)
+        if event.cancelled_at or (event_finish_utc and event_finish_utc + timedelta(minutes=checkin_close_minutes) < now_utc):
             continue
         occupied = int(await session.scalar(
             select(func.count(EventRegistration.id)).where(
@@ -355,9 +358,10 @@ async def event_checkin_window(
     the window adjustable without a deploy.
     """
     before = await get_runtime_int(session, "events.checkin_open_before_minutes")
-    after = await get_runtime_int(session, "events.checkin_close_after_minutes")
+    after = await get_runtime_int(session, "events.checkin_close_after_end_minutes")
     event_start_utc = clock.event_utc(event.starts_at)
-    if event_start_utc is None:
+    event_finish_utc = event_end_utc(event)
+    if event_start_utc is None or event_finish_utc is None:
         return {"state": "closed", "opens_at": None, "closes_at": None, "now": clock.local_wall(), "before_minutes": before, "after_minutes": after}
     if now is None:
         now_utc = clock.now_utc()
@@ -367,7 +371,7 @@ async def event_checkin_window(
     else:
         now_utc = clock.ensure_utc(now)
     opens_at_utc = event_start_utc - timedelta(minutes=before)
-    closes_at_utc = event_start_utc + timedelta(minutes=after)
+    closes_at_utc = event_finish_utc + timedelta(minutes=after)
     if now_utc < opens_at_utc:
         state = "too_early"
     elif now_utc > closes_at_utc:

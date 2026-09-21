@@ -44,6 +44,10 @@ class ActivityApplicationState(StatesGroup):
     result_photo = State()
 
 
+class QuestProofState(StatesGroup):
+    photo = State()
+
+
 class AdminXPState(StatesGroup):
     user_id = State()
     amount = State()
@@ -61,6 +65,7 @@ class AdminEventState(StatesGroup):
     month = State()
     year = State()
     event_time = State()
+    end_time = State()
     location = State()
     xp_reward = State()
     preregistration_bonus_xp = State()

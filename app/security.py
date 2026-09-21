@@ -22,7 +22,7 @@ PUBLIC_MEDIA_CATEGORIES = frozenset({
     "rewards", "giveaway_prizes", "survey_questions", "goals", "tasks", "donation_reports",
 })
 PARTICIPANT_PRIVATE_MEDIA_CATEGORIES = frozenset({"activity_results", "qr_badges"})
-STAFF_PRIVATE_MEDIA_CATEGORIES = frozenset({"requests", "ideas", "moderation", "event_registration_templates", "ambassador_reports", "team_task_reports", "giveaway_proofs"})
+STAFF_PRIVATE_MEDIA_CATEGORIES = frozenset({"requests", "ideas", "moderation", "event_registration_templates", "ambassador_reports", "team_task_reports", "giveaway_proofs", "quest_proofs"})
 SUPERADMIN_PRIVATE_MEDIA_CATEGORIES = frozenset({"consents", "sensitive_documents", "admin_documents"})
 
 

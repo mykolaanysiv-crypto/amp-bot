@@ -15,6 +15,7 @@ from ..model_domains import (
 from ..profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
 from ..leagues import LEAGUES, league_for_xp
 from ..runtime_config import get_runtime_int
+from ..event_schedule import event_end_local
 from ..settlements import canonicalize_settlement_text, settlement_quality_report
 from ..time_utils import clock
 from .periods import _age, _age_group, _next_month, resolve_report_storage_bounds
@@ -31,7 +32,7 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
         aware = clock.from_storage_utc(value)
         return clock.local_wall(aware) if aware else None
     privacy_threshold = await get_runtime_int(session, "privacy.suppression_threshold")
-    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
+    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_end_minutes")
     users=list((await session.scalars(select(User))).all())
     events=list((await session.scalars(select(Event).where(Event.starts_at>=start, Event.starts_at<end))).all())
     report_events=[e for e in events if e.status not in {"cancelled","draft"} and not e.cancelled_at]
@@ -39,7 +40,7 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
     completed_events=[
         e for e in report_events
         if e.starts_at <= generated_at
-        and (e.status == "completed" or e.starts_at + timedelta(minutes=checkin_close_minutes) < generated_at)
+        and (e.status == "completed" or event_end_local(e) + timedelta(minutes=checkin_close_minutes) < generated_at)
     ]
     in_progress_events=[e for e in report_events if e not in completed_events and e not in upcoming_events]
     completed_event_ids={e.id for e in completed_events}

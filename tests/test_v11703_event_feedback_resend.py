@@ -29,7 +29,7 @@ def test_manual_feedback_resend_targets_only_incomplete_attendees_and_uses_outbo
     source = read("app/web/event_routes/mutations.py")
     assert '@router.post("/admin/events/{event_id}/feedback/resend")' in source
     assert 'guard_permission(request, "events.edit")' in source
-    assert 'EventRegistration.status == "attended"' in source
+    assert 'EventRegistration.status.in_(["checked_in", "attended"])' in source
     assert 'User.status == UserStatus.ACTIVE.value' in source
     assert 'feedback.status == "completed"' in source
     assert 'queue_telegram_delivery(' in source

@@ -31,7 +31,7 @@
         <span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span>
         <h1>{{event.title}}</h1>
         <div class="public-event-meta">
-          <span class="tag">🕒 {{event.starts_at.strftime('%d.%m.%Y %H:%M')}}</span>
+          <span class="tag">🕒 {{event.starts_at.strftime('%d.%m.%Y %H:%M')}} — {{(event.ends_at or event.starts_at).strftime('%d.%m.%Y %H:%M')}}</span>
           <span class="tag">📍 {{event.location or 'АМП'}}</span>
           <span class="tag">⚡ +{{event.xp_reward}} XP за участь</span>
           {% if event.preregistration_bonus_xp %}<span class="tag">🎟 +{{event.preregistration_bonus_xp}} XP за попередню реєстрацію</span>{% endif %}

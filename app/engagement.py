@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .runtime_config import get_runtime_int
+from .event_schedule import event_end_utc
 from .model_domains import (
     ActivityApplication, Event, EventRegistration, Goal, Idea, Opportunity, Quest, Survey, SurveyResponse,
     QuestParticipation, Referral, User, UserBadge, UserRole, UserStatus, VolunteerTask,
@@ -221,12 +222,11 @@ async def process_expired_content(session: AsyncSession, *, now: datetime | None
 
     changed = defaultdict(int)
     events = list((await session.scalars(select(Event).where(Event.status.in_(["open", "closed", "postponed"]), Event.cancelled_at.is_(None)))).all())
-    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
+    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_end_minutes")
     for event in events:
-        # No explicit end-time exists, so the configured attendance window also
-        # defines when the event moves to completed.
-        event_start_utc = clock.event_utc(event.starts_at)
-        if event_start_utc and event_start_utc + timedelta(minutes=checkin_close_minutes) < now_utc:
+        # Keep the event operational through the configurable post-end attendance window.
+        event_finish_utc = event_end_utc(event)
+        if event_finish_utc and event_finish_utc + timedelta(minutes=checkin_close_minutes) < now_utc:
             event.status = "completed"; changed["events"] += 1
     quests = list((await session.scalars(select(Quest).where(Quest.status.in_(["open", "postponed"]), Quest.cancelled_at.is_(None)))).all())
     for quest in quests:

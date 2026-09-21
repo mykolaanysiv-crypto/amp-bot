@@ -11,6 +11,7 @@ from ..reliability import job_lock, queue_notification, queue_telegram_delivery
 from ..runtime_config import get_runtime_int
 from ..runtime_health import scheduler_heartbeat
 from ..time_utils import clock
+from ..event_schedule import event_end_utc
 
 async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
     """Queue one reminder using the runtime-configured lead time."""
@@ -63,10 +64,10 @@ async def _event_reminder_scheduler(bot: Bot, db: Database, settings) -> None:
         await asyncio.sleep(300)
 
 async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
-    """Ask attended participants for outcome feedback about two hours after events.
+    """Ask event participants for outcome feedback after the configured end-time delay.
 
-    The first run stores a feature-start marker so deploying v1.9.0 does not
-    suddenly message participants about old historical events.
+    The first run stores a feature-start marker so a deploy never messages
+    participants about unrelated historical events.
     """
     log = logging.getLogger("amp.event_feedback")
     while True:
@@ -78,7 +79,7 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                     now = clock.storage_utc(now_utc)
                     event_now = clock.local_wall(now_utc)
                     async with db.session_factory() as session:
-                        feedback_delay_minutes = await get_runtime_int(session, "events.feedback_delay_minutes")
+                        feedback_delay_minutes = await get_runtime_int(session, "events.feedback_after_end_minutes")
                         feedback_reminder_hours = await get_runtime_int(session, "events.feedback_reminder_hours")
                         marker = await session.get(SystemSetting, "event_feedback_feature_started_at")
                         if not marker:
@@ -100,22 +101,18 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
                                 .join(Event, Event.id == EventRegistration.event_id)
                                 .join(User, User.id == EventRegistration.user_id)
                                 .where(
-                                    EventRegistration.status == "attended",
-                                    Event.starts_at >= feature_started_local - timedelta(hours=6),
+                                    EventRegistration.status.in_(["checked_in", "attended"]),
+                                    Event.starts_at >= feature_started_local - timedelta(hours=48),
                                     Event.starts_at <= event_now,
                                     User.status == UserStatus.ACTIVE.value,
                                 )
                                 .order_by(Event.starts_at.asc())
                             )).all()
                             for reg, event, user in rows:
-                                # Feedback is sent roughly 2 hours after the participant's
-                                # confirmed attendance (or event start when confirmation time
-                                # is unavailable). This keeps the questionnaire post-event and
-                                # avoids asking while a typical activity is still running.
-                                if reg.confirmed_at:
-                                    anchor_utc = clock.from_storage_utc(reg.confirmed_at)
-                                else:
-                                    anchor_utc = clock.event_utc(event.starts_at)
+                                # Feedback timing is anchored to the explicit event end, not
+                                # check-in or attendance confirmation. Historical events without
+                                # ends_at use the compatibility fallback from event_schedule.
+                                anchor_utc = event_end_utc(event)
                                 if not anchor_utc or anchor_utc + timedelta(minutes=feedback_delay_minutes) > now_utc:
                                     continue
                                 existing = await session.scalar(select(EventFeedback).where(EventFeedback.event_id == event.id, EventFeedback.user_id == user.id))
@@ -190,4 +187,4 @@ async def _event_feedback_scheduler(bot: Bot, db: Database) -> None:
             raise
         except Exception as exc:
             log.exception("Помилка планувальника зворотного зв’язку після подій", extra=log_extra("SCHED_EVENT_FEEDBACK_FAILED", scheduler="event_feedback_scheduler", exception_type=type(exc).__name__))
-        await asyncio.sleep(900)
+        await asyncio.sleep(60)

@@ -4,7 +4,7 @@ from app.time_utils import clock
 
 from fastapi import APIRouter
 from app.web.dependencies import (
-    File, Form, HTMLResponse, HTTPException, Quest, QuestParticipation, RedirectResponse, Request, TeamQuestContribution, UploadFile, User, UserStatus, approve_quest_participation, complete_team_quest, compose_optional_datetime_fields, ctx, db, delete, delete_image, func, guard, guard_permission, log_audit, normalize_quest_xp, notify_telegram, or_, save_image, seed_default_team, select, templates, timedelta
+    File, Form, HTMLResponse, HTTPException, Quest, QuestParticipation, RedirectResponse, Request, TeamQuestContribution, UploadFile, User, UserStatus, approve_quest_participation, complete_team_quest, compose_optional_datetime_fields, ctx, db, delete, delete_image, func, guard, guard_permission, guard_superadmin, log_audit, normalize_quest_xp, notify_telegram, or_, save_image, seed_default_team, select, templates, timedelta
 )
 from app.content_views import content_view_stat, content_view_stats
 from app.web.dependencies import _refresh_lifecycle
@@ -60,8 +60,10 @@ async def quest_detail_web(request: Request, quest_id: int):
 
 
 @router.post("/admin/quests/{quest_id}/participant/{part_id}/{action}")
-async def quest_participant_action(request: Request, quest_id: int, part_id: int, action: str):
-    if r := guard(request): return r
+async def quest_participant_action(request: Request, quest_id: int, part_id: int, action: str, reason: str = Form("")):
+    if action == "force-approve":
+        if r := guard_superadmin(request): return r
+    elif r := guard(request): return r
     notify_id = None
     notify_text = ""
     async with db.session_factory() as session:
@@ -79,6 +81,22 @@ async def quest_participant_action(request: Request, quest_id: int, part_id: int
             total, level, leveled = result
             notify_id = user.tg_id
             notify_text = f"🏆 Квест <b>{q.title}</b> підтверджено!\n⚡ +{q.xp_reward} XP\nЗагальний досвід: <b>{total} XP</b>" + (f"\n🎉 Новий рівень: <b>{level}</b>" if leveled else "")
+        elif action == "force-approve" and part.status in {"joined", "returned", "completed"} and user:
+            manual_reason = (reason or "").strip()
+            if len(manual_reason) < 5:
+                raise HTTPException(status_code=400, detail="Для ручного підтвердження вкажіть причину (мінімум 5 символів).")
+            if part.status != "completed":
+                part.status = "completed"
+                part.completed_at = clock.storage_utc()
+            result = await approve_quest_participation(session, q, part, user)
+            if not result:
+                return RedirectResponse(f"/admin/quests/{quest_id}", 303)
+            total, level, leveled = result
+            notify_id = user.tg_id
+            notify_text = (f"🏆 Квест <b>{q.title}</b> підтверджено координатором.\n"
+                           f"⚡ +{q.xp_reward} XP\nЗагальний досвід: <b>{total} XP</b>" +
+                           (f"\n🎉 Новий рівень: <b>{level}</b>" if leveled else ""))
+            await log_audit(session, "web_quest_force_approve", actor_label=request.session.get("admin_name","superadmin"), entity_type="quest_participation", entity_id=part.id, details=f"{q.title}; {user.full_name}; reason={manual_reason}")
         elif action == "return" and part.status == "completed":
             part.status = "joined"
             part.completed_at = None
@@ -174,6 +192,19 @@ async def quest_update(
             if not was_public and q.active and q.status=="open":
                 users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
                 campaign_id=await _queue_system_broadcast(session,users,f"🎯 <b>Новий квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n\nВідкрий «🎯 Квести» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Новий квест: {q.title}",template_code="quest_published")
+            elif was_public:
+                users=list((await session.scalars(
+                    select(User).join(QuestParticipation, QuestParticipation.user_id == User.id).where(
+                        QuestParticipation.quest_id == q.id, QuestParticipation.status != "cancelled",
+                        User.status == UserStatus.ACTIVE.value, User.tg_id.is_not(None),
+                    ).distinct()
+                )).all())
+                if users:
+                    campaign_id=await _queue_system_broadcast(
+                        session, users,
+                        f"🔄 <b>Оновлено квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n📆 Дедлайн: {q.ends_at.strftime('%d.%m.%Y %H:%M') if q.ends_at else 'без дедлайну'}\n\nВідкрий квест у боті — дані вже актуальні.",
+                        author_label=request.session.get("admin_name","web"), audience_label=f"Оновлення квесту: {q.title}", template_code="quest_updated"
+                    )
             await session.commit()
     if campaign_id: _schedule_broadcast(campaign_id)
     return RedirectResponse(request.headers.get("referer") or f"/admin/quests/{quest_id}", 303)

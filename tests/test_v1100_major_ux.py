@@ -55,7 +55,7 @@ def test_runtime_settings_are_editable_and_used():
     for key in [
         "xp.birthday", "xp.idea_approved", "xp.referral_max", "xp.streak_restore_cost",
         "streak.freeze_limit_quarter", "streak.super_total_misses", "streak.badge_days",
-        "events.reminder_minutes", "events.feedback_delay_minutes", "events.waitlist_reservation_minutes",
+        "events.reminder_minutes", "events.feedback_after_end_minutes", "events.waitlist_reservation_minutes",
         "privacy.suppression_threshold", "privacy.retention_days",
     ]:
         assert key in cfg
@@ -72,7 +72,7 @@ def test_runtime_settings_are_editable_and_used():
     for key in [
         "xp.birthday", "xp.idea_approved", "xp.referral_max", "xp.streak_restore_cost",
         "streak.freeze_limit_quarter", "streak.super_total_misses", "streak.badge_days",
-        "events.reminder_minutes", "events.feedback_delay_minutes", "events.waitlist_reservation_minutes",
+        "events.reminder_minutes", "events.feedback_after_end_minutes", "events.waitlist_reservation_minutes",
         "privacy.suppression_threshold",
     ]:
         assert key in usages

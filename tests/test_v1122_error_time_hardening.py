@@ -53,7 +53,7 @@ async def test_checkin_window_uses_aware_utc_across_dst(monkeypatch):
     async def fake_runtime_int(_session, key: str) -> int:
         return {
             "events.checkin_open_before_minutes": 60,
-            "events.checkin_close_after_minutes": 360,
+            "events.checkin_close_after_end_minutes": 60,
         }[key]
 
     monkeypatch.setattr(events_module, "get_runtime_int", fake_runtime_int)
@@ -76,14 +76,14 @@ async def test_checkin_window_uses_aware_utc_across_dst(monkeypatch):
     )
     assert opens["state"] == "open"
     assert opens["opens_at_utc"] == datetime(2026, 10, 24, 23, 30, tzinfo=UTC)
-    assert opens["closes_at_utc"] == datetime(2026, 10, 25, 6, 30, tzinfo=UTC)
-    # Six real hours after the event is 08:30 local because the offset changes.
-    assert opens["closes_at"] == datetime(2026, 10, 25, 8, 30)
+    assert opens["closes_at_utc"] == datetime(2026, 10, 25, 4, 30, tzinfo=UTC)
+    # The fallback end is two local-wall hours after start; the configurable post-end window adds one hour.
+    assert opens["closes_at"] == datetime(2026, 10, 25, 6, 30)
 
     closed = await events_module.event_checkin_window(
         object(),
         event,
-        now=datetime(2026, 10, 25, 6, 30, 1, tzinfo=UTC),
+        now=datetime(2026, 10, 25, 4, 30, 1, tzinfo=UTC),
     )
     assert closed["state"] == "closed"
 

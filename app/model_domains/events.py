@@ -14,6 +14,7 @@ class Event(Base):
     title: Mapped[str] = mapped_column(String(180))
     description: Mapped[str] = mapped_column(Text, default="")
     starts_at: Mapped[datetime] = mapped_column(DateTime)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     location: Mapped[str] = mapped_column(String(180), default="АМП")
     xp_reward: Mapped[int] = mapped_column(Integer, default=10)
     preregistration_bonus_xp: Mapped[int] = mapped_column(Integer, default=5)

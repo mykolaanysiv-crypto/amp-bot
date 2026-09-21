@@ -34,6 +34,7 @@ from ..profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
 from ..leagues import LEAGUES, league_for_xp, quarter_key
 from ..ui_labels import label
 from ..runtime_config import get_runtime_int
+from ..event_schedule import event_end_utc
 from ..settlements import canonicalize_settlement_text
 
 
@@ -345,12 +346,12 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None,
         value_label="Учасники",
     )
 
-    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_minutes")
+    checkin_close_minutes = await get_runtime_int(session, "events.checkin_close_after_end_minutes")
     event_reference_utc = clock.now_utc()
     completed_event_ids = {
         e.id for e in events
         if e.status == "completed"
-        or (e.starts_at and clock.event_utc(e.starts_at) + timedelta(minutes=checkin_close_minutes) < event_reference_utc)
+        or (event_end_utc(e) and event_end_utc(e) + timedelta(minutes=checkin_close_minutes) < event_reference_utc)
     }
     # Legacy/manual bad rows from future events must never pollute attendance analytics.
     attended_regs = [r for r in regs if r.status == "attended" and r.event_id in completed_event_ids]

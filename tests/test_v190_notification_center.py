@@ -86,9 +86,9 @@ def test_feedback_scheduler_and_telegram_flow():
     handler = (ROOT / "app/handlers/feedback.py").read_text(encoding="utf-8")
     reliability = (ROOT / "app/reliability.py").read_text(encoding="utf-8")
     assert "_event_feedback_scheduler" in main
-    assert 'get_runtime_int(session, "events.feedback_delay_minutes")' in main
+    assert 'get_runtime_int(session, "events.feedback_after_end_minutes")' in main
     assert "timedelta(minutes=feedback_delay_minutes)" in main
-    assert "EventRegistration.status == \"attended\"" in main
+    assert 'EventRegistration.status.in_(["checked_in", "attended"])' in main
     assert "feedback:rating:" in handler
     assert "feedback:yn:" in handler
     for field in ["useful", "new_knowledge", "felt_safe", "would_return"]:

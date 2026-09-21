@@ -26,18 +26,21 @@ from .context import router
 @router.post("/admin/events/create")
 async def event_create(
     request: Request, title: str = Form(...), day: int = Form(...), month: int = Form(...), year: int = Form(...),
-    event_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
+    event_time: str = Form(...), end_day: int = Form(...), end_month: int = Form(...), end_year: int = Form(...), end_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
     preregistration_bonus_xp: int = Form(5), no_show_penalty_xp: int = Form(5),
     volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"), access_scope: str = Form("general"), photo: UploadFile | None = File(None),
 ):
     if r := guard(request): return r
     starts_at = compose_event_datetime(day, month, year, event_time)
+    ends_at = compose_event_datetime(end_day, end_month, end_year, end_time)
+    if ends_at <= starts_at:
+        raise HTTPException(status_code=400, detail="Час завершення події має бути пізніше за час початку.")
     image = await save_image(photo, "events")
     campaign_id=None
     async with db.session_factory() as session:
         xp_reward = normalize_event_xp(xp_reward)
         e = Event(
-            title=title.strip(), description=description.strip(), starts_at=starts_at, location=location.strip() or "АМП",
+            title=title.strip(), description=description.strip(), starts_at=starts_at, ends_at=ends_at, location=location.strip() or "АМП",
             xp_reward=xp_reward, preregistration_bonus_xp=max(0, min(25, int(preregistration_bonus_xp))),
             no_show_penalty_xp=max(0, min(25, int(no_show_penalty_xp))),
             volunteer_hours=max(0, volunteer_hours), capacity=opt_int(capacity), status=status if status in {"draft", "open", "closed"} else "open",
@@ -51,7 +54,7 @@ async def event_create(
             user_stmt=select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None))
             if e.access_scope == "team": user_stmt=user_stmt.where(User.role.in_(AMP_TEAM_ROLES))
             users=list((await session.scalars(user_stmt)).all())
-            text=(f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n"
+            text=(f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')} — {e.ends_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n"
                   f"⚡ За участь: {e.xp_reward} XP\n🎟 Бонус за попередню реєстрацію: +{e.preregistration_bonus_xp} XP\n"
                   f"🚫 Неявка без скасування до початку: -{e.no_show_penalty_xp} XP\n\n"
                   "Відкрий у боті розділ «📅 Події», щоб переглянути деталі та зареєструватися.")
@@ -63,19 +66,22 @@ async def event_create(
 @router.post("/admin/events/{event_id}/update")
 async def event_update(
     request: Request, event_id: int, title: str = Form(...), day: int = Form(...), month: int = Form(...), year: int = Form(...),
-    event_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
+    event_time: str = Form(...), end_day: int = Form(...), end_month: int = Form(...), end_year: int = Form(...), end_time: str = Form(...), location: str = Form("АМП"), description: str = Form(""), xp_reward: int = Form(10),
     preregistration_bonus_xp: int = Form(5), no_show_penalty_xp: int = Form(5),
     volunteer_hours: float = Form(0), capacity: str = Form(""), status: str = Form("open"), access_scope: str = Form("general"),
     remove_image: str | None = Form(None), photo: UploadFile | None = File(None),
 ):
     if r := guard(request): return r
     starts_at = compose_event_datetime(day, month, year, event_time)
+    ends_at = compose_event_datetime(end_day, end_month, end_year, end_time)
+    if ends_at <= starts_at:
+        raise HTTPException(status_code=400, detail="Час завершення події має бути пізніше за час початку.")
     campaign_id=None
     async with db.session_factory() as session:
         e = await session.get(Event, event_id)
         if e:
             was_public = e.status in {"open","postponed"}
-            e.title = title.strip(); e.starts_at = starts_at; e.location = location.strip() or "АМП"; e.description = description.strip()
+            e.title = title.strip(); e.starts_at = starts_at; e.ends_at = ends_at; e.location = location.strip() or "АМП"; e.description = description.strip()
             e.xp_reward = normalize_event_xp(xp_reward)
             e.preregistration_bonus_xp = max(0, min(25, int(preregistration_bonus_xp)))
             e.no_show_penalty_xp = max(0, min(25, int(no_show_penalty_xp)))
@@ -105,11 +111,25 @@ async def event_update(
                 users=list((await session.scalars(user_stmt)).all())
                 campaign_id=await _queue_system_broadcast(
                     session, users,
-                    f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n"
+                    f"📅 <b>Нова подія в АМП</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')} — {e.ends_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n"
                     f"⚡ За участь: {e.xp_reward} XP\n🎟 Бонус за попередню реєстрацію: +{e.preregistration_bonus_xp} XP\n"
                     f"🚫 Неявка без скасування до початку: -{e.no_show_penalty_xp} XP\n\nВідкрий «📅 Події» у боті, щоб зареєструватися.",
                     author_label=request.session.get("admin_name","web"), audience_label=f"Нова подія: {e.title}", template_code="event_published"
                 )
+            elif was_public:
+                users=list((await session.scalars(
+                    select(User).join(EventRegistration, EventRegistration.user_id == User.id).where(
+                        EventRegistration.event_id == e.id,
+                        EventRegistration.status.in_(["registered", "reserved", "checked_in", "attended", "waitlisted"]),
+                        User.status == UserStatus.ACTIVE.value, User.tg_id.is_not(None),
+                    ).distinct()
+                )).all())
+                if users:
+                    campaign_id=await _queue_system_broadcast(
+                        session, users,
+                        f"🔄 <b>Оновлено подію</b>\n\n<b>{e.title}</b>\n🕒 {e.starts_at.strftime('%d.%m.%Y %H:%M')} — {e.ends_at.strftime('%d.%m.%Y %H:%M')}\n📍 {e.location}\n\nВідкрий подію в боті — дані вже актуальні.",
+                        author_label=request.session.get("admin_name","web"), audience_label=f"Оновлення події: {e.title}", template_code="event_updated"
+                    )
             await session.commit()
     if campaign_id: _schedule_broadcast(campaign_id)
     return RedirectResponse("/admin/events", 303)
@@ -155,7 +175,7 @@ async def event_feedback_resend(request: Request, event_id: int):
             .join(User, User.id == EventRegistration.user_id)
             .where(
                 EventRegistration.event_id == event.id,
-                EventRegistration.status == "attended",
+                EventRegistration.status.in_(["checked_in", "attended"]),
                 User.status == UserStatus.ACTIVE.value,
                 User.tg_id.is_not(None),
             )
