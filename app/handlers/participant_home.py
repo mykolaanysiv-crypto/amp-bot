@@ -3,7 +3,7 @@ import os
 from .participant_common import (
     AMBASSADOR_BADGE_ROLES, Badge, CallbackQuery, Database, Event, EventFeedback, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, LEVELS, Message, OpportunityMatch, Quest, QuestParticipation, RequestCase, RequestMessage, Reward, RewardClaim, StreakFreezeState, UserBadge, UserRole, UserStatus, XPTransaction, active_month_streak, create_streak_freeze, current_season, escape, func, get_level, get_registration_journey, get_runtime_int, get_user_by_tg, goals_for_user, join_hub_keyboard, label, league_for_xp, log_audit, log_extra, logging, main_menu, more_hub_keyboard, participant_first_name, profile_hub_keyboard, progress_text, refresh_user_streak, restore_super_streak, rewards_keyboard, router, season_xp, select, streak_freeze_summary, telegram_photo_input, timedelta, xp_total
 )
-from ..quick_xp import available_quick_challenges, QUICK_XP_WEEKLY_CAP, weekly_quick_xp
+from ..quick_xp import available_quick_challenges, challenge_reward, quick_xp_weekly_cap, weekly_quick_xp
 
 @router.message(F.text.in_({"🏠 Головна", "🏠 Огляд"}))
 async def overview(message: Message, db: Database) -> None:
@@ -96,6 +96,8 @@ async def overview(message: Message, db: Database) -> None:
         quick_rows = await available_quick_challenges(session, user.id, limit=1)
         quick_xp = quick_rows[0] if quick_rows else None
         quick_used = await weekly_quick_xp(session, user.id)
+        quick_cap = await quick_xp_weekly_cap(session)
+        quick_reward = await challenge_reward(session, quick_xp) if quick_xp else 0
         goal_rows = await goals_for_user(session, user, now=storage_now)
         near_goal = max(
             (row for row in goal_rows if 70 <= float(row.get("percent") or 0) < 100),
@@ -134,8 +136,8 @@ async def overview(message: Message, db: Database) -> None:
         "",
         "📌 <b>Що важливо зараз</b>",
     ]
-    if quick_xp and quick_used < QUICK_XP_WEEKLY_CAP:
-        lines.append(f"⚡ Швидкі XP: <b>{escape(quick_xp.title)}</b> · +{int(quick_xp.xp_reward or 0)} XP · ~{max(1, int(quick_xp.duration_minutes or 1))} хв")
+    if quick_xp and quick_used < quick_cap:
+        lines.append(f"⚡ Швидкі XP: <b>{escape(quick_xp.title)}</b> · до +{int(quick_reward)} XP · ~{max(1, int(quick_xp.duration_minutes or 1))} хв")
     if next_event:
         when = next_event.starts_at.strftime("%d.%m о %H:%M")
         lines.append(f"📅 Найближче: <b>{escape(next_event.title)}</b> — {when}")
@@ -165,8 +167,8 @@ async def overview(message: Message, db: Database) -> None:
         lines.append("⭐ Заверши короткий відгук після події — залишилося кілька натискань. Відкрий останнє повідомлення про відгук.")
     elif today_event:
         lines.append(f"📅 Сьогодні твоя подія: <b>{escape(today_event.title)}</b> о {today_event.starts_at.strftime('%H:%M')}. Перевір деталі у «Долучитися». ")
-    elif quick_xp and quick_used < QUICK_XP_WEEKLY_CAP:
-        lines.append(f"⚡ Є швидкі <b>+{int(quick_xp.xp_reward or 0)} XP</b>: «{escape(quick_xp.title)}». Натисни «⚡ Заробити XP» — це приблизно {max(1, int(quick_xp.duration_minutes or 1))} хв.")
+    elif quick_xp and quick_used < quick_cap:
+        lines.append(f"⚡ Є швидкі <b>до +{int(quick_reward)} XP</b>: «{escape(quick_xp.title)}». Натисни «⚡ Заробити XP» — це приблизно {max(1, int(quick_xp.duration_minutes or 1))} хв.")
     elif case_updates:
         lines.append("🆘 Команда АМП очікує твоєї відповіді у зверненні. Відкрий «Звернення».")
     elif near_goal:

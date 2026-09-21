@@ -1,60 +1,203 @@
 {% extends "base.html" %}
 {% block title %}Швидкі XP · АМПасадори{% endblock %}
 {% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Швидкі XP</b></nav>
 <div class="page-head">
-  <div><h1>⚡ Швидкі XP</h1><p>Короткі завдання на 1–5 XP, які учасник може виконати одразу в Telegram. Тижневий ліміт: {{ weekly_cap }} XP.</p></div>
+  <div>
+    <span class="eyebrow">ГЕЙМІФІКАЦІЯ</span>
+    <h1>⚡ Швидкі XP</h1>
+    <p>Короткі завдання, які учасник може виконати одразу в Telegram. Поточний тижневий ліміт: <b>{{ weekly_cap }} XP</b>.</p>
+  </div>
+  <a class="soft-button edit-action-button page-edit-button" href="/admin/settings">⚙️ Налаштувати ліміт</a>
 </div>
 {% if notice %}<div class="notice success">✅ {{ notice }}</div>{% endif %}
 
-<section class="card">
-  <h2>➕ Створити швидке завдання</h2>
-  <form method="post" action="/admin/quick-xp/create" class="form-grid">
-    <label>Назва<input name="title" required maxlength="180" placeholder="Наскільки добре ти знаєш Анисів?"></label>
-    <label>Тип<select name="kind"><option value="quiz">🧠 Мініквіз</option><option value="video">🎥 Відео + питання</option><option value="poll">📊 Мініопитування</option><option value="comment">💬 Коротка відповідь</option></select></label>
-    <label>XP<input type="number" name="xp_reward" min="1" max="5" value="3"></label>
-    <label>Тривалість, хв<input type="number" name="duration_minutes" min="1" max="15" value="2"></label>
-    <label class="span-2">Опис<textarea name="description" rows="3" placeholder="Коротко поясніть, що треба зробити"></textarea></label>
-    <label class="span-2">Питання<textarea name="question" rows="2" placeholder="Яке з тверджень правильне?"></textarea></label>
-    <label class="span-2">Варіанти відповіді — по одному в рядку<textarea name="options" rows="5" placeholder="Варіант 1&#10;Варіант 2&#10;Варіант 3"></textarea></label>
-    <label>№ правильної відповіді<input type="number" name="correct_option" min="1" max="8" placeholder="1"></label>
-    <label>Посилання на відео/матеріал<input type="url" name="media_url" placeholder="https://..."></label>
+<section class="card quick-xp-create-card">
+  <div class="section-title"><div><h2>➕ Створити швидке завдання</h2><p class="muted">Поля нижче автоматично змінюються залежно від обраного типу.</p></div></div>
+  <form method="post" action="/admin/quick-xp/create" class="form-grid quick-xp-form" data-kind-form>
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <label class="span2">Назва<input name="title" required maxlength="180" placeholder="Наскільки добре ти знаєш Анисів?"></label>
+    <label>Тип
+      <select name="kind" class="quick-xp-kind-select">
+        <option value="quiz">🧠 Мініквіз</option>
+        <option value="video">🎥 Відео + питання</option>
+        <option value="poll">📊 Мініопитування</option>
+        <option value="comment">💬 Коротка відповідь</option>
+      </select>
+    </label>
+    <label>Тривалість, хв<input type="number" name="duration_minutes" min="1" max="30" value="2"></label>
+    <label class="span2">Опис<textarea name="description" rows="3" placeholder="Коротко поясніть, що треба зробити"></textarea></label>
+
+    <div class="span2 quick-xp-kind-panel" data-kind-panel="quiz">
+      <div class="quick-xp-panel-head">
+        <div><h3>🧠 Питання мініквізу</h3><p class="muted">За кожну правильну відповідь можна задати окрему кількість XP.</p></div>
+        <button type="button" class="soft-button compact-action" data-add-quiz-question>＋ Додати питання</button>
+      </div>
+      <div class="quick-xp-question-builder" data-quiz-question-list>
+        <div class="quick-xp-question-draft" data-quiz-question>
+          <div class="quick-xp-question-draft-head"><b>Питання <span data-question-number>1</span></b><button type="button" class="soft-button compact-action" data-remove-quiz-question>✕ Прибрати</button></div>
+          <label>Текст питання<textarea name="quiz_question_text" rows="2" required placeholder="Наприклад: У якому році вперше згадується Анисів?"></textarea></label>
+          <label>Варіанти — по одному в рядку<textarea name="quiz_question_options" rows="4" required placeholder="Варіант 1&#10;Варіант 2&#10;Варіант 3"></textarea></label>
+          <div class="quick-xp-question-fields">
+            <label>№ правильної відповіді<input type="number" name="quiz_question_correct" min="1" max="12" value="1" required></label>
+            <label>XP за правильну відповідь<input type="number" name="quiz_question_xp" min="1" max="20" value="1" required></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="span2 quick-xp-kind-panel" data-kind-panel="video" hidden>
+      <div class="quick-xp-panel-head"><div><h3>🎥 Відео + контрольне питання</h3><p class="muted">Учасник відкриває матеріал і відповідає на одне питання.</p></div></div>
+      <div class="form-grid quick-xp-inner-grid">
+        <label class="span2">Посилання на відео/матеріал<input type="url" name="media_url" placeholder="https://..."></label>
+        <label class="span2">Контрольне питання<textarea name="single_question" rows="2"></textarea></label>
+        <label class="span2">Варіанти — по одному в рядку<textarea name="single_options" rows="4"></textarea></label>
+        <label>№ правильної відповіді<input type="number" name="single_correct_option" min="1" max="12"></label>
+        <label>XP за виконання<input type="number" name="xp_reward" min="1" max="20" value="3"></label>
+      </div>
+    </div>
+
+    <div class="span2 quick-xp-kind-panel" data-kind-panel="poll" hidden>
+      <div class="quick-xp-panel-head"><div><h3>📊 Мініопитування</h3><p class="muted">XP нараховується за будь-який обраний варіант.</p></div></div>
+      <div class="form-grid quick-xp-inner-grid">
+        <label class="span2">Питання<textarea name="single_question" rows="2"></textarea></label>
+        <label class="span2">Варіанти — по одному в рядку<textarea name="single_options" rows="4"></textarea></label>
+        <label>XP за відповідь<input type="number" name="xp_reward" min="1" max="20" value="2"></label>
+      </div>
+    </div>
+
+    <div class="span2 quick-xp-kind-panel" data-kind-panel="comment" hidden>
+      <div class="quick-xp-panel-head"><div><h3>💬 Коротка відповідь</h3><p class="muted">Учасник надсилає коротку текстову відповідь одним повідомленням.</p></div></div>
+      <div class="form-grid quick-xp-inner-grid">
+        <label class="span2">Питання / підказка<textarea name="single_question" rows="2"></textarea></label>
+        <label>XP за відповідь<input type="number" name="xp_reward" min="1" max="20" value="2"></label>
+      </div>
+    </div>
+
     <label>Початок<input type="datetime-local" name="starts_at"></label>
     <label>Дедлайн<input type="datetime-local" name="ends_at"></label>
-    <label>Порядок<input type="number" name="sort_order" value="100" min="0" max="9999"></label>
     <label class="check"><input type="checkbox" name="featured_home" checked> Показувати як рекомендоване</label>
     <label class="check"><input type="checkbox" name="active" checked> Активне</label>
-    <div class="span-2"><button type="submit">⚡ Створити завдання</button></div>
+    <div class="span2 form-actions-row"><button type="submit" class="primary">⚡ Створити завдання</button></div>
   </form>
-  <p class="muted">Для квізу та відео потрібні варіанти і правильна відповідь. Для опитування XP нараховуються за будь-який вибір. Для коментаря — після короткої текстової відповіді.</p>
 </section>
 
-<section class="stack">
+<div class="quick-xp-admin-stack">
 {% for row in rows %}
-<article class="card">
-  <div class="split-head">
-    <div><h2>{{ kind_label(row.kind) }} · {{ row.title }}</h2><p>{{ row.description }}</p></div>
-    <div class="kpi-mini"><b>+{{ row.xp_reward }} XP</b><span>{{ counts.get(row.id,0) }} виконань · {{ awarded.get(row.id,0) }} XP видано</span></div>
+<article class="card quick-xp-admin-card" id="quick-xp-{{ row.id }}">
+  <div class="split-head quick-xp-card-head">
+    <div>
+      <div class="entity-card-tags"><span class="tag">{{ kind_label(row.kind) }}</span><span class="tag {% if row.active %}good{% endif %}">{{ 'Активне' if row.active else 'Неактивне' }}</span>{% if row.featured_home %}<span class="tag">⭐ Рекомендоване</span>{% endif %}</div>
+      <h2>{{ row.title }}</h2><p>{{ row.description }}</p>
+    </div>
+    <div class="kpi-mini"><b>до +{{ reward_map.get(row.id, row.xp_reward) }} XP</b><span>{{ counts.get(row.id,0) }} виконань · {{ awarded.get(row.id,0) }} XP видано</span></div>
   </div>
-  <form method="post" action="/admin/quick-xp/{{ row.id }}/update" class="form-grid compact-form">
-    <label>Назва<input name="title" value="{{ row.title }}"></label>
-    <label>XP<input type="number" name="xp_reward" min="1" max="5" value="{{ row.xp_reward }}"></label>
-    <label>Тривалість<input type="number" name="duration_minutes" min="1" max="15" value="{{ row.duration_minutes }}"></label>
-    <label>Порядок<input type="number" name="sort_order" value="{{ row.sort_order }}"></label>
-    <label class="span-2">Опис<textarea name="description" rows="2">{{ row.description }}</textarea></label>
-    <label class="span-2">Питання<textarea name="question" rows="2">{{ row.question }}</textarea></label>
-    <label class="span-2">Варіанти — по одному в рядку<textarea name="options" rows="4">{{ parse_options(row.options_json)|join('\n') }}</textarea></label>
-    <label>№ правильної відповіді<input type="number" name="correct_option" min="1" max="8" value="{{ (row.correct_option + 1) if row.correct_option is not none else '' }}"></label>
-    <label>Відео/матеріал<input type="url" name="media_url" value="{{ row.media_url }}"></label>
-    <label>Початок<input type="datetime-local" name="starts_at" value="{{ input_dt(row.starts_at) }}"></label>
-    <label>Дедлайн<input type="datetime-local" name="ends_at" value="{{ input_dt(row.ends_at) }}"></label>
-    <label class="check"><input type="checkbox" name="featured_home" {% if row.featured_home %}checked{% endif %}> Рекомендоване</label>
-    <label class="check"><input type="checkbox" name="active" {% if row.active %}checked{% endif %}> Активне</label>
-    <div class="span-2 actions"><button type="submit" class="soft-button">💾 Зберегти</button></div>
-  </form>
-  {% if row.question %}<p><b>Питання:</b> {{ row.question }}</p>{% endif %}
-  {% if parse_options(row.options_json) %}<p class="muted">Варіанти: {{ parse_options(row.options_json)|join(' · ') }}</p>{% endif %}
-  <form method="post" action="/admin/quick-xp/{{ row.id }}/broadcast"><button type="submit" class="soft-button">📣 Розіслати невиконавшим</button></form>
+
+  <div class="unified-card-actions quick-xp-card-actions">
+    <form method="post" action="/admin/quick-xp/{{ row.id }}/broadcast"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="primary unified-action-button">📣 Розіслати невиконавшим</button></form>
+    <details class="event-edit-details quick-xp-edit-details">
+      <summary class="soft-button edit-action-button unified-action-button">✏️ Редагувати</summary>
+      <form method="post" action="/admin/quick-xp/{{ row.id }}/update" class="form-grid compact-form quick-xp-form" data-kind-form>
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="span2">Назва<input name="title" value="{{ row.title }}" required></label>
+        <label>Тип<select name="kind" class="quick-xp-kind-select"><option value="quiz" {% if row.kind=='quiz' %}selected{% endif %}>🧠 Мініквіз</option><option value="video" {% if row.kind=='video' %}selected{% endif %}>🎥 Відео + питання</option><option value="poll" {% if row.kind=='poll' %}selected{% endif %}>📊 Мініопитування</option><option value="comment" {% if row.kind=='comment' %}selected{% endif %}>💬 Коротка відповідь</option></select></label>
+        <label>Тривалість, хв<input type="number" name="duration_minutes" min="1" max="30" value="{{ row.duration_minutes }}"></label>
+        <label class="span2">Опис<textarea name="description" rows="2">{{ row.description }}</textarea></label>
+
+        <div class="span2 quick-xp-kind-panel" data-kind-panel="quiz" {% if row.kind!='quiz' %}hidden{% endif %}>
+          <div class="notice">🧠 Питання мініквізу редагуються окремо нижче. Загальна винагорода автоматично дорівнює сумі XP усіх питань.</div>
+        </div>
+        <div class="span2 quick-xp-kind-panel" data-kind-panel="video" {% if row.kind!='video' %}hidden{% endif %}>
+          <div class="form-grid quick-xp-inner-grid">
+            <label class="span2">Посилання на відео/матеріал<input type="url" name="media_url" value="{{ row.media_url }}"></label>
+            <label class="span2">Контрольне питання<textarea name="single_question" rows="2">{{ row.question }}</textarea></label>
+            <label class="span2">Варіанти — по одному в рядку<textarea name="single_options" rows="4">{{ parse_options(row.options_json)|join('\n') }}</textarea></label>
+            <label>№ правильної відповіді<input type="number" name="single_correct_option" min="1" max="12" value="{{ (row.correct_option + 1) if row.correct_option is not none else '' }}"></label>
+            <label>XP за виконання<input type="number" name="xp_reward" min="1" max="20" value="{{ row.xp_reward }}"></label>
+          </div>
+        </div>
+        <div class="span2 quick-xp-kind-panel" data-kind-panel="poll" {% if row.kind!='poll' %}hidden{% endif %}>
+          <div class="form-grid quick-xp-inner-grid">
+            <label class="span2">Питання<textarea name="single_question" rows="2">{{ row.question }}</textarea></label>
+            <label class="span2">Варіанти — по одному в рядку<textarea name="single_options" rows="4">{{ parse_options(row.options_json)|join('\n') }}</textarea></label>
+            <label>XP за відповідь<input type="number" name="xp_reward" min="1" max="20" value="{{ row.xp_reward }}"></label>
+          </div>
+        </div>
+        <div class="span2 quick-xp-kind-panel" data-kind-panel="comment" {% if row.kind!='comment' %}hidden{% endif %}>
+          <div class="form-grid quick-xp-inner-grid">
+            <label class="span2">Питання / підказка<textarea name="single_question" rows="2">{{ row.question }}</textarea></label>
+            <label>XP за відповідь<input type="number" name="xp_reward" min="1" max="20" value="{{ row.xp_reward }}"></label>
+          </div>
+        </div>
+
+        <label>Початок<input type="datetime-local" name="starts_at" value="{{ input_dt(row.starts_at) }}"></label>
+        <label>Дедлайн<input type="datetime-local" name="ends_at" value="{{ input_dt(row.ends_at) }}"></label>
+        <label class="check"><input type="checkbox" name="featured_home" {% if row.featured_home %}checked{% endif %}> Рекомендоване</label>
+        <label class="check"><input type="checkbox" name="active" {% if row.active %}checked{% endif %}> Активне</label>
+        <div class="span2 form-actions-row"><button type="submit" class="primary">💾 Зберегти зміни</button></div>
+      </form>
+    </details>
+  </div>
+
+  {% if row.kind == 'quiz' %}
+  <section class="quick-xp-questions-section">
+    <div class="section-title"><div><h3>🧠 Питання мініквізу</h3><p class="muted">{{ question_map.get(row.id, [])|length }} питань · максимум +{{ reward_map.get(row.id, 0) }} XP</p></div></div>
+    <div class="quick-xp-question-list">
+      {% for question in question_map.get(row.id, []) %}
+      <article class="quick-xp-question-card">
+        <div class="quick-xp-question-summary">
+          <div><span class="tag">Питання {{ loop.index }}</span><span class="tag good">+{{ question.xp_reward }} XP</span><h4>{{ question.text }}</h4><p class="muted">{{ parse_options(question.options_json)|join(' · ') }}</p></div>
+          <div class="quick-xp-question-actions">
+            <div class="reorder-actions">
+              <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="up"><button class="soft-button compact-action" {% if loop.first %}disabled{% endif %}>↑</button></form>
+              <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="down"><button class="soft-button compact-action" {% if loop.last %}disabled{% endif %}>↓</button></form>
+            </div>
+            <details class="inline-edit-details"><summary class="soft-button edit-action-button compact-action">✏️ Редагувати</summary>
+              <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/update" class="form-grid quick-xp-question-edit"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <label class="span2">Текст<textarea name="text" rows="2" required>{{ question.text }}</textarea></label>
+                <label class="span2">Варіанти — по одному в рядку<textarea name="options" rows="4" required>{{ parse_options(question.options_json)|join('\n') }}</textarea></label>
+                <label>№ правильної<input type="number" name="correct_option" min="1" max="12" value="{{ question.correct_option + 1 }}" required></label>
+                <label>XP<input type="number" name="xp_reward" min="1" max="20" value="{{ question.xp_reward }}" required></label>
+                <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
+              </form>
+            </details>
+            <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/delete" onsubmit="return confirm('Видалити це питання?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action">🗑 Видалити</button></form>
+          </div>
+        </div>
+      </article>
+      {% else %}<div class="notice">Питань ще немає. Додайте перше питання — без нього мініквіз автоматично не активується.</div>{% endfor %}
+    </div>
+
+    <details class="quick-xp-add-question-details">
+      <summary class="soft-button edit-action-button">＋ Додати питання</summary>
+      <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/create" class="form-grid quick-xp-question-edit"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="span2">Текст питання<textarea name="text" rows="2" required></textarea></label>
+        <label class="span2">Варіанти — по одному в рядку<textarea name="options" rows="4" required></textarea></label>
+        <label>№ правильної<input type="number" name="correct_option" min="1" max="12" value="1" required></label>
+        <label>XP за правильну<input type="number" name="xp_reward" min="1" max="20" value="1" required></label>
+        <div class="span2 form-actions-row"><button class="primary">＋ Додати питання</button></div>
+      </form>
+    </details>
+  </section>
+  {% endif %}
 </article>
-{% else %}<div class="card"><p>Швидких завдань ще немає.</p></div>{% endfor %}
-</section>
+{% else %}<section class="card"><p>Швидких завдань ще немає.</p></section>{% endfor %}
+</div>
+
+<template id="quickXpQuestionTemplate">
+  <div class="quick-xp-question-draft" data-quiz-question>
+    <div class="quick-xp-question-draft-head"><b>Питання <span data-question-number></span></b><button type="button" class="soft-button compact-action" data-remove-quiz-question>✕ Прибрати</button></div>
+    <label>Текст питання<textarea name="quiz_question_text" rows="2" required></textarea></label>
+    <label>Варіанти — по одному в рядку<textarea name="quiz_question_options" rows="4" required></textarea></label>
+    <div class="quick-xp-question-fields"><label>№ правильної відповіді<input type="number" name="quiz_question_correct" min="1" max="12" value="1" required></label><label>XP за правильну відповідь<input type="number" name="quiz_question_xp" min="1" max="20" value="1" required></label></div>
+  </div>
+</template>
+<script>
+function setPanelControls(panel, enabled){panel.querySelectorAll('input,textarea,select').forEach(el=>{if(el.name!=='_csrf')el.disabled=!enabled;});}
+function syncQuickXpKind(form){const kind=form.querySelector('.quick-xp-kind-select')?.value;form.querySelectorAll('[data-kind-panel]').forEach(panel=>{const active=panel.dataset.kindPanel===kind;panel.hidden=!active;setPanelControls(panel,active);});}
+document.querySelectorAll('[data-kind-form]').forEach(form=>{const select=form.querySelector('.quick-xp-kind-select');syncQuickXpKind(form);select?.addEventListener('change',()=>syncQuickXpKind(form));});
+function renumberQuickXpDrafts(list){Array.from(list.querySelectorAll('[data-quiz-question]')).forEach((row,i)=>{const n=row.querySelector('[data-question-number]');if(n)n.textContent=i+1;});}
+document.querySelectorAll('[data-quiz-question-list]').forEach(list=>{list.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-quiz-question]');if(!btn)return;const rows=list.querySelectorAll('[data-quiz-question]');if(rows.length<=1){alert('Мініквіз має містити хоча б одне питання.');return;}btn.closest('[data-quiz-question]').remove();renumberQuickXpDrafts(list);});});
+document.querySelectorAll('[data-add-quiz-question]').forEach(btn=>{btn.addEventListener('click',()=>{const panel=btn.closest('[data-kind-panel="quiz"]');const list=panel.querySelector('[data-quiz-question-list]');const tpl=document.getElementById('quickXpQuestionTemplate');list.appendChild(tpl.content.cloneNode(true));renumberQuickXpDrafts(list);});});
+</script>
 {% endblock %}

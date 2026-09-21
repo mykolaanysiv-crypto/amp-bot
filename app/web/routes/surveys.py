@@ -98,12 +98,29 @@ async def survey_detail(request: Request, survey_id: int):
     )
 
 
+@router.post("/admin/surveys/{survey_id}/identity")
+async def survey_identity_update(request: Request, survey_id: int):
+    if r := guard(request): return r
+    form = await request.form()
+    title = str(form.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "Вкажіть назву опитування")
+    async with db.session_factory() as session:
+        survey = await session.get(Survey, survey_id)
+        if not survey:
+            raise HTTPException(404, "Опитування не знайдено")
+        survey.title = title[:180]
+        survey.description = str(form.get("description") or "").strip()
+        survey.updated_at = clock.storage_utc()
+        await log_audit(session, "web_survey_identity_update", actor_label=request.session.get("admin_name", "web"), entity_type="survey", entity_id=survey.id, details=survey.title)
+        await session.commit()
+    return RedirectResponse(f"/admin/surveys/{survey_id}#survey-identity", 303)
+
+
 @router.post("/admin/surveys/{survey_id}/update")
 async def survey_update(request: Request, survey_id: int):
     if r := guard(request): return r
     form = await request.form()
-    title = str(form.get("title") or "").strip()
-    if not title: raise HTTPException(400, "Вкажіть назву опитування")
     audience_type = normalize_audience_type(str(form.get("audience_type") or "all"))
     audience_event_id = int(form.get("audience_event_id")) if audience_type == "event" and str(form.get("audience_event_id") or "").isdigit() else None
     selected_user_ids = sorted({int(v) for v in form.getlist("audience_user_ids") if str(v).isdigit()}) if audience_type == "users" else []
@@ -116,8 +133,6 @@ async def survey_update(request: Request, survey_id: int):
         if not survey: raise HTTPException(404,"Опитування не знайдено")
         if audience_event_id and not await session.get(Event, audience_event_id):
             raise HTTPException(400, "Обрану подію не знайдено")
-        survey.title=title
-        survey.description=str(form.get("description") or "").strip()
         try: survey.xp_reward=max(0,min(40,int(form.get("xp_reward") or 0)))
         except (TypeError, ValueError): survey.xp_reward=0
         raw_ends=str(form.get("ends_at") or "").strip()
@@ -128,9 +143,9 @@ async def survey_update(request: Request, survey_id: int):
         await session.execute(delete(SurveyAudienceUser).where(SurveyAudienceUser.survey_id == survey.id))
         for user_id in selected_user_ids:
             session.add(SurveyAudienceUser(survey_id=survey.id, user_id=user_id))
-        await log_audit(session,"web_survey_update",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=survey.id,details=f"{survey.title}; audience={audience_type}")
+        await log_audit(session,"web_survey_update",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=survey.id,details=f"settings; audience={audience_type}")
         await session.commit()
-    return RedirectResponse(f"/admin/surveys/{survey_id}",303)
+    return RedirectResponse(f"/admin/surveys/{survey_id}#survey-settings",303)
 
 
 @router.post("/admin/surveys/{survey_id}/questions/create")
@@ -154,6 +169,68 @@ async def survey_question_create(
         )
         session.add(q); await session.commit()
     return RedirectResponse(f"/admin/surveys/{survey_id}",303)
+
+
+@router.post("/admin/surveys/{survey_id}/questions/{question_id}/update")
+async def survey_question_update(
+    request: Request, survey_id: int, question_id: int,
+    text: str=Form(...), question_type: str=Form("single"), options: str=Form(""),
+    required: str|None=Form(None), photo: UploadFile | None=File(None), remove_image: str|None=Form(None),
+):
+    if r := guard(request): return r
+    if question_type not in {"single", "multiple", "text"}:
+        raise HTTPException(400, "Некоректний тип питання")
+    clean_options = [x.strip() for x in options.splitlines() if x.strip()]
+    if question_type != "text" and len(clean_options) < 2:
+        raise HTTPException(400, "Для питання з варіантами додайте щонайменше 2 варіанти")
+    old_path = None
+    async with db.session_factory() as session:
+        survey = await session.get(Survey, survey_id)
+        q = await session.get(SurveyQuestion, question_id)
+        if not survey or not q or q.survey_id != survey_id:
+            raise HTTPException(404, "Питання не знайдено")
+        if survey.status != "draft":
+            raise HTTPException(409, "Питання можна редагувати лише в чернетці")
+        old_path = q.image_path
+        q.text = text.strip()
+        q.question_type = question_type
+        q.options_text = "" if question_type == "text" else "\n".join(clean_options)
+        q.required = bool(required)
+        if remove_image:
+            q.image_path = None
+        elif photo and photo.filename:
+            q.image_path = await save_image(photo, "survey_questions")
+        await log_audit(session, "web_survey_question_update", actor_label=request.session.get("admin_name", "web"), entity_type="survey_question", entity_id=q.id, details=f"survey={survey_id}")
+        await session.commit()
+        new_path = q.image_path
+    if old_path and old_path != new_path:
+        await delete_image(old_path)
+    return RedirectResponse(f"/admin/surveys/{survey_id}#question-{question_id}", 303)
+
+
+@router.post("/admin/surveys/{survey_id}/questions/{question_id}/move")
+async def survey_question_move(request: Request, survey_id: int, question_id: int):
+    if r := guard(request): return r
+    form = await request.form()
+    direction = str(form.get("direction") or "")
+    if direction not in {"up", "down"}:
+        raise HTTPException(400, "Некоректний напрямок")
+    async with db.session_factory() as session:
+        survey = await session.get(Survey, survey_id)
+        if not survey:
+            raise HTTPException(404, "Опитування не знайдено")
+        if survey.status != "draft":
+            raise HTTPException(409, "Порядок питань можна змінювати лише в чернетці")
+        rows = list((await session.scalars(select(SurveyQuestion).where(SurveyQuestion.survey_id == survey_id).order_by(SurveyQuestion.sort_order, SurveyQuestion.id))).all())
+        index = next((i for i, item in enumerate(rows) if item.id == question_id), None)
+        if index is None:
+            raise HTTPException(404, "Питання не знайдено")
+        other_index = index - 1 if direction == "up" else index + 1
+        if 0 <= other_index < len(rows):
+            rows[index].sort_order, rows[other_index].sort_order = rows[other_index].sort_order, rows[index].sort_order
+            await log_audit(session, "web_survey_question_move", actor_label=request.session.get("admin_name", "web"), entity_type="survey_question", entity_id=question_id, details=f"direction={direction}")
+            await session.commit()
+    return RedirectResponse(f"/admin/surveys/{survey_id}#question-{question_id}", 303)
 
 
 @router.post("/admin/surveys/{survey_id}/questions/{question_id}/delete")

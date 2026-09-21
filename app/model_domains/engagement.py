@@ -199,6 +199,40 @@ class QuickXPChallenge(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
+    questions: Mapped[list["QuickXPQuestion"]] = relationship(back_populates="challenge", cascade="all, delete-orphan", order_by="QuickXPQuestion.sort_order")
+
+
+class QuickXPQuestion(Base):
+    __tablename__ = "quick_xp_questions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    challenge_id: Mapped[int] = mapped_column(ForeignKey("quick_xp_challenges.id", ondelete="CASCADE"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    options_json: Mapped[str] = mapped_column(Text, default="[]")
+    correct_option: Mapped[int] = mapped_column(Integer)
+    xp_reward: Mapped[int] = mapped_column(Integer, default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, default=10)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+    challenge: Mapped[QuickXPChallenge] = relationship(back_populates="questions")
+
+
+class QuickXPAnswer(Base):
+    __tablename__ = "quick_xp_answers"
+    __table_args__ = (UniqueConstraint("question_id", "user_id", name="uq_quick_xp_question_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    challenge_id: Mapped[int] = mapped_column(ForeignKey("quick_xp_challenges.id", ondelete="CASCADE"), index=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey("quick_xp_questions.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    answer_option: Mapped[int] = mapped_column(Integer)
+    correct: Mapped[bool] = mapped_column(Boolean, default=False)
+    xp_awarded: Mapped[int] = mapped_column(Integer, default=0)
+    answered_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+
+    question: Mapped[QuickXPQuestion] = relationship()
+    user: Mapped[User] = relationship()
+
 
 class QuickXPCompletion(Base):
     __tablename__ = "quick_xp_completions"

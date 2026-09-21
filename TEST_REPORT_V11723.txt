@@ -1,0 +1,16 @@
+AMP XP v1.17.2.3 — local build report
+========================================
+PASS  python -m compileall -q app scripts tests migrations
+PASS  python -m scripts.production_preflight
+PASS  Jinja parse: 58 templates
+PASS  alembic heads -> 20260921_0012
+PASS  focused source/regression tests: 9 passed
+PASS  SQLAlchemy metadata import: 65 tables; QuickXPQuestion/QuickXPAnswer present
+
+LIMITATION
+Full DB-backed pytest was not executable in the build container because aiogram and aiosqlite are not installed there.
+Run the full gate in the project .venv before deploy:
+  python -m compileall -q app scripts tests migrations
+  python -m scripts.production_preflight
+  pytest -q
+  git diff --check

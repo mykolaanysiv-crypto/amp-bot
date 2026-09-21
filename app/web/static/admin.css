@@ -3451,3 +3451,61 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 .duplicate-delete-form label{display:grid;gap:5px;font-size:.86rem}
 .danger-link{color:#a7232f}
 @media (max-width:800px){.inline-status-form{align-items:stretch}.inline-status-form select{width:100%}.duplicate-delete-details{min-width:0}.duplicate-table{min-width:760px}}
+
+/* v1.17.2.3 — Quick XP / survey / quest layout hardening */
+.work-cards-grid{align-items:stretch!important}
+.work-cards-grid>.entity-card-v2{height:100%!important}
+.quest-card-v2 .entity-card-media{height:230px;min-height:230px;overflow:hidden}
+.quest-card-v2 .entity-card-media img{width:100%!important;height:230px!important;max-height:none!important;object-fit:contain!important}
+.quest-card-v2 .entity-placeholder{height:230px;min-height:230px}
+.quest-card-v2 .entity-card-body{height:100%}
+.quest-card-v2 .entity-card-description{min-height:56px}
+
+.quick-xp-create-card,.quick-xp-admin-card,.survey-identity-card,.survey-settings-card,.survey-question-create-card,.survey-questions-card,.survey-results-card,.survey-respondents-card{overflow:visible}
+.quick-xp-admin-stack{display:grid;gap:20px;margin-top:18px}
+.quick-xp-admin-card{margin:0!important}
+.quick-xp-card-head{align-items:flex-start;gap:18px}
+.quick-xp-kind-panel{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.quick-xp-kind-panel[hidden]{display:none!important}
+.quick-xp-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.quick-xp-panel-head h3{margin:0 0 4px!important}
+.quick-xp-inner-grid{margin:0!important;padding:0!important}
+.quick-xp-question-builder,.quick-xp-question-list{display:grid;gap:14px}
+.quick-xp-question-draft,.quick-xp-question-card{display:grid;gap:12px;padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.quick-xp-question-draft-head,.quick-xp-question-summary{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-width:0}
+.quick-xp-question-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.quick-xp-question-summary>div:first-child{min-width:0;flex:1}
+.quick-xp-question-summary h4{margin:8px 0 6px;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.quick-xp-question-actions{display:flex;align-items:flex-start;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:230px}
+.quick-xp-questions-section{display:grid;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.quick-xp-add-question-details,.inline-edit-details{min-width:0}
+.quick-xp-add-question-details[open],.inline-edit-details[open]{width:100%;padding-top:10px}
+.quick-xp-question-edit,.survey-inline-edit{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.quick-xp-card-actions>form{width:100%;margin:0}
+.quick-xp-card-actions>form>button{width:100%!important;height:52px!important}
+.reorder-actions{display:flex;gap:6px;align-items:center}
+.reorder-actions form{margin:0}
+.reorder-actions button[disabled]{opacity:.38;cursor:not-allowed;transform:none!important}
+
+.survey-identity-card .section-title,.survey-settings-card .section-title,.survey-question-item{gap:16px}
+.survey-question-list{display:grid;gap:14px}
+.survey-question-item{margin:0!important;padding:16px!important;align-items:flex-start!important}
+.survey-question-actions{display:flex!important;align-items:flex-start!important;justify-content:flex-end!important;gap:8px!important;flex-wrap:wrap!important}
+.survey-question-actions>form,.survey-question-actions>.reorder-actions,.survey-question-actions>details{margin:0!important}
+.survey-question-edit-details[open]{flex-basis:100%;width:100%}
+.survey-question-edit-details[open] .survey-inline-edit{width:100%}
+.survey-settings-card .facts{margin:10px 0 16px}
+.survey-publish-actions{margin-top:14px}
+
+/* Keep generic admin cards and expanded edit drawers from visually colliding. */
+.content .card + .card{margin-top:18px}
+.content details[open]>form{margin-bottom:2px}
+.content .form-actions-row{margin-top:4px}
+.content .section-title{gap:14px}
+
+@media (max-width:760px){
+  .quick-xp-question-fields{grid-template-columns:1fr}
+  .quick-xp-question-summary{flex-direction:column}
+  .quick-xp-question-actions{min-width:0;width:100%;justify-content:flex-start}
+  .quest-card-v2 .entity-card-media,.quest-card-v2 .entity-card-media img,.quest-card-v2 .entity-placeholder{height:200px!important;min-height:200px!important}
+}

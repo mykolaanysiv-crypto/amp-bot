@@ -1,0 +1,58 @@
+AMP XP v1.17.2.3 — install / verify / deploy
+================================================
+
+1) Робочий repository
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+
+2) Backup production перед зміною схеми
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+3) Розпакувати release
+rm -rf /tmp/amp_bot_v11723
+mkdir -p /tmp/amp_bot_v11723
+unzip -q ~/Downloads/amp_bot_v11723.zip -d /tmp/amp_bot_v11723
+
+4) Накласти release
+rsync -av --delete \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='.venv' \
+  --exclude='__pycache__' \
+  --exclude='.pytest_cache' \
+  /tmp/amp_bot_v11723/amp_bot_v11723/ ./
+
+5) Перевірити версію
+cat VERSION.txt
+cat VERSION_CHECK.txt
+# Очікується 1.17.2.3 / 1.17.2.3
+
+6) Full local gate
+pip install -r requirements.txt
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q
+git diff --check
+
+7) Перевірити Alembic
+alembic heads
+# Очікується: 20260921_0012 (head)
+
+8) Commit / GitHub Actions
+git status --short
+git add -A
+git status
+git commit -m "AMP XP v1.17.2.3 Quick XP builder and admin UX"
+git push origin main
+
+9) Після зеленого GitHub Actions / deploy
+heroku run -a amp-bot-ver-1-5-0 -- alembic upgrade head
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+# Очікується: 20260921_0012
+
+10) Health
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0.herokuapp.com/health/ready
+echo
+heroku logs -n 200 -a amp-bot-ver-1-5-0

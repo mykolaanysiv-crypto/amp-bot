@@ -3,122 +3,56 @@
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/surveys">Опитування</a><span>›</span><b>{{survey.title}}</b></nav>
 <div class="page-head survey-detail-head">
-  <div>
-    <span class="eyebrow">ОПИТУВАННЯ</span>
-    <h1>{{survey.title}}</h1>
-    <p>{{survey.description or 'Без опису'}}</p>
-  </div>
-  <div class="survey-head-actions">
-    <span class="tag survey-{{survey.status}}">{% if survey.status=='draft' %}Чернетка{% elif survey.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span>
-    <a class="soft-button" href="/admin/surveys/{{survey.id}}/export.xlsx">📥 Excel</a>
-    <a class="primary link-button" href="/admin/surveys/{{survey.id}}/export.pdf">📄 PDF</a>
-  </div>
+  <div><span class="eyebrow">ОПИТУВАННЯ</span><h1>{{survey.title}}</h1><p>{{survey.description or 'Без опису'}}</p></div>
+  <div class="survey-head-actions"><span class="tag survey-{{survey.status}}">{% if survey.status=='draft' %}Чернетка{% elif survey.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span><a class="soft-button" href="/admin/surveys/{{survey.id}}/export.xlsx">📥 Excel</a><a class="primary link-button" href="/admin/surveys/{{survey.id}}/export.pdf">📄 PDF</a></div>
 </div>
 
 <div class="kpis survey-kpis">
-  <div class="kpi"><span>Питань</span><strong>{{questions|length}}</strong></div>
-  <div class="kpi"><span>Відповідей</span><strong>{{responses|length}}</strong></div>
-  <div class="kpi"><span>Переглядів</span><strong>{{view_stat.views}}</strong><small>{{view_stat.unique}} унікальних</small></div>
-  <div class="kpi"><span>XP</span><strong>{{survey.xp_reward}}</strong></div>
-  <div class="kpi"><span>Аудиторія</span><strong>{{audience_count}}</strong><small>{{audience_label}}</small></div>
-  <div class="kpi"><span>Дедлайн</span><strong class="survey-kpi-date">{{survey.ends_at.strftime('%d.%m') if survey.ends_at else '∞'}}</strong></div>
+  <div class="kpi"><span>Питань</span><strong>{{questions|length}}</strong></div><div class="kpi"><span>Відповідей</span><strong>{{responses|length}}</strong></div><div class="kpi"><span>Переглядів</span><strong>{{view_stat.views}}</strong><small>{{view_stat.unique}} унікальних</small></div><div class="kpi"><span>XP</span><strong>{{survey.xp_reward}}</strong></div><div class="kpi"><span>Аудиторія</span><strong>{{audience_count}}</strong><small>{{audience_label}}</small></div><div class="kpi"><span>Дедлайн</span><strong class="survey-kpi-date">{{survey.ends_at.strftime('%d.%m') if survey.ends_at else '∞'}}</strong></div>
 </div>
 
-<section class="card survey-settings-card">
-  <div class="section-title"><h2>⚙️ Налаштування</h2></div>
-  <form method="post" action="/admin/surveys/{{survey.id}}/update" class="form-grid survey-create-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-    <label class="span2">Назва<input name="title" value="{{survey.title}}" required></label>
-    <label>XP<input name="xp_reward" type="number" min="0" max="40" value="{{survey.xp_reward}}"></label>
-    <label>Дедлайн<input name="ends_at" type="datetime-local" value="{{survey.ends_at.strftime('%Y-%m-%dT%H:%M') if survey.ends_at else ''}}"></label>
-    <label class="span2">Опис<textarea name="description">{{survey.description}}</textarea></label>
-    <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceEdit" onchange="toggleSurveyAudience('Edit')"><option value="all" {% if survey.audience_type=='all' %}selected{% endif %}>Усім активним учасникам</option><option value="users" {% if survey.audience_type=='users' %}selected{% endif %}>Обраним учасникам</option><option value="event" {% if survey.audience_type=='event' %}selected{% endif %}>Учасникам певної події</option></select></label>
-    <div class="span2 survey-audience-panel survey-audience-event" id="surveyAudienceEventEdit" style="display:none">
-      <div class="survey-audience-panel-head"><div><b>🎫 Оберіть подію</b><small>Опитування побачать учасники вибраної події.</small></div></div>
-      <label class="survey-event-picker">Подія<select name="audience_event_id"><option value="">Оберіть подію зі списку</option>{% for e in audience_events %}<option value="{{e.id}}" {% if survey.audience_event_id==e.id %}selected{% endif %}>{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
-    </div>
-    <div class="span2 survey-audience-panel survey-audience-users" id="surveyAudienceUsersEdit" style="display:none">
-      <div class="survey-audience-panel-head"><div><b>👥 Оберіть учасників</b><small>Клік по картці додає або прибирає учасника.</small></div><span class="tag"><b id="surveyAudienceCountEdit">0</b> обрано</span></div>
-      <div class="survey-audience-toolbar">
-        <input type="search" id="surveyAudienceSearchEdit" placeholder="🔎 Пошук учасника…" oninput="filterSurveyAudience('Edit')">
-        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceVisible('Edit',true)">Обрати показаних</button>
-        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceAll('Edit',false)">Очистити</button>
-      </div>
-      <div class="survey-user-picker" id="surveyUserPickerEdit">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}" {% if u.id in selected_audience_ids %}checked{% endif %} onchange="updateSurveyAudienceCount('Edit')"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div>
-    </div>
-    <div class="span2 form-actions-row"><button class="soft-button">💾 Зберегти</button></div>
-  </form>
-  <div class="survey-publish-actions">
-    {% if survey.status=='draft' %}<form method="post" action="/admin/surveys/{{survey.id}}/publish" onsubmit="return confirm('Опублікувати опитування та повідомити визначену аудиторію?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="primary">📣 Опублікувати й повідомити</button></form>{% elif survey.status=='published' %}<form method="post" action="/admin/surveys/{{survey.id}}/close"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🔒 Закрити опитування</button></form>{% endif %}
-    {% if is_superadmin %}<form method="post" action="/admin/surveys/{{survey.id}}/delete" onsubmit="return confirm('Видалити опитування разом з відповідями?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>{% endif %}
+<section class="card survey-identity-card" id="survey-identity">
+  <div class="section-title"><div><h2>📝 Назва та опис</h2><p class="muted">Редагуються окремо від технічних налаштувань опитування.</p></div>
+    <details class="inline-edit-details"><summary class="soft-button edit-action-button">✏️ Редагувати</summary>
+      <form method="post" action="/admin/surveys/{{survey.id}}/identity" class="form-grid survey-inline-edit"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label class="span2">Назва<input name="title" value="{{survey.title}}" maxlength="180" required></label><label class="span2">Опис<textarea name="description" rows="4">{{survey.description}}</textarea></label><div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div></form>
+    </details>
   </div>
+  <h3>{{survey.title}}</h3><p class="preline">{{survey.description or 'Без опису'}}</p>
+</section>
+
+<section class="card survey-settings-card" id="survey-settings">
+  <div class="section-title"><div><h2>⚙️ Налаштування</h2><p class="muted">XP, дедлайн і цільова аудиторія.</p></div><details class="inline-edit-details"><summary class="soft-button edit-action-button">✏️ Редагувати</summary>
+    <form method="post" action="/admin/surveys/{{survey.id}}/update" class="form-grid survey-create-form survey-inline-edit"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>XP<input name="xp_reward" type="number" min="0" max="40" value="{{survey.xp_reward}}"></label><label>Дедлайн<input name="ends_at" type="datetime-local" value="{{survey.ends_at.strftime('%Y-%m-%dT%H:%M') if survey.ends_at else ''}}"></label>
+      <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceEdit" onchange="toggleSurveyAudience('Edit')"><option value="all" {% if survey.audience_type=='all' %}selected{% endif %}>Усім активним учасникам</option><option value="users" {% if survey.audience_type=='users' %}selected{% endif %}>Обраним учасникам</option><option value="event" {% if survey.audience_type=='event' %}selected{% endif %}>Учасникам певної події</option></select></label>
+      <div class="span2 survey-audience-panel survey-audience-event" id="surveyAudienceEventEdit" style="display:none"><div class="survey-audience-panel-head"><div><b>🎫 Оберіть подію</b><small>Опитування побачать учасники вибраної події.</small></div></div><label class="survey-event-picker">Подія<select name="audience_event_id"><option value="">Оберіть подію зі списку</option>{% for e in audience_events %}<option value="{{e.id}}" {% if survey.audience_event_id==e.id %}selected{% endif %}>{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label></div>
+      <div class="span2 survey-audience-panel survey-audience-users" id="surveyAudienceUsersEdit" style="display:none"><div class="survey-audience-panel-head"><div><b>👥 Оберіть учасників</b><small>Клік по картці додає або прибирає учасника.</small></div><span class="tag"><b id="surveyAudienceCountEdit">0</b> обрано</span></div><div class="survey-audience-toolbar"><input type="search" id="surveyAudienceSearchEdit" placeholder="🔎 Пошук учасника…" oninput="filterSurveyAudience('Edit')"><button type="button" class="soft-button compact-action" onclick="setSurveyAudienceVisible('Edit',true)">Обрати показаних</button><button type="button" class="soft-button compact-action" onclick="setSurveyAudienceAll('Edit',false)">Очистити</button></div><div class="survey-user-picker" id="surveyUserPickerEdit">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}" {% if u.id in selected_audience_ids %}checked{% endif %} onchange="updateSurveyAudienceCount('Edit')"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div></div>
+      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div>
+    </form>
+  </details></div>
+  <div class="facts"><div><span>XP</span><b>{{survey.xp_reward}}</b></div><div><span>Дедлайн</span><b>{{survey.ends_at.strftime('%d.%m.%Y %H:%M') if survey.ends_at else 'Без дедлайну'}}</b></div><div><span>Аудиторія</span><b>{{audience_label}}</b></div></div>
+  <div class="survey-publish-actions">{% if survey.status=='draft' %}<form method="post" action="/admin/surveys/{{survey.id}}/publish" onsubmit="return confirm('Опублікувати опитування та повідомити визначену аудиторію?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="primary">📣 Опублікувати й повідомити</button></form>{% elif survey.status=='published' %}<form method="post" action="/admin/surveys/{{survey.id}}/close"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🔒 Закрити опитування</button></form>{% endif %}{% if is_superadmin %}<form method="post" action="/admin/surveys/{{survey.id}}/delete" onsubmit="return confirm('Видалити опитування разом з відповідями?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>{% endif %}</div>
 </section>
 
 {% if survey.status=='draft' %}
-<section class="card survey-question-create-card">
-  <div class="section-title"><div><h2>➕ Додати питання</h2><p class="muted">Для варіантів відповіді введіть кожен варіант з нового рядка. До питання можна додати фото до 20 МБ.</p></div></div>
-  <form method="post" action="/admin/surveys/{{survey.id}}/questions/create" enctype="multipart/form-data" class="form-grid survey-question-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-    <label class="span2">Текст питання<textarea name="text" rows="3" required placeholder="Сформулюйте питання повністю"></textarea></label>
-    <label>Тип<select name="question_type" id="surveyQuestionType" onchange="toggleSurveyOptions()"><option value="single">Один варіант</option><option value="multiple">Декілька варіантів</option><option value="text">Текстова відповідь</option></select></label>
-    <label class="check-line"><input type="checkbox" name="required" value="1" checked> Обов’язкове</label>
-    <div class="span2 survey-options-builder" id="surveyOptionsBuilder">
-      <div class="survey-options-head"><div><b>Варіанти відповіді</b><small>Додавайте варіанти окремими полями — їх легше перевірити перед публікацією.</small></div><button type="button" class="soft-button compact-action" onclick="addSurveyOption()">＋ Додати варіант</button></div>
-      <div id="surveyOptionRows" class="survey-option-inputs">
-        <div class="survey-option-input-row"><span>1</span><input type="text" placeholder="Варіант 1"><button type="button" class="survey-option-remove" onclick="removeSurveyOption(this)" aria-label="Видалити">×</button></div>
-        <div class="survey-option-input-row"><span>2</span><input type="text" placeholder="Варіант 2"><button type="button" class="survey-option-remove" onclick="removeSurveyOption(this)" aria-label="Видалити">×</button></div>
-      </div>
-      <textarea name="options" id="surveyOptionsValue" hidden></textarea>
-    </div>
-    <label class="span2">Фото до питання <span class="muted">(необов’язково)</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
-    <div class="span2 form-actions-row"><button class="primary">Додати питання</button></div>
-  </form>
+<section class="card survey-question-create-card"><div class="section-title"><div><h2>➕ Додати питання</h2><p class="muted">Після додавання кожне питання можна окремо редагувати й переставляти.</p></div></div>
+  <form method="post" action="/admin/surveys/{{survey.id}}/questions/create" enctype="multipart/form-data" class="form-grid survey-question-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label class="span2">Текст питання<textarea name="text" rows="3" required></textarea></label><label>Тип<select name="question_type" id="surveyQuestionType" onchange="toggleSurveyOptions()"><option value="single">Один варіант</option><option value="multiple">Декілька варіантів</option><option value="text">Текстова відповідь</option></select></label><label class="check-line"><input type="checkbox" name="required" value="1" checked> Обов’язкове</label><div class="span2 survey-options-builder" id="surveyOptionsBuilder"><div class="survey-options-head"><div><b>Варіанти відповіді</b><small>Кожен варіант — окремим полем.</small></div><button type="button" class="soft-button compact-action" onclick="addSurveyOption()">＋ Додати варіант</button></div><div id="surveyOptionRows" class="survey-option-inputs"><div class="survey-option-input-row"><span>1</span><input type="text" placeholder="Варіант 1"><button type="button" class="survey-option-remove" onclick="removeSurveyOption(this)">×</button></div><div class="survey-option-input-row"><span>2</span><input type="text" placeholder="Варіант 2"><button type="button" class="survey-option-remove" onclick="removeSurveyOption(this)">×</button></div></div><textarea name="options" id="surveyOptionsValue" hidden></textarea></div><label class="span2">Фото до питання <span class="muted">(необов’язково)</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label><div class="span2 form-actions-row"><button class="primary">Додати питання</button></div></form>
 </section>
 {% endif %}
 
-<section class="card survey-questions-card">
-  <div class="section-title"><h2>❓ Питання</h2><span>{{questions|length}}</span></div>
-  <div class="survey-question-list">
-  {% for q in questions %}
-    <article class="survey-question-item" id="question-{{q.id}}">
-      <div class="survey-question-content">
-        <div class="survey-question-meta"><span class="tag">{{'Текст' if q.question_type=='text' else 'Декілька' if q.question_type=='multiple' else 'Один варіант'}}</span>{% if q.required %}<span class="tag">Обов’язкове</span>{% endif %}</div>
-        <h3>{{loop.index}}. {{q.text}}</h3>
-        {% if q.image_path %}<img class="survey-question-image" src="{{q.image_path}}" alt="Фото до питання {{loop.index}}">{% endif %}
-        {% if q.options_text %}<div class="survey-option-chips">{% for option in q.options_text.split('\n') if option.strip() %}<span>{{option}}</span>{% endfor %}</div>{% endif %}
-        {% if survey.status=='draft' %}
-        <form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/photo" enctype="multipart/form-data" class="survey-question-photo-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-          <label>{% if q.image_path %}Замінити фото{% else %}Додати фото{% endif %}<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
-          <button class="soft-button compact-action" type="submit">📷 Зберегти фото</button>
-          {% if q.image_path %}<button class="danger-btn compact-action" type="submit" name="remove" value="1">Прибрати фото</button>{% endif %}
-        </form>
-        {% endif %}
-      </div>
-      <div class="survey-question-actions">
-        <a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/questions/{{q.id}}/result.png">🖼 PNG результату</a>
-        {% if survey.status=='draft' %}<form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/delete" onsubmit="return confirm('Видалити питання?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action">🗑 Видалити</button></form>{% endif %}
-      </div>
-    </article>
-  {% else %}<p class="muted">Питань ще немає.</p>{% endfor %}
-  </div>
-</section>
+<section class="card survey-questions-card"><div class="section-title"><div><h2>❓ Питання</h2><p class="muted">Редагуйте зміст окремо та змінюйте послідовність стрілками.</p></div><span>{{questions|length}}</span></div><div class="survey-question-list">
+{% for q in questions %}<article class="survey-question-item" id="question-{{q.id}}"><div class="survey-question-content"><div class="survey-question-meta"><span class="tag">{{'Текст' if q.question_type=='text' else 'Декілька' if q.question_type=='multiple' else 'Один варіант'}}</span>{% if q.required %}<span class="tag">Обов’язкове</span>{% endif %}</div><h3>{{loop.index}}. {{q.text}}</h3>{% if q.image_path %}<img class="survey-question-image" src="{{q.image_path}}" alt="Фото до питання {{loop.index}}">{% endif %}{% if q.options_text %}<div class="survey-option-chips">{% for option in q.options_text.split('\n') if option.strip() %}<span>{{option}}</span>{% endfor %}</div>{% endif %}</div>
+  <div class="survey-question-actions">
+    <a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/questions/{{q.id}}/result.png">🖼 PNG</a>
+    {% if survey.status=='draft' %}<div class="reorder-actions"><form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="up"><button class="soft-button compact-action" {% if loop.first %}disabled{% endif %}>↑</button></form><form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="down"><button class="soft-button compact-action" {% if loop.last %}disabled{% endif %}>↓</button></form></div>
+    <details class="inline-edit-details survey-question-edit-details"><summary class="soft-button edit-action-button compact-action">✏️ Редагувати</summary><form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/update" enctype="multipart/form-data" class="form-grid survey-inline-edit"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label class="span2">Текст питання<textarea name="text" rows="3" required>{{q.text}}</textarea></label><label>Тип<select name="question_type"><option value="single" {% if q.question_type=='single' %}selected{% endif %}>Один варіант</option><option value="multiple" {% if q.question_type=='multiple' %}selected{% endif %}>Декілька варіантів</option><option value="text" {% if q.question_type=='text' %}selected{% endif %}>Текстова відповідь</option></select></label><label class="check-line"><input type="checkbox" name="required" value="1" {% if q.required %}checked{% endif %}> Обов’язкове</label><label class="span2">Варіанти — по одному в рядку<textarea name="options" rows="4">{{q.options_text}}</textarea><small>Для текстового питання поле можна залишити порожнім.</small></label><label class="span2">Нове фото<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>{% if q.image_path %}<label class="check-line span2"><input type="checkbox" name="remove_image" value="1"> Прибрати поточне фото</label>{% endif %}<div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div></form></details>
+    <form method="post" action="/admin/surveys/{{survey.id}}/questions/{{q.id}}/delete" onsubmit="return confirm('Видалити питання?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action">🗑 Видалити</button></form>{% endif %}
+  </div></article>{% else %}<p class="muted">Питань ще немає.</p>{% endfor %}</div></section>
 
-<section class="card survey-results-card">
-  <div class="section-title"><div><h2>📊 Результати</h2><p class="muted">Для кожного питання можна окремо завантажити PNG-графік.</p></div><span>{{responses|length}} відповідей</span></div>
-  {% for q in questions %}
-  <div class="survey-result-block">
-    <div class="survey-result-title-row"><h3>{{loop.index}}. {{q.text}}</h3><a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/questions/{{q.id}}/result.png">🖼 PNG</a></div>
-    {% if q.question_type=='text' %}
-      <div class="survey-text-results">{% for text in stats[q.id].texts %}<p>{{text}}</p>{% else %}<span class="muted">Текстових відповідей поки немає.</span>{% endfor %}</div>
-    {% else %}
-      {% set total=responses|length %}<div class="survey-bars">{% for option,count in stats[q.id].counts.items() %}<div class="survey-bar-row"><div><span>{{option}}</span><b>{{count}}</b></div><div class="survey-bar"><i style="width:{{ (count*100/total)|round(1) if total else 0 }}%"></i></div></div>{% endfor %}</div>
-    {% endif %}
-  </div>
-  {% endfor %}
-</section>
+<section class="card survey-results-card"><div class="section-title"><div><h2>📊 Результати</h2><p class="muted">Для кожного питання можна окремо завантажити PNG-графік.</p></div><span>{{responses|length}} відповідей</span></div>{% for q in questions %}<div class="survey-result-block"><div class="survey-result-title-row"><h3>{{loop.index}}. {{q.text}}</h3><a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/questions/{{q.id}}/result.png">🖼 PNG</a></div>{% if q.question_type=='text' %}<div class="survey-text-results">{% for text in stats[q.id].texts %}<p>{{text}}</p>{% else %}<span class="muted">Текстових відповідей поки немає.</span>{% endfor %}</div>{% else %}{% set total=responses|length %}<div class="survey-bars">{% for option,count in stats[q.id].counts.items() %}<div class="survey-bar-row"><div><span>{{option}}</span><b>{{count}}</b></div><div class="survey-bar"><i style="width:{{ (count*100/total)|round(1) if total else 0 }}%"></i></div></div>{% endfor %}</div>{% endif %}</div>{% endfor %}</section>
 
-<section class="card survey-respondents-card">
-  <div class="section-title"><div><h2>👥 Респонденти</h2><p class="muted">Відкрийте конкретного респондента, щоб переглянути всі його відповіді.</p></div><span>{{responses|length}}</span></div>
-  <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Дата</th><th>XP</th><th></th></tr></thead><tbody>{% for r,u in responses %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a><small>АМП-{{'%04d'|format(u.id)}}</small></td><td>{{r.completed_at.strftime('%d.%m.%Y %H:%M')}}</td><td>+{{r.xp_awarded}}</td><td><a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/responses/{{r.id}}">👁 Відповіді</a></td></tr>{% else %}<tr><td colspan="4" class="muted">Відповідей ще немає.</td></tr>{% endfor %}</tbody></table></div>
-</section>
+<section class="card survey-respondents-card"><div class="section-title"><div><h2>👥 Респонденти</h2><p class="muted">Відкрийте конкретного респондента, щоб переглянути всі його відповіді.</p></div><span>{{responses|length}}</span></div><div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Дата</th><th>XP</th><th></th></tr></thead><tbody>{% for r,u in responses %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a><small>АМП-{{'%04d'|format(u.id)}}</small></td><td>{{r.completed_at.strftime('%d.%m.%Y %H:%M')}}</td><td>+{{r.xp_awarded}}</td><td><a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/responses/{{r.id}}">👁 Відповіді</a></td></tr>{% else %}<tr><td colspan="4" class="muted">Відповідей ще немає.</td></tr>{% endfor %}</tbody></table></div></section>
+
 <script>
 function surveyOptionRows(){return Array.from(document.querySelectorAll('#surveyOptionRows .survey-option-input-row'));}
 function renumberSurveyOptions(){surveyOptionRows().forEach((row,i)=>{row.querySelector('span').textContent=i+1;row.querySelector('input').placeholder='Варіант '+(i+1);});}
@@ -126,8 +60,6 @@ function addSurveyOption(value=''){const box=document.getElementById('surveyOpti
 function removeSurveyOption(btn){const rows=surveyOptionRows();if(rows.length<=2){btn.closest('.survey-option-input-row').querySelector('input').value='';return;}btn.closest('.survey-option-input-row').remove();renumberSurveyOptions();}
 function toggleSurveyOptions(){const type=document.getElementById('surveyQuestionType');const box=document.getElementById('surveyOptionsBuilder');if(type&&box)box.style.display=type.value==='text'?'none':'grid';}
 const surveyQuestionForm=document.querySelector('.survey-question-form');if(surveyQuestionForm){surveyQuestionForm.addEventListener('submit',e=>{const type=document.getElementById('surveyQuestionType').value;const values=surveyOptionRows().map(r=>r.querySelector('input').value.trim()).filter(Boolean);document.getElementById('surveyOptionsValue').value=values.join('\n');if(type!=='text'&&values.length<2){e.preventDefault();alert('Додайте щонайменше два варіанти відповіді.');}});toggleSurveyOptions();}
-</script>
-<script>
 function surveyAudienceChecks(suffix){return Array.from(document.querySelectorAll('#surveyUserPicker'+suffix+' input[name="audience_user_ids"]'));}
 function updateSurveyAudienceCount(suffix){const el=document.getElementById('surveyAudienceCount'+suffix);if(el)el.textContent=surveyAudienceChecks(suffix).filter(x=>x.checked).length;}
 function filterSurveyAudience(suffix){const q=(document.getElementById('surveyAudienceSearch'+suffix)?.value||'').trim().toLowerCase();document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{row.hidden=q&&!row.dataset.search.includes(q);});}

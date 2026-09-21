@@ -7,8 +7,9 @@ def read(path: str) -> str:
 
 
 def test_v11722_version_and_schema_are_present():
-    assert read("VERSION.txt").strip() == "1.17.2.2"
-    assert read("VERSION_CHECK.txt").strip() == "1.17.2.2"
+    version = read("VERSION.txt").strip()
+    assert tuple(map(int, version.split("."))) >= (1, 17, 2, 2)
+    assert read("VERSION_CHECK.txt").strip() == version
     migration = read("migrations/versions/20260921_0011_quick_xp.py")
     assert 'revision: str = "20260921_0011"' in migration
     assert 'down_revision: Union[str, None] = "20260920_0010"' in migration
@@ -40,7 +41,8 @@ def test_quick_xp_bot_and_admin_integration_exists():
 
 def test_quick_xp_has_caps_and_idempotency():
     service = read("app/quick_xp.py")
-    assert 'QUICK_XP_WEEKLY_CAP = 15' in service
+    assert 'QUICK_XP_WEEKLY_CAP = 30' in service
+    assert 'quick_xp.weekly_cap' in read('app/runtime_config.py')
     assert 'category="quick_xp"' in service
     assert 'QuickXPCompletion.challenge_id == challenge.id' in service
     assert 'IntegrityError' in service
