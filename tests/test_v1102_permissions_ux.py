@@ -88,9 +88,10 @@ def test_main_menu_surfaces_invite_and_requests_and_uses_first_name():
     participant = (text("app/handlers/participant.py") + text("app/handlers/participant_common.py") + text("app/handlers/participant_home.py") + text("app/handlers/participant_requests.py") + text("app/handlers/participant_opportunities.py") + text("app/handlers/participant_activities.py") + text("app/handlers/participant_tasks.py"))
     for row in [
         '[KeyboardButton(text="🏠 Головна"), KeyboardButton(text="👤 Мій профіль")]',
-        '[KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="🌍 Можливості")]',
-        '[KeyboardButton(text="🎫 QR-бейдж"), KeyboardButton(text="🤝 Запросити друга")]',
-        '[KeyboardButton(text="💙 Підтримати"), KeyboardButton(text="🆘 Звернення")]',
+        '[KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="⚡ Заробити XP")]',
+        '[KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="🎫 QR-бейдж")]',
+        '[KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="💙 Підтримати")]',
+        '[KeyboardButton(text="🆘 Звернення")]',
         '[KeyboardButton(text="☰ Ще")]',
     ]:
         assert row in kb

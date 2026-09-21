@@ -31,7 +31,7 @@ def entity_button_text(text: str) -> str:
 
 MAIN_MENU_TEXTS = {
     # v1.10.0 compact participant navigation
-    "🏠 Головна", "🚀 Долучитися", "🌍 Можливості", "💙 Підтримати", "👤 Мій профіль", "🎫 QR-бейдж", "☰ Ще",
+    "🏠 Головна", "🚀 Долучитися", "⚡ Заробити XP", "🌍 Можливості", "💙 Підтримати", "👤 Мій профіль", "🎫 QR-бейдж", "☰ Ще",
     # Legacy labels remain recognized so unfinished FSM flows and old Telegram keyboards are safe.
     "🏠 Огляд", "📈 Сезон", "📅 Події", "⚡ Активності", "🎯 Квести",
     "✅ Волонтерство", "✅ Волонтерські задачі", "🏅 Бейджі", "🎁 Винагороди", "🎲 Розіграші", "🎫 Мій QR-бейдж", "🎫 Мій QR-код",
@@ -48,9 +48,10 @@ def main_menu(role: str, permissions_raw: str | None = None) -> ReplyKeyboardMar
     """
     rows = [
         [KeyboardButton(text="🏠 Головна"), KeyboardButton(text="👤 Мій профіль")],
-        [KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="🌍 Можливості")],
-        [KeyboardButton(text="🎫 QR-бейдж"), KeyboardButton(text="🤝 Запросити друга")],
-        [KeyboardButton(text="💙 Підтримати"), KeyboardButton(text="🆘 Звернення")],
+        [KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="⚡ Заробити XP")],
+        [KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="🎫 QR-бейдж")],
+        [KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="💙 Підтримати")],
+        [KeyboardButton(text="🆘 Звернення")],
         [KeyboardButton(text="☰ Ще")],
     ]
     if role in ADMIN_ROLES or bool(effective_permissions(role, permissions_raw)):
@@ -60,6 +61,7 @@ def main_menu(role: str, permissions_raw: str | None = None) -> ReplyKeyboardMar
 
 def join_hub_keyboard() -> InlineKeyboardMarkup:
     return _admin_inline_menu([
+        ("⚡ Заробити XP", "ux:join:quickxp"),
         ("📅 Події", "ux:join:events"),
         ("🎯 Квести", "ux:join:quests"),
         ("✅ Волонтерство", "ux:join:volunteer"),

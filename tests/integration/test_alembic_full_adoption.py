@@ -11,7 +11,7 @@ from scripts.alembic_bootstrap import downgrade, upgrade, upgrade_head
 from scripts.schema_drift_check import collect_schema_diffs
 
 PREVIOUS_PRODUCTION_HEAD = "20260920_0009"
-CURRENT_HEAD = "20260920_0010"
+CURRENT_HEAD = "20260921_0011"
 
 
 def _url() -> str:

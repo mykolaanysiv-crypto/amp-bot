@@ -16,8 +16,9 @@ def read(rel: str) -> str:
 
 
 def test_v11721_version_and_ui_controls():
-    assert read("VERSION.txt").strip() == "1.17.2.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.17.2.1"
+    version = read("VERSION.txt").strip()
+    assert tuple(map(int, version.split("."))) >= (1, 17, 2, 1)
+    assert read("VERSION_CHECK.txt").strip() == version
     routes = read("app/web/routes/data_integrity.py")
     users = read("app/web/routes/users.py")
     integrity_tpl = read("app/web/templates/data_integrity.html")

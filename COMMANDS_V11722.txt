@@ -1,0 +1,31 @@
+AMP XP v1.17.2.2 — deploy/check
+
+cd ~/Downloads/amp_bot_v1103
+source .venv/bin/activate
+
+python -m compileall -q app scripts tests migrations
+python -m scripts.production_preflight
+pytest -q
+git diff --check
+
+# backup before deploy
+heroku pg:backups:capture -a amp-bot-ver-1-5-0
+heroku pg:backups -a amp-bot-ver-1-5-0
+
+# commit / push
+git add -A
+git status
+git commit -m "AMP XP v1.17.2.2 Quick XP"
+git push origin main
+
+# after successful GitHub Actions / deploy
+heroku run -a amp-bot-ver-1-5-0 -- alembic upgrade head
+heroku run -a amp-bot-ver-1-5-0 -- alembic current
+
+# expected:
+# 20260921_0011 (head)
+
+heroku ps -a amp-bot-ver-1-5-0
+curl -s https://amp-bot-ver-1-5-0.herokuapp.com/health/ready
+echo
+heroku logs -n 200 -a amp-bot-ver-1-5-0

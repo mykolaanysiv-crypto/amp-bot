@@ -1,3 +1,16 @@
+# v1.17.2.2 — Quick XP
+
+- Додано participant-facing розділ «⚡ Заробити XP» у головному меню та «🚀 Долучитися».
+- Home рекомендує доступне швидке завдання з XP і орієнтовним часом.
+- Типи: mini-quiz, video + контрольне питання, poll, comment.
+- 1–5 XP за challenge, максимум 15 quick XP на тиждень.
+- DB-idempotency: unique completion per user/challenge.
+- Після виконання показується reward, total XP і наступні можливості.
+- Додано історію виконаних quick-XP challenge.
+- Новий web-admin `/admin/quick-xp`: create/edit/schedule/featured/statistics/broadcast.
+- Broadcast надсилається лише активним учасникам, які ще не виконали challenge.
+- Нові таблиці `quick_xp_challenges`, `quick_xp_completions`; Alembic head `20260921_0011`.
+
 # v1.17.2.1 — Duplicate Management & Participant Status
 
 - Data Integrity Center тепер показує керовані групи дублікатів із причинами збігу.

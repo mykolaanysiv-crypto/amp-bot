@@ -153,3 +153,7 @@ class TeamTaskReportState(StatesGroup):
 class GiveawayEntryState(StatesGroup):
     report_text = State()
     photo = State()
+
+
+class QuickXPState(StatesGroup):
+    comment = State()

@@ -12,8 +12,9 @@ def read(rel: str) -> str:
 
 
 def test_v1172_version_and_alembic_head():
-    assert read("VERSION.txt").strip() == "1.17.2.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.17.2.1"
+    version = read("VERSION.txt").strip()
+    assert tuple(map(int, version.split("."))) >= (1, 17, 2, 1)
+    assert read("VERSION_CHECK.txt").strip() == version
     migration = read("migrations/versions/20260920_0010_privacy_data_integrity.py")
     assert 'revision: str = "20260920_0010"' in migration
     assert 'down_revision: Union[str, None] = "20260920_0009"' in migration

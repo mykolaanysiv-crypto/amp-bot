@@ -177,6 +177,45 @@ class ActivityType(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=100)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
+class QuickXPChallenge(Base):
+    __tablename__ = "quick_xp_challenges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(180))
+    kind: Mapped[str] = mapped_column(String(24), default="quiz", index=True)  # quiz|video|poll|comment
+    description: Mapped[str] = mapped_column(Text, default="")
+    xp_reward: Mapped[int] = mapped_column(Integer, default=3)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=2)
+    question: Mapped[str] = mapped_column(Text, default="")
+    options_json: Mapped[str] = mapped_column(Text, default="[]")
+    correct_option: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    media_url: Mapped[str] = mapped_column(String(500), default="")
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    featured_home: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=100)
+    created_by_label: Mapped[str] = mapped_column(String(160), default="web")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+
+
+class QuickXPCompletion(Base):
+    __tablename__ = "quick_xp_completions"
+    __table_args__ = (UniqueConstraint("challenge_id", "user_id", name="uq_quick_xp_challenge_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    challenge_id: Mapped[int] = mapped_column(ForeignKey("quick_xp_challenges.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    answer_text: Mapped[str] = mapped_column(Text, default="")
+    answer_option: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    xp_awarded: Mapped[int] = mapped_column(Integer, default=0)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+
+    challenge: Mapped[QuickXPChallenge] = relationship()
+    user: Mapped[User] = relationship()
+
+
 class ActivityApplication(Base):
     __tablename__ = "activity_applications"
 

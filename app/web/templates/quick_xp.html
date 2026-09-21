@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Швидкі XP · АМПасадори{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>⚡ Швидкі XP</h1><p>Короткі завдання на 1–5 XP, які учасник може виконати одразу в Telegram. Тижневий ліміт: {{ weekly_cap }} XP.</p></div>
+</div>
+{% if notice %}<div class="notice success">✅ {{ notice }}</div>{% endif %}
+
+<section class="card">
+  <h2>➕ Створити швидке завдання</h2>
+  <form method="post" action="/admin/quick-xp/create" class="form-grid">
+    <label>Назва<input name="title" required maxlength="180" placeholder="Наскільки добре ти знаєш Анисів?"></label>
+    <label>Тип<select name="kind"><option value="quiz">🧠 Мініквіз</option><option value="video">🎥 Відео + питання</option><option value="poll">📊 Мініопитування</option><option value="comment">💬 Коротка відповідь</option></select></label>
+    <label>XP<input type="number" name="xp_reward" min="1" max="5" value="3"></label>
+    <label>Тривалість, хв<input type="number" name="duration_minutes" min="1" max="15" value="2"></label>
+    <label class="span-2">Опис<textarea name="description" rows="3" placeholder="Коротко поясніть, що треба зробити"></textarea></label>
+    <label class="span-2">Питання<textarea name="question" rows="2" placeholder="Яке з тверджень правильне?"></textarea></label>
+    <label class="span-2">Варіанти відповіді — по одному в рядку<textarea name="options" rows="5" placeholder="Варіант 1&#10;Варіант 2&#10;Варіант 3"></textarea></label>
+    <label>№ правильної відповіді<input type="number" name="correct_option" min="1" max="8" placeholder="1"></label>
+    <label>Посилання на відео/матеріал<input type="url" name="media_url" placeholder="https://..."></label>
+    <label>Початок<input type="datetime-local" name="starts_at"></label>
+    <label>Дедлайн<input type="datetime-local" name="ends_at"></label>
+    <label>Порядок<input type="number" name="sort_order" value="100" min="0" max="9999"></label>
+    <label class="check"><input type="checkbox" name="featured_home" checked> Показувати як рекомендоване</label>
+    <label class="check"><input type="checkbox" name="active" checked> Активне</label>
+    <div class="span-2"><button type="submit">⚡ Створити завдання</button></div>
+  </form>
+  <p class="muted">Для квізу та відео потрібні варіанти і правильна відповідь. Для опитування XP нараховуються за будь-який вибір. Для коментаря — після короткої текстової відповіді.</p>
+</section>
+
+<section class="stack">
+{% for row in rows %}
+<article class="card">
+  <div class="split-head">
+    <div><h2>{{ kind_label(row.kind) }} · {{ row.title }}</h2><p>{{ row.description }}</p></div>
+    <div class="kpi-mini"><b>+{{ row.xp_reward }} XP</b><span>{{ counts.get(row.id,0) }} виконань · {{ awarded.get(row.id,0) }} XP видано</span></div>
+  </div>
+  <form method="post" action="/admin/quick-xp/{{ row.id }}/update" class="form-grid compact-form">
+    <label>Назва<input name="title" value="{{ row.title }}"></label>
+    <label>XP<input type="number" name="xp_reward" min="1" max="5" value="{{ row.xp_reward }}"></label>
+    <label>Тривалість<input type="number" name="duration_minutes" min="1" max="15" value="{{ row.duration_minutes }}"></label>
+    <label>Порядок<input type="number" name="sort_order" value="{{ row.sort_order }}"></label>
+    <label class="span-2">Опис<textarea name="description" rows="2">{{ row.description }}</textarea></label>
+    <label class="span-2">Питання<textarea name="question" rows="2">{{ row.question }}</textarea></label>
+    <label class="span-2">Варіанти — по одному в рядку<textarea name="options" rows="4">{{ parse_options(row.options_json)|join('\n') }}</textarea></label>
+    <label>№ правильної відповіді<input type="number" name="correct_option" min="1" max="8" value="{{ (row.correct_option + 1) if row.correct_option is not none else '' }}"></label>
+    <label>Відео/матеріал<input type="url" name="media_url" value="{{ row.media_url }}"></label>
+    <label>Початок<input type="datetime-local" name="starts_at" value="{{ input_dt(row.starts_at) }}"></label>
+    <label>Дедлайн<input type="datetime-local" name="ends_at" value="{{ input_dt(row.ends_at) }}"></label>
+    <label class="check"><input type="checkbox" name="featured_home" {% if row.featured_home %}checked{% endif %}> Рекомендоване</label>
+    <label class="check"><input type="checkbox" name="active" {% if row.active %}checked{% endif %}> Активне</label>
+    <div class="span-2 actions"><button type="submit" class="soft-button">💾 Зберегти</button></div>
+  </form>
+  {% if row.question %}<p><b>Питання:</b> {{ row.question }}</p>{% endif %}
+  {% if parse_options(row.options_json) %}<p class="muted">Варіанти: {{ parse_options(row.options_json)|join(' · ') }}</p>{% endif %}
+  <form method="post" action="/admin/quick-xp/{{ row.id }}/broadcast"><button type="submit" class="soft-button">📣 Розіслати невиконавшим</button></form>
+</article>
+{% else %}<div class="card"><p>Швидких завдань ще немає.</p></div>{% endfor %}
+</section>
+{% endblock %}

@@ -67,6 +67,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
             "🏠 Головна": lambda: participant.overview(msg, db),
             "🏠 Огляд": lambda: participant.overview(msg, db),
             "🚀 Долучитися": lambda: participant.join_hub(msg, db),
+            "⚡ Заробити XP": lambda: participant.quick_xp_hub(msg, db),
             "☰ Ще": lambda: participant.more_hub(msg, db),
             "👤 Мій профіль": lambda: participant.profile(msg, db),
             "📈 Сезон": lambda: v11.season_profile(msg, db),
@@ -135,6 +136,7 @@ def build_dispatcher(bot: Bot, db: Database, settings) -> Dispatcher:
         msg = call.message.model_copy(update={"from_user": call.from_user, "text": ""})
         await state.clear()
         mapping = {
+            "ux:join:quickxp": lambda: participant.quick_xp_hub(msg, db),
             "ux:join:events": lambda: events.list_events(msg, db),
             "ux:join:quests": lambda: quests.list_quests(msg, db),
             "ux:join:volunteer": lambda: participant.tasks(msg, db),

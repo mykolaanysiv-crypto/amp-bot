@@ -59,9 +59,10 @@ def test_requested_telegram_main_menu_order_and_contextual_home():
     kb = text("app/keyboards.py")
     expected = [
         '[KeyboardButton(text="🏠 Головна"), KeyboardButton(text="👤 Мій профіль")]',
-        '[KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="🌍 Можливості")]',
-        '[KeyboardButton(text="🎫 QR-бейдж"), KeyboardButton(text="🤝 Запросити друга")]',
-        '[KeyboardButton(text="💙 Підтримати"), KeyboardButton(text="🆘 Звернення")]',
+        '[KeyboardButton(text="🚀 Долучитися"), KeyboardButton(text="⚡ Заробити XP")]',
+        '[KeyboardButton(text="🌍 Можливості"), KeyboardButton(text="🎫 QR-бейдж")]',
+        '[KeyboardButton(text="🤝 Запросити друга"), KeyboardButton(text="💙 Підтримати")]',
+        '[KeyboardButton(text="🆘 Звернення")]',
         '[KeyboardButton(text="☰ Ще")]',
     ]
     positions = [kb.index(row) for row in expected]
