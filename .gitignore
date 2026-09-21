@@ -11,3 +11,9 @@ data/uploads/
 .testvenv/
 .DS_Store
 *.log
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.tmp
+*.bak

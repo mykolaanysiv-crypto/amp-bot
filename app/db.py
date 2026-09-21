@@ -12,8 +12,8 @@ from .config import Settings
 
 log = logging.getLogger(__name__)
 
-# run_all.py starts the bot and web app in the same process.
-# Both initialize the DB at startup, so serialize DDL for SQLite.
+# Web and worker processes may both initialize database access.
+# Serialize SQLite initialization inside a process.
 _db_init_lock = asyncio.Lock()
 
 
