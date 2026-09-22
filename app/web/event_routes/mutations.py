@@ -12,6 +12,7 @@ from app.telegram_webapp import validate_webapp_init_data
 from app.domain_services import admin_scan_event_participant, event_checkin_window
 from app.time_utils import clock
 from app.observability import log_extra
+from app.governance import record_field_changes
 from app.content_views import content_view_stat, content_view_stats
 from app.web.dependencies import _refresh_lifecycle
 from app.ambassadors import AMP_TEAM_ROLES
