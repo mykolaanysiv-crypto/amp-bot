@@ -1,6 +1,10 @@
-from .common import (
-    BytesIO, Image, ImageDraw, ImageFont, ImageOps, Path, User, qrcode
-)
+from io import BytesIO
+from pathlib import Path
+
+import qrcode
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from .common import User
 
 def build_profile_qr_png(
     user: User,

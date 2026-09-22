@@ -6,7 +6,30 @@ from .audit import log_audit
 from .teams import seed_default_team, add_active_users_to_default_team, complete_team_quest
 from .referrals import create_referral_for_user, referral_quarter_bounds, referral_quarter_summary, reward_referral_if_ready, revoke_referral_reward_if_inactive
 from .bootstrap import ensure_superadmins, ensure_web_staff_accounts, ensure_event_share_tokens, bootstrap_defaults
-from .qr import build_profile_qr_png
-from .exports import export_event_participants_pdf, export_event_participants_excel, export_basic_excel, export_excel
+
+
+def build_profile_qr_png(*args, **kwargs):
+    from .qr import build_profile_qr_png as _impl
+    return _impl(*args, **kwargs)
+
+
+def export_event_participants_pdf(*args, **kwargs):
+    from .exports import export_event_participants_pdf as _impl
+    return _impl(*args, **kwargs)
+
+
+def export_event_participants_excel(*args, **kwargs):
+    from .exports import export_event_participants_excel as _impl
+    return _impl(*args, **kwargs)
+
+
+async def export_basic_excel(*args, **kwargs):
+    from .exports import export_basic_excel as _impl
+    return await _impl(*args, **kwargs)
+
+
+async def export_excel(*args, **kwargs):
+    from .exports import export_excel as _impl
+    return await _impl(*args, **kwargs)
 
 __all__ = [name for name in globals() if not name.startswith("_")]

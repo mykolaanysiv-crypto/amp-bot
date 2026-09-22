@@ -84,7 +84,7 @@ def test_event_forms_collect_start_and_end_and_web_has_live_regions():
     assert 'data-live-region="event-cards-live"' in events_tpl
     assert "data-live-region" in detail_tpl
     assert "window.setInterval(sync,POLL_MS)" in base
-    assert "POLL_MS=5000" in base.replace(" ", "")
+    assert "POLL_MS=15000" in base.replace(" ", "")
     assert "fetch(location.href" in base
 
 

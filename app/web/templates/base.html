@@ -190,7 +190,7 @@ function closeSidebar(){
    Only marked regions are refreshed, so the page, camera/scanner state and
    unrelated forms are not reloaded. A form being edited is never replaced. */
 (function ampLiveRegions(){
-  const POLL_MS=5000;
+  const POLL_MS=15000;
   let inFlight=false;
   document.addEventListener('input',function(e){const f=e.target && e.target.closest ? e.target.closest('form') : null;if(f) f.dataset.liveDirty='1';},true);
   document.addEventListener('change',function(e){const f=e.target && e.target.closest ? e.target.closest('form') : null;if(f) f.dataset.liveDirty='1';},true);

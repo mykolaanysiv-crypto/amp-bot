@@ -11,11 +11,6 @@ from pathlib import Path
 from secrets import token_urlsafe
 from typing import Iterable
 
-import qrcode
-from PIL import Image, ImageDraw, ImageFont, ImageOps
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
