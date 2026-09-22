@@ -20,6 +20,7 @@ from .model_domains import (
     UserBadge,
     UserStatus,
     XPTransaction,
+    SystemSetting,
 )
 from .runtime_config import get_runtime_int
 
@@ -33,7 +34,7 @@ class League:
     max_xp: int | None
 
 
-LEAGUES: tuple[League, ...] = (
+DEFAULT_LEAGUES: tuple[League, ...] = (
     League("bronze", "Бронзова ліга", "🥉", 0, 99),
     League("silver", "Срібна ліга", "🥈", 100, 249),
     League("gold", "Золота ліга", "🥇", 250, 499),
@@ -41,6 +42,38 @@ LEAGUES: tuple[League, ...] = (
     League("diamond", "Діамантова ліга", "💎", 1000, 1499),
     League("legendary", "Легендарна ліга", "👑", 1500, None),
 )
+
+LEAGUES: tuple[League, ...] = DEFAULT_LEAGUES
+
+LEAGUE_SETTING_DEFAULTS = {
+    "league.silver_min": 100,
+    "league.gold_min": 250,
+    "league.platinum_min": 500,
+    "league.diamond_min": 1000,
+    "league.legendary_min": 1500,
+}
+
+async def runtime_leagues(session: AsyncSession) -> tuple[League, ...]:
+    vals = dict(LEAGUE_SETTING_DEFAULTS)
+    for key, default in LEAGUE_SETTING_DEFAULTS.items():
+        row = await session.get(SystemSetting, f"runtime.{key}")
+        if row:
+            try:
+                vals[key] = max(1, int(float(str(row.value).strip())))
+            except (TypeError, ValueError):
+                vals[key] = default
+    ordered = [vals[k] for k in LEAGUE_SETTING_DEFAULTS]
+    if ordered != sorted(ordered) or len(set(ordered)) != len(ordered):
+        vals = dict(LEAGUE_SETTING_DEFAULTS)
+    s,g,p,d,l = (vals[k] for k in LEAGUE_SETTING_DEFAULTS)
+    return (
+        League("bronze", "Бронзова ліга", "🥉", 0, s-1),
+        League("silver", "Срібна ліга", "🥈", s, g-1),
+        League("gold", "Золота ліга", "🥇", g, p-1),
+        League("platinum", "Платинова ліга", "💠", p, d-1),
+        League("diamond", "Діамантова ліга", "💎", d, l-1),
+        League("legendary", "Легендарна ліга", "👑", l, None),
+    )
 
 SUPER_STREAK_BADGE_NAME = "Суперсерія 30 днів"
 WEEKLY_STREAK_CATEGORIES = {"event", "quest", "team_quest", "activity", "task", "survey", "idea_approved", "referral"}
@@ -53,16 +86,17 @@ SUPER_STREAK_BADGE_DESCRIPTION = (
 )
 
 
-def league_for_xp(xp: int) -> League:
+def league_for_xp(xp: int, leagues: tuple[League, ...] | None = None) -> League:
     value = max(0, int(xp or 0))
-    for league in LEAGUES:
+    pool = leagues or LEAGUES
+    for league in pool:
         if value >= league.min_xp and (league.max_xp is None or value <= league.max_xp):
             return league
-    return LEAGUES[-1]
+    return pool[-1]
 
 
-def league_progress(xp: int) -> tuple[League, int, int | None]:
-    league = league_for_xp(xp)
+def league_progress(xp: int, leagues: tuple[League, ...] | None = None) -> tuple[League, int, int | None]:
+    league = league_for_xp(xp, leagues)
     if league.max_xp is None:
         return league, max(0, xp - league.min_xp), None
     width = league.max_xp - league.min_xp + 1
@@ -467,7 +501,8 @@ async def restore_super_streak(session: AsyncSession, user: User) -> tuple[bool,
 
 async def league_counts(session: AsyncSession, season: Season) -> dict[str, int]:
     rows = await season_leaderboard_rows(session, season)
-    result = {l.code: 0 for l in LEAGUES}
+    leagues_runtime = await runtime_leagues(session)
+    result = {l.code: 0 for l in leagues_runtime}
     for _, _, xp in rows:
-        result[league_for_xp(int(xp or 0)).code] += 1
+        result[league_for_xp(int(xp or 0), leagues_runtime).code] += 1
     return result

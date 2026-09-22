@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .leagues import LEAGUES, league_for_xp
+from .leagues import LEAGUES, league_for_xp, runtime_leagues
 from .observability import log_extra
 from .time_utils import clock
 from .model_domains import (
@@ -47,10 +47,11 @@ async def build_season_snapshot(session: AsyncSession, season: Season) -> dict:
     ]
 
     league_winners = []
-    by_league: dict[str, list[dict]] = {lg.code: [] for lg in LEAGUES}
+    leagues_runtime = await runtime_leagues(session)
+    by_league: dict[str, list[dict]] = {lg.code: [] for lg in leagues_runtime}
     for row in leaderboard:
-        by_league[league_for_xp(row["xp"]).code].append(row)
-    for lg in LEAGUES:
+        by_league[league_for_xp(row["xp"], leagues_runtime).code].append(row)
+    for lg in leagues_runtime:
         rows = by_league[lg.code]
         if rows:
             league_winners.append({"league": lg.title, "icon": lg.icon, **rows[0]})
@@ -161,6 +162,7 @@ def season_snapshot(season: Season) -> dict | None:
 
 
 async def user_season_history(session: AsyncSession, user_id: int) -> list[dict]:
+    leagues_runtime = await runtime_leagues(session)
     seasons = list((await session.scalars(select(Season).order_by(Season.starts_at.desc()))).all())
     result: list[dict] = []
     for season in seasons:
@@ -176,7 +178,7 @@ async def user_season_history(session: AsyncSession, user_id: int) -> list[dict]
         rank = next((i for i, (uid, _) in enumerate(ranking, 1) if int(uid) == int(user_id)), None)
         result.append({
             "id": season.id, "name": season.name, "xp": xp, "rank": rank,
-            "league": league_for_xp(xp), "active": season.active, "archived": season.archived,
+            "league": league_for_xp(xp, leagues_runtime), "active": season.active, "archived": season.archived,
             "starts_at": season.starts_at, "ends_at": season.ends_at,
         })
     return result

@@ -13,7 +13,7 @@ from ..model_domains import (
     XPTransaction,
 )
 from ..profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
-from ..leagues import LEAGUES, league_for_xp
+from ..leagues import LEAGUES, league_for_xp, runtime_leagues
 from ..runtime_config import get_runtime_int
 from ..event_schedule import event_end_local
 from ..settlements import canonicalize_settlement_text, settlement_quality_report
@@ -21,6 +21,7 @@ from ..time_utils import clock
 from .periods import _age, _age_group, _next_month, resolve_report_storage_bounds
 
 async def build_period_report(session: AsyncSession, start: datetime, end: datetime, label: str, *, reveal_sensitive_counts: bool = False) -> dict[str, Any]:
+    leagues_runtime = await runtime_leagues(session)
     # Report selection is a local-calendar concept; persisted operational timestamps
     # are UTC. Convert boundaries once so midnight and DST do not leak records into
     # the neighbouring local day/month. Event.starts_at remains legacy local-wall.
@@ -204,7 +205,7 @@ async def build_period_report(session: AsyncSession, start: datetime, end: datet
         for tx in season_txs: xp_by_user[tx.user_id]+=int(tx.amount or 0)
         for u in users:
             if getattr(u,"status",None)=="active":
-                league_distribution[league_for_xp(xp_by_user.get(u.id,0)).title]+=1
+                league_distribution[league_for_xp(xp_by_user.get(u.id,0), leagues_runtime).title]+=1
     streak_snapshot={
         "weekly_active":sum(1 for r in streak_rows if int(r.weekly_streak or 0)>0),
         "super_active":sum(1 for r in streak_rows if int(r.event_streak or 0)>0),

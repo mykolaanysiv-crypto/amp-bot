@@ -7,6 +7,13 @@
   {% if season %}<span class="pill">📈 {{ season.name }}</span>{% endif %}
 </div>
 
+{% if is_superadmin %}
+<section class="card" id="operational-intelligence" data-live-region>
+  <div class="section-title"><div><h2>🧭 Конкретні операційні задачі</h2><p class="muted">Автоматично знайдені сигнали. Система не виправляє їх сама.</p></div><a href="/admin/operations">Усі задачі →</a></div>
+  {% if operational_tasks %}<div class="attention-grid">{% for item in operational_tasks %}<a class="attention-item" href="{{item.action_url}}"><span class="attention-count">{{ {'critical':'🔴','high':'🟠','medium':'🟡','low':'🔵'}.get(item.severity,'•') }}</span><span><b>{{item.title}}</b><small>{{item.details}}</small></span><span class="attention-action">Відкрити →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">✅ Відкритих операційних задач немає.</div>{% endif %}
+</section>
+{% endif %}
+
 <section class="card" id="operations-today">
   <div class="section-title"><div><h2>🗓 Сьогодні</h2><p class="muted">Операційна картина простору на поточний день.</p></div><span class="tag">{{ operations.today_events }} подій</span></div>
   <div class="kpis four">

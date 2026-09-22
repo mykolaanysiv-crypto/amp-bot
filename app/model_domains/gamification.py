@@ -123,6 +123,22 @@ class RewardClaim(Base):
     requested_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+
+class GamificationRuleVersion(Base):
+    __tablename__ = "gamification_rule_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    rule_key: Mapped[str] = mapped_column(String(180), index=True)
+    entity_type: Mapped[str] = mapped_column(String(64), default="system", index=True)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    field_name: Mapped[str] = mapped_column(String(80), index=True)
+    old_value: Mapped[str] = mapped_column(Text, default="")
+    new_value: Mapped[str] = mapped_column(Text, default="")
+    author_label: Mapped[str] = mapped_column(String(160), default="web")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    effective_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, index=True)
+
 class Giveaway(Base):
     """Configurable prize draw for AMP participants.
 

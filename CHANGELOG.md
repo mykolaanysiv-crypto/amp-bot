@@ -883,3 +883,11 @@
 ## Інше
 - CSS/asset cache version: `1.6.2`.
 - Health endpoint: `1.6.2`.
+
+# v1.18.0 — Operational Intelligence & Gamification Governance
+- Added actionable Operational Intelligence queue with severity, assignee, source link, resolved/reopen workflow and audit.
+- Added persisted checks for stale registrations, failed notifications, missing event reminder, low feedback conversion, expired reservations, XP/wallet anomalies and stale backup.
+- Added append-only `gamification_rule_versions` with author, reason, effective date and old/new values.
+- Added runtime league thresholds and governance screen.
+- Gamification configuration changes do not automatically rewrite historical XP or wallet balances.
+- Alembic head: `20260921_0014`.

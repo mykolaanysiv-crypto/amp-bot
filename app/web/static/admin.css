@@ -3509,3 +3509,5 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
   .quick-xp-question-actions{min-width:0;width:100%;justify-content:flex-start}
   .quest-card-v2 .entity-card-media,.quest-card-v2 .entity-card-media img,.quest-card-v2 .entity-placeholder{height:200px!important;min-height:200px!important}
 }
+/* v1.18.0 operational intelligence */
+.ops-grid{display:grid;gap:16px}.ops-card{border-left:5px solid var(--line,#d8dee9)}.ops-card.severity-critical{border-left-color:#b42318}.ops-card.severity-high{border-left-color:#d97706}.ops-card.severity-medium{border-left-color:#ca8a04}.ops-card.severity-low{border-left-color:#2563eb}.ops-card .form-actions-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.ops-card form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ops-card form input{min-width:220px}

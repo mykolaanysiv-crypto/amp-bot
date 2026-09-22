@@ -20,6 +20,8 @@ from app.reliability import queue_telegram_delivery
 from app.time_utils import clock
 from app.web.dependencies import ctx, db, guard, has_web_permission, log_audit, templates
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 
@@ -194,6 +196,8 @@ async def quick_xp_create(request: Request):
         )
         session.add(row)
         await session.flush()
+        actor=str(request.session.get("admin_name") or "web")
+        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values={}, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Створення Quick XP")
         for idx, item in enumerate(quiz_rows, start=1):
             session.add(QuickXPQuestion(
                 challenge_id=row.id,
@@ -228,6 +232,7 @@ async def quick_xp_update(request: Request, challenge_id: int):
         row = await session.get(QuickXPChallenge, challenge_id)
         if not row:
             raise HTTPException(404, "Завдання не знайдено")
+        old_rules={"xp_reward": row.xp_reward}
         row.title = str(form.get("title") or row.title).strip()[:180] or row.title
         row.description = str(form.get("description") or "").strip()[:4000]
         row.duration_minutes = _int(form.get("duration_minutes"), row.duration_minutes or 2, 1, 30)
@@ -255,6 +260,8 @@ async def quick_xp_update(request: Request, challenge_id: int):
         row.starts_at = _parse_dt(str(form.get("starts_at") or ""))
         row.ends_at = _parse_dt(str(form.get("ends_at") or ""))
         row.updated_at = clock.storage_utc()
+        actor=str(request.session.get("admin_name") or "web")
+        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values=old_rules, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Редагування Quick XP")
         await log_audit(
             session,
             "web_quick_xp_update",
@@ -297,6 +304,8 @@ async def quick_xp_question_create(request: Request, challenge_id: int):
         )
         session.add(question)
         await session.flush()
+        actor=str(request.session.get("admin_name") or "web")
+        await record_field_changes(session, rule_prefix="quick_xp_question", entity_type="quick_xp_question", entity_id=question.id, old_values={}, new_values={"xp_reward": question.xp_reward}, author_label=actor, reason="Створення питання мініквізу")
         await sync_quiz_reward(session, challenge_id)
         await log_audit(session, "web_quick_xp_question_create", actor_label=request.session.get("admin_name", "web"), entity_type="quick_xp_question", entity_id=question.id, details=f"challenge={challenge_id}; +{xp} XP")
         await session.commit()
@@ -318,10 +327,13 @@ async def quick_xp_question_update(request: Request, challenge_id: int, question
         question = await session.get(QuickXPQuestion, question_id)
         if not question or question.challenge_id != challenge_id:
             raise HTTPException(404, "Питання не знайдено")
+        old_rules={"xp_reward": question.xp_reward}
         question.text = text[:2000]
         question.options_json = dump_options(options)
         question.correct_option = correct
         question.xp_reward = _int(form.get("xp_reward"), question.xp_reward or 1, 1, 20)
+        actor=str(request.session.get("admin_name") or "web")
+        await record_field_changes(session, rule_prefix="quick_xp_question", entity_type="quick_xp_question", entity_id=question.id, old_values=old_rules, new_values={"xp_reward": question.xp_reward}, author_label=actor, reason="Редагування питання мініквізу")
         await sync_quiz_reward(session, challenge_id)
         await log_audit(session, "web_quick_xp_question_update", actor_label=request.session.get("admin_name", "web"), entity_type="quick_xp_question", entity_id=question.id, details=f"challenge={challenge_id}; +{question.xp_reward} XP")
         await session.commit()

@@ -31,6 +31,8 @@ from .routes import (
     giveaways as giveaways_routes,
     data_integrity as data_integrity_routes,
     quick_xp as quick_xp_routes,
+    operations as operations_routes,
+    governance as governance_routes,
 )
 
 
@@ -82,6 +84,8 @@ def create_app() -> FastAPI:
         giveaways_routes,
         data_integrity_routes,
         quick_xp_routes,
+        operations_routes,
+        governance_routes,
     ):
         app.include_router(module.router)
     return app

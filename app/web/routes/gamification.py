@@ -5,7 +5,7 @@ from app.badge_seeds import mark_badge_seed_deleted
 
 from fastapi import APIRouter
 from app.web.dependencies import (
-    Badge, File, Form, GOAL_METRIC_LABELS, Goal, GoalReward, HTMLResponse, HTTPException, LEAGUES, ParticipationStreak, RedirectResponse, Request, Reward, RewardClaim, Season, StreakFreeze, UploadFile, User, UserBadge, UserRole, UserStatus, create_streak_freeze, ctx, current_season, date, datetime, db, delete, delete_image, delete_stored_image, func, goal_progress, guard, has_web_permission, league_for_xp, log_audit, notify_telegram, opt_int, refresh_all_streaks, refresh_user_streak, save_badge_png, save_image, season_leaderboard_rows, season_xp, select, streak_freeze_summary, templates
+    Badge, File, Form, GOAL_METRIC_LABELS, Goal, GoalReward, HTMLResponse, HTTPException, LEAGUES, ParticipationStreak, RedirectResponse, Request, Reward, RewardClaim, Season, StreakFreeze, UploadFile, User, UserBadge, UserRole, UserStatus, create_streak_freeze, ctx, current_season, date, datetime, db, delete, delete_image, delete_stored_image, func, goal_progress, guard, has_web_permission, league_for_xp, runtime_leagues, log_audit, notify_telegram, opt_int, refresh_all_streaks, refresh_user_streak, save_badge_png, save_image, season_leaderboard_rows, season_xp, select, streak_freeze_summary, templates
 )
 from app.season_history import finalize_season, season_snapshot
 from app.runtime_config import get_runtime_int
@@ -14,6 +14,8 @@ from app.web.broadcast_runtime import (
     _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
+
+from app.governance import record_field_changes, record_rule_change
 
 router = APIRouter()
 
@@ -55,12 +57,13 @@ async def leaderboard_dashboard(request: Request):
         await session.commit()
         overall = await season_leaderboard_rows(session, season, limit=20)
         all_rows = await season_leaderboard_rows(session, season)
-        league_map = {item.code: [] for item in LEAGUES}
+        leagues_runtime = await runtime_leagues(session)
+        league_map = {item.code: [] for item in leagues_runtime}
         for row in all_rows:
-            league_map[league_for_xp(int(row[2] or 0)).code].append(row)
+            league_map[league_for_xp(int(row[2] or 0), leagues_runtime).code].append(row)
         league_sections = [
             {"league": lg, "rows": league_map[lg.code][:10], "count": len(league_map[lg.code])}
-            for lg in LEAGUES
+            for lg in leagues_runtime
         ]
         streak_rows = (await session.execute(
             select(User, ParticipationStreak)
@@ -90,7 +93,7 @@ async def leaderboard_dashboard(request: Request):
         return templates.TemplateResponse(
             request=request, name="leaderboard.html",
             context=ctx(request, season=season, overall=overall, leagues=league_sections,
-                        streak_rows=streak_rows, stats=stats, league_for_xp=league_for_xp,
+                        streak_rows=streak_rows, stats=stats, league_for_xp=lambda xp: league_for_xp(xp, leagues_runtime),
                         freeze_map=freeze_map, freeze_limit=freeze_limit),
         )
 
@@ -118,7 +121,7 @@ async def streak_detail(request: Request, user_id: int):
             request=request, name="streak_detail.html",
             context=ctx(request, user=user, streak=streak, freeze=freeze, freeze_history=history,
                         freeze_limit=freeze_limit, season=season, season_xp=sxp,
-                        league=league_for_xp(sxp)),
+                        league=league_for_xp(sxp, await runtime_leagues(session))),
         )
 
 
@@ -280,7 +283,9 @@ async def goals_create(
             starts_at=start,ends_at=end,active=True,image_path=img,
         )
         session.add(g); await session.flush()
-        await log_audit(session,"web_goal_create",actor_label=request.session.get("admin_name","web"),entity_type="goal",entity_id=g.id,details=f"{g.title}; {g.metric}={g.target_value}; reward={g.reward_xp}")
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="goal", entity_type="goal", entity_id=g.id, old_values={}, new_values={"reward_xp": g.reward_xp}, author_label=actor, reason="Створення цілі")
+        await log_audit(session,"web_goal_create",actor_label=actor,entity_type="goal",entity_id=g.id,details=f"{g.title}; {g.metric}={g.target_value}; reward={g.reward_xp}")
         await session.commit()
     return RedirectResponse("/admin/goals",303)
 
@@ -306,13 +311,16 @@ async def goals_update(
         g=await session.get(Goal,goal_id)
         if not g: raise HTTPException(status_code=404,detail="Ціль не знайдено")
         old_img=g.image_path
+        old_rules={"reward_xp": g.reward_xp}
         if new_img:
             g.image_path=new_img
         elif remove_photo:
             g.image_path=None
         g.scope=scope; g.title=title.strip(); g.task_text=task_text.strip(); g.description=description.strip(); g.metric=metric
         g.target_value=max(.01,target_value); g.reward_xp=max(0,min(int(reward_xp),500)); g.user_id=uid; g.starts_at=start; g.ends_at=end
-        await log_audit(session,"web_goal_update",actor_label=request.session.get("admin_name","web"),entity_type="goal",entity_id=g.id,details=f"{g.title}; {g.metric}={g.target_value}; reward={g.reward_xp}")
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="goal", entity_type="goal", entity_id=g.id, old_values=old_rules, new_values={"reward_xp": g.reward_xp}, author_label=actor, reason="Редагування цілі")
+        await log_audit(session,"web_goal_update",actor_label=actor,entity_type="goal",entity_id=g.id,details=f"{g.title}; {g.metric}={g.target_value}; reward={g.reward_xp}")
         await session.commit()
     if old_img and old_img != g.image_path:
         await delete_stored_image(db, old_img)
@@ -471,7 +479,7 @@ async def reward_create(request:Request,title:str=Form(...),description:str=Form
     if r := guard(request): return r
     img=await save_image(photo,"rewards")
     async with db.session_factory() as session:
-        rw=Reward(title=title,description=description,min_xp=max(0,min_xp),stock=opt_int(stock),active=bool(active),image_path=img,reward_type=reward_type if reward_type in {"item","service","streak_restore"} else "item"); session.add(rw); await session.flush(); await log_audit(session,"web_reward_create",actor_label=request.session.get("admin_name","web"),entity_type="reward",entity_id=rw.id,details=title); await session.commit()
+        rw=Reward(title=title,description=description,min_xp=max(0,min_xp),stock=opt_int(stock),active=bool(active),image_path=img,reward_type=reward_type if reward_type in {"item","service","streak_restore"} else "item"); session.add(rw); await session.flush(); actor=request.session.get("admin_name","web"); await record_field_changes(session, rule_prefix="reward", entity_type="reward", entity_id=rw.id, old_values={}, new_values={"min_xp": rw.min_xp}, author_label=actor, reason="Створення винагороди"); await log_audit(session,"web_reward_create",actor_label=actor,entity_type="reward",entity_id=rw.id,details=title); await session.commit()
     return RedirectResponse("/admin/rewards",303)
 
 
@@ -481,11 +489,12 @@ async def reward_update(request:Request,reward_id:int,title:str=Form(...),descri
     async with db.session_factory() as session:
         rw=await session.get(Reward,reward_id)
         if rw:
+            old_rules={"min_xp": rw.min_xp}
             rw.title=title; rw.description=description; rw.min_xp=max(0,min_xp); rw.stock=opt_int(stock); rw.active=bool(active); rw.reward_type=reward_type if reward_type in {"item","service","streak_restore"} else "item"
             if remove_image: await delete_image(rw.image_path); rw.image_path=None
             img=await save_image(photo,"rewards")
             if img: await delete_image(rw.image_path); rw.image_path=img
-            await log_audit(session,"web_reward_update",actor_label=request.session.get("admin_name","web"),entity_type="reward",entity_id=rw.id,details=title); await session.commit()
+            actor=request.session.get("admin_name","web"); await record_field_changes(session, rule_prefix="reward", entity_type="reward", entity_id=rw.id, old_values=old_rules, new_values={"min_xp": rw.min_xp}, author_label=actor, reason="Редагування вартості винагороди"); await log_audit(session,"web_reward_update",actor_label=actor,entity_type="reward",entity_id=rw.id,details=title); await session.commit()
     return RedirectResponse("/admin/rewards",303)
 
 

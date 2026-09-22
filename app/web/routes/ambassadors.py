@@ -14,6 +14,8 @@ from app.time_utils import clock
 from app.ui_labels import label
 from app.web.dependencies import ctx, db, guard, log_audit, templates, web_role
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 
@@ -129,6 +131,8 @@ async def team_task_create(
         )
         session.add(task)
         await session.flush()
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="team_task", entity_type="team_task", entity_id=task.id, old_values={}, new_values={"xp_reward": task.xp_reward}, author_label=actor, reason="Створення командного завдання")
         deadline_text = due.strftime("%d.%m.%Y %H:%M") if due else "без дедлайну"
         await queue_telegram_delivery(
             session,

@@ -4,7 +4,7 @@ from ..opportunity_utils import deadline_urgency, opportunity_sort_key
 import logging
 
 from .participant_common import (
-    ActivityApplication, ActivityType, CallbackQuery, Database, F, Idea, InlineKeyboardBuilder, Message, Opportunity, RequestCase, UserStatus, VolunteerTask, VolunteerTaskParticipation, activity_status_label, content_view_stat, current_season, entity_button_text, escape, func, get_user_by_tg, idea_status_label, label, league_for_xp, league_leaderboard_rows, process_expired_content, record_content_view, request_status_label, router, season_leaderboard_rows, season_xp, select, telegram_photo_input
+    ActivityApplication, ActivityType, CallbackQuery, Database, F, Idea, InlineKeyboardBuilder, Message, Opportunity, RequestCase, UserStatus, VolunteerTask, VolunteerTaskParticipation, activity_status_label, content_view_stat, current_season, entity_button_text, escape, func, get_user_by_tg, idea_status_label, label, league_for_xp, runtime_leagues, league_leaderboard_rows, process_expired_content, record_content_view, request_status_label, router, season_leaderboard_rows, season_xp, select, telegram_photo_input
 )
 
 @router.message(F.text.in_({"✅ Волонтерство", "✅ Волонтерські задачі"}))
@@ -314,7 +314,8 @@ async def leaderboard(message: Message, db: Database) -> None:
             await message.answer("📊 Активний сезон ще не налаштований.")
             return
         sxp = await season_xp(session, user.id, season.id)
-        league = league_for_xp(sxp)
+        leagues = await runtime_leagues(session)
+        league = league_for_xp(sxp, leagues)
         b = InlineKeyboardBuilder()
         b.button(text="🌍 Загальний рейтинг · ТОП-20", callback_data="rating:overall")
         b.button(text=f"{league.icon} Рейтинг моєї ліги", callback_data="rating:league")
@@ -335,11 +336,12 @@ async def rating_overall(call: CallbackQuery, db: Database) -> None:
         if not season:
             await call.answer("Активного сезону немає", show_alert=True); return
         rows = await season_leaderboard_rows(session, season, limit=20)
+        leagues = await runtime_leagues(session)
         lines = [f"🌍 <b>Загальний ТОП-20 · {escape(season.name)}</b>"]
         medals = ["🥇", "🥈", "🥉"]
         for i, (_, name, xp) in enumerate(rows, 1):
             prefix = medals[i-1] if i <= 3 else f"{i}."
-            lg = league_for_xp(int(xp or 0))
+            lg = league_for_xp(int(xp or 0), leagues)
             lines.append(f"{prefix} {escape(name)} — <b>{int(xp or 0)} XP</b> · {lg.icon}")
         if len(lines) == 1:
             lines.append("Рейтинг поки порожній.")
@@ -357,7 +359,7 @@ async def rating_league(call: CallbackQuery, db: Database) -> None:
         if not user or not season:
             await call.answer("Дані недоступні", show_alert=True); return
         sxp = await season_xp(session, user.id, season.id)
-        league = league_for_xp(sxp)
+        league = league_for_xp(sxp, await runtime_leagues(session))
         rows = await league_leaderboard_rows(session, season, league)
         position = next((i for i, row in enumerate(rows, 1) if row[0] == user.id), None)
         place_text = f"<b>{position}</b> із {len(rows)}" if position else "<b>не публікується</b>"

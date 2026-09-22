@@ -31,7 +31,7 @@ from ..model_domains import (
     XPTransaction,
 )
 from ..profile_data import CODE_TO_LABEL, gender_label, load_vulnerabilities
-from ..leagues import LEAGUES, league_for_xp, quarter_key
+from ..leagues import LEAGUES, league_for_xp, runtime_leagues, quarter_key
 from ..ui_labels import label
 from ..runtime_config import get_runtime_int
 from ..event_schedule import event_end_utc
@@ -292,6 +292,7 @@ def _metric(key: str, labels: list[str], values: list[float | int], *, rows: lis
 
 
 async def build_analytics(session: AsyncSession, *, now: datetime | None = None, reveal_sensitive_counts: bool = False) -> dict[str, Any]:
+    leagues_runtime = await runtime_leagues(session)
     privacy_threshold = await get_runtime_int(session, "privacy.suppression_threshold")
     """Build live, aggregate-only analytics from the existing database.
 
@@ -663,7 +664,7 @@ async def build_analytics(session: AsyncSession, *, now: datetime | None = None,
             if tx.season_id == active_season.id:
                 season_xp_by_user[tx.user_id] += int(tx.amount or 0)
         for u in active_users:
-            lg = league_for_xp(season_xp_by_user.get(u.id, 0))
+            lg = league_for_xp(season_xp_by_user.get(u.id, 0), leagues_runtime)
             league_counts_map[lg.code] += 1
     leagues_metric = _metric(
         "leagues", [f"{lg.icon} {lg.title}" for lg in LEAGUES],

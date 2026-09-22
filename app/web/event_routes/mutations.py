@@ -49,7 +49,9 @@ async def event_create(
         )
         session.add(e)
         await session.flush()
-        await log_audit(session, "web_event_create", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=e.id, details=e.title)
+        actor = request.session.get("admin_name", "web")
+        await record_field_changes(session, rule_prefix="event", entity_type="event", entity_id=e.id, old_values={}, new_values={"xp_reward": e.xp_reward, "preregistration_bonus_xp": e.preregistration_bonus_xp, "no_show_penalty_xp": e.no_show_penalty_xp}, author_label=actor, reason="Створення події")
+        await log_audit(session, "web_event_create", actor_label=actor, entity_type="event", entity_id=e.id, details=e.title)
         if e.status=="open":
             user_stmt=select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None))
             if e.access_scope == "team": user_stmt=user_stmt.where(User.role.in_(AMP_TEAM_ROLES))
@@ -81,6 +83,7 @@ async def event_update(
         e = await session.get(Event, event_id)
         if e:
             was_public = e.status in {"open","postponed"}
+            old_rules = {"xp_reward": e.xp_reward, "preregistration_bonus_xp": e.preregistration_bonus_xp, "no_show_penalty_xp": e.no_show_penalty_xp}
             e.title = title.strip(); e.starts_at = starts_at; e.ends_at = ends_at; e.location = location.strip() or "АМП"; e.description = description.strip()
             e.xp_reward = normalize_event_xp(xp_reward)
             e.preregistration_bonus_xp = max(0, min(25, int(preregistration_bonus_xp)))
@@ -104,7 +107,9 @@ async def event_update(
             img = await save_image(photo, "events")
             if img:
                 await delete_image(e.image_path); e.image_path = img
-            await log_audit(session, "web_event_update", actor_label=request.session.get("admin_name", "web"), entity_type="event", entity_id=e.id, details=e.title)
+            actor = request.session.get("admin_name", "web")
+            await record_field_changes(session, rule_prefix="event", entity_type="event", entity_id=e.id, old_values=old_rules, new_values={"xp_reward": e.xp_reward, "preregistration_bonus_xp": e.preregistration_bonus_xp, "no_show_penalty_xp": e.no_show_penalty_xp}, author_label=actor, reason="Редагування правил події")
+            await log_audit(session, "web_event_update", actor_label=actor, entity_type="event", entity_id=e.id, details=e.title)
             if not was_public and e.status=="open":
                 user_stmt=select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None))
                 if e.access_scope == "team": user_stmt=user_stmt.where(User.role.in_(AMP_TEAM_ROLES))

@@ -13,6 +13,8 @@ from app.web.broadcast_runtime import (
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 @router.get("/admin/tasks", response_class=HTMLResponse)
@@ -82,7 +84,9 @@ async def task_create(
         )
         session.add(task)
         await session.flush()
-        await log_audit(session, "web_task_create", actor_label=request.session.get("admin_name", "web"), entity_type="task", entity_id=task.id, details=task.title)
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="volunteer_task", entity_type="task", entity_id=task.id, old_values={}, new_values={"xp_reward": task.xp_reward}, author_label=actor, reason="Створення волонтерської задачі")
+        await log_audit(session, "web_task_create", actor_label=actor, entity_type="task", entity_id=task.id, details=task.title)
         if task.status=="open":
             users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
             campaign_id=await _queue_system_broadcast(session,users,f"✅ <b>Нова волонтерська задача</b>\n\n<b>{task.title}</b>\n⚡ {task.xp_reward} XP · ⏱ {task.hours_reward:g} год\n\nВідкрий «✅ Волонтерство» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Нова задача: {task.title}",template_code="task_created")
@@ -107,6 +111,7 @@ async def task_update(
         if not task:
             return HTMLResponse("Волонтерську задачу не знайдено", status_code=404)
         was_public=task.status in {"open","postponed"}
+        old_rules={"xp_reward": task.xp_reward}
         active_count = int(await session.scalar(select(func.count(VolunteerTaskParticipation.id)).where(
             VolunteerTaskParticipation.task_id == task.id,
             VolunteerTaskParticipation.status != "cancelled",
@@ -126,7 +131,9 @@ async def task_update(
         if img:
             await delete_image(task.image_path)
             task.image_path = img
-        await log_audit(session, "web_task_update", actor_label=request.session.get("admin_name", "web"), entity_type="task", entity_id=task.id, details=task.title)
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="volunteer_task", entity_type="task", entity_id=task.id, old_values=old_rules, new_values={"xp_reward": task.xp_reward}, author_label=actor, reason="Редагування волонтерської задачі")
+        await log_audit(session, "web_task_update", actor_label=actor, entity_type="task", entity_id=task.id, details=task.title)
         if not was_public and task.status=="open":
             users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
             campaign_id=await _queue_system_broadcast(session,users,f"✅ <b>Нова волонтерська задача</b>\n\n<b>{task.title}</b>\n⚡ {task.xp_reward} XP · ⏱ {task.hours_reward:g} год\n\nВідкрий «✅ Волонтерство» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Нова задача: {task.title}",template_code="task_published")

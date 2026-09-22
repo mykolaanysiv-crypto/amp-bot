@@ -12,6 +12,7 @@ from app.web.dependencies import (
     ActivityType, Event, HTMLResponse, Idea, Opportunity, Quest, RedirectResponse, Request, RequestCase, StreakFreeze, Survey, User, VolunteerTask, ctx, db, guard, guard_permission, idea_status_label, is_superadmin, label, lifecycle_status_label, log_audit, or_, request_status_label, select, templates, web_permissions
 )
 from app.runtime_config import RULE_SPECS, SECTIONS, get_runtime_values, set_runtime_values
+from app.governance import record_rule_change
 
 router = APIRouter()
 
@@ -276,14 +277,22 @@ async def settings_update(request: Request):
     for spec in RULE_SPECS:
         field = spec.key.replace(".", "__")
         payload[spec.key] = form.get(field, spec.default)
+    reason = str(form.get("change_reason") or "").strip()
     async with db.session_factory() as session:
+        old_values = await get_runtime_values(session)
         values = await set_runtime_values(session, payload)
+        changed = [(key, old_values.get(key), value) for key, value in values.items() if old_values.get(key) != value]
+        if changed and not reason:
+            return HTMLResponse("Для зміни правил обов’язково вкажіть причину.", status_code=400)
+        actor = request.session.get("admin_name", "superadmin")
+        for key, old_value, new_value in changed:
+            await record_rule_change(session, rule_key=key, field_name="value", old_value=old_value, new_value=new_value, author_label=actor, reason=reason, entity_type="runtime_setting")
         await log_audit(
             session,
             "web_runtime_settings_update",
-            actor_label=request.session.get("admin_name", "superadmin"),
+            actor_label=actor,
             entity_type="system",
-            details="; ".join(f"{key}={value}" for key, value in sorted(values.items())),
+            details=(reason + "; " if reason else "") + "; ".join(f"{key}={value}" for key, value in sorted(values.items())),
         )
         await session.commit()
     return RedirectResponse("/admin/settings?saved=1", status_code=303)

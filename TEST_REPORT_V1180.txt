@@ -1,0 +1,10 @@
+AMP XP v1.18.0 — TEST REPORT
+
+Build validation in artifact environment:
+- python -m compileall -q app scripts tests migrations: PASS
+- python -m scripts.production_preflight: PASS
+- alembic heads: 20260921_0014 (head)
+- Jinja syntax: 60 templates PASS
+- v1.18.0 + v1.17.2.4 source regressions: 13 passed
+
+Full pytest could not be executed in the artifact container because aiogram is not installed and outbound package installation is unavailable. Run full pytest in the project .venv and GitHub Actions before production deploy.

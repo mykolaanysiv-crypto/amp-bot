@@ -13,6 +13,8 @@ from app.web.broadcast_runtime import (
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 @router.get("/admin/quests", response_class=HTMLResponse)
@@ -140,7 +142,9 @@ async def quest_create(
         )
         session.add(q)
         await session.flush()
-        await log_audit(session, "web_quest_create", actor_label=request.session.get("admin_name", "web"), entity_type="quest", entity_id=q.id, details=q.title)
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="quest", entity_type="quest", entity_id=q.id, old_values={}, new_values={"xp_reward": q.xp_reward}, author_label=actor, reason="Створення квесту")
+        await log_audit(session, "web_quest_create", actor_label=actor, entity_type="quest", entity_id=q.id, details=q.title)
         if q.active:
             users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
             campaign_id=await _queue_system_broadcast(session,users,f"🎯 <b>Новий квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n\nВідкрий «🎯 Квести» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Новий квест: {q.title}",template_code="quest_created")
@@ -164,6 +168,7 @@ async def quest_update(
         team = await seed_default_team(session)
         if q:
             was_public=bool(q.active) and q.status in {"open","postponed"}
+            old_rules={"xp_reward": q.xp_reward}
             q.title = title.strip()
             q.description = description.strip()
             q.quest_type = "team" if quest_type == "team" else "individual"
@@ -188,7 +193,9 @@ async def quest_update(
             if img:
                 await delete_image(q.image_path)
                 q.image_path = img
-            await log_audit(session, "web_quest_update", actor_label=request.session.get("admin_name", "web"), entity_type="quest", entity_id=q.id, details=q.title)
+            actor=request.session.get("admin_name","web")
+            await record_field_changes(session, rule_prefix="quest", entity_type="quest", entity_id=q.id, old_values=old_rules, new_values={"xp_reward": q.xp_reward}, author_label=actor, reason="Редагування квесту")
+            await log_audit(session, "web_quest_update", actor_label=actor, entity_type="quest", entity_id=q.id, details=q.title)
             if not was_public and q.active and q.status=="open":
                 users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
                 campaign_id=await _queue_system_broadcast(session,users,f"🎯 <b>Новий квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n\nВідкрий «🎯 Квести» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Новий квест: {q.title}",template_code="quest_published")

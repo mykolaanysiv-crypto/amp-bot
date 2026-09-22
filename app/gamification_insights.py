@@ -9,7 +9,7 @@ from statistics import median
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .leagues import LEAGUES, league_for_xp
+from .leagues import LEAGUES, league_for_xp, runtime_leagues
 from .model_domains import (
     OpportunityInterest,
     OpportunityMatch,
@@ -47,6 +47,7 @@ def _rate(num: int, den: int) -> float:
 
 
 async def build_gamification_insights(session: AsyncSession, *, now: datetime | None = None) -> dict:
+    leagues_runtime = await runtime_leagues(session)
     now = now or clock.storage_utc()
     baseline = await ensure_clean_data_baseline(session, now)
     observation_days = max(0, (now.date() - baseline.date()).days)
@@ -124,7 +125,7 @@ async def build_gamification_insights(session: AsyncSession, *, now: datetime | 
                     if first_positive:
                         transition_days[key].append(max(0, (tx.created_at.date() - first_positive.date()).days))
                     crossed.add(league.code)
-        current_leagues[league_for_xp(cumulative).code] += 1
+        current_leagues[league_for_xp(cumulative, leagues_runtime).code] += 1
         if first_positive:
             age_days = (now.date() - first_positive.date()).days
             if age_days >= 7:

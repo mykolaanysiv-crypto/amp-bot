@@ -29,7 +29,7 @@
   {% endfor %}
   </div>
   {% if is_superadmin %}
-  <div class="settings-savebar"><button class="primary" type="submit">💾 Зберегти правила</button><span class="muted">Зміни журналюються в аудиті.</span></div>
+  <div class="card"><label><b>Причина зміни правил</b><textarea name="change_reason" required placeholder="Наприклад: корекція балансу після аналізу 4 тижнів"></textarea></label></div><div class="settings-savebar"><button class="primary" type="submit">💾 Зберегти правила</button><span class="muted">Зміни створять нову версію правил і запис аудиту.</span></div>
   {% else %}
   <div class="notice">🔐 Перегляд доступний. Змінювати системні правила може лише суперадміністратор.</div>
   {% endif %}

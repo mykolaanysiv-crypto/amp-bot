@@ -1,11 +1,12 @@
 """Domain-split SQLAlchemy model definitions for AMP v1.13.0."""
 from .base import Base, UserRole, UserStatus
 from .identity import MediaAsset, SettlementReference, User, RegistrationJourney, BanRecord, ConsentHistory, UserStatusChangeRequest, WebStaffAccount, WebAdminSession, AuditLog
-from .gamification import Season, XPTransaction, Team, TeamMember, Badge, UserBadge, Referral, Reward, RewardClaim, Giveaway, GiveawayPrize, GiveawayEntry, GiveawayWinner, ParticipationStreak, StreakFreeze, Goal, GoalReward
+from .gamification import Season, XPTransaction, Team, TeamMember, Badge, UserBadge, Referral, Reward, RewardClaim, Giveaway, GiveawayPrize, GiveawayEntry, GiveawayWinner, ParticipationStreak, StreakFreeze, Goal, GoalReward, GamificationRuleVersion
 from .events import Event, EventRegistration, EventFeedback
 from .engagement import Quest, QuestParticipation, TeamQuestContribution, Idea, RequestCase, RequestMessage, VolunteerTask, VolunteerTaskParticipation, ActivityType, ActivityApplication, QuickXPChallenge, QuickXPQuestion, QuickXPAnswer, QuickXPCompletion, Opportunity, OpportunityMatch, OpportunityInterest, Survey, SurveyAudienceUser, SurveyQuestion, SurveyResponse, ContentView
 from .donations import DonationJarState, DonationTransaction, DonationReport, SupportPageView
 from .ambassadors import AmbassadorReport, TeamTask
+from .operations import OperationalIssue
 from .communications import BroadcastTemplate, SystemSetting, BroadcastCampaign, BroadcastRecipient, ScheduledJob, NotificationDelivery, Notification
 
 __all__ = [
@@ -39,6 +40,7 @@ __all__ = [
     "StreakFreeze",
     "Goal",
     "GoalReward",
+    "GamificationRuleVersion",
     "Event",
     "EventRegistration",
     "EventFeedback",
@@ -77,4 +79,5 @@ __all__ = [
     "ScheduledJob",
     "NotificationDelivery",
     "Notification",
+    "OperationalIssue",
 ]

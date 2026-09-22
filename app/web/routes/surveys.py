@@ -15,6 +15,8 @@ from app.web.broadcast_runtime import (
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 @router.get("/admin/surveys", response_class=HTMLResponse)
@@ -69,6 +71,8 @@ async def survey_create(request: Request):
             created_by_label=request.session.get("admin_name","web"), updated_at=clock.storage_utc(),
         )
         session.add(row); await session.flush()
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="survey", entity_type="survey", entity_id=row.id, old_values={}, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Створення опитування")
         for user_id in selected_user_ids:
             session.add(SurveyAudienceUser(survey_id=row.id, user_id=user_id))
         await log_audit(session,"web_survey_create",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=row.id,details=f"{row.title}; audience={audience_type}")
@@ -131,6 +135,7 @@ async def survey_update(request: Request, survey_id: int):
     async with db.session_factory() as session:
         survey=await session.get(Survey,survey_id)
         if not survey: raise HTTPException(404,"Опитування не знайдено")
+        old_rules={"xp_reward": survey.xp_reward}
         if audience_event_id and not await session.get(Event, audience_event_id):
             raise HTTPException(400, "Обрану подію не знайдено")
         try: survey.xp_reward=max(0,min(40,int(form.get("xp_reward") or 0)))
@@ -143,7 +148,9 @@ async def survey_update(request: Request, survey_id: int):
         await session.execute(delete(SurveyAudienceUser).where(SurveyAudienceUser.survey_id == survey.id))
         for user_id in selected_user_ids:
             session.add(SurveyAudienceUser(survey_id=survey.id, user_id=user_id))
-        await log_audit(session,"web_survey_update",actor_label=request.session.get("admin_name","web"),entity_type="survey",entity_id=survey.id,details=f"settings; audience={audience_type}")
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="survey", entity_type="survey", entity_id=survey.id, old_values=old_rules, new_values={"xp_reward": survey.xp_reward}, author_label=actor, reason="Редагування опитування")
+        await log_audit(session,"web_survey_update",actor_label=actor,entity_type="survey",entity_id=survey.id,details=f"settings; audience={audience_type}")
         await session.commit()
     return RedirectResponse(f"/admin/surveys/{survey_id}#survey-settings",303)
 

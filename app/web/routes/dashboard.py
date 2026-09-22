@@ -9,6 +9,8 @@ from app.web.dependencies import (
 from app.settlements import ensure_settlement_directory, settlement_quality_report
 from app.registration_ux import registration_funnel_counts
 from app.runtime_config import get_runtime_int
+from app.governance import scan_operational_issues, SEVERITY_ORDER
+from app.model_domains import OperationalIssue
 from app.web.dependencies import _refresh_lifecycle
 from app.web.broadcast_runtime import (
     _queue_system_broadcast, _entity_notice_text, _postponed_notice_text,
@@ -147,6 +149,15 @@ async def dashboard(request: Request):
         if has_web_permission(request, "notifications.manage"):
             attention.append({"count": failed_notifications, "icon": "📨", "title": "Невдалі Telegram-повідомлення", "action": "Повторити", "url": "/admin/notifications?status=failed"})
         attention = [item for item in attention if item["count"] > 0]
+        if is_superadmin(request):
+            await scan_operational_issues(session)
+            await session.commit()
+            operational_tasks = list((await session.scalars(
+                select(OperationalIssue).where(OperationalIssue.status == "open").order_by(OperationalIssue.last_seen_at.desc()).limit(8)
+            )).all())
+            operational_tasks.sort(key=lambda row: (SEVERITY_ORDER.get(row.severity, 9), -row.last_seen_at.timestamp()))
+        else:
+            operational_tasks = []
         data_quality = await settlement_quality_report(session)
         operations = {
             "today_events": len(today_events), "today_attended": today_attended, "today_no_show": today_no_show,
@@ -161,7 +172,7 @@ async def dashboard(request: Request):
                 attention=attention, data_quality=data_quality, operations=operations,
                 today_events=today_events, upcoming_checkins=upcoming_checkins,
                 feedback_conversion={"invited": feedback_invited, "completed": feedback_completed, "rate": feedback_rate},
-                feedback_by_event=feedback_by_event, registration_funnel=registration_funnel,
+                feedback_by_event=feedback_by_event, registration_funnel=registration_funnel, operational_tasks=operational_tasks,
             )
         )
 

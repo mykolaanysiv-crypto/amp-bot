@@ -1,7 +1,7 @@
 from ..time_utils import clock
 import os
 from .participant_common import (
-    AMBASSADOR_BADGE_ROLES, Badge, CallbackQuery, Database, Event, EventFeedback, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, LEVELS, Message, OpportunityMatch, Quest, QuestParticipation, RequestCase, RequestMessage, Reward, RewardClaim, StreakFreezeState, UserBadge, UserRole, UserStatus, XPTransaction, active_month_streak, create_streak_freeze, current_season, escape, func, get_level, get_registration_journey, get_runtime_int, get_user_by_tg, goals_for_user, join_hub_keyboard, label, league_for_xp, log_audit, log_extra, logging, main_menu, more_hub_keyboard, participant_first_name, profile_hub_keyboard, progress_text, refresh_user_streak, restore_super_streak, rewards_keyboard, router, season_xp, select, streak_freeze_summary, telegram_photo_input, timedelta, xp_total
+    AMBASSADOR_BADGE_ROLES, Badge, CallbackQuery, Database, Event, EventFeedback, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, LEVELS, Message, OpportunityMatch, Quest, QuestParticipation, RequestCase, RequestMessage, Reward, RewardClaim, StreakFreezeState, UserBadge, UserRole, UserStatus, XPTransaction, active_month_streak, create_streak_freeze, current_season, escape, func, get_level, get_registration_journey, get_runtime_int, get_user_by_tg, goals_for_user, join_hub_keyboard, label, league_for_xp, runtime_leagues, log_audit, log_extra, logging, main_menu, more_hub_keyboard, participant_first_name, profile_hub_keyboard, progress_text, refresh_user_streak, restore_super_streak, rewards_keyboard, router, season_xp, select, streak_freeze_summary, telegram_photo_input, timedelta, xp_total
 )
 from ..quick_xp import available_quick_challenges, challenge_reward, quick_xp_weekly_cap, weekly_quick_xp
 
@@ -30,7 +30,8 @@ async def overview(message: Message, db: Database) -> None:
         sxp = await season_xp(session, user.id)
         season = await current_season(session)
         streak_row, _ = await refresh_user_streak(session, user)
-        league = league_for_xp(sxp)
+        leagues = await runtime_leagues(session)
+        league = league_for_xp(sxp, leagues)
         level_name, next_threshold = get_level(xp)
         next_event_stmt = select(Event).where(Event.status == "open", Event.starts_at >= local_now)
         if user.role not in {UserRole.AMBASSADOR.value, UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value}:
@@ -344,7 +345,7 @@ async def profile(message: Message, db: Database) -> None:
         streak = await active_month_streak(session, user.id)
         streak_row, _ = await refresh_user_streak(session, user)
         await session.commit()
-        league = league_for_xp(sxp)
+        league = league_for_xp(sxp, await runtime_leagues(session))
         b = profile_hub_keyboard(user.role)
         streak_fire = _super_streak_fire(streak_row.event_streak)
         await message.answer(

@@ -43,7 +43,7 @@ from ..profile_data import participant_first_name
 from ..domain_services import current_season, get_user_by_tg, log_audit, season_xp, xp_total
 from ..engagement import active_month_streak, goals_for_user, process_expired_content
 from ..leagues import (
-    MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_for_xp, league_leaderboard_rows,
+    MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_for_xp, runtime_leagues, league_leaderboard_rows,
     refresh_user_streak, restore_super_streak, season_leaderboard_rows, streak_freeze_summary,
 )
 from ..ui_labels import activity_category_label, activity_status_label, idea_status_label, label, request_status_label

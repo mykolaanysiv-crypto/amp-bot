@@ -12,7 +12,7 @@ from .config import Settings
 
 log = logging.getLogger(__name__)
 
-# Web and worker processes may both initialize database access.
+# Web and worker processes may initialize database access independently.
 # Serialize SQLite initialization inside a process.
 _db_init_lock = asyncio.Lock()
 

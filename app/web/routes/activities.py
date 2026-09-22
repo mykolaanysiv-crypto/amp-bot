@@ -13,6 +13,8 @@ from app.web.broadcast_runtime import (
     _schedule_broadcast, _clean_broadcast_text, _broadcast_form_context,
 )
 
+from app.governance import record_field_changes, record_rule_change
+
 router = APIRouter()
 
 ACTIVITY_APPLICATION_STATUSES = (
@@ -72,7 +74,9 @@ async def activity_create(
             active=True, sort_order=500,
         )
         session.add(row); await session.flush()
-        await log_audit(session, "web_activity_create", actor_label=request.session.get("admin_name", "web"), entity_type="activity_type", entity_id=row.id, details=f"{row.title}: {row.xp_reward} XP")
+        actor=request.session.get("admin_name","web")
+        await record_field_changes(session, rule_prefix="activity", entity_type="activity_type", entity_id=row.id, old_values={}, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Створення активності")
+        await log_audit(session, "web_activity_create", actor_label=actor, entity_type="activity_type", entity_id=row.id, details=f"{row.title}: {row.xp_reward} XP")
         users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
         campaign_id=await _queue_system_broadcast(session,users,f"⚡ <b>Нова активність</b>\n\n<b>{row.title}</b>\n🎁 {row.xp_reward} XP\n\nВідкрий «⚡ Активності» у боті, щоб переглянути умови.",author_label=request.session.get("admin_name","web"),audience_label=f"Нова активність: {row.title}",template_code="activity_created")
         await session.commit()
@@ -92,13 +96,16 @@ async def activity_update(
         row = await session.get(ActivityType, activity_id)
         if row:
             was_public=bool(row.active)
+            old_rules={"xp_reward": row.xp_reward}
             row.title = title.strip() or row.title
             row.category = category or "other"
             row.description = description.strip(); row.instructions = instructions.strip()
             row.xp_reward = max(1, min(40, int(xp_reward)))
             row.hours_reward = max(0.0, min(12.0, float(hours_reward)))
             row.active = active == "on"
-            await log_audit(session, "web_activity_update", actor_label=request.session.get("admin_name", "web"), entity_type="activity_type", entity_id=row.id, details=f"{row.title}: {row.xp_reward} XP; active={row.active}")
+            actor=request.session.get("admin_name","web")
+            await record_field_changes(session, rule_prefix="activity", entity_type="activity_type", entity_id=row.id, old_values=old_rules, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Редагування активності")
+            await log_audit(session, "web_activity_update", actor_label=actor, entity_type="activity_type", entity_id=row.id, details=f"{row.title}: {row.xp_reward} XP; active={row.active}")
             if not was_public and row.active:
                 users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
                 campaign_id=await _queue_system_broadcast(session,users,f"⚡ <b>Нова активність</b>\n\n<b>{row.title}</b>\n🎁 {row.xp_reward} XP\n\nВідкрий «⚡ Активності» у боті, щоб переглянути умови.",author_label=request.session.get("admin_name","web"),audience_label=f"Нова активність: {row.title}",template_code="activity_published")

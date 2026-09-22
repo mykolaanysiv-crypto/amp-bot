@@ -54,7 +54,7 @@ from ..broadcasts import BROADCAST_TEMPLATES, audience_description, personalize_
 from ..analytics_modules import METRIC_META, analytics_bot_text, analytics_excel, analytics_pdf, analytics_png, build_analytics
 from ..reporting import build_period_report, report_excel, report_pdf, resolve_report_period
 from ..engagement import GOAL_METRIC_LABELS, goal_progress, process_expired_content
-from ..leagues import LEAGUES, MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_counts, league_for_xp, refresh_all_streaks, refresh_user_streak, season_leaderboard_rows, streak_freeze_summary
+from ..leagues import LEAGUES, MAX_FREEZE_DAYS_PER_QUARTER, create_streak_freeze, league_counts, league_for_xp, runtime_leagues, refresh_all_streaks, refresh_user_streak, season_leaderboard_rows, streak_freeze_summary
 from ..version import APP_VERSION
 from ..reliability import job_lock, latest_local_backup, reliability_counts, queue_telegram_delivery
 from ..runtime_health import (

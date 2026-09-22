@@ -122,3 +122,6 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 - Фото-підтвердження квестів зберігаються у media category `quest_proofs` з рівнем `staff-private`; анонімний/public media route їх не віддає.
 - Ручне підтвердження квесту без participant submission доступне тільки `superadmin`, вимагає текстову причину та журналюється в audit log.
 - Live-sync вебпанелі не підміняє блок, якщо користувач редагує поле або форма має незбережені зміни.
+
+## v1.18.0 — governance safety
+Operational Intelligence is advisory: detection does not mutate participant data or silently repair anomalies. Resolution requires an explicit web action and is audited. Gamification rule changes are versioned append-only and do not trigger automatic recalculation of historical XP/wallet transactions.

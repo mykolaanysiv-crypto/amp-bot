@@ -68,6 +68,9 @@ async def test_checkin_window_boundaries_are_inclusive(db):
         opens_at = window["opens_at"]
         closes_at = window["closes_at"]
 
+        assert opens_at is not None
+        assert closes_at is not None
+
         _, open_state = await checkin_for_event(
             session, user_open.id, event.checkin_token, now=opens_at
         )
