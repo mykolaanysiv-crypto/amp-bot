@@ -87,7 +87,7 @@ def test_sensitive_profile_and_document_downloads_are_audited():
 def test_backup_workflow_restores_real_backup_to_ephemeral_postgres():
     workflow = read(".github/workflows/backup.yml")
     script = read("scripts/verify_backup_restore.sh")
-    assert "postgres:16" in workflow
+    assert "postgres:18" in workflow
     assert "verify_backup_restore.sh" in workflow
     assert "restore-verified" in workflow
     assert "pg_restore" in script
