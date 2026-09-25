@@ -3,8 +3,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def text(p): return (ROOT/p).read_text(encoding='utf-8')
 
 def test_version_and_migration():
-    assert text('VERSION.txt').strip()=='1.18.0'
-    assert text('VERSION_CHECK.txt').strip()=='1.18.0'
+    assert text('VERSION.txt').strip()=='1.18.1'
+    assert text('VERSION_CHECK.txt').strip()=='1.18.1'
     m=text('migrations/versions/20260921_0014_operational_governance.py')
     assert 'revision = "20260921_0014"' in m and 'down_revision = "20260921_0013"' in m
     assert 'operational_issues' in m and 'gamification_rule_versions' in m

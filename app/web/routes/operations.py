@@ -1,26 +1,61 @@
 from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from app.governance import SEVERITY_ORDER, scan_operational_issues
-from app.model_domains import OperationalIssue
+from app.model_domains import OperationalIssue, SystemSetting
+from app.reliability import job_lock
+from app.governance import SCAN_SETTING_KEY
 from app.time_utils import clock
 from app.web.dependencies import ctx, db, guard_superadmin, log_audit, templates
 
 router=APIRouter()
 
-@router.get('/admin/operations',response_class=HTMLResponse)
-async def operations_page(request:Request,status:str='open'):
-    if r:=guard_superadmin(request): return r
+@router.get('/admin/operations', response_class=HTMLResponse)
+async def operations_page(request: Request, status: str = 'open', scan: str = ''):
+    if r := guard_superadmin(request): return r
     async with db.session_factory() as session:
-        await scan_operational_issues(session)
-        await session.commit()
-        stmt=select(OperationalIssue)
-        if status in {'open','resolved'}: stmt=stmt.where(OperationalIssue.status==status)
-        rows=list((await session.scalars(stmt.order_by(OperationalIssue.last_seen_at.desc()))).all())
-        rows.sort(key=lambda x:(SEVERITY_ORDER.get(x.severity,9),-x.last_seen_at.timestamp()))
-        counts={'open':sum(1 for r in rows if r.status=='open'),'resolved':sum(1 for r in rows if r.status=='resolved')}
-        return templates.TemplateResponse(request=request,name='operations.html',context=ctx(request,rows=rows,status=status,counts=counts))
+        counts = dict((await session.execute(
+            select(OperationalIssue.status, func.count(OperationalIssue.id))
+            .group_by(OperationalIssue.status)
+        )).all())
+        stmt = select(OperationalIssue)
+        if status in {'open', 'resolved'}:
+            stmt = stmt.where(OperationalIssue.status == status)
+        rows = list((await session.scalars(stmt.order_by(
+            OperationalIssue.last_seen_at.desc()))).all())
+        rows.sort(key=lambda item: (
+            SEVERITY_ORDER.get(item.severity, 9), -item.last_seen_at.timestamp()))
+        marker = await session.get(SystemSetting, SCAN_SETTING_KEY)
+        last_scan = ''
+        if marker and marker.value:
+            try:
+                from datetime import datetime
+                last_scan = clock.utc_to_local(
+                    clock.from_storage_utc(datetime.fromisoformat(marker.value))
+                ).strftime('%d.%m.%Y %H:%M')
+            except (TypeError, ValueError):
+                last_scan = 'невідомо'
+        return templates.TemplateResponse(request=request, name='operations.html', context=ctx(
+            request, rows=rows, status=status, scan=scan,
+            counts={'open': counts.get('open', 0), 'resolved': counts.get('resolved', 0)},
+            last_scan=last_scan))
+
+
+@router.post('/admin/operations/scan')
+async def scan_issues_manually(request: Request):
+    if r := guard_superadmin(request): return r
+    # Same distributed lock as the worker: no concurrent full table sweeps.
+    async with job_lock(db, 'operational_scan', ttl_seconds=600) as acquired:
+        if not acquired:
+            return RedirectResponse('/admin/operations?scan=busy', 303)
+        async with db.session_factory() as session:
+            seen = await scan_operational_issues(session)
+            await log_audit(session, 'operational_scan_manual',
+                actor_label=request.session.get('admin_name', 'superadmin'),
+                entity_type='system', details=f'Актуальних сигналів: {seen}')
+            await session.commit()
+    return RedirectResponse('/admin/operations?scan=ok', 303)
 
 
 @router.post('/admin/operations/{issue_id}/assign')

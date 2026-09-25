@@ -1,3 +1,9 @@
+## v1.18.1 — corrected release artifact (check-in boundary / manual feedback resend)
+
+- Update legacy check-in boundary regression to use explicit event end + configured default close delay; actual inclusive window logic unchanged.
+- Restrict manual feedback resend to confirmed attendees and keep pending counter consistent.
+- No new Alembic migration.
+
 # v1.17.2.4 — Quest Proofs, Event End Time & Live Sync
 
 - Учасник завершує квест через «✅ Виконано» → вибір «Є фото?»: без фото заявка одразу переходить координатору; з фото бот приймає одне фото-підтвердження і після завантаження підтверджує передачу на обробку.
@@ -891,3 +897,9 @@
 - Added runtime league thresholds and governance screen.
 - Gamification configuration changes do not automatically rewrite historical XP or wallet balances.
 - Alembic head: `20260921_0014`.
+
+## v1.18.1 — Production Stability & Operational Integrity
+- Worker-only scheduled operational scans, distributed lock, manual scan, last scanned indicator; no expensive scanner on GET Dashboard/Operations.
+- Grace-aware missed event reminders, grouped XP-wallet anomaly query, transactional issue auto-reopen/auto-resolution with append-only audit.
+- Strict positive and increasing league thresholds; version-aware historical league transitions without re-awarding XP.
+- Fixed Linux/macOS and Windows local launch scripts; updated test and deployment documentation. Database head unchanged (`20260921_0014`).

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+cd "$(dirname "$0")"
 if [ ! -d .venv ]; then
   python3 -m venv .venv
 fi
 source .venv/bin/activate
-pip install -r requirements.txt
-python run_all.py
+python -m pip install -r requirements.txt
+# Python supervisor starts/stops the separate run_web.py and run.py processes.
+python -m scripts.local_supervisor

@@ -21,6 +21,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from PIL import Image, ImageOps
+import qrcode
 from sqlalchemy import case as sql_case, delete, func, or_, select, update
 from starlette.middleware.sessions import SessionMiddleware
 from aiogram import Bot

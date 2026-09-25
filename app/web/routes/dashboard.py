@@ -9,7 +9,7 @@ from app.web.dependencies import (
 from app.settlements import ensure_settlement_directory, settlement_quality_report
 from app.registration_ux import registration_funnel_counts
 from app.runtime_config import get_runtime_int
-from app.governance import scan_operational_issues, SEVERITY_ORDER
+from app.governance import SEVERITY_ORDER
 from app.model_domains import OperationalIssue
 from app.web.dependencies import _refresh_lifecycle
 from app.web.broadcast_runtime import (
@@ -150,8 +150,6 @@ async def dashboard(request: Request):
             attention.append({"count": failed_notifications, "icon": "📨", "title": "Невдалі Telegram-повідомлення", "action": "Повторити", "url": "/admin/notifications?status=failed"})
         attention = [item for item in attention if item["count"] > 0]
         if is_superadmin(request):
-            await scan_operational_issues(session)
-            await session.commit()
             operational_tasks = list((await session.scalars(
                 select(OperationalIssue).where(OperationalIssue.status == "open").order_by(OperationalIssue.last_seen_at.desc()).limit(8)
             )).all())

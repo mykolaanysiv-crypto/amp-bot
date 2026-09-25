@@ -1,0 +1,14 @@
+AMP XP v1.18.1 — локальна перевірка (у корені проєкту)
+python -m pip install -r requirements-dev.txt
+python -m compileall -q app scripts migrations tests
+python -m scripts.production_preflight
+pytest -q --ignore=tests/integration
+pytest -q tests/integration  # POSTGRES_SMOKE_URL / TEST_DATABASE_URL із PostgreSQL 16
+alembic current
+python -m scripts.schema_drift_check  # на тестовій БД після alembic upgrade head
+bash start_local.sh  # Linux/macOS; налаштовані BOT_TOKEN, DATABASE_URL, WEB_SESSION_SECRET
+./start_local.ps1  # Windows PowerShell
+
+Production: run CI on a feature branch first. PUSH TO main triggers AUTO DEPLOY.
+Do not run rsync --delete against a repository containing unbacked-up reports.
+Alembic HEAD remains 20260921_0014; no DB downgrade/upgrade is needed for 1.18.0 -> 1.18.1.
