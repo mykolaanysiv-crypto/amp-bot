@@ -1,0 +1,28 @@
+AMP XP v1.18.1 — verification of the provided release package
+
+PASS  Python compileall (app, scripts, migrations, tests).
+PASS  Production preflight: Production preflight OK for AMP v1.18.1.
+PASS  Alembic revision discovery: 20260921_0014 (head); no new migration.
+PASS  Jinja2 syntax parse: all 60 admin/public HTML templates.
+PASS  Bash local entrypoint syntax (bash -n start_local.sh).
+PASS  30 inherited v1.17.1/v1.17.2.3/v1.17.2.4/v1.18.0 and new v1.18.1 source regression tests.
+PASS  Five offline SQLite/SQLAlchemy behavior checks (test-only aiogram import shim):
+      no early event reminder alert, wallet anomaly detection, auto-reopen + audit,
+      overdue reminder detection, auto-resolution + audit, and effective-dated league snapshots.
+PASS  Five v1.18.1 reminder-grace / packaging pytest cases with test-only import shim.
+
+NOT RUN IN THIS CONTAINER: Full real-dependency pytest, PostgreSQL 16 integration,
+release/startup smoke and Heroku CI/deploy. The container does not have aiogram,
+aiosqlite, asyncpg or a PostgreSQL server. No claim of production readiness or
+production deployment is made by this local validation.
+
+For the complete gate use GitHub Actions on a feature branch, with
+requirements-dev.txt installed, a PostgreSQL 16 service, migration tests,
+backup-restore validation and release smoke, before any main-branch deployment.
+
+CORRECTED RELEASE ARTIFACT — check-in / manual feedback patch (2026-09-25):
+PASS  44 dependency-free source/packaging regression tests.
+PASS  Offline SQLAlchemy functional check of event domain: exact opening instant and exact closing instant are accepted, and closing instant + 1 microsecond is rejected.
+PASS  Python compileall, production preflight, 60 Jinja templates, and bash -n start_local.sh.
+PASS  Manual feedback resend uses confirmed attended-only filter; matching pending counter and source assertions.
+NOTE  Full pytest (incl. async SQLite integration) and PostgreSQL 16 CI were not run here; this container lacks aiogram / aiosqlite / asyncpg. Release remains un-deployed.

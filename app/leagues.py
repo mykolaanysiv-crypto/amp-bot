@@ -53,27 +53,35 @@ LEAGUE_SETTING_DEFAULTS = {
     "league.legendary_min": 1500,
 }
 
+def leagues_from_thresholds(values: dict[str, int]) -> tuple[League, ...]:
+    """Build one consistent set of league boundaries; reject bad history/settings."""
+    try:
+        ordered = [int(values[k]) for k in LEAGUE_SETTING_DEFAULTS]
+    except (KeyError, TypeError, ValueError):
+        return DEFAULT_LEAGUES
+    if ordered[0] < 1 or any(a >= b for a, b in zip(ordered, ordered[1:])):
+        return DEFAULT_LEAGUES
+    silver, gold, platinum, diamond, legendary = ordered
+    return (
+        League("bronze", "Бронзова ліга", "🥉", 0, silver - 1),
+        League("silver", "Срібна ліга", "🥈", silver, gold - 1),
+        League("gold", "Золота ліга", "🥇", gold, platinum - 1),
+        League("platinum", "Платинова ліга", "💠", platinum, diamond - 1),
+        League("diamond", "Діамантова ліга", "💎", diamond, legendary - 1),
+        League("legendary", "Легендарна ліга", "👑", legendary, None),
+    )
+
+
 async def runtime_leagues(session: AsyncSession) -> tuple[League, ...]:
-    vals = dict(LEAGUE_SETTING_DEFAULTS)
+    values = dict(LEAGUE_SETTING_DEFAULTS)
     for key, default in LEAGUE_SETTING_DEFAULTS.items():
         row = await session.get(SystemSetting, f"runtime.{key}")
         if row:
             try:
-                vals[key] = max(1, int(float(str(row.value).strip())))
+                values[key] = int(str(row.value).strip())
             except (TypeError, ValueError):
-                vals[key] = default
-    ordered = [vals[k] for k in LEAGUE_SETTING_DEFAULTS]
-    if ordered != sorted(ordered) or len(set(ordered)) != len(ordered):
-        vals = dict(LEAGUE_SETTING_DEFAULTS)
-    s,g,p,d,l = (vals[k] for k in LEAGUE_SETTING_DEFAULTS)
-    return (
-        League("bronze", "Бронзова ліга", "🥉", 0, s-1),
-        League("silver", "Срібна ліга", "🥈", s, g-1),
-        League("gold", "Золота ліга", "🥇", g, p-1),
-        League("platinum", "Платинова ліга", "💠", p, d-1),
-        League("diamond", "Діамантова ліга", "💎", d, l-1),
-        League("legendary", "Легендарна ліга", "👑", l, None),
-    )
+                values[key] = default
+    return leagues_from_thresholds(values)
 
 SUPER_STREAK_BADGE_NAME = "Суперсерія 30 днів"
 WEEKLY_STREAK_CATEGORIES = {"event", "quest", "team_quest", "activity", "task", "survey", "idea_approved", "referral"}

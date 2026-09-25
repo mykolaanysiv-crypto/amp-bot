@@ -3,20 +3,19 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from app.governance import record_rule_change
+from app.leagues import LEAGUE_SETTING_DEFAULTS, runtime_leagues
 from app.model_domains import GamificationRuleVersion, SystemSetting
 from app.time_utils import clock
 from app.web.dependencies import ctx, db, guard_superadmin, log_audit, templates
 
 router=APIRouter()
-LEAGUE_DEFAULTS={'league.silver_min':100,'league.gold_min':250,'league.platinum_min':500,'league.diamond_min':1000,'league.legendary_min':1500}
+LEAGUE_DEFAULTS = LEAGUE_SETTING_DEFAULTS
 
 async def _league_values(session):
-    out={}
-    for key,default in LEAGUE_DEFAULTS.items():
-        row=await session.get(SystemSetting,f'runtime.{key}')
-        try: out[key]=int(row.value) if row else default
-        except Exception: out[key]=default
-    return out
+    # Display the same normalized thresholds used by participant-facing UI.
+    return {f"league.{league.code}_min": league.min_xp for league in
+            (await runtime_leagues(session))[1:]}
+
 
 @router.get('/admin/gamification/governance',response_class=HTMLResponse)
 async def governance_page(request:Request):
@@ -30,9 +29,12 @@ async def governance_page(request:Request):
 async def league_update(request:Request,reason:str=Form(...),silver:int=Form(...),gold:int=Form(...),platinum:int=Form(...),diamond:int=Form(...),legendary:int=Form(...)):
     if r:=guard_superadmin(request): return r
     vals={'league.silver_min':silver,'league.gold_min':gold,'league.platinum_min':platinum,'league.diamond_min':diamond,'league.legendary_min':legendary}
-    ordered=[max(1,int(vals[k])) for k in LEAGUE_DEFAULTS]
-    if ordered!=sorted(ordered) or len(set(ordered))!=len(ordered):
-        return HTMLResponse('Пороги ліг мають строго зростати.',400)
+    ordered = [int(vals[k]) for k in LEAGUE_DEFAULTS]
+    if ordered[0] < 1 or any(a >= b for a, b in zip(ordered, ordered[1:])):
+        return HTMLResponse('Пороги ліг мають бути додатними і строго зростати.', 400)
+    if not (reason or '').strip():
+        return HTMLResponse('Вкажіть причину зміни правил.', 400)
+    reason = reason.strip()
     async with db.session_factory() as session:
         old=await _league_values(session); actor=request.session.get('admin_name','superadmin'); now=clock.storage_utc()
         for key,value in vals.items():

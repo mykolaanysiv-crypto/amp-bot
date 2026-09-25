@@ -64,19 +64,12 @@ async def test_checkin_window_boundaries_are_inclusive(db):
         await register_for_event(session, user_open.id, event.id)
         await register_for_event(session, user_close.id, event.id)
 
-        window = await event_checkin_window(session, event, now=now)
-        opens_at = window["opens_at"]
-        closes_at = window["closes_at"]
-
-        assert opens_at is not None
-        assert closes_at is not None
-
-        _, open_state = await checkin_for_event(
-            session, user_open.id, event.checkin_token, now=opens_at
-        )
-        _, close_state = await checkin_for_event(
-            session, user_close.id, event.checkin_token, now=closes_at
-        )
+        opens_at = event.starts_at - timedelta(minutes=60)
+        # Since v1.17.2.4, the check-in window closes after the actual event
+        # end (default: start + 2h), not a legacy start + 6h deadline.
+        closes_at = event.ends_at + timedelta(minutes=60)
+        _, open_state = await checkin_for_event(session, user_open.id, event.checkin_token, now=opens_at)
+        _, close_state = await checkin_for_event(session, user_close.id, event.checkin_token, now=closes_at)
 
         assert open_state == "ok"
         assert close_state == "ok"

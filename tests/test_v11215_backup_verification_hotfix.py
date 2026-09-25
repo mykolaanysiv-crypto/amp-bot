@@ -39,7 +39,7 @@ def test_daily_backup_workflow_restores_before_verified_marker():
     assert "workflow_dispatch:" in workflow
     assert "heroku pg:backups:capture" in workflow
     assert "verify_backup_restore.sh" in workflow
-    assert "postgres:18" in workflow
+    assert "postgres:16" in workflow
     assert workflow.index("verify_backup_restore.sh") < workflow.index("scripts.mark_backup_verified")
     assert "scripts.verify_backup_marker" in workflow
 

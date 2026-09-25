@@ -44,6 +44,7 @@ SCHEDULER_MAX_SILENCE_SECONDS: dict[str, int] = {
     "notification_health_scheduler": 20 * 60,
     "backup_health_scheduler": 7 * 3600,
     "content_lifecycle_scheduler": 20 * 60,
+    "operational_scan_scheduler": 25 * 60,
 }
 
 SCHEDULER_LABELS: dict[str, str] = {
@@ -60,6 +61,7 @@ SCHEDULER_LABELS: dict[str, str] = {
     "notification_health_scheduler": "Контроль сповіщень",
     "backup_health_scheduler": "Контроль резервних копій",
     "content_lifecycle_scheduler": "Автооновлення статусів",
+    "operational_scan_scheduler": "Операційні задачі",
 }
 
 

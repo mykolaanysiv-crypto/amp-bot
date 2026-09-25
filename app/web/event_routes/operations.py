@@ -5,9 +5,10 @@ from aiogram import Bot
 from urllib.parse import parse_qs, urlparse
 import re
 from app.web.dependencies import (
-    APP_VERSION, AuditLog, BytesIO, Event, EventFeedback, EventRegistration, File, Form, HTMLResponse, HTTPException, Path, RedirectResponse, Request, StreamingResponse, UploadFile, User, UserRole, UserStatus, WebStaffAccount, XPTransaction, compose_event_datetime, confirm_event_attendance, confirm_single_event_attendance, ctx, db, delete, delete_image, event_registration_status_label, export_event_participants_excel, export_event_participants_pdf, func, guard, guard_permission, guard_superadmin, has_web_permission, is_superadmin, label, log_audit, logging, normalize_event_xp, notify_telegram, opt_int, or_, process_event_operations, queue_telegram_delivery, quote, save_image, select, settings, store_file_bytes, templates, timedelta, token_urlsafe, update
+    APP_VERSION, AuditLog, BytesIO, Event, EventFeedback, EventRegistration, File, Form, HTMLResponse, HTTPException, Path, RedirectResponse, Request, StreamingResponse, UploadFile, User, UserRole, UserStatus, WebStaffAccount, XPTransaction, compose_event_datetime, confirm_event_attendance, confirm_single_event_attendance, ctx, db, delete, delete_image, event_registration_status_label, export_event_participants_excel, export_event_participants_pdf, func, guard, guard_permission, guard_superadmin, has_web_permission, is_superadmin, label, log_audit, logging, normalize_event_xp, notify_telegram, opt_int, or_, process_event_operations, qrcode, queue_telegram_delivery, quote, save_image, select, settings, store_file_bytes, templates, timedelta, token_urlsafe, update
 )
 from app.media import load_file_bytes
+from app.event_documents import fill_registration_template
 from app.telegram_webapp import validate_webapp_init_data
 from app.domain_services import admin_scan_event_participant, event_checkin_window, force_event_registration_status, reconcile_event_registration_rewards
 from app.time_utils import clock
@@ -25,7 +26,6 @@ from .scanner_common import _scanner_actor_user, _scanner_profile_token
 
 @router.get("/admin/events/{event_id}/checkin-qr.png")
 async def event_checkin_qr(request: Request, event_id: int, download: int = 0):
-    import qrcode
     if r := guard(request): return r
     async with db.session_factory() as session:
         event = await session.get(Event, event_id)

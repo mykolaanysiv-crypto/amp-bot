@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .time_utils import clock
 
+from bisect import bisect_right
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from statistics import median
@@ -9,8 +10,9 @@ from statistics import median
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .leagues import LEAGUES, league_for_xp, runtime_leagues
+from .leagues import LEAGUE_SETTING_DEFAULTS, league_for_xp, leagues_from_thresholds, runtime_leagues
 from .model_domains import (
+    GamificationRuleVersion,
     OpportunityInterest,
     OpportunityMatch,
     Referral,
@@ -46,9 +48,47 @@ def _rate(num: int, den: int) -> float:
     return round(num * 100.0 / den, 1) if den else 0.0
 
 
+async def league_rule_snapshots(session: AsyncSession, *, now: datetime) -> tuple[list[datetime], list[tuple]]:
+    """Reconstruct the league thresholds that were effective at each XP action.
+
+    Walk the append-only old/new ledger backwards from the current settings to
+    find the original thresholds, then replay it forwards. No XP is rewritten.
+    """
+    current = await runtime_leagues(session)
+    thresholds = {f"league.{league.code}_min": league.min_xp for league in current[1:]}
+    changes = list((await session.scalars(
+        select(GamificationRuleVersion)
+        .where(GamificationRuleVersion.rule_key.in_(list(LEAGUE_SETTING_DEFAULTS)),
+               GamificationRuleVersion.entity_type == "league",
+               GamificationRuleVersion.effective_at <= now)
+        .order_by(GamificationRuleVersion.effective_at.asc(), GamificationRuleVersion.id.asc())
+    )).all())
+    valid = []
+    for change in changes:
+        try:
+            valid.append((change.effective_at, change.rule_key,
+                          int(change.old_value), int(change.new_value)))
+        except (TypeError, ValueError):
+            continue
+    for _, key, old, _ in reversed(valid):
+        thresholds[key] = old
+    times = [datetime.min]
+    snapshots = [leagues_from_thresholds(thresholds)]
+    for effective_at, key, _, new in valid:
+        thresholds[key] = new
+        times.append(effective_at)
+        snapshots.append(leagues_from_thresholds(thresholds))
+    return times, snapshots
+
+
+def leagues_at(moment: datetime, times: list[datetime], snapshots: list[tuple]) -> tuple:
+    return snapshots[max(0, bisect_right(times, moment) - 1)]
+
+
 async def build_gamification_insights(session: AsyncSession, *, now: datetime | None = None) -> dict:
-    leagues_runtime = await runtime_leagues(session)
     now = now or clock.storage_utc()
+    leagues_runtime = await runtime_leagues(session)
+    rule_times, rule_snapshots = await league_rule_snapshots(session, now=now)
     baseline = await ensure_clean_data_baseline(session, now)
     observation_days = max(0, (now.date() - baseline.date()).days)
     if observation_days < 28:
@@ -111,15 +151,23 @@ async def build_gamification_insights(session: AsyncSession, *, now: datetime | 
         first_positive = next((r.created_at for r in rows if int(r.amount or 0) > 0 and r.category in ENGAGEMENT_CATEGORIES), None)
         # Thresholds already reached before the clean-data baseline are not
         # counted as v1.12 transitions.
-        crossed: set[str] = {league.code for league in LEAGUES[1:] if cumulative >= league.min_xp}
+        baseline_leagues = leagues_at(baseline, rule_times, rule_snapshots)
+        crossed: set[str] = {league.code for league in baseline_leagues[1:]
+                             if cumulative >= league.min_xp}
         action_dates = [r.created_at for r in rows if int(r.amount or 0) > 0 and r.category in ENGAGEMENT_CATEGORIES]
         if len({d.date() for d in action_dates}) >= 2:
             repeat_users += 1
         for tx in rows:
+            before = cumulative
             cumulative += int(tx.amount or 0)
-            for league in LEAGUES[1:]:
-                if cumulative >= league.min_xp and league.code not in crossed:
-                    previous = LEAGUES[LEAGUES.index(league)-1]
+            # Changes to league thresholds cannot masquerade as participant
+            # achievements: an XP transaction must cross the effective boundary.
+            if int(tx.amount or 0) <= 0:
+                continue
+            effective_leagues = leagues_at(tx.created_at, rule_times, rule_snapshots)
+            for index, league in enumerate(effective_leagues[1:], start=1):
+                if before < league.min_xp <= cumulative and league.code not in crossed:
+                    previous = effective_leagues[index - 1]
                     key = f"{previous.code}_to_{league.code}"
                     transition_counts[key] += 1
                     if first_positive:
@@ -169,11 +217,11 @@ async def build_gamification_insights(session: AsyncSession, *, now: datetime | 
         referral_first_activity = len(activity_users)
 
     league_rows = []
-    for league in LEAGUES:
+    for league in leagues_runtime:
         league_rows.append({"code": league.code, "title": league.title, "icon": league.icon, "count": current_leagues.get(league.code, 0)})
     transitions = []
-    for idx in range(len(LEAGUES)-1):
-        a, b = LEAGUES[idx], LEAGUES[idx+1]
+    for idx in range(len(leagues_runtime) - 1):
+        a, b = leagues_runtime[idx], leagues_runtime[idx + 1]
         key = f"{a.code}_to_{b.code}"
         days = transition_days.get(key, [])
         transitions.append({
