@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 40
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: amp
           POSTGRES_PASSWORD: amp
@@ -57,7 +57,7 @@ jobs:
           heroku pg:backups:capture -a "$HEROKU_APP_NAME"
           heroku pg:backups -a "$HEROKU_APP_NAME" | sed -n '1,14p'
 
-      - name: Restore latest backup into isolated PostgreSQL 16 and validate
+      - name: Restore latest backup into isolated PostgreSQL 18 and validate
         shell: bash
         run: ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
 
