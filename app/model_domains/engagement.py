@@ -19,6 +19,9 @@ class Quest(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(24), default="open", index=True)
     quest_type: Mapped[str] = mapped_column(String(24), default="individual")
+    completion_mode: Mapped[str] = mapped_column(String(24), default="manual")  # manual|qr_on_time
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
+    punctuality_grace_minutes: Mapped[int] = mapped_column(Integer, default=0)
     team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     target_value: Mapped[int] = mapped_column(Integer, default=1)
     progress_value: Mapped[int] = mapped_column(Integer, default=0)
