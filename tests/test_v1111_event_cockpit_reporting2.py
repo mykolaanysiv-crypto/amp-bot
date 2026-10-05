@@ -72,10 +72,10 @@ def test_reporting_2_has_flow_snapshot_funnels_quality_and_definitions():
         "data_quality",
         "indicator_definitions",
         "Europe/Kyiv",
-        'create_sheet("Воронки")',
+        'create_sheet("Етапи залучення")',
         'create_sheet("Якість даних")',
         'create_sheet("Визначення")',
-        "Конверсійні воронки",
+        "Етапи залучення",
     ]:
         assert phrase in source
 

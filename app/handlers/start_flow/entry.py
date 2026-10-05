@@ -185,7 +185,7 @@ async def start(message: Message, state: FSMContext, command: CommandObject, db:
                     )
                 else:
                     await message.answer(
-                        f"⌛ Вікно check-in на подію <b>{event.title}</b> уже завершено.\n"
+                        f"⌛ Вікно відмітки на подію <b>{event.title}</b> уже завершено.\n"
                         "Якщо це помилка, зверніться до координатора АМП."
                     )
             elif status == "forbidden" and event:

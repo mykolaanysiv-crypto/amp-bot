@@ -5,6 +5,9 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from ..document_layout import apply_excel_word_wrap
+from ..ui_labels import lifecycle_status_label
+
 def _style_excel(ws) -> None:
     from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
     teal="06AEBB"; deep="0B5B6C"; pale="EAF8FA"; alt="F7FBFC"; dark="173B43"; muted="6C858B"; white="FFFFFF"
@@ -44,6 +47,7 @@ def _style_excel(ws) -> None:
                 if c.value is not None and c.fill.fill_type is None:
                     c.fill=PatternFill("solid",fgColor=alt)
     ws.freeze_panes="A2"
+    apply_excel_word_wrap(ws)
 
 def report_excel(data: dict[str, Any]) -> bytes:
     from openpyxl import Workbook
@@ -60,7 +64,7 @@ def report_excel(data: dict[str, Any]) -> bytes:
     ws.column_dimensions["A"].width=44; ws.column_dimensions["B"].width=24; _style_excel(ws)
 
     ew=wb.create_sheet("Події"); ew.append(["Подія","Дата/час","Локація","Стан у звіті","Системний статус","Зареєстровано","Відвідали"])
-    for r in data["events"]: ew.append([r["title"],r["date"],r["location"],r.get("timing_label",r["status"]),r["status"],r["registered"],r["attended"]])
+    for r in data["events"]: ew.append([r["title"],r["date"],r["location"],r.get("timing_label",lifecycle_status_label(r["status"])),lifecycle_status_label(r["status"]),r["registered"],r["attended"]])
     for i,w in enumerate([42,20,26,18,16,16,14],1): ew.column_dimensions[get_column_letter(i)].width=w
     _style_excel(ew)
 
@@ -76,7 +80,7 @@ def report_excel(data: dict[str, Any]) -> bytes:
         mw["J5"]="XP"; mw["K5"]=trend_rows[0]["xp"]
     _style_excel(mw)
 
-    fw=wb.create_sheet("Воронки")
+    fw=wb.create_sheet("Етапи залучення")
     fw.append(["Конверсія реєстрації", "Кількість"]); fw.append(["Етап","Кількість"])
     reg_labels={"start":"Старт","consent":"Згода","profile":"Профіль","submit":"Надсилання","approved":"Схвалення","first_activity":"Перша активність"}
     for key in ["start","consent","profile","submit","approved","first_activity"]: fw.append([reg_labels[key],data.get("registration_funnel",{}).get(key,0)])
@@ -220,21 +224,21 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         period_labels=[("Завершені події","events"),("Усього заплановано","events_planned"),("Майбутні події","events_upcoming"),("Унікальні залучені","unique_participants"),("Підтверджені відвідування","visits"),("Середня відвідуваність","avg_attendance"),("Волонтерські години","volunteer_hours"),("Квести","quests_completed"),("Активності","activities_completed"),("Реалізовані ідеї","ideas_implemented"),("Звернення","requests"),("Нові учасники","new_participants"),("Нараховано XP","xp_awarded"),("Опитування","surveys_published"),("Відповіді на опитування","survey_responses"),("Отримані бейджі","badges_awarded"),("Дій участі","participation_actions"),("Середній XP/залученого","avg_xp_per_engaged"),("⚠ Аномалії відвідуваності","future_attendance_anomalies")]
         cards=[(title,data["period_summary"].get(key,0)) for title,key in period_labels]
         for idx in range(0,len(cards),12):
-            kpi_page(pdf,cards[idx:idx+12],title="Потокові показники за період",subtitle="Потокові KPI: лише дії у вибраному періоді; у відвідуваності враховуються фактично завершені події" if idx==0 else "Продовження потокових показників",first=(idx==0))
+            kpi_page(pdf,cards[idx:idx+12],title="Потокові показники за період",subtitle="Потокові показники: лише дії у вибраному періоді; у відвідуваності враховуються фактично завершені події" if idx==0 else "Продовження потокових показників",first=(idx==0))
 
         snapshot_labels=[("Активні профілі","active_profiles"),("Неактивні профілі","inactive_profiles"),("Видалені профілі","deleted_profiles"),("Видалені без відновлення","deleted_permanent_profiles"),("Запити на відновлення","restoration_requests_pending"),("На випробувальному строку","probation_profiles"),("Відновлені профілі","restored_profiles"),("Відхилені відновлення","restoration_rejected"),("Профілі з населеним пунктом","settlement_directory_profiles")]
         snapshot_cards=[(title,data["snapshot_summary"].get(key,0)) for title,key in snapshot_labels]
         kpi_page(pdf,snapshot_cards,title="Моментні показники станом на дату",subtitle=f"Дані станом на {data['generated_at'].strftime('%d.%m.%Y %H:%M')} {data.get('timezone','Europe/Kyiv')}")
 
         # Reporting 2.0 — conversion funnels.
-        fig,axes=plt.subplots(1,2,figsize=(11.69,8.27)); fig.suptitle("Конверсійні воронки",fontsize=18,weight="bold")
+        fig,axes=plt.subplots(1,2,figsize=(11.69,8.27)); fig.suptitle("Етапи залучення",fontsize=18,weight="bold")
         reg_order=[("Старт","start"),("Згода","consent"),("Профіль","profile"),("Надсилання","submit"),("Схвалення","approved"),("Перша активність","first_activity")]
         reg_vals=[data.get("registration_funnel",{}).get(key,0) for _,key in reg_order]
         axes[0].barh(range(len(reg_order)),reg_vals); axes[0].set_yticks(range(len(reg_order))); axes[0].set_yticklabels([x[0] for x in reg_order]); axes[0].invert_yaxis(); axes[0].set_title("Реєстрація"); axes[0].grid(axis="x",alpha=.2)
         event_order=[("Заявки","registered"),("Відмітка","checkin"),("Підтверджено","attended"),("XP","xp"),("Відгук","feedback")]
         event_vals=[data.get("event_conversion",{}).get(key,0) for _,key in event_order]
         axes[1].barh(range(len(event_order)),event_vals); axes[1].set_yticks(range(len(event_order))); axes[1].set_yticklabels([x[0] for x in event_order]); axes[1].invert_yaxis(); axes[1].set_title("Участь у подіях"); axes[1].grid(axis="x",alpha=.2)
-        fig.text(.06,.04,"Воронка реєстрації — когорта, що стартувала у вибраному періоді. Воронка подій — реєстрації на події вибраного періоду.",fontsize=8.5,color=muted)
+        fig.text(.06,.04,"Шлях реєстрації — когорта, що стартувала у вибраному періоді. Етапи участі в подіях — реєстрації на події вибраного періоду.",fontsize=8.5,color=muted)
         fig.tight_layout(rect=[0,.07,1,.92]); pdf.savefig(fig); plt.close(fig)
 
         dq=data.get("data_quality",{})
@@ -247,15 +251,44 @@ def report_pdf(data: dict[str, Any]) -> bytes:
         ]
         kpi_page(pdf,quality_cards,title="Якість даних",subtitle="Блок якості даних: проблеми, які можуть спотворювати сегментацію або звітність")
 
-        fig=plt.figure(figsize=(8.27,11.69)); fig.patch.set_facecolor("white")
-        fig.text(.07,.93,"Визначення показників",fontsize=22,weight="bold",color=brand)
-        fig.text(.07,.89,"Що саме означають основні KPI цього звіту",fontsize=10,color=muted)
-        y=.83
-        for title_text,description in data.get("indicator_definitions",[]):
-            fig.text(.08,y,title_text,fontsize=10.5,weight="bold",color=ink,va="top")
-            y-=.028
-            fig.text(.08,y,wrap_words(description,100),fontsize=8.7,color=muted,va="top",linespacing=1.35)
-            y-=.075
+        # Definitions can be arbitrarily long; create another page before
+        # a block would overlap the footer. Nothing is silently clipped.
+        def definitions_page(page_no: int):
+            page = plt.figure(figsize=(8.27, 11.69)); page.patch.set_facecolor("white")
+            page.text(.07, .93, "Визначення показників" if page_no == 1 else
+                      f"Визначення показників · продовження {page_no}",
+                      fontsize=20, weight="bold", color=brand)
+            page.text(.07, .89, "Що саме означають основні показники цього звіту", fontsize=10, color=muted)
+            return page
+
+        fig = definitions_page(1)
+        y = .83
+        page_no = 1
+        for title_text, description in data.get("indicator_definitions", []):
+            title_lines = wrap_words(title_text, 68).splitlines() or [""]
+            description_lines = wrap_words(description, 94).splitlines() or [""]
+            block_height = .029 * len(title_lines) + .025 * len(description_lines) + .022
+            # Very long definitions are split by words across multiple pages.
+            if y - min(block_height, .64) < .095:
+                footer(fig); pdf.savefig(fig); plt.close(fig)
+                page_no += 1
+                fig = definitions_page(page_no)
+                y = .83
+            fig.text(.08, y, "\n".join(title_lines), fontsize=10.5,
+                     weight="bold", color=ink, va="top")
+            y -= .029 * len(title_lines)
+            remaining = description_lines
+            while remaining:
+                available = max(1, int((y - .11) / .025))
+                portion, remaining = remaining[:available], remaining[available:]
+                fig.text(.08, y, "\n".join(portion), fontsize=8.7,
+                         color=muted, va="top", linespacing=1.35)
+                y -= .025 * len(portion) + .022
+                if remaining:
+                    footer(fig); pdf.savefig(fig); plt.close(fig)
+                    page_no += 1
+                    fig = definitions_page(page_no)
+                    y = .83
         footer(fig); pdf.savefig(fig); plt.close(fig)
 
         advanced=[
@@ -293,7 +326,7 @@ def report_pdf(data: dict[str, Any]) -> bytes:
                 y-=.085
             fig.text(.08,.25,f"Завершених анкет зворотного зв’язку: {o.get('responses',0)}",fontsize=10,color=muted)
         else:
-            fig.text(.07,.78,"У вибраному періоді завершених feedback-анкет ще немає.",fontsize=14,color=muted)
+            fig.text(.07,.78,"У вибраному періоді завершених анкет зворотного зв’язку ще немає.",fontsize=14,color=muted)
         fig.text(.07,.15,wrap_words("Показники впливу доповнюють кількісні дані та показують сприйняту користь, навчальний результат, безпеку й намір повернутися.",105),fontsize=9,color=muted)
         footer(fig); pdf.savefig(fig); plt.close(fig)
 
@@ -317,7 +350,7 @@ def report_pdf(data: dict[str, Any]) -> bytes:
             ax.set_title(f"Динаміка за період {data.get('trend_granularity_label','')}",fontsize=16,weight="bold"); fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
         elif len(rows)==1:
             r=rows[0]
-            kpi_page(pdf,[("Відвідування",r["visits"]),("Нові учасники",r["new_users"]),("Завершені події",r["events"]),("Нараховано XP",r["xp"]),("Отримані бейджі",r.get("badges",0))],title="Динаміка за період",subtitle="Є лише одна точка даних — замість лінійного графіка показано KPI.")
+            kpi_page(pdf,[("Відвідування",r["visits"]),("Нові учасники",r["new_users"]),("Завершені події",r["events"]),("Нараховано XP",r["xp"]),("Отримані бейджі",r.get("badges",0))],title="Динаміка за період",subtitle="Є лише одна точка даних — замість лінійного графіка показано показники.")
         else:
             kpi_page(pdf,[("Відвідування",0),("Нові учасники",0),("Завершені події",0),("Нараховано XP",0)],title="Динаміка за період",subtitle="У вибраному періоді немає даних для побудови динаміки.")
 

@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from .document_layout import apply_excel_word_wrap, word_lines
+from .ui_labels import label as ui_label
+
+
+def _survey_status_uk(status: str) -> str:
+    return {"draft": "Чернетка", "published": "Опубліковано", "closed": "Завершено"}.get(status, ui_label(status))
+
+
 import json
 from collections import Counter
 from io import BytesIO
@@ -69,7 +77,7 @@ def survey_excel(
     ws.title = "Зведення"
     ws.append(["АМПасадори — результати опитування", ""])
     ws.append(["Опитування", survey.title])
-    ws.append(["Статус", survey.status])
+    ws.append(["Статус", _survey_status_uk(survey.status)])
     ws.append(["XP за проходження", int(survey.xp_reward or 0)])
     ws.append(["Кількість питань", len(questions)])
     ws.append(["Кількість респондентів", len(responses)])
@@ -155,6 +163,8 @@ def survey_excel(
     rws.column_dimensions["B"].width = 32
 
     bio = BytesIO()
+    for sheet in wb.worksheets:
+        apply_excel_word_wrap(sheet)
     wb.save(bio)
     return bio.getvalue()
 
@@ -242,7 +252,7 @@ def survey_pdf(
         fig.text(.08, .875, _wrapped(survey.title, 65), fontsize=15, weight="bold")
         fig.text(.08, .81, _wrapped(survey.description or "Без опису", 90), fontsize=9)
         rows = [
-            ("Статус", survey.status),
+            ("Статус", _survey_status_uk(survey.status)),
             ("Питань", len(questions)),
             ("Респондентів", len(responses)),
             ("XP за проходження", int(survey.xp_reward or 0)),
@@ -258,6 +268,41 @@ def survey_pdf(
         plt.close(fig)
 
         for idx, q in enumerate(questions, 1):
+            if q.question_type == "text":
+                texts = stats[q.id].get("texts", [])
+                # A long response must flow onto another PDF page rather than
+                # disappearing beyond the page or being discarded after 12 items.
+                pages: list[list[tuple[str, list[str]]]] = []
+                current: list[tuple[str, list[str]]] = []
+                used_lines = 0
+                for answer_no, answer in enumerate(texts, 1):
+                    lines = word_lines(answer, 99) or ["—"]
+                    while lines:
+                        if used_lines >= 22:
+                            pages.append(current)
+                            current, used_lines = [], 0
+                        available = max(1, 22 - used_lines - 1)
+                        take, lines = lines[:available], lines[available:]
+                        label = f"{answer_no}." if not any(lbl.startswith(f"{answer_no}.") for lbl, _ in current) else f"{answer_no}. (продовження)"
+                        current.append((label, take))
+                        used_lines += len(take) + 1
+                if current or not pages:
+                    pages.append(current)
+                for page_no, page_rows in enumerate(pages, 1):
+                    fig = plt.figure(figsize=(11.69, 8.27))
+                    fig.text(.07, .945, f"Питання {idx} · текстові відповіді · сторінка {page_no}/{len(pages)}", fontsize=15, weight="bold")
+                    fig.text(.07, .887, _wrapped(q.text, 115), fontsize=10, va="top")
+                    y = .76
+                    if not page_rows:
+                        fig.text(.07, .70, "Текстових відповідей поки немає", fontsize=11)
+                    for row_label, response_lines in page_rows:
+                        fig.text(.07, y, row_label, fontsize=9, weight="bold", va="top")
+                        fig.text(.11, y, "\n".join(response_lines), fontsize=9, va="top", linespacing=1.23)
+                        y -= (len(response_lines) + 1) * .025
+                    fig.text(.07, .04, "АМПасадори · повний текст відповідей без скорочення", fontsize=8)
+                    pdf.savefig(fig)
+                    plt.close(fig)
+                continue
             fig, ax = plt.subplots(figsize=(11.69, 8.27))
             fig.suptitle(f"Питання {idx}", fontsize=17, weight="bold", y=.96)
             fig.text(.07, .89, _wrapped(q.text, 105), fontsize=10.5)
@@ -266,27 +311,28 @@ def survey_pdf(
             pdf.savefig(fig)
             plt.close(fig)
 
-        if responses:
-            # Compact respondent register; detailed answers are fully available in XLSX and web.
+        # Full respondent register, paginated. Long names wrap at whole words
+        # and only the individual table row grows in height.
+        for offset in range(0, len(responses), 18):
+            chunk = responses[offset:offset + 18]
             fig, ax = plt.subplots(figsize=(11.69, 8.27))
             ax.axis("off")
-            ax.set_title("Респонденти", fontsize=16, weight="bold", pad=20)
+            ax.set_title(f"Респонденти · {offset + 1}–{offset + len(chunk)} із {len(responses)}", fontsize=16, weight="bold", pad=20)
             table_rows = [
-                [f"АМП-{user.id:04d}", user.full_name[:42], resp.completed_at.strftime("%d.%m.%Y %H:%M"), f"+{int(resp.xp_awarded or 0)}"]
-                for resp, user in responses[:30]
+                [f"АМП-{user.id:04d}", "\n".join(word_lines(user.full_name or "—", 52)),
+                 resp.completed_at.strftime("%d.%m.%Y %H:%M"), f"+{int(resp.xp_awarded or 0)}"]
+                for resp, user in chunk
             ]
-            table = ax.table(
-                cellText=table_rows,
-                colLabels=["ID", "Учасник", "Завершено", "XP"],
-                loc="upper center",
-                cellLoc="left",
-                colWidths=[.15, .48, .25, .12],
-            )
+            table = ax.table(cellText=table_rows, colLabels=["Код", "Учасник", "Завершено", "Бали досвіду"],
+                             loc="upper center", cellLoc="left", colWidths=[.15, .48, .25, .12])
             table.auto_set_font_size(False)
             table.set_fontsize(8.5)
-            table.scale(1, 1.35)
-            if len(responses) > 30:
-                ax.text(.02, .05, f"У PDF показано перші 30 респондентів із {len(responses)}. Повний перелік є в Excel.", fontsize=8)
+            for c in range(4):
+                table[(0, c)].set_height(.047)
+            for row_no, values in enumerate(table_rows, start=1):
+                height = .043 + .020 * values[1].count("\n")
+                for c in range(4):
+                    table[(row_no, c)].set_height(height)
             fig.tight_layout()
             pdf.savefig(fig)
             plt.close(fig)

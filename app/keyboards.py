@@ -158,12 +158,15 @@ def quests_keyboard(quests) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def quest_detail_keyboard(quest_id: int, status: str | None, quest_type: str = "individual") -> InlineKeyboardMarkup:
+def quest_detail_keyboard(quest_id: int, status: str | None, quest_type: str = "individual", completion_mode: str = "manual") -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     if status is None:
         b.button(text="🚀 Долучитися", callback_data=f"quest_join:{quest_id}")
     elif quest_type == "team" and status == "joined":
         b.button(text="👥 Ви в команді", callback_data="noop")
+        b.button(text="❌ Скасувати участь", callback_data=f"quest_cancel_join:{quest_id}")
+    elif completion_mode == "qr_on_time" and status in {"joined", "returned"}:
+        b.button(text="⏱️ Очікується QR-відмітка на події", callback_data="noop")
         b.button(text="❌ Скасувати участь", callback_data=f"quest_cancel_join:{quest_id}")
     elif status in {"joined", "returned"}:
         b.button(text="✅ Виконано", callback_data=f"quest_done:{quest_id}")

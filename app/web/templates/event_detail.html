@@ -89,7 +89,7 @@
     {% if attendance_window.state == 'open' %}<span class="tag active">Відмітка відкрита</span>{% elif attendance_window.state == 'too_early' %}<span class="tag pending">Відмітка ще не відкрита</span>{% else %}<span class="tag inactive">Відмітка закрита</span>{% endif %}
   </div>
 
-  <div class="event-ops-funnel" aria-label="Воронка участі у події">
+  <div class="event-ops-funnel" aria-label="Етапи участі у події">
     {% for step in operation_funnel %}
       <div class="event-ops-step {{step.key}}">
         <span class="event-ops-step-index">{{ loop.index }}</span>

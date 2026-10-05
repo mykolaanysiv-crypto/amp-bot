@@ -116,8 +116,8 @@ async def test_league_history_uses_effective_version(db):
 
 def test_stable_package_scripts_and_version():
     root = Path(__file__).resolve().parents[1]
-    assert (root / 'VERSION.txt').read_text().strip() == '1.18.3'
-    assert (root / 'VERSION_CHECK.txt').read_text().strip() == '1.18.3'
+    assert (root / 'VERSION.txt').read_text().strip() == '1.18.4'
+    assert (root / 'VERSION_CHECK.txt').read_text().strip() == '1.18.4'
     assert not (root / 'run_all.py').exists()
     for file in ('start_local.sh', 'start_local.ps1'):
         script = (root / file).read_text(encoding='utf-8')

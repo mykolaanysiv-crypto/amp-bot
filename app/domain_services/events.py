@@ -407,7 +407,7 @@ async def checkin_for_event(
     if access["state"] == "closed":
         return event, "window_closed"
     reg = await session.scalar(
-        select(EventRegistration).where(EventRegistration.user_id == user_id, EventRegistration.event_id == event.id)
+        select(EventRegistration).where(EventRegistration.user_id == user_id, EventRegistration.event_id == event.id).with_for_update()
     )
     checkin_at = clock.storage_utc(access["now_utc"])
     if not reg:
@@ -421,7 +421,13 @@ async def checkin_for_event(
             reg.registered_at = checkin_at
             reg.registration_source = "scanner"
         reg.status = "checked_in"
-    reg.checkin_at = checkin_at
+    # A second QR scan must not turn an on-time arrival into a late one (or
+    # rewrite the first verified arrival used by punctuality quests).
+    if reg.checkin_at is None:
+        reg.checkin_at = checkin_at
+    if reg.status == "checked_in":
+        from .quest_auto import award_punctuality_quests_for_scan
+        await award_punctuality_quests_for_scan(session, event, user_id, scanned_at=access["now_utc"])
     return event, "ok"
 
 
@@ -555,6 +561,8 @@ async def admin_scan_event_participant(
     if not result:
         return {"ok": False, "code": "confirm_failed", "message": "Не вдалося підтвердити присутність.", "event": event, "user": user, "registration": reg}
     confirmed_user, total, level_name, leveled = result
+    from .quest_auto import award_punctuality_quests_for_scan
+    await award_punctuality_quests_for_scan(session, event, user.id, scanned_at=clock.from_storage_utc(reg.checkin_at or now))
     return {
         "ok": True, "code": "confirmed", "message": "Присутність підтверджено",
         "event": event, "user": confirmed_user, "registration": reg,

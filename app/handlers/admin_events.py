@@ -471,7 +471,7 @@ async def admin_event_qr_make(call: CallbackQuery, db: Database, bot: Bot) -> No
     await call.message.answer_document(
         BufferedInputFile(bio.getvalue(), filename=f"AMP_event_{event.id}_checkin_QR.png"),
         caption=(f"🔳 <b>QR відмітки для події</b>\n<b>{event.title}</b>\n🕒 {event.starts_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-                 "Учасник сканує QR → Telegram фіксує check-in → адміністратор/координатор підтверджує участь. XP і години нараховуються лише після підтвердження."),
+                 "Учасник сканує QR → Telegram фіксує відмітку відвідуваності → адміністратор/координатор підтверджує участь. XP і години нараховуються лише після підтвердження."),
     )
     await call.answer("QR згенеровано")
 
@@ -519,7 +519,7 @@ async def admin_event_share_make(call: CallbackQuery, db: Database, settings: Se
         f"🔗 <b>{event.title}</b>\n\n"
         f"🌐 Публічна сторінка події:\n<code>{public_url}</code>\n\n"
         f"🙋 Пряме посилання для реєстрації в Telegram:\n<code>{registration_url}</code>\n\n"
-        "Посилання реєстрації використовує окремий share-token і не розкриває QR/check-in код події.",
+        "Посилання реєстрації використовує окремий код доступу і не розкриває QR-код відмітки події.",
         reply_markup=b.as_markup(),
     )
     await call.answer("Посилання готове")

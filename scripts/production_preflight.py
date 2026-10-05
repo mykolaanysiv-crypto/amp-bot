@@ -280,6 +280,9 @@ def main() -> None:
     forbidden_web_labels = (
         "Participant 360", "Referrals", ">Timeline<", "SEASONS & HISTORY",
         "❄️ Freeze", "SLA прострочено", "granular permission", "ручного override", ">Streak<",
+        "Change Control", "Data Integrity Center", "🧹 Data Integrity", "Retention cleanup",
+        "Політика retention", "privacy-retention scheduler", "Запустити retention cleanup",
+        "Old → New", "Staff-профіль",
     )
     leaking_labels = [token for token in forbidden_web_labels if token in visible_templates]
     if leaking_labels:

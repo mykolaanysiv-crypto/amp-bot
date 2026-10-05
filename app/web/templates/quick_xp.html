@@ -94,6 +94,7 @@
   </div>
 
   <div class="unified-card-actions quick-xp-card-actions">
+    <a class="soft-button quick-xp-answer-link unified-action-button" href="/admin/quick-xp/{{ row.id }}/answers">📋 Відповіді · {{ response_counts.get(row.id, 0) }}</a>
     <form method="post" action="/admin/quick-xp/{{ row.id }}/broadcast"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="primary unified-action-button">📣 Розіслати невиконавшим</button></form>
     <details class="event-edit-details quick-xp-edit-details">
       <summary class="soft-button edit-action-button unified-action-button">✏️ Редагувати</summary>
