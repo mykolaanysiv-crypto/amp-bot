@@ -37,7 +37,7 @@
 
 <div class="grid2 dashboard-duo">
 <section class="card">
-  <div class="section-title"><div><h2>📝 Воронка реєстрації</h2><p class="muted">Від першого запуску до першої підтвердженої активності.</p></div></div>
+  <div class="section-title"><div><h2>📝 Шлях залучення до участі</h2><p class="muted">Від першого запуску до першої підтвердженої активності.</p></div></div>
   <div class="table-wrap"><table><thead><tr><th>Етап</th><th>Кількість</th><th>До попереднього</th><th>Від старту</th></tr></thead><tbody>
   {% for step in registration_funnel %}<tr><td><b>{{step.label}}</b></td><td>{{step.count}}</td><td>{{step.step_rate}}%</td><td>{{step.total_rate}}%</td></tr>{% endfor %}
   </tbody></table></div>

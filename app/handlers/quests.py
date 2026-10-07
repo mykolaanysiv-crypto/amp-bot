@@ -94,7 +94,9 @@ async def quest_detail(call: CallbackQuery, db: Database) -> None:
             f"{safe_description}"
         )
         is_available = quest.active and quest.status in {"open", "postponed"} and (quest.ends_at is None or clock.local_wall_to_utc(quest.ends_at) >= clock.now_utc())
-        kb = quest_detail_keyboard(quest.id, part.status if part else None, quest.quest_type) if is_available else None
+        if quest.completion_mode == "qr_on_time":
+            text += "\n\n⏱️ Цей квест виконується автоматично після своєчасної QR-відмітки на пов’язаній події. Фото й ручне підтвердження не потрібні."
+        kb = quest_detail_keyboard(quest.id, part.status if part else None, quest.quest_type, quest.completion_mode) if is_available else None
         photo = await telegram_photo_input(db, quest.image_path)
         if photo and len(text) <= 950:
             await call.message.answer_photo(photo, caption=text, reply_markup=kb)
@@ -128,7 +130,10 @@ async def quest_join(call: CallbackQuery, db: Database) -> None:
             part.completed_at = None
             part.approved_at = None
             await session.commit()
-        await call.message.answer("🚀 Ти долучився/лась до квесту. Для командного квесту прогрес фіксує координатор; для індивідуального після виконання натисни «Позначити виконаним».")
+        if quest.completion_mode == "qr_on_time":
+            await call.message.answer("⏱️ Квест активовано. Прийди на пов’язану подію вчасно та відміться через QR-код: виконання і бали досвіду підтвердяться автоматично.")
+        else:
+            await call.message.answer("🚀 Ти долучився/лась до квесту. Для командного квесту прогрес фіксує координатор; для індивідуального після виконання натисни «Позначити виконаним».")
         await call.answer()
 
 
@@ -172,6 +177,9 @@ async def quest_done(call: CallbackQuery, db: Database, state: FSMContext) -> No
         if not quest or not quest.active or quest.status not in {"open", "postponed"} or (quest.ends_at and clock.local_wall_to_utc(quest.ends_at) < clock.now_utc()):
             await call.answer("Дедлайн квесту завершено", show_alert=True)
             return
+        if quest.completion_mode == "qr_on_time":
+            await call.answer("Цей квест підтверджується тільки своєчасною QR-відміткою на події.", show_alert=True)
+            return
         if not part or part.status not in {"joined", "returned"}:
             await call.answer("Спочатку візьми квест", show_alert=True)
             return
@@ -189,7 +197,7 @@ async def quest_proof_no(call: CallbackQuery, db: Database, state: FSMContext) -
     quest_id = int(call.data.split(":")[1])
     async with db.session_factory() as session:
         user, quest, part = await _quest_submission_context(session, call.from_user.id, quest_id)
-        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+        if not user or not quest or quest.completion_mode == "qr_on_time" or not part or part.status not in {"joined", "returned"}:
             await call.answer("Запит уже неактуальний", show_alert=True)
             return
         old_proof = part.proof_photo_path
@@ -208,7 +216,7 @@ async def quest_proof_yes(call: CallbackQuery, db: Database, state: FSMContext) 
     quest_id = int(call.data.split(":")[1])
     async with db.session_factory() as session:
         user, quest, part = await _quest_submission_context(session, call.from_user.id, quest_id)
-        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+        if not user or not quest or quest.completion_mode == "qr_on_time" or not part or part.status not in {"joined", "returned"}:
             await call.answer("Запит уже неактуальний", show_alert=True)
             return
     await state.set_state(QuestProofState.photo)
@@ -223,7 +231,7 @@ async def quest_proof_photo(message: Message, db: Database, bot: Bot, state: FSM
     quest_id = int(data.get("quest_proof_quest_id") or 0)
     async with db.session_factory() as session:
         user, quest, part = await _quest_submission_context(session, message.from_user.id, quest_id)
-        if not user or not quest or not part or part.status not in {"joined", "returned"}:
+        if not user or not quest or quest.completion_mode == "qr_on_time" or not part or part.status not in {"joined", "returned"}:
             await state.clear()
             await message.answer("ℹ️ Цей запит уже неактуальний.")
             return

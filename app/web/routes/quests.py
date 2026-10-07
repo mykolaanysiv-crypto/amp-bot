@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.time_utils import clock
+from app.model_domains import Event
 
 from fastapi import APIRouter
 from app.web.dependencies import (
@@ -37,7 +38,8 @@ async def quests(request: Request, q: str = "", status: str = "", period: str = 
             participant_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id)) or 0)
             completed_counts[row.id] = int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.quest_id == row.id, QuestParticipation.status == "approved")) or 0)
         view_stats = await content_view_stats(session, "quest", [row.id for row in rows])
-        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,participant_counts=participant_counts,completed_counts=completed_counts,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort,review=review))
+        event_options = (await session.scalars(select(Event).where(Event.cancelled_at.is_(None)).order_by(Event.starts_at.desc()).limit(250))).all()
+        return templates.TemplateResponse(request=request,name="quests.html",context=ctx(request,rows=rows,team=team,event_options=event_options,participant_counts=participant_counts,completed_counts=completed_counts,view_stats=view_stats,today=clock.today_local(),q=q,status=status,period=period,type=type,sort=sort,review=review))
 
 
 @router.get("/admin/quests/{quest_id}", response_class=HTMLResponse)
@@ -55,9 +57,10 @@ async def quest_detail_web(request: Request, quest_id: int):
             .order_by(QuestParticipation.joined_at.asc())
         )).all()
         view_stat = await content_view_stat(session, "quest", q.id)
+        event_options = (await session.scalars(select(Event).where(Event.cancelled_at.is_(None)).order_by(Event.starts_at.desc()).limit(250))).all()
         return templates.TemplateResponse(
             request=request, name="quest_detail.html",
-            context=ctx(request, q=q, participants=participants, view_stat=view_stat, today=clock.today_local()),
+            context=ctx(request, q=q, event_options=event_options, participants=participants, view_stat=view_stat, today=clock.today_local()),
         )
 
 
@@ -124,6 +127,7 @@ async def quest_participant_action(request: Request, quest_id: int, part_id: int
 async def quest_create(
     request: Request, title: str = Form(...), description: str = Form(""), xp_reward: int = Form(20),
     quest_type: str = Form("individual"), target_value: int = Form(1),
+    completion_mode: str = Form("manual"), event_id: int = Form(0), punctuality_grace_minutes: int = Form(0),
     deadline_day: str = Form(""), deadline_month: str = Form(""), deadline_year: str = Form(""), deadline_time: str = Form(""),
     active: str | None = Form(None), photo: UploadFile | None = File(None),
 ):
@@ -135,16 +139,26 @@ async def quest_create(
         team = await seed_default_team(session)
         quest_type = "team" if quest_type == "team" else "individual"
         xp_reward = normalize_quest_xp(xp_reward, quest_type)
+        auto = quest_type == "individual" and completion_mode == "qr_on_time"
+        if auto and (not 0 <= punctuality_grace_minutes <= 120):
+            raise HTTPException(status_code=400, detail="Допустиме запізнення: від 0 до 120 хвилин.")
+        if auto:
+            linked_event = await session.get(Event, event_id) if event_id else None
+            if not linked_event or linked_event.cancelled_at or linked_event.status in {"cancelled", "completed", "draft"}:
+                raise HTTPException(status_code=400, detail="Для автоматичного квесту виберіть доступну подію.")
         q = Quest(
             title=title.strip(), description=description.strip(), xp_reward=xp_reward, quest_type=quest_type,
-            team_id=team.id if quest_type == "team" else None, target_value=max(1, target_value), progress_value=0,
+            team_id=team.id if quest_type == "team" else None, target_value=max(1, target_value) if quest_type == "team" else 1, progress_value=0,
+            completion_mode="qr_on_time" if auto else "manual", event_id=event_id if auto else None,
+            punctuality_grace_minutes=punctuality_grace_minutes if auto else 0,
             active=bool(active), status="open" if bool(active) else "closed", ends_at=ends_at, image_path=img,
         )
         session.add(q)
         await session.flush()
         actor=request.session.get("admin_name","web")
         await record_field_changes(session, rule_prefix="quest", entity_type="quest", entity_id=q.id, old_values={}, new_values={"xp_reward": q.xp_reward}, author_label=actor, reason="Створення квесту")
-        await log_audit(session, "web_quest_create", actor_label=actor, entity_type="quest", entity_id=q.id, details=q.title)
+        await log_audit(session, "web_quest_create", actor_label=actor, entity_type="quest", entity_id=q.id,
+                        details=f"{q.title}; спосіб={q.completion_mode}; подія={q.event_id}; допустиме запізнення={q.punctuality_grace_minutes} хв")
         if q.active:
             users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
             campaign_id=await _queue_system_broadcast(session,users,f"🎯 <b>Новий квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n\nВідкрий «🎯 Квести» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Новий квест: {q.title}",template_code="quest_created")
@@ -157,6 +171,7 @@ async def quest_create(
 async def quest_update(
     request: Request, quest_id: int, title: str = Form(...), description: str = Form(""), xp_reward: int = Form(20),
     quest_type: str = Form("individual"), target_value: int = Form(1),
+    completion_mode: str = Form("manual"), event_id: int = Form(0), punctuality_grace_minutes: int = Form(0),
     deadline_day: str = Form(""), deadline_month: str = Form(""), deadline_year: str = Form(""), deadline_time: str = Form(""),
     active: str | None = Form(None), remove_image: str | None = Form(None), photo: UploadFile | None = File(None),
 ):
@@ -169,12 +184,22 @@ async def quest_update(
         if q:
             was_public=bool(q.active) and q.status in {"open","postponed"}
             old_rules={"xp_reward": q.xp_reward}
+            auto = quest_type != "team" and completion_mode == "qr_on_time"
+            if auto and (not 0 <= punctuality_grace_minutes <= 120):
+                raise HTTPException(status_code=400, detail="Допустиме запізнення: від 0 до 120 хвилин.")
+            if auto:
+                linked_event = await session.get(Event, event_id) if event_id else None
+                if not linked_event or linked_event.cancelled_at or linked_event.status in {"cancelled", "completed", "draft"}:
+                    raise HTTPException(status_code=400, detail="Для автоматичного квесту виберіть доступну подію.")
             q.title = title.strip()
             q.description = description.strip()
             q.quest_type = "team" if quest_type == "team" else "individual"
             q.xp_reward = normalize_quest_xp(xp_reward, q.quest_type)
             q.team_id = team.id if q.quest_type == "team" else None
-            q.target_value = max(1, target_value)
+            q.target_value = max(1, target_value) if q.quest_type == "team" else 1
+            q.completion_mode = "qr_on_time" if auto else "manual"
+            q.event_id = event_id if auto else None
+            q.punctuality_grace_minutes = punctuality_grace_minutes if auto else 0
             q.ends_at = ends_at
             now_utc = clock.now_utc()
             if q.cancelled_at:
@@ -195,7 +220,8 @@ async def quest_update(
                 q.image_path = img
             actor=request.session.get("admin_name","web")
             await record_field_changes(session, rule_prefix="quest", entity_type="quest", entity_id=q.id, old_values=old_rules, new_values={"xp_reward": q.xp_reward}, author_label=actor, reason="Редагування квесту")
-            await log_audit(session, "web_quest_update", actor_label=actor, entity_type="quest", entity_id=q.id, details=q.title)
+            await log_audit(session, "web_quest_update", actor_label=actor, entity_type="quest", entity_id=q.id,
+                            details=f"{q.title}; спосіб={q.completion_mode}; подія={q.event_id}; допустиме запізнення={q.punctuality_grace_minutes} хв")
             if not was_public and q.active and q.status=="open":
                 users=list((await session.scalars(select(User).where(User.status==UserStatus.ACTIVE.value,User.tg_id.is_not(None)))).all())
                 campaign_id=await _queue_system_broadcast(session,users,f"🎯 <b>Новий квест</b>\n\n<b>{q.title}</b>\n⚡ {q.xp_reward} XP\n\nВідкрий «🎯 Квести» у боті, щоб долучитися.",author_label=request.session.get("admin_name","web"),audience_label=f"Новий квест: {q.title}",template_code="quest_published")

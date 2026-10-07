@@ -9,6 +9,7 @@ from app.web.dependencies import (
 from app.media import load_file_bytes
 from app.governance import record_field_changes
 from app.event_documents import fill_registration_template
+from app.model_domains import Quest
 from app.telegram_webapp import validate_webapp_init_data
 from app.domain_services import admin_scan_event_participant, event_checkin_window
 from app.time_utils import clock
@@ -333,6 +334,12 @@ async def event_delete(request: Request, event_id: int, reason: str = Form(...))
         event = await session.get(Event, event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Подію не знайдено.")
+        # Linked QR quests depend on this event.  Avoid an FK failure or an
+        # orphaned automatic quest with no event to scan.
+        linked_quest = await session.scalar(select(Quest.id).where(
+            Quest.event_id == event.id, Quest.completion_mode == "qr_on_time").limit(1))
+        if linked_quest is not None:
+            raise HTTPException(status_code=409, detail="Ця подія пов’язана з автоматичним QR-квестом. Спочатку змініть спосіб підтвердження або видаліть пов’язаний квест.")
         users = list((await session.scalars(
             select(User)
             .join(EventRegistration, EventRegistration.user_id == User.id)

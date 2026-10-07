@@ -4,9 +4,9 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, union
 
-from app.model_domains import QuickXPChallenge, QuickXPCompletion, QuickXPQuestion, User, UserStatus
+from app.model_domains import QuickXPAnswer, QuickXPChallenge, QuickXPCompletion, QuickXPQuestion, User, UserStatus
 from app.quick_xp import (
     QUICK_XP_KINDS,
     challenge_reward,
@@ -128,6 +128,13 @@ async def quick_xp_page(request: Request, notice: str = ""):
         awarded = dict((await session.execute(
             select(QuickXPCompletion.challenge_id, func.coalesce(func.sum(QuickXPCompletion.xp_awarded), 0)).group_by(QuickXPCompletion.challenge_id)
         )).all())
+        respondent_rows = union(
+            select(QuickXPCompletion.challenge_id.label("challenge_id"), QuickXPCompletion.user_id.label("user_id")),
+            select(QuickXPAnswer.challenge_id.label("challenge_id"), QuickXPAnswer.user_id.label("user_id")),
+        ).subquery()
+        response_counts = dict((await session.execute(
+            select(respondent_rows.c.challenge_id, func.count()).group_by(respondent_rows.c.challenge_id)
+        )).all())
         questions = list((await session.scalars(
             select(QuickXPQuestion).order_by(QuickXPQuestion.challenge_id, QuickXPQuestion.sort_order, QuickXPQuestion.id)
         )).all())
@@ -144,6 +151,7 @@ async def quick_xp_page(request: Request, notice: str = ""):
             rows=rows,
             counts=counts,
             awarded=awarded,
+            response_counts=response_counts,
             notice=notice,
             kind_label=kind_label,
             parse_options=parse_options,
@@ -151,6 +159,59 @@ async def quick_xp_page(request: Request, notice: str = ""):
             weekly_cap=weekly_cap,
             question_map=question_map,
             reward_map=reward_map,
+        ),
+    )
+
+
+@router.get("/admin/quick-xp/{challenge_id}/answers", response_class=HTMLResponse)
+async def quick_xp_answers_page(request: Request, challenge_id: int, page: int = 1):
+    """Authorized, paginated view of each respondent and their actual answers."""
+    if r := _guard(request):
+        return r
+    page = max(1, page)
+    per_page = 50
+    async with db.session_factory() as session:
+        challenge = await session.get(QuickXPChallenge, challenge_id)
+        if not challenge:
+            raise HTTPException(404, "Швидке завдання не знайдено")
+        questions = list((await session.scalars(
+            select(QuickXPQuestion).where(QuickXPQuestion.challenge_id == challenge_id)
+            .order_by(QuickXPQuestion.sort_order, QuickXPQuestion.id)
+        )).all())
+        respondent_ids = union(
+            select(QuickXPCompletion.user_id).where(QuickXPCompletion.challenge_id == challenge_id),
+            select(QuickXPAnswer.user_id).where(QuickXPAnswer.challenge_id == challenge_id),
+        ).subquery()
+        eligible_users = select(User).where(User.id.in_(select(respondent_ids.c.user_id)))
+        total = int(await session.scalar(select(func.count()).select_from(eligible_users.subquery())) or 0)
+        participants = list((await session.scalars(
+            eligible_users.order_by(User.full_name, User.id).limit(per_page).offset((page - 1) * per_page)
+        )).all())
+        ids = [user.id for user in participants]
+        completion_map = {}
+        answer_map = {}
+        if ids:
+            completion_map = {c.user_id: c for c in (await session.scalars(
+                select(QuickXPCompletion).where(
+                    QuickXPCompletion.challenge_id == challenge_id,
+                    QuickXPCompletion.user_id.in_(ids),
+                )
+            )).all()}
+            for answer in (await session.scalars(
+                select(QuickXPAnswer).where(
+                    QuickXPAnswer.challenge_id == challenge_id,
+                    QuickXPAnswer.user_id.in_(ids),
+                )
+            )).all():
+                answer_map.setdefault(answer.user_id, {})[answer.question_id] = answer
+    return templates.TemplateResponse(
+        request=request,
+        name="quick_xp_answers.html",
+        context=ctx(
+            request, challenge=challenge, questions=questions, participants=participants,
+            completion_map=completion_map, answer_map=answer_map, parse_options=parse_options,
+            kind_label=kind_label, page=page, total=total,
+            has_prev=page > 1, has_next=page * per_page < total,
         ),
     )
 
@@ -197,7 +258,7 @@ async def quick_xp_create(request: Request):
         session.add(row)
         await session.flush()
         actor=str(request.session.get("admin_name") or "web")
-        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values={}, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Створення Quick XP")
+        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values={}, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Створення швидкого XP-завдання")
         for idx, item in enumerate(quiz_rows, start=1):
             session.add(QuickXPQuestion(
                 challenge_id=row.id,
@@ -261,7 +322,7 @@ async def quick_xp_update(request: Request, challenge_id: int):
         row.ends_at = _parse_dt(str(form.get("ends_at") or ""))
         row.updated_at = clock.storage_utc()
         actor=str(request.session.get("admin_name") or "web")
-        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values=old_rules, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Редагування Quick XP")
+        await record_field_changes(session, rule_prefix="quick_xp", entity_type="quick_xp_challenge", entity_id=row.id, old_values=old_rules, new_values={"xp_reward": row.xp_reward}, author_label=actor, reason="Редагування швидкого XP-завдання")
         await log_audit(
             session,
             "web_quick_xp_update",

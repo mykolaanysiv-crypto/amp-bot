@@ -1,5 +1,5 @@
-{% extends "base.html" %}{% block title %}Operational Intelligence • АМПасадори{% endblock %}{% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Operational Intelligence</b></nav>
+{% extends "base.html" %}{% block title %}Операційний контроль • АМПасадори{% endblock %}{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Операційний контроль</b></nav>
 <div class="page-head"><div><span class="eyebrow">ОПЕРАЦІЙНИЙ КОНТРОЛЬ</span><h1>🧭 Що потребує дії</h1><p>Система лише знаходить проблеми. Виправлення запускає людина. Ручне закриття задачі не приховає проблему, якщо вона існуватиме під час наступної перевірки.</p></div></div>
 <p class="muted">Останнє повне сканування: {{last_scan or 'ще не виконувалося'}}{% if last_scan %} (час Києва){% endif %}. Перевірка виконується у фоновому worker приблизно кожні 15 хвилин.</p>
 {% if scan=='ok' %}<p class="tag">✅ Перевірку завершено.</p>{% elif scan=='busy' %}<p class="tag">⏳ Перевірка вже виконується.</p>{% endif %}
