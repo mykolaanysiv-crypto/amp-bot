@@ -106,7 +106,8 @@ async def _upsert_issue(session: AsyncSession, *, fingerprint: str, issue_type: 
     return row
 
 
-async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours: int=168,
+async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours: int=48,
+                                  backup_warning_age_hours: int=36,
                                   now: datetime | None = None) -> int:
     """One complete transactional scan. Call only under the distributed job lock.
 
@@ -208,9 +209,18 @@ async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours
             severity="critical", title="Некоректні reward claims",
             details=f"Заявок із від’ємним списанням XP: {bad_claims}", action_url="/admin/rewards")
 
-    backup = await backup_verification_status(session, max_age_hours=backup_max_age_hours,
-                                               unknown_grace_hours=0)
-    if not backup.get("ok"):
+    backup = await backup_verification_status(
+        session,
+        max_age_hours=backup_max_age_hours,
+        warning_age_hours=backup_warning_age_hours,
+        unknown_grace_hours=0,
+    )
+    if backup.get("status") == "warning":
+        await report(fingerprint="backup_warning", issue_type="backup_warning",
+            severity="medium", title="Backup скоро потребуватиме оновлення",
+            details=f"Вік перевіреної копії: {backup.get('age_hours')} год; критичний поріг: {backup_max_age_hours} год",
+            action_url="/admin/system-health")
+    elif not backup.get("ok"):
         await report(fingerprint="backup_stale", issue_type="backup_stale",
             severity="critical", title="Backup потребує уваги",
             details=f"Стан: {backup.get('status')}; вік: {backup.get('age_hours') if backup.get('age_hours') is not None else '—'} год",

@@ -493,6 +493,54 @@ def main() -> None:
     if not (root / "scripts" / "verify_backup_restore.sh").exists():
         raise SystemExit("Backup restore preflight failed: verify_backup_restore.sh missing")
 
+    # v1.18.6 Platform Hardening guards. These are source-level release gates
+    # for the exact operational protections added in this maintenance release.
+    docker_source = (root / "Dockerfile").read_text(encoding="utf-8")
+    if "FROM python:3.13-slim" not in docker_source:
+        raise SystemExit("v1.18.6 preflight failed: Docker runtime must match Python 3.13")
+
+    ci_source = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for token in (
+        "image: postgres:18",
+        "node tests/js/test_admin_forms.js",
+        "ruff check --select E9,F63,F7,F82",
+        "Restore-verify fresh pre-deploy backup",
+        "Post-deploy readiness and version smoke",
+        "scripts.rotate_field_encryption",
+    ):
+        if token not in ci_source:
+            raise SystemExit(f"v1.18.6 CI preflight failed: missing {token}")
+
+    config_source = (root / "app" / "config.py").read_text(encoding="utf-8")
+    for token in (
+        "FIELD_ENCRYPTION_KEY",
+        "BACKUP_WARNING_AGE_HOURS",
+        "BACKUP_MAX_AGE_HOURS",
+        "WEB_MAX_REQUEST_MB",
+        "web_max_request_bytes",
+    ):
+        if token not in config_source:
+            raise SystemExit(f"v1.18.6 config preflight failed: missing {token}")
+    if 'field_encryption_key == web_session_secret' not in config_source:
+        raise SystemExit("v1.18.6 config preflight failed: field/session secrets may still be identical")
+
+    if 'session_secret not in secrets' not in crypto_source or 'secrets.append(session_secret)' not in crypto_source:
+        raise SystemExit("v1.18.6 crypto preflight failed: legacy WEB_SESSION_SECRET migration bridge missing")
+    if "orphan_media_assets" not in integrity_source or "_referenced_database_media_ids" not in integrity_source:
+        raise SystemExit("v1.18.6 integrity preflight failed: orphan MediaAsset detection missing")
+
+    security_middleware_source = (root / "app" / "web" / "security_middleware.py").read_text(encoding="utf-8")
+    factory_v1186_source = (root / "app" / "web" / "factory.py").read_text(encoding="utf-8")
+    if "max_body_bytes" not in security_middleware_source or "status_code=413" not in security_middleware_source:
+        raise SystemExit("v1.18.6 upload preflight failed: server-side whole-request limit missing")
+    if "max_body_bytes=settings.web_max_request_bytes" not in factory_v1186_source:
+        raise SystemExit("v1.18.6 upload preflight failed: request limit not wired into web factory")
+
+    for template_name in ("base.html", "login.html", "login_2fa.html"):
+        template_source = (root / "app" / "web" / "templates" / template_name).read_text(encoding="utf-8")
+        if f"v={APP_VERSION}" not in template_source:
+            raise SystemExit(f"v1.18.6 version preflight failed: cache token mismatch in {template_name}")
+
     print(f"Production preflight OK for AMP v{APP_VERSION}")
 
 

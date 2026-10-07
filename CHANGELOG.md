@@ -1,3 +1,13 @@
+## v1.18.6 — Platform Hardening
+- Runtime вирівняно на Python 3.13 у `.python-version`, GitHub Actions і Docker; CI PostgreSQL переведено на 18.
+- Deploy gate тепер restore-verify свіжий Heroku PGBackup у ізольованому PostgreSQL 18 до push коду та виконує post-deploy `/health/ready` + `/health/live` + version smoke.
+- `FIELD_ENCRYPTION_KEY` став обов’язковим окремим production secret; додано migration bridge і post-deploy re-encryption legacy sensitive fields.
+- Verified backup freshness: warning після 36 год, stale після 48 год за замовчуванням; Operational Intelligence розрізняє warning і critical stale.
+- Додано server-side request-size limit (`WEB_MAX_REQUEST_MB`, default 25 МБ) із HTTP 413 до multipart/form processing.
+- Data Integrity Center виявляє orphan database `MediaAsset` без автоматичного видалення.
+- CI запускає admin JavaScript smoke, Ruff critical checks; `pip-audit` додано advisory, Dependabot — для pip/GitHub Actions.
+- Нової Alembic-міграції немає; head залишається `20260925_0015`.
+
 ## v1.18.5 — Full Stabilized Release
 - Повна збірка замість patch-only оновлення: `quest_auto.py` гарантовано входить до релізу.
 - Усі зміни v1.18.4 збережено: Quick XP answers, card-grid alignment, image sizing, filter alignment та українська локалізація.

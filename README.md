@@ -1,14 +1,27 @@
-# AMP XP / «АМПасадори» v1.18.1
+# AMP XP / «АМПасадори» v1.18.6
 
 Production-oriented Telegram + FastAPI + PostgreSQL system for the AMP participant programme.
 
-Current release: **Production Stability & Operational Integrity**.
+Current release: **Platform Hardening**. v1.18.6 strengthens CI/CD, backup verification, encryption-key separation, upload protection and data-integrity checks without changing the production database schema.
 
-Key additions: actionable `/admin/operations`, persisted operational issues, gamification rule version history, runtime league thresholds, mandatory reason for system runtime-rule changes, and append-only old/new audit for XP/reward configuration. Historical participant balances are never recalculated automatically when rules change.
+## Runtime
+- Python 3.13
+- Aiogram 3
+- FastAPI + Jinja2
+- SQLAlchemy 2 async
+- PostgreSQL 18 production/backup verification; SQLite remains supported for local/test scenarios
+- Alembic head: `20260925_0015`
 
-Alembic head: `20260921_0014`.
+## v1.18.6 highlights
+- Python 3.13 aligned across `.python-version`, CI and Docker.
+- Fresh Heroku PGBackup is restore-verified on isolated PostgreSQL 18 before deployment.
+- Post-deploy `/health/ready`, `/health/live` and version smoke.
+- Dedicated `FIELD_ENCRYPTION_KEY` required in Heroku production; legacy fallback ciphertext remains readable through key rotation support.
+- Verified-backup freshness policy: warning after 36 h, stale after 48 h by default.
+- Server-side admin request limit (`WEB_MAX_REQUEST_MB`, default 25 MB).
+- Data Integrity detects orphan database media without deleting it automatically.
+- CI runs Python compile/preflight, Ruff critical checks, JavaScript smoke, pytest, PostgreSQL integration/Alembic gates and schema drift checks; `pip-audit` is advisory in this release.
 
-See `SERVER_UPDATE_V1181.md`, `COMMANDS_V1181.txt`, `SECURITY.md`, `HEROKU_DEPLOY.md` and `XP_BALANCE.md`.
+See `RELEASE_V1186_UA.md`, `HEROKU_DEPLOY.md`, `SECURITY.md` and `XP_BALANCE.md`.
 
-
-Stability fixes: scheduled/locked operational scanning with auto-reopen/auto-resolve audit, grace-aware event reminders, grouped XP anomaly queries, historically versioned league insights, strict league input validation, and cross-platform local launch scripts. No new Alembic revision; database head stays `20260921_0014`. Production deployment is **not** implied by the ZIP or local tests.
+A ZIP/local test result is not proof that production has already been updated. Production version is confirmed only after the GitHub/Heroku deploy gate and health/version smoke pass.

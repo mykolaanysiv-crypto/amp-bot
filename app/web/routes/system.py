@@ -124,7 +124,10 @@ async def system_health(request: Request):
                     backup_at = None
                 backup_label = raw[1] if len(raw) > 1 else "Зафіксована резервна копія"
             backup_status = await backup_verification_status(
-                session, unknown_grace_hours=settings.backup_unknown_grace_hours
+                session,
+                max_age_hours=settings.backup_max_age_hours,
+                warning_age_hours=settings.backup_warning_age_hours,
+                unknown_grace_hours=settings.backup_unknown_grace_hours,
             )
     except Exception as exc:
         db_ok = False
@@ -136,7 +139,19 @@ async def system_health(request: Request):
         backup_label = local_backup_name or "Локальна резервна копія"
         age_hours = max(0.0, (now - local_backup_at).total_seconds() / 3600)
         if backup_status.get("status") == "unknown":
-            backup_status = {"ok": age_hours <= 168, "status": "ok" if age_hours <= 168 else "stale", "age_hours": round(age_hours, 1)}
+            if age_hours <= settings.backup_warning_age_hours:
+                local_status = "ok"
+            elif age_hours <= settings.backup_max_age_hours:
+                local_status = "warning"
+            else:
+                local_status = "stale"
+            backup_status = {
+                "ok": age_hours <= settings.backup_max_age_hours,
+                "status": local_status,
+                "age_hours": round(age_hours, 1),
+                "warning_age_hours": settings.backup_warning_age_hours,
+                "max_age_hours": settings.backup_max_age_hours,
+            }
 
     if settings.bot_token:
         bot = Bot(settings.bot_token)

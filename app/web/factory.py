@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     # SessionMiddleware is intentionally added after the inner security layers
     # so the signed session is available to validation/CSRF middleware.
     app.add_middleware(AdminSessionValidationMiddleware, db=db)
-    app.add_middleware(CSRFMiddleware)
+    app.add_middleware(CSRFMiddleware, max_body_bytes=settings.web_max_request_bytes)
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.web_session_secret,

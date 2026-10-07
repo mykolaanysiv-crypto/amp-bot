@@ -1,0 +1,22 @@
+AMP XP v1.18.6 — локальна перевірка (у корені проєкту)
+
+python -m pip install -r requirements-dev.txt
+python -m compileall -q app scripts migrations tests
+python -m scripts.production_preflight
+ruff check --select E9,F63,F7,F82 app scripts tests
+node tests/js/test_admin_forms.js
+pytest -q --ignore=tests/integration
+
+# PostgreSQL 18 integration (приклад змінних середовища):
+# export TEST_DATABASE_URL='postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test'
+# export POSTGRES_SMOKE_URL="$TEST_DATABASE_URL"
+pytest -q tests/integration
+python -m scripts.schema_drift_check
+
+# Alembic head для v1.18.6:
+alembic current
+# очікується 20260925_0015
+
+# Production deploy: merge/push у main лише після green GitHub Production gate.
+# Deploy job сам створює та restore-verify свіжий Heroku PGBackup,
+# перевіряє /health/ready + /health/live + version та запускає field-key rotation.

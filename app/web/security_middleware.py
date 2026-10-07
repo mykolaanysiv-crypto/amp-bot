@@ -21,8 +21,17 @@ class CSRFMiddleware:
     parameters continue to work unchanged.
     """
 
-    def __init__(self, app):
+    def __init__(self, app, *, max_body_bytes: int = 25 * 1024 * 1024):
         self.app = app
+        self.max_body_bytes = max(1024, int(max_body_bytes))
+
+    async def _reject_too_large(self, scope, receive, send) -> None:
+        response = HTMLResponse(
+            "<h1>413</h1><p>Запит завеликий. Максимальний розмір форми перевищено.</p>",
+            status_code=413,
+            headers={"Cache-Control": "no-store"},
+        )
+        await response(scope, receive, send)
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
@@ -34,12 +43,24 @@ class CSRFMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # v1.18.6: reject oversized admin requests before Starlette multipart
+        # parsing and before CSRF buffering. Per-file validation still enforces
+        # the stricter 20 MiB upload limit in dependencies.py.
+        headers = {k.lower(): v for k, v in scope.get("headers") or []}
+        raw_length = headers.get(b"content-length", b"").decode("ascii", "ignore").strip()
+        if raw_length.isdigit() and int(raw_length) > self.max_body_bytes:
+            await self._reject_too_large(scope, receive, send)
+            return
+
         body = bytearray()
         while True:
             message = await receive()
             if message["type"] != "http.request":
                 continue
             body.extend(message.get("body", b""))
+            if len(body) > self.max_body_bytes:
+                await self._reject_too_large(scope, receive, send)
+                return
             if not message.get("more_body", False):
                 break
 

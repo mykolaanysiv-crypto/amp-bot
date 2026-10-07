@@ -497,7 +497,8 @@ async def notification_failure_alert(bot, db, settings, *, lookback_minutes: int
 async def backup_verification_status(
     session,
     *,
-    max_age_hours: int = 168,
+    max_age_hours: int = 48,
+    warning_age_hours: int = 36,
     unknown_grace_hours: int = 24,
 ) -> dict[str, object]:
     """Return the externally verified PostgreSQL backup state.
@@ -549,12 +550,22 @@ async def backup_verification_status(
             "grace_remaining_hours": 0.0,
         }
     age = max(0.0, (clock.storage_utc() - verified_at).total_seconds() / 3600)
+    max_age = max(2, int(max_age_hours))
+    warning_age = max(1, min(int(warning_age_hours), max_age - 1))
+    if age <= warning_age:
+        status_name = "ok"
+    elif age <= max_age:
+        status_name = "warning"
+    else:
+        status_name = "stale"
     return {
-        "ok": age <= max_age_hours,
-        "status": "ok" if age <= max_age_hours else "stale",
+        "ok": age <= max_age,
+        "status": status_name,
         "verified_at": verified_at,
         "label": label,
         "age_hours": round(age, 1),
+        "warning_age_hours": warning_age,
+        "max_age_hours": max_age,
         "grace_remaining_hours": 0.0,
     }
 
@@ -564,7 +575,8 @@ async def backup_health_alert(
     db,
     settings,
     *,
-    max_age_hours: int = 168,
+    max_age_hours: int | None = None,
+    warning_age_hours: int | None = None,
     repeat_hours: int = 24,
     unknown_grace_hours: int | None = None,
 ) -> dict[str, object]:
@@ -578,10 +590,13 @@ async def backup_health_alert(
     """
     now = clock.storage_utc()
     grace_hours = int(unknown_grace_hours or getattr(settings, "backup_unknown_grace_hours", 24))
+    max_hours = int(max_age_hours or getattr(settings, "backup_max_age_hours", 48))
+    warning_hours = int(warning_age_hours or getattr(settings, "backup_warning_age_hours", 36))
     async with db.session_factory() as session:
         status = await backup_verification_status(
             session,
-            max_age_hours=max_age_hours,
+            max_age_hours=max_hours,
+            warning_age_hours=warning_hours,
             unknown_grace_hours=grace_hours,
         )
         if status.get("ok"):

@@ -204,6 +204,33 @@ async def _missing_media_samples(session, refs: list[tuple[str, int, str, str | 
     return missing
 
 
+
+
+async def _referenced_database_media_ids(session) -> set[int]:
+    """Collect every /media/<id> reference from mapped *_path columns.
+
+    The scan is intentionally metadata-driven so new domains that add a media
+    path do not need a second hard-coded orphan registry. It only inspects
+    columns ending in ``_path`` and only accepts canonical database-media URLs.
+    """
+    referenced: set[int] = set()
+    for table in Base.metadata.sorted_tables:
+        if table.name == MediaAsset.__tablename__:
+            continue
+        for column in table.columns:
+            if not column.name.endswith("_path"):
+                continue
+            rows = (await session.execute(
+                select(column).where(column.like("/media/%"))
+            )).scalars().all()
+            for value in rows:
+                if not isinstance(value, str) or not value.startswith("/media/"):
+                    continue
+                tail = value.rstrip("/").split("/")[-1]
+                if tail.isdigit():
+                    referenced.add(int(tail))
+    return referenced
+
 async def scan_data_integrity(session) -> dict:
     now = clock.storage_utc()
     users = list((await session.scalars(select(User).where(User.permanent_deleted_at.is_(None)))).all())
@@ -366,6 +393,26 @@ async def scan_data_integrity(session) -> dict:
             "missing_media", "Missing media", "Файли", "medium", len(missing_media),
             "У БД є посилання на файл/MediaAsset, якого більше немає. Показано до 12 прикладів.",
             missing_media, "/admin/system-health"
+        ))
+
+    # v1.18.6: the opposite integrity direction. A failed two-step entity
+    # creation can leave a database MediaAsset behind after the owning row
+    # rolls back. Never delete automatically: surface the ids for manual review
+    # and let retention/administration decide what is safe to remove.
+    referenced_media_ids = await _referenced_database_media_ids(session)
+    all_media_ids = set((await session.scalars(select(MediaAsset.id))).all())
+    orphan_media_ids = sorted(all_media_ids - referenced_media_ids)
+    if orphan_media_ids:
+        sample_rows = list((await session.execute(
+            select(MediaAsset.id, MediaAsset.category, MediaAsset.filename, MediaAsset.size_bytes, MediaAsset.created_at)
+            .where(MediaAsset.id.in_(orphan_media_ids[:12]))
+            .order_by(MediaAsset.id.asc())
+        )).all())
+        issues.append(IntegrityIssue(
+            "orphan_media_assets", "Неприв’язані медіафайли", "Файли", "low", len(orphan_media_ids),
+            "MediaAsset існує у БД, але жодне mapped *_path поле на нього не посилається. Автоматичне видалення не виконується.",
+            [f"MediaAsset #{r.id}: {r.category} · {r.filename} · {int(r.size_bytes or 0)} байт" for r in sample_rows],
+            "/admin/data-integrity"
         ))
 
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3}

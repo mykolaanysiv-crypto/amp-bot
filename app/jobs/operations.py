@@ -19,7 +19,11 @@ async def _operational_scan_scheduler(bot, db: Database, settings) -> None:
             async with job_lock(db, "operational_scan", ttl_seconds=600) as acquired:
                 if acquired:
                     async with db.session_factory() as session:
-                        seen = await scan_operational_issues(session)
+                        seen = await scan_operational_issues(
+                            session,
+                            backup_max_age_hours=settings.backup_max_age_hours,
+                            backup_warning_age_hours=settings.backup_warning_age_hours,
+                        )
                         await session.commit()
                         log.info("Operational scan completed; active signals=%s", seen)
         except asyncio.CancelledError:

@@ -49,6 +49,8 @@ async def _backup_health_scheduler(bot: Bot, db: Database, settings) -> None:
                 if acquired:
                     await backup_health_alert(
                         bot, db, settings,
+                        max_age_hours=settings.backup_max_age_hours,
+                        warning_age_hours=settings.backup_warning_age_hours,
                         unknown_grace_hours=settings.backup_unknown_grace_hours,
                     )
         except asyncio.CancelledError:

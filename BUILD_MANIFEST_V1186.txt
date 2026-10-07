@@ -1,0 +1,26 @@
+AMP XP / АМПасадори v1.18.6 — BUILD MANIFEST
+Prepared: 2026-10-07
+Base artifact: v1.18.5 full stabilized build
+Version: 1.18.6
+Alembic head: 20260925_0015
+New migration: NO
+Runtime target: Python 3.13
+CI/restore verification target: PostgreSQL 18
+
+Primary v1.18.6 hardening areas:
+- dedicated field-encryption key + legacy key migration bridge
+- 36h warning / 48h stale verified-backup policy
+- restore-verified pre-deploy Heroku PGBackup
+- post-deploy readiness/liveness/version smoke
+- server-side admin request-size limit
+- orphan MediaAsset integrity detection
+- JavaScript smoke + Ruff + pip-audit + Dependabot CI tooling
+
+Local artifact verification:
+- compileall PASS
+- production_preflight PASS
+- admin JS smoke PASS
+- selected source/release regression suite 43/43 PASS
+- GitHub/Dependabot YAML syntax PASS
+
+Full dependency-heavy pytest, PostgreSQL integration, Ruff and pip-audit are executed by GitHub Actions and are not claimed as locally executed in this build environment.

@@ -32,7 +32,19 @@ def _root_secret() -> str:
 
 def _previous_secrets() -> list[str]:
     raw = os.getenv("FIELD_ENCRYPTION_PREVIOUS_KEYS", "")
-    return [part.strip() for part in raw.split(",") if part.strip()]
+    secrets = [part.strip() for part in raw.split(",") if part.strip()]
+
+    # v1.18.6 migration bridge: older releases used WEB_SESSION_SECRET as a
+    # fallback field-encryption root. Once a dedicated FIELD_ENCRYPTION_KEY is
+    # introduced, keep the current session secret in the read keyring so
+    # existing enc:v1 payloads remain decryptable until rotate_field_encryption
+    # rewrites them with the dedicated key. New writes always use the dedicated
+    # FIELD_ENCRYPTION_KEY returned by _root_secret().
+    explicit = os.getenv("FIELD_ENCRYPTION_KEY", "").strip()
+    session_secret = os.getenv("WEB_SESSION_SECRET", "").strip()
+    if explicit and session_secret and session_secret != explicit and session_secret not in secrets:
+        secrets.append(session_secret)
+    return secrets
 
 
 @dataclass(frozen=True)
