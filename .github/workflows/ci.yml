@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: amp
           POSTGRES_PASSWORD: amp
@@ -41,6 +41,10 @@ jobs:
           python-version: '3.13'
           cache: pip
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
@@ -49,6 +53,16 @@ jobs:
 
       - name: Production preflight
         run: python -m scripts.production_preflight
+
+      - name: Critical static checks
+        run: ruff check --select E9,F63,F7,F82 app scripts tests
+
+      - name: Admin JavaScript smoke
+        run: node tests/js/test_admin_forms.js
+
+      - name: Dependency vulnerability audit
+        continue-on-error: true
+        run: pip-audit -r requirements.txt --progress-spinner=off
 
       - name: Unit and regression tests
         run: pytest -q --ignore=tests/integration
@@ -62,13 +76,13 @@ jobs:
             tests/integration/test_alembic_full_adoption.py::test_alembic_upgrade_from_previous_production_schema \
             tests/integration/test_alembic_full_adoption.py::test_latest_revision_downgrade_upgrade_roundtrip
 
-      - name: Real release/startup smoke on PostgreSQL 16
+      - name: Real release/startup smoke on PostgreSQL 18
         env:
           DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
           AMP_STARTUP_SMOKE: "1"
         run: python -m scripts.heroku_release
 
-      - name: Verify Alembic head on PostgreSQL 16
+      - name: Verify Alembic head on PostgreSQL 18
         env:
           DATABASE_URL: postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test
         run: alembic current
@@ -84,9 +98,25 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: amp
+          POSTGRES_PASSWORD: amp
+          POSTGRES_DB: amp_deploy_restore_verify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amp -d amp_deploy_restore_verify"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
       HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+      RESTORE_DATABASE_URL: postgresql://amp:amp@127.0.0.1:5432/amp_deploy_restore_verify
+      AMP_ALLOW_TEMP_RESTORE: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,9 +128,35 @@ jobs:
           test -n "$HEROKU_API_KEY" || { echo "HEROKU_API_KEY secret is required"; exit 1; }
           test -n "$HEROKU_APP_NAME" || { echo "HEROKU_APP_NAME secret is required"; exit 1; }
 
-      - name: Install Heroku CLI
+      - name: Install Heroku CLI and PostgreSQL client
         shell: bash
-        run: curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+        run: |
+          curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure dedicated production field-encryption key
+        shell: bash
+        run: |
+          set -euo pipefail
+          SESSION_SECRET="$(heroku config:get WEB_SESSION_SECRET -a "$HEROKU_APP_NAME" | tr -d '\r\n')"
+          FIELD_KEY="$(heroku config:get FIELD_ENCRYPTION_KEY -a "$HEROKU_APP_NAME" | tr -d '\r\n')"
+          PREVIOUS_KEYS="$(heroku config:get FIELD_ENCRYPTION_PREVIOUS_KEYS -a "$HEROKU_APP_NAME" | tr -d '\r\n')"
+          test "${#SESSION_SECRET}" -ge 32 || { echo "WEB_SESSION_SECRET is missing/too short"; exit 1; }
+
+          if [ "${#FIELD_KEY}" -lt 32 ] || [ "$FIELD_KEY" = "$SESSION_SECRET" ]; then
+            NEW_FIELD_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+            case ",$PREVIOUS_KEYS," in
+              *",$SESSION_SECRET,"*) UPDATED_PREVIOUS="$PREVIOUS_KEYS" ;;
+              *) UPDATED_PREVIOUS="${PREVIOUS_KEYS:+$PREVIOUS_KEYS,}$SESSION_SECRET" ;;
+            esac
+            heroku config:set -a "$HEROKU_APP_NAME" \
+              "FIELD_ENCRYPTION_KEY=$NEW_FIELD_KEY" \
+              "FIELD_ENCRYPTION_PREVIOUS_KEYS=$UPDATED_PREVIOUS" >/dev/null
+            echo "Dedicated FIELD_ENCRYPTION_KEY configured; legacy session key retained only in previous-key ring for migration."
+          else
+            echo "Dedicated FIELD_ENCRYPTION_KEY already configured."
+          fi
 
       - name: Capture PostgreSQL backup before deploy
         shell: bash
@@ -108,7 +164,10 @@ jobs:
           set -euo pipefail
           heroku pg:backups:capture -a "$HEROKU_APP_NAME"
           heroku pg:backups -a "$HEROKU_APP_NAME" | sed -n '1,14p'
-          echo "Backup captured. Restore-verified marker is updated only by the isolated restore workflow."
+
+      - name: Restore-verify fresh pre-deploy backup; defer restore-verified marker
+        shell: bash
+        run: ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
 
       - name: Deploy tested commit to Heroku
         shell: bash
@@ -123,3 +182,46 @@ jobs:
           # Heroku is a deployment target, not the source-of-truth repository.
           # Force updates only the code ref and never touches PostgreSQL data.
           git push heroku HEAD:main --force
+
+      - name: Post-deploy readiness and version smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_URL="$(heroku apps:info -a "$HEROKU_APP_NAME" --json | python -c 'import json,sys; print(json.load(sys.stdin).get("web_url", "").rstrip("/"))')"
+          test -n "$APP_URL" || { echo "Could not resolve Heroku web URL"; exit 1; }
+          echo "Checking $APP_URL"
+          READY=0
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 10 "$APP_URL/health/ready" -o /tmp/amp-ready.json; then
+              READY=1
+              break
+            fi
+            echo "Readiness attempt $attempt/24 failed; retrying in 10s..."
+            sleep 10
+          done
+          test "$READY" = "1" || { echo "Post-deploy /health/ready never became healthy"; exit 1; }
+          curl -fsS --max-time 10 "$APP_URL/health/live" -o /tmp/amp-live.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = Path("VERSION.txt").read_text(encoding="utf-8").strip()
+          live = json.loads(Path("/tmp/amp-live.json").read_text(encoding="utf-8"))
+          ready = json.loads(Path("/tmp/amp-ready.json").read_text(encoding="utf-8"))
+          if live.get("status") != "ok" or live.get("version") != expected:
+              raise SystemExit(f"Live/version mismatch: expected={expected!r}, payload={live!r}")
+          if ready.get("status") != "ready" or ready.get("version") != expected:
+              raise SystemExit(f"Readiness/version mismatch: expected={expected!r}, payload={ready!r}")
+          print(f"Post-deploy smoke PASS: version={expected}")
+          PY
+
+      - name: Record fresh restore-verified marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          LABEL="Pre-deploy restore-verified PGBackup ${GITHUB_RUN_ID} $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.mark_backup_verified "$LABEL"
+          heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.verify_backup_marker
+
+      - name: Re-encrypt legacy sensitive fields with dedicated key
+        shell: bash
+        run: heroku run -a "$HEROKU_APP_NAME" -- python -m scripts.rotate_field_encryption

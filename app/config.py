@@ -184,6 +184,13 @@ class Settings:
     # Grace period before alerting about a never-confirmed external PostgreSQL backup.
     # GitHub/Heroku backup automation should normally verify a backup before this expires.
     backup_unknown_grace_hours: int = 24
+    # v1.18.6: verified-backup freshness policy. 0..warning is healthy,
+    # warning..max is visible as warning, older than max blocks high-assurance deploys.
+    backup_warning_age_hours: int = 36
+    backup_max_age_hours: int = 48
+    # Whole-request ceiling. Per-file upload validation remains 20 MiB; this allows
+    # multipart overhead while preventing CSRF/form parsing from buffering huge bodies.
+    web_max_request_bytes: int = 25 * 1024 * 1024
 
 
 def get_settings(require_bot_token: bool = True) -> Settings:
@@ -211,6 +218,22 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         raise RuntimeError("У production WEB_SESSION_SECRET має бути випадковим секретом щонайменше 32 символи.")
     if not web_session_secret:
         web_session_secret = "local-dev-session-secret"
+
+    # v1.18.6: production field encryption must not silently reuse the web
+    # session secret. Existing ciphertext created by the legacy fallback remains
+    # readable through app.field_crypto's migration keyring until it is rotated.
+    field_encryption_key = os.getenv("FIELD_ENCRYPTION_KEY", "").strip()
+    if os.getenv("DYNO"):
+        if len(field_encryption_key) < 32:
+            raise RuntimeError("У production FIELD_ENCRYPTION_KEY має бути окремим випадковим секретом щонайменше 32 символи.")
+        if field_encryption_key == web_session_secret:
+            raise RuntimeError("У production FIELD_ENCRYPTION_KEY має відрізнятися від WEB_SESSION_SECRET.")
+
+    backup_warning_age_hours = _env_int("BACKUP_WARNING_AGE_HOURS", 36, minimum=1, maximum=167)
+    backup_max_age_hours = _env_int("BACKUP_MAX_AGE_HOURS", 48, minimum=2, maximum=168)
+    if backup_warning_age_hours >= backup_max_age_hours:
+        raise RuntimeError("BACKUP_WARNING_AGE_HOURS має бути меншим за BACKUP_MAX_AGE_HOURS")
+    web_max_request_mb = _env_int("WEB_MAX_REQUEST_MB", 25, minimum=1, maximum=100)
 
     return Settings(
         bot_token=token,
@@ -245,4 +268,7 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         health_startup_grace_seconds=_env_int("HEALTH_STARTUP_GRACE_SECONDS", 180, minimum=30, maximum=1800),
         scheduler_alert_repeat_seconds=_env_int("SCHEDULER_ALERT_REPEAT_SECONDS", 3600, minimum=300, maximum=86400),
         backup_unknown_grace_hours=_env_int("BACKUP_UNKNOWN_GRACE_HOURS", 24, minimum=1, maximum=168),
+        backup_warning_age_hours=backup_warning_age_hours,
+        backup_max_age_hours=backup_max_age_hours,
+        web_max_request_bytes=web_max_request_mb * 1024 * 1024,
     )

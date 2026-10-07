@@ -13,7 +13,12 @@ async def _main() -> int:
     db = Database(settings)
     try:
         async with db.session_factory() as session:
-            status = await backup_verification_status(session)
+            status = await backup_verification_status(
+                session,
+                max_age_hours=settings.backup_max_age_hours,
+                warning_age_hours=settings.backup_warning_age_hours,
+                unknown_grace_hours=settings.backup_unknown_grace_hours,
+            )
     finally:
         await db.close()
     print(status)

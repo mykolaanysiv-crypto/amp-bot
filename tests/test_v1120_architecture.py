@@ -30,7 +30,7 @@ def test_alembic_baseline_present():
 
 def test_ci_has_postgres_service():
     text = Path(".github/workflows/ci.yml").read_text()
-    assert "postgres:16" in text
+    assert "postgres:18" in text
     assert "tests/integration" in text
     assert "push:" in text
 

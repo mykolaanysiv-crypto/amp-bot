@@ -34,6 +34,17 @@ def main() -> None:
         session_secret = secrets.token_urlsafe(48)
         print("WEB_SESSION_SECRET був відсутній/тестовий — для Heroku згенеровано новий безпечний секрет.")
 
+    # v1.18.6: field encryption gets its own root key. When migrating from older
+    # releases, keep the session secret in the previous-key ring so existing
+    # ciphertext remains readable until rotate_field_encryption is run.
+    field_key = values.get("FIELD_ENCRYPTION_KEY", "").strip()
+    previous_field_keys = [part.strip() for part in values.get("FIELD_ENCRYPTION_PREVIOUS_KEYS", "").split(",") if part.strip()]
+    if len(field_key) < 32 or field_key == session_secret:
+        field_key = secrets.token_urlsafe(48)
+        if session_secret not in previous_field_keys:
+            previous_field_keys.append(session_secret)
+        print("FIELD_ENCRYPTION_KEY був відсутній/небезпечний — згенеровано окремий ключ; WEB_SESSION_SECRET додано як legacy previous key.")
+
     app_url = f"https://{args.app}.herokuapp.com"
     try:
         info = subprocess.run(
@@ -50,6 +61,8 @@ def main() -> None:
         "SUPERADMIN_IDS": values["SUPERADMIN_IDS"].strip(),
         "WEB_ADMIN_USERNAME": values.get("WEB_ADMIN_USERNAME", "admin").strip() or "admin",
         "WEB_SESSION_SECRET": session_secret,
+        "FIELD_ENCRYPTION_KEY": field_key,
+        "FIELD_ENCRYPTION_PREVIOUS_KEYS": ",".join(previous_field_keys),
         "TIMEZONE": values.get("TIMEZONE", "Europe/Kyiv").strip() or "Europe/Kyiv",
         "BOT_NAME": values.get("BOT_NAME", "АМПасадори / АМП XP").strip() or "АМПасадори / АМП XP",
         "ORGANIZATION_NAME": values.get("ORGANIZATION_NAME", "Анисівський молодіжний простір").strip() or "Анисівський молодіжний простір",
@@ -59,6 +72,10 @@ def main() -> None:
         "SEASON_NAME": values.get("SEASON_NAME", "Сезон 2026/27").strip() or "Сезон 2026/27",
         "SEASON_START": values.get("SEASON_START", "2026-09-01").strip() or "2026-09-01",
         "SEASON_END": values.get("SEASON_END", "2027-08-31").strip() or "2027-08-31",
+        "BACKUP_UNKNOWN_GRACE_HOURS": values.get("BACKUP_UNKNOWN_GRACE_HOURS", "24").strip() or "24",
+        "BACKUP_WARNING_AGE_HOURS": values.get("BACKUP_WARNING_AGE_HOURS", "36").strip() or "36",
+        "BACKUP_MAX_AGE_HOURS": values.get("BACKUP_MAX_AGE_HOURS", "48").strip() or "48",
+        "WEB_MAX_REQUEST_MB": values.get("WEB_MAX_REQUEST_MB", "25").strip() or "25",
     }
 
     # v1.7.3 stores web credentials hashed in PostgreSQL. These legacy values

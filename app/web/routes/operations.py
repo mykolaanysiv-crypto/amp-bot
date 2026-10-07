@@ -7,7 +7,7 @@ from app.model_domains import OperationalIssue, SystemSetting
 from app.reliability import job_lock
 from app.governance import SCAN_SETTING_KEY
 from app.time_utils import clock
-from app.web.dependencies import ctx, db, guard_superadmin, log_audit, templates
+from app.web.dependencies import ctx, db, guard_superadmin, log_audit, settings, templates
 
 router=APIRouter()
 
@@ -50,7 +50,11 @@ async def scan_issues_manually(request: Request):
         if not acquired:
             return RedirectResponse('/admin/operations?scan=busy', 303)
         async with db.session_factory() as session:
-            seen = await scan_operational_issues(session)
+            seen = await scan_operational_issues(
+                session,
+                backup_max_age_hours=settings.backup_max_age_hours,
+                backup_warning_age_hours=settings.backup_warning_age_hours,
+            )
             await log_audit(session, 'operational_scan_manual',
                 actor_label=request.session.get('admin_name', 'superadmin'),
                 entity_type='system', details=f'Актуальних сигналів: {seen}')

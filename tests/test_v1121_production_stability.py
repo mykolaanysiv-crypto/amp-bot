@@ -42,10 +42,10 @@ def test_startup_smoke_covers_required_order_and_real_web_lifespan():
     assert migrate < db_init < bootstrap < web
 
 
-def test_ci_has_postgres16_real_release_gate_and_deploy_dependency():
+def test_ci_has_postgres18_real_release_gate_and_deploy_dependency():
     src = read(".github/workflows/ci.yml")
-    assert "image: postgres:16" in src
-    assert "Real release/startup smoke on PostgreSQL 16" in src
+    assert "image: postgres:18" in src
+    assert "Real release/startup smoke on PostgreSQL 18" in src
     assert "python -m scripts.heroku_release" in src
     assert "needs: test" in src
     assert "github.ref == 'refs/heads/main'" in src

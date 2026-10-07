@@ -1,0 +1,16 @@
+AMP XP v1.18.6 build verification — 07.10.2026
+
+Local source/build checks performed on the prepared full release artifact:
+- Python compileall: PASS
+- Production preflight: PASS
+- v1.18.6 platform-hardening tests: PASS (6/6)
+- Selected release/source regression suite: PASS (43/43, includes v1.18.6 tests)
+- Admin JavaScript smoke: PASS
+- GitHub workflow YAML syntax: PASS
+- Dependabot YAML syntax: PASS
+- Alembic head changed: NO (remains 20260925_0015)
+
+Not claimed locally:
+- Full dependency-heavy pytest suite and PostgreSQL integration suite require the complete CI dependency/runtime environment.
+- Ruff and pip-audit are installed/run by GitHub Actions; they were not treated as locally executed evidence for this artifact.
+- Heroku restore-verified pre-deploy backup and post-deploy health/version smoke occur only in the production GitHub deploy job.

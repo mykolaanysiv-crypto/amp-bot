@@ -254,6 +254,8 @@ async def queue_pending_match_digests(session: AsyncSession, *, max_items: int =
             dedupe_key=key, button_text="🌍 Відкрити можливості", callback_data="nav:opportunities",
         )
         for match, _ in rows:
-            match.notified_at = now; match.status = "notified"; match.updated_at = now
+            match.notified_at = now
+            match.status = "notified"
+            match.updated_at = now
         queued += 1
     return queued

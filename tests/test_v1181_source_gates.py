@@ -9,7 +9,7 @@ def read(relative):
 
 
 def test_version_and_inherited_alembic_head():
-    assert read('VERSION.txt').strip() == read('VERSION_CHECK.txt').strip() == '1.18.5'
+    assert read('VERSION.txt').strip() == read('VERSION_CHECK.txt').strip() == '1.18.6'
     assert 'revision = "20260921_0014"' in read('migrations/versions/20260921_0014_operational_governance.py')
     assert 'revision = "20260925_0015"' in read('migrations/versions/20260925_0015_quest_qr_on_time.py')
 
@@ -26,7 +26,7 @@ def test_background_scan_is_supervised_and_healthy():
     job = read('app/jobs/operations.py')
     registry = read('app/jobs/registry.py')
     health = read('app/runtime_health.py')
-    assert 'scan_operational_issues(session)' in job
+    assert 'scan_operational_issues(' in job and 'backup_max_age_hours=settings.backup_max_age_hours' in job
     assert 'job_lock(db, "operational_scan"' in job
     assert 'await session.commit()' in job
     assert 'asyncio.sleep(15 * 60)' in job
@@ -60,7 +60,7 @@ def test_local_entrypoints_and_frontend_cache_versions():
         assert 'run_web.py' in source and 'run.py' in source
         assert 'run_all.py' not in source
     for path in ('base.html', 'login.html', 'login_2fa.html'):
-        assert 'v=1.18.5' in read(f'app/web/templates/{path}')
+        assert 'v=1.18.6' in read(f'app/web/templates/{path}')
 
 
 def test_shared_local_supervisor_runs_both_canonical_processes():
