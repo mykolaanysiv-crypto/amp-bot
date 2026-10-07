@@ -35,7 +35,7 @@ jobs:
       RESTORE_DATABASE_URL: postgresql://amp:amp@127.0.0.1:5432/amp_restore_verify
       AMP_ALLOW_TEMP_RESTORE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Require Heroku backup secrets
         shell: bash

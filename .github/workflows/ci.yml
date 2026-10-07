@@ -34,7 +34,7 @@ jobs:
       LOG_FORMAT: text
       SUPERADMIN_IDS: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -118,7 +118,7 @@ jobs:
       RESTORE_DATABASE_URL: postgresql://amp:amp@127.0.0.1:5432/amp_deploy_restore_verify
       AMP_ALLOW_TEMP_RESTORE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
