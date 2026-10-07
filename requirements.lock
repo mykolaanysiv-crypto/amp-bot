@@ -1,5 +1,5 @@
-# AMP XP v1.18.7 direct production dependency lock.
-# Generated/curated for the 2026-10-07 reproducible baseline.
+# AMP XP v1.19.0 direct production dependency lock.
+# Curated from the confirmed v1.18.7 baseline plus WebAuthn support.
 # CI must install and audit this file. Do not edit without updating requirements.in.
 aiogram==3.31.0
 SQLAlchemy==2.1.3
@@ -18,5 +18,6 @@ python-multipart==0.0.32
 itsdangerous==2.2.0
 matplotlib==3.11.2
 cryptography==50.0.2
+webauthn==3.0.1
 alembic==1.20.0
 sentry-sdk[fastapi]==2.71.0

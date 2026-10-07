@@ -135,7 +135,7 @@
   </article>
   {% else %}<p class="empty">Бейджів АМПасадора ще немає.</p>{% endfor %}
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function toggleBadgePng(suffix){const type=document.getElementById('badgeType'+suffix);const field=document.getElementById('badgePng'+suffix);if(type&&field)field.style.display=type.value==='ambassador'?'flex':'none';}
 function setBadgeUsers(value){document.querySelectorAll('input[name="user_ids"]').forEach(el=>el.checked=value);}
 toggleBadgePng('Create');

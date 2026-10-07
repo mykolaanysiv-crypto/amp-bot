@@ -1,0 +1,118 @@
+AMP XP v1.19.0 — TEST REPORT
+Build date: 2026-10-07
+Status: RELEASE CANDIDATE / NOT PRODUCTION
+Source baseline: user-provided amp_bot_v1187(1).zip
+Target Alembic head: 20261007_0016
+
+RULE
+No check is marked PASS unless it was actually executed in this build environment.
+Dependency-heavy/production checks that cannot run here are explicitly DEFERRED to GitHub Actions/Heroku.
+
+EXECUTED — PASS
+1. python -m scripts.dependency_lock_check
+   PASS
+   requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+   requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+
+2. python -m scripts.release_consistency_check
+   PASS — version 1.19.0; Alembic head 20261007_0016.
+
+3. python -m compileall -q app scripts migrations tests
+   PASS.
+
+4. python -m scripts.production_preflight
+   PASS — Production preflight OK for AMP v1.19.0.
+
+5. node tests/js/test_admin_forms.js
+   PASS — Admin form JS smoke.
+
+6. Alembic static chain validation
+   PASS — `alembic heads` => 20261007_0016 (head).
+   PASS — history shows 20260925_0015 -> 20261007_0016.
+
+7. YAML parse
+   PASS:
+   - .github/workflows/ci.yml
+   - .github/workflows/backup.yml
+   - .github/dependabot.yml
+
+8. Bash syntax
+   PASS — scripts/verify_backup_restore.sh.
+
+9. Jinja syntax / CSP nonce source gate
+   PASS — 63 templates parsed.
+   PASS — 25 <script> tags inspected; 0 without nonce.
+
+10. v1.19.0 source/security/observability tests that do not require missing external packages
+    `pytest -q -ra tests/test_v1190_security_observability.py -k 'not operational_scanner'`
+    RESULT: 10 passed, 1 skipped.
+    The one skipped test is the py_webauthn runtime-contract test because the build environment does not contain the `webauthn` package.
+
+11. Inherited release/source regressions
+    tests/test_v1187_reproducible_baseline.py
+    tests/test_v1186_platform_hardening.py
+    tests/test_v1185_full_release.py
+    tests/test_v1184_ui_hotfix.py
+    tests/test_v1183_admin_form_answers_ui.py
+    tests/test_v1181_source_gates.py
+    RESULT: 32 passed.
+
+12. Release-tree whitespace check
+    PASS — `git diff --no-index --check` emitted no whitespace errors. Exit status 1 was only because source and release trees intentionally differ.
+
+13. Patch generation/apply verification
+    PASS — the generated v1.18.7 -> v1.19.0 patch applies cleanly to an independent baseline snapshot.
+    PASS — the patch-applied tree is byte/content-equivalent to the release tree (excluding .git) and passes dependency lock, release consistency, production preflight, compileall and JavaScript smoke.
+
+ROOT-CAUSE FIX FOUND DURING FINAL QA
+The first draft of migration 0016 represented `credential_id_b64` as a UniqueConstraint plus a separate non-unique index, while SQLAlchemy `mapped_column(unique=True, index=True)` represents it as one UNIQUE index. This would risk a schema-drift gate failure. The migration was corrected to create `ix_web_authn_credentials_credential_id_b64` with `unique=True`, matching canonical model metadata. Tests were rerun after the fix.
+
+DEFERRED — REQUIRED BEFORE MERGE/PRODUCTION
+1. Clean locked dependency installation (`pip install -r requirements-dev.lock`).
+   Reason: this sandbox has no package-index/network access for missing packages.
+
+2. Ruff critical/static gate.
+   Reason: `ruff` executable/package is not installed in this sandbox.
+   GitHub command: `ruff check --select E9,F63,F7,F82 app scripts tests`.
+
+3. Blocking pip-audit.
+   Reason: `pip-audit` is not installed in this sandbox.
+   GitHub command: `pip-audit -r requirements.lock --progress-spinner=off`.
+
+4. `pip check` against the complete locked environment.
+   Reason: the complete release dependency set cannot be installed locally here.
+
+5. Full non-integration pytest suite.
+   Attempted, but collection stopped because this sandbox lacks `aiogram`.
+   Affected collection included tests/test_reliability.py, tests/test_v11721_duplicate_management.py and tests/test_v1181_operational_integrity.py.
+   This is DEFERRED, not PASS.
+
+6. WebAuthn library runtime-contract test.
+   Local test was skipped because `webauthn` is unavailable. It must run after the locked dependency install in GitHub Actions.
+
+7. v1.19 Operational Intelligence persistence test.
+   Attempted separately; fixture setup stopped because this sandbox lacks `aiosqlite`.
+   This is DEFERRED, not PASS.
+
+8. PostgreSQL 18 integration suite.
+   Reason: Docker and `asyncpg` are unavailable in this sandbox.
+
+9. Alembic previous-production upgrade on PostgreSQL 18.
+   Required path: 20260925_0015 -> 20261007_0016.
+
+10. Latest-revision downgrade/upgrade roundtrip on PostgreSQL 18.
+    Required: 0016 -> 0015 -> 0016.
+
+11. Runtime schema-drift check against a real PostgreSQL 18 database.
+
+12. Fresh backup capture + real PostgreSQL 18 restore verification.
+
+13. Heroku release/startup smoke.
+
+14. Post-deploy `/health/ready`, `/health/live`, and deployed version == 1.19.0.
+
+15. Manual passkey smoke on the real HTTPS origin:
+    enrollment with current-password step-up -> logout -> passkey login -> Telegram OTP fallback -> revoke -> revoked key rejected.
+
+PRODUCTION GATE
+v1.19.0 must NOT be considered production unless ALL deferred GitHub/Heroku checks pass and the user explicitly confirms successful deployment.

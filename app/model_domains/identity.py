@@ -197,6 +197,25 @@ class WebStaffAccount(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     sessions: Mapped[list["WebAdminSession"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    passkeys: Mapped[list["WebAuthnCredential"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+
+class WebAuthnCredential(Base):
+    __tablename__ = "web_authn_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("web_staff_accounts.id"), index=True)
+    credential_id_b64: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
+    public_key: Mapped[bytes] = mapped_column(LargeBinary)
+    sign_count: Mapped[int] = mapped_column(Integer, default=0)
+    device_type: Mapped[str] = mapped_column(String(48), default="")
+    backed_up: Mapped[bool] = mapped_column(Boolean, default=False)
+    transports_json: Mapped[str] = mapped_column(Text, default="[]")
+    label: Mapped[str] = mapped_column(String(120), default="Passkey")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+    account: Mapped[WebStaffAccount] = relationship(back_populates="passkeys")
 
 class WebAdminSession(Base):
     __tablename__ = "web_admin_sessions"

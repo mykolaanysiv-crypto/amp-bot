@@ -227,7 +227,7 @@
   {% endif %}
 </section>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (function(){
   const audience = document.getElementById('audienceType');
   const extras = Array.from(document.querySelectorAll('.broadcast-extra'));

@@ -35,7 +35,7 @@ def test_forms_preserve_content_and_render_localized_errors():
     for token in ('fetch(form.action', 'new FormData(form)', 'response.redirected', 'response.status >= 500',
                   'checkEventDate', 'setCustomValidity', 'amp-form-errors', 'invalid', 'textContent'):
         assert token in source
-    assert 'admin_forms.js?v=1.18.7' in read('app/web/templates/base.html')
+    assert 'admin_forms.js?v=1.19.0' in read('app/web/templates/base.html')
     assert 'record_field_changes' in read('app/web/event_routes/mutations.py')
 
 

@@ -536,6 +536,45 @@ def main() -> None:
     if "max_body_bytes=settings.web_max_request_bytes" not in factory_v1186_source:
         raise SystemExit("v1.18.7 upload preflight failed: request limit not wired into web factory")
 
+    # v1.19.0 Security & Observability 2.0 release guards. These stay source-level
+    # so a broken security composition fails before Heroku deployment.
+    if APP_VERSION != "1.19.0":
+        raise SystemExit(f"v1.19.0 preflight failed: APP_VERSION={APP_VERSION}")
+    passkeys_source = (root / "app" / "passkeys.py").read_text(encoding="utf-8")
+    auth_source = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
+    rate_limit_source = (root / "app" / "rate_limit.py").read_text(encoding="utf-8")
+    security_center_source = (root / "app" / "security_center.py").read_text(encoding="utf-8")
+    observability_snapshot_source = (root / "app" / "observability_snapshot.py").read_text(encoding="utf-8")
+    governance_source = (root / "app" / "governance.py").read_text(encoding="utf-8")
+    migration_v1190 = (root / "migrations" / "versions" / "20261007_0016_security_observability.py").read_text(encoding="utf-8")
+    requirements_lock = (root / "requirements.lock").read_text(encoding="utf-8")
+    for token in ("verify_registration_response", "verify_authentication_response", "UserVerificationRequirement.REQUIRED"):
+        if token not in passkeys_source:
+            raise SystemExit(f"v1.19.0 passkey preflight failed: {token} missing")
+    for token in ("web_passkey_auth_success", "web_passkey_fallback_requested", "web_passkey_stepup_failed", "settings.webauthn_enabled"):
+        if token not in auth_source:
+            raise SystemExit(f"v1.19.0 passkey auth preflight failed: {token} missing")
+    for token in ("login", "mfa", "password_reset", "qr", "sensitive_export", "upload", "public_share"):
+        if f'RateLimitRule("{token}"' not in rate_limit_source:
+            raise SystemExit(f"v1.19.0 rate-limit preflight failed: {token} missing")
+    for token in ("failed_login_24h", "passkey_accounts", "field_key_configured", "build_observability_snapshot"):
+        if token not in security_center_source:
+            raise SystemExit(f"v1.19.0 Security Center preflight failed: {token} missing")
+    for token in ("oldest_queue_age_seconds", "recent_failed_jobs_24h", "storage_megabytes", "process_metrics"):
+        if token not in observability_snapshot_source:
+            raise SystemExit(f"v1.19.0 observability preflight failed: {token} missing")
+    for token in ("worker_stale", "scheduler_stale", "login_failures_high", "db_pool_pressure", "integrity_anomaly"):
+        if token not in governance_source:
+            raise SystemExit(f"v1.19.0 operational intelligence preflight failed: {token} missing")
+    for token in ("web_authn_credentials", 'down_revision: Union[str, None] = "20260925_0015"', "def downgrade"):
+        if token not in migration_v1190:
+            raise SystemExit(f"v1.19.0 migration preflight failed: {token} missing")
+    if "webauthn==3.0.1" not in requirements_lock:
+        raise SystemExit("v1.19.0 dependency preflight failed: webauthn is not exactly locked")
+    for token in ("content-security-policy", "content-security-policy-report-only", "csp_nonce"):
+        if token not in security_middleware_source:
+            raise SystemExit(f"v1.19.0 CSP preflight failed: {token} missing")
+
     # v1.18.7 reproducibility/documentation gates are stdlib-only and must
     # fail the release before application dependencies or deployment can drift.
     from scripts.dependency_lock_check import validate_dependency_locks
@@ -543,7 +582,7 @@ def main() -> None:
     validate_dependency_locks(root)
     validate_release_consistency(root)
 
-    for template_name in ("base.html", "login.html", "login_2fa.html"):
+    for template_name in ("base.html", "login.html", "login_2fa.html", "login_passkey.html", "account_security.html"):
         template_source = (root / "app" / "web" / "templates" / template_name).read_text(encoding="utf-8")
         if f"v={APP_VERSION}" not in template_source:
             raise SystemExit(f"v1.18.7 version preflight failed: cache token mismatch in {template_name}")

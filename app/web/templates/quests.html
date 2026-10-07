@@ -80,7 +80,7 @@
   <section class="card"><p class="empty">Квестів ще немає.</p></section>
 {% endfor %}
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (function(){
   function toggle(form){
     const type=form.querySelector('[name="quest_type"]'), mode=form.querySelector('[name="completion_mode"]');

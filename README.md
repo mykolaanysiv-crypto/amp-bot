@@ -1,38 +1,55 @@
-# AMP XP / «АМПасадори» v1.18.7
+# AMP XP / «АМПасадори» v1.19.0
 
 Production-oriented Telegram + FastAPI + PostgreSQL system for the AMP participant programme.
 
-Current release: **Reproducible Production Baseline**. v1.18.7 freezes the post-v1.18.6 production baseline, adds exact direct dependency locks, blocking dependency audit, documentation/release consistency gates and removes safe deprecation warnings without changing business semantics or the database schema.
+Current release: **Security & Observability 2.0**. v1.19.0 builds on the reproducible v1.18.7 baseline and adds staff passkeys/WebAuthn, a centralized Security Center, server-side rate limiting, staged Content Security Policy and expanded operational telemetry without changing participant, XP, attendance or gamification semantics.
 
 ## Runtime
 - Python 3.13
 - Aiogram 3.31.0
 - FastAPI 0.142.2 + Jinja2 3.1.6
-- SQLAlchemy 2.1.3 async
-- PostgreSQL 18 for CI/local baseline/restore verification; SQLite remains supported for local/test scenarios
-- Alembic head: `20260925_0015`
+- SQLAlchemy async
+- PostgreSQL 18 baseline for CI/local/restore verification
+- Alembic head: `20261007_0016`
 
-## Reproducible dependency layout
-- `requirements.in` — human-maintained production intent/ranges.
-- `requirements.lock` — exact direct production pins installed by Docker and audited by CI.
-- `requirements.txt` — Heroku-compatible wrapper to `requirements.lock`.
-- `requirements-dev.in` — human-maintained development/test intent.
-- `requirements-dev.lock` — exact direct development pins plus the production lock.
-- `requirements-dev.txt` — compatibility wrapper to the development lock.
+## Security & Observability 2.0
+- WebAuthn/passkeys for authenticated staff; user verification required.
+- Passkey is used as the preferred second factor when configured; Telegram OTP remains fallback/recovery and remains mandatory fallback for superadmin policy.
+- Passkey enrollment requires the current password as step-up confirmation.
+- Central Security Center for login failures, locks, active/stale sessions, MFA/passkey coverage, sensitive audit activity, encryption configuration and operational telemetry.
+- Server-side rate limits for login/MFA/passkey management/password reset/QR/sensitive exports/uploads/public share routes.
+- Enforced CSP origin allow-list plus nonce-first Report-Only policy for migration away from legacy inline handlers.
+- Bounded in-process HTTP/DB/export/Telegram telemetry with no request bodies, SQL text, parameters or participant identifiers.
+- Notification queue age/failures, DB pool utilization, scheduler lag/failures, verified backup age, media storage usage.
+- Operational advisory issues for stale worker/schedulers, failed notifications, old backup, missing reminders, low feedback, login failure spikes, DB pool pressure and high-risk integrity anomalies.
+- No automatic destructive response to operational alerts.
 
-`python -m scripts.dependency_lock_check` verifies exact pins and lock/input coverage. `python -m scripts.release_consistency_check` verifies version, Alembic head, static cache tokens, release docs, critical runtime files and lock fingerprints.
+## Passkey production configuration
+Set an HTTPS origin matching the actual production host:
 
-## v1.18.7 safety baseline
-- Python 3.13 aligned across `.python-version`, CI and Docker.
-- PostgreSQL 18 aligned for CI, local compose baseline and restore verification using the public ECR mirror.
-- Fresh Heroku PGBackup is restore-verified before deployment.
-- Post-deploy `/health/ready`, `/health/live` and version smoke remain mandatory.
-- Dedicated `FIELD_ENCRYPTION_KEY` remains mandatory in production with previous-key migration support.
-- Verified-backup freshness policy remains 36 h warning / 48 h stale by default.
-- Server-side admin request-size protection and orphan `MediaAsset` integrity detection remain enabled.
-- `pip-audit` is a blocking release gate in v1.18.7.
-- No new Alembic migration and no XP/attendance/gamification semantics changes.
+```text
+WEBAUTHN_ORIGIN=https://YOUR_APP_HOST
+WEBAUTHN_RP_ID=YOUR_APP_HOST
+WEBAUTHN_RP_NAME=АМПасадори / АМП XP
+```
 
-See `RELEASE_V1187_UA.md`, `BUILD_MANIFEST_V1187.txt`, `TEST_REPORT_V1187.txt`, `HEROKU_DEPLOY.md`, `SECURITY.md` and `XP_BALANCE.md`.
+If production has no valid HTTPS WebAuthn origin, the application remains backward compatible: passkey enrollment/authentication is disabled and existing Telegram OTP flow remains available. Secrets are never displayed in Security Center.
 
-A ZIP/local test result is not proof that production has been updated. Production v1.18.7 is confirmed only after the GitHub/Heroku deploy gate and health/version smoke pass.
+## Dependencies
+- `requirements.in` — production intent.
+- `requirements.lock` — exact direct production pins; includes `webauthn==3.0.1` and `cryptography==50.0.2`.
+- `requirements-dev.lock` — exact direct development/test pins plus production lock.
+- `pip-audit` remains a blocking CI gate.
+
+## Database
+v1.19.0 adds one additive migration:
+
+```text
+20260925_0015 -> 20261007_0016
+```
+
+It creates `web_authn_credentials`. No participant/XP/attendance tables are altered.
+
+See `RELEASE_V1190_UA.md`, `AUDIT_V1190_BASELINE_UA.md`, `BUILD_MANIFEST_V1190.txt`, `TEST_REPORT_V1190.txt`, `COMMANDS_V1190.txt`, `HEROKU_DEPLOY.md` and `SECURITY.md`.
+
+A ZIP or local test result is not proof of production. v1.19.0 becomes production only after green GitHub production gates, restore-verified backup, successful Heroku release and post-deploy health/version verification.

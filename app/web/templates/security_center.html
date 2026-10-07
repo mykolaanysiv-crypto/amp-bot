@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Security Center • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Security Center</b></nav>
+<div class="page-head security-page-head"><div><span class="eyebrow">SECURITY & OBSERVABILITY 2.0</span><h1>🛡 Security Center</h1><p>Єдине місце для стану входів, сесій, passkeys, чутливих дій, шифрування та production-telemetry. Значення секретів ніколи не показуються.</p></div></div>
+
+{% if snapshot.warnings %}
+<section class="card security-card">
+  <div class="section-title"><div><h2>⚠️ Потребує уваги</h2></div><span class="count-badge">{{ snapshot.warnings|length }}</span></div>
+  <div class="ops-list">
+  {% for item in snapshot.warnings %}<div class="alert {{ 'danger' if item.severity=='critical' else 'warning' if item.severity=='high' else 'info' }}"><b>{{ item.title }}</b><br><small>{{ item.detail }}</small></div>{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<div class="kpi-grid">
+  <div class="card kpi"><span>Невдалі входи · 24 год</span><b>{{ snapshot.summary.failed_login_24h }}</b></div>
+  <div class="card kpi"><span>Невдалі MFA · 24 год</span><b>{{ snapshot.summary.failed_mfa_24h }}</b></div>
+  <div class="card kpi"><span>Заблоковані акаунти</span><b>{{ snapshot.summary.locked_accounts }}</b></div>
+  <div class="card kpi"><span>Активні сесії</span><b>{{ snapshot.summary.active_sessions }}</b><small>stale: {{ snapshot.summary.stale_sessions }}</small></div>
+  <div class="card kpi"><span>Staff із passkey</span><b>{{ snapshot.summary.passkey_accounts }}/{{ snapshot.summary.staff_accounts }}</b></div>
+  <div class="card kpi"><span>Telegram 2FA coverage</span><b>{{ snapshot.summary.telegram_2fa_accounts }}/{{ snapshot.summary.staff_accounts }}</b></div>
+</div>
+
+<div class="security-grid">
+  <section class="card security-card">
+    <div class="section-title"><div><h2>🔐 Шифрування</h2><p>Показується тільки стан конфігурації.</p></div></div>
+    <div class="security-facts">
+      <div><span>FIELD_ENCRYPTION_KEY</span><b>{{ '✅ SET' if snapshot.encryption.field_key_configured else '❌ MISSING' }}</b></div>
+      <div><span>Окремий від session secret</span><b>{{ '✅ Так' if snapshot.encryption.field_key_separate else '❌ Ні' }}</b></div>
+      <div><span>Previous keys для rotation</span><b>{{ '✅ Налаштовано' if snapshot.encryption.previous_keys_configured else '— Немає' }}</b></div>
+      <div><span>Passkeys / WebAuthn</span><b>{{ '✅ Активні' if snapshot.passkeys.enabled else '⚠️ Не активовані' }}</b></div>
+      <div><span>WebAuthn HTTPS origin</span><b>{{ '✅ Так' if snapshot.passkeys.https_origin else '— Ні' }}</b></div>
+      <div><span>CSP</span><b>✅ Enforced + nonce Report-Only</b></div>
+    </div>
+  </section>
+  <section class="card security-card">
+    <div class="section-title"><div><h2>🗄 Backup</h2></div></div>
+    <div class="security-facts">
+      <div><span>Статус</span><b>{{ snapshot.telemetry.backup.status }}</b></div>
+      <div><span>Вік</span><b>{{ snapshot.telemetry.backup.age_hours if snapshot.telemetry.backup.age_hours is not none else '—' }} год</b></div>
+      <div><span>Перевірено</span><b>{{ snapshot.telemetry.backup.verified_at.strftime('%d.%m.%Y %H:%M') if snapshot.telemetry.backup.verified_at else '—' }}</b></div>
+    </div>
+  </section>
+</div>
+
+<section class="card security-card">
+  <div class="section-title"><div><h2>📈 Observability · останні 15 хв</h2></div></div>
+  {% set pm = snapshot.telemetry.process_metrics %}
+  <div class="kpi-grid">
+    <div class="kpi"><span>HTTP p50</span><b>{{ pm.http.p50_ms if pm.http.p50_ms is not none else '—' }} ms</b></div>
+    <div class="kpi"><span>HTTP p95</span><b>{{ pm.http.p95_ms if pm.http.p95_ms is not none else '—' }} ms</b></div>
+    <div class="kpi"><span>DB query p95</span><b>{{ pm.db.p95_ms if pm.db.p95_ms is not none else '—' }} ms</b></div>
+    <div class="kpi"><span>DB pool</span><b>{{ snapshot.telemetry.pool.utilization_pct if snapshot.telemetry.pool.utilization_pct is not none else '—' }}%</b></div>
+    <div class="kpi"><span>Notification queue</span><b>{{ snapshot.telemetry.notifications.queued }}</b><small>failed: {{ snapshot.telemetry.notifications.failed }}</small></div>
+    <div class="kpi"><span>Queue age</span><b>{{ snapshot.telemetry.notifications.oldest_queue_age_seconds if snapshot.telemetry.notifications.oldest_queue_age_seconds is not none else '—' }} s</b></div>
+    <div class="kpi"><span>Scheduler lag max</span><b>{{ snapshot.telemetry.schedulers.max_lag_seconds if snapshot.telemetry.schedulers.max_lag_seconds is not none else '—' }} s</b></div>
+    <div class="kpi"><span>Telegram API failures</span><b>{{ pm.telegram_api_failures }}</b></div>
+    <div class="kpi"><span>Export p95</span><b>{{ pm.exports.p95_ms if pm.exports.p95_ms is not none else '—' }} ms</b></div>
+    <div class="kpi"><span>Media storage</span><b>{{ snapshot.telemetry.media.storage_megabytes }} MB</b><small>{{ snapshot.telemetry.media.assets }} assets</small></div>
+  </div>
+</section>
+
+{% macro audit_table(title, rows) -%}
+<section class="card security-card">
+  <div class="section-title"><div><h2>{{ title }}</h2></div><span class="count-badge">{{ rows|length }}</span></div>
+  {% if rows %}<div class="table-wrap"><table><thead><tr><th>Час</th><th>Хто</th><th>Дія</th><th>Деталі</th></tr></thead><tbody>
+  {% for row in rows %}<tr><td>{{ row.created_at.strftime('%d.%m %H:%M') }}</td><td>{{ row.actor_label }}</td><td><code>{{ row.action }}</code></td><td>{{ row.details[:220] }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="muted">Подій немає.</p>{% endif %}
+</section>
+{%- endmacro %}
+
+{{ audit_table('📤 Чутливі експорти', snapshot.sensitive_exports) }}
+{{ audit_table('👁 Доступ до приватних медіа', snapshot.sensitive_media) }}
+{{ audit_table('🧩 Зміни прав доступу', snapshot.permission_changes) }}
+{{ audit_table('🚨 Критичні security events', snapshot.critical_events) }}
+{% endblock %}

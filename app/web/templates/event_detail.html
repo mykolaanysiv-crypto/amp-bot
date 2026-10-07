@@ -350,7 +350,7 @@
   </table>
 </section>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function requireAttendanceOverride(form) {
   const reason = window.prompt('Вкажіть причину ручного винятку (мінімум 5 символів). Дія буде записана в аудит:');
   if (!reason || reason.trim().length < 5) {

@@ -23,6 +23,9 @@ async def _operational_scan_scheduler(bot, db: Database, settings) -> None:
                             session,
                             backup_max_age_hours=settings.backup_max_age_hours,
                             backup_warning_age_hours=settings.backup_warning_age_hours,
+                            worker_stale_seconds=settings.worker_stale_seconds,
+                            startup_grace_seconds=settings.health_startup_grace_seconds,
+                            db_pool_status=db.pool_status(),
                         )
                         await session.commit()
                         log.info("Operational scan completed; active signals=%s", seen)

@@ -8,6 +8,7 @@ from ..observability import RequestContextMiddleware
 from .dependencies import db, settings
 from .lifespan import lifespan
 from .security_middleware import AdminSessionValidationMiddleware, CSRFMiddleware, SecurityHeadersMiddleware
+from ..rate_limit import RateLimitMiddleware
 from . import auth_routes, health_routes, media_routes, event_routes
 from .routes import (
     dashboard as dashboard_routes,
@@ -33,6 +34,7 @@ from .routes import (
     quick_xp as quick_xp_routes,
     operations as operations_routes,
     governance as governance_routes,
+    security_center as security_center_routes,
 )
 
 
@@ -43,7 +45,7 @@ def create_app() -> FastAPI:
     lifespan/background work and route modules outside the composition root.
     """
     app = FastAPI(title="АМПасадори — панель керування", lifespan=lifespan)
-    app.add_middleware(RequestContextMiddleware, service="web")
+    app.add_middleware(RateLimitMiddleware)
     # SessionMiddleware is intentionally added after the inner security layers
     # so the signed session is available to validation/CSRF middleware.
     app.add_middleware(AdminSessionValidationMiddleware, db=db)
@@ -56,6 +58,9 @@ def create_app() -> FastAPI:
         max_age=60 * 60 * 24 * 30,
     )
     app.add_middleware(SecurityHeadersMiddleware, hsts=settings.cookie_secure)
+    # Added last so request-id and latency telemetry wrap CSRF/rate-limit/auth
+    # responses as well as normal route execution.
+    app.add_middleware(RequestContextMiddleware, service="web")
     app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
     for router in (health_routes.router, media_routes.router, auth_routes.router):
@@ -86,6 +91,7 @@ def create_app() -> FastAPI:
         quick_xp_routes,
         operations_routes,
         governance_routes,
+        security_center_routes,
     ):
         app.include_router(module.router)
     return app

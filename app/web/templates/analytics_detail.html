@@ -62,8 +62,8 @@
 
 <div class="analytics-privacy-note analytics-detail-note"><span>🔐</span><div><b>{{ 'Повна агрегована статистика' if analytics.sensitive_counts_visible else 'Агрегована аналітика' }}</b><p>{{ analytics.privacy_note }}</p></div></div>
 <p class="analytics-generated">Сформовано: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script>
+<script nonce="{{ request.state.csp_nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
 const metric={{ metric|tojson }};
 if(metric.kind!=='heatmap'){
   const palette=['#06AEBB','#6C63FF','#2FAE75','#F3A63A','#E86C8D','#5C86D9','#8C6CCF','#42A5A5','#D47B45','#6D8C75','#A0A7B4'];

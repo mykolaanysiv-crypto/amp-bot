@@ -323,5 +323,5 @@
   </section>{% endif %}
 </div>
 
-<script>document.addEventListener('DOMContentLoaded',()=>{const root=document.querySelector('[data-p360-tabs]');if(!root)return;root.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{root.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.p360-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===b.dataset.tab));}));});</script>
+<script nonce="{{ request.state.csp_nonce }}">document.addEventListener('DOMContentLoaded',()=>{const root=document.querySelector('[data-p360-tabs]');if(!root)return;root.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{root.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.p360-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===b.dataset.tab));}));});</script>
 {% endblock %}

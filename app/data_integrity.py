@@ -231,7 +231,7 @@ async def _referenced_database_media_ids(session) -> set[int]:
                     referenced.add(int(tail))
     return referenced
 
-async def scan_data_integrity(session) -> dict:
+async def scan_data_integrity(session, *, lifetime_rows: list[tuple] | None = None) -> dict:
     now = clock.storage_utc()
     users = list((await session.scalars(select(User).where(User.permanent_deleted_at.is_(None)))).all())
     issues: list[IntegrityIssue] = []
@@ -292,12 +292,13 @@ async def scan_data_integrity(session) -> dict:
             ], "/admin/audit"
         ))
 
-    lifetime_rows = (await session.execute(
-        select(User.id, User.full_name, User.wallet_xp, func.coalesce(func.sum(XPTransaction.amount), 0))
-        .outerjoin(XPTransaction, XPTransaction.user_id == User.id)
-        .where(User.permanent_deleted_at.is_(None))
-        .group_by(User.id)
-    )).all()
+    if lifetime_rows is None:
+        lifetime_rows = (await session.execute(
+            select(User.id, User.full_name, User.wallet_xp, func.coalesce(func.sum(XPTransaction.amount), 0))
+            .outerjoin(XPTransaction, XPTransaction.user_id == User.id)
+            .where(User.permanent_deleted_at.is_(None))
+            .group_by(User.id)
+        )).all()
     wallet_anomalies: list[str] = []
     for uid, name, wallet, lifetime in lifetime_rows:
         wallet_i, lifetime_i = int(wallet or 0), int(lifetime or 0)

@@ -53,7 +53,7 @@
 
 <section class="card survey-respondents-card"><div class="section-title"><div><h2>👥 Респонденти</h2><p class="muted">Відкрийте конкретного респондента, щоб переглянути всі його відповіді.</p></div><span>{{responses|length}}</span></div><div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Дата</th><th>XP</th><th></th></tr></thead><tbody>{% for r,u in responses %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a><small>АМП-{{'%04d'|format(u.id)}}</small></td><td>{{r.completed_at.strftime('%d.%m.%Y %H:%M')}}</td><td>+{{r.xp_awarded}}</td><td><a class="soft-button compact-action" href="/admin/surveys/{{survey.id}}/responses/{{r.id}}">👁 Відповіді</a></td></tr>{% else %}<tr><td colspan="4" class="muted">Відповідей ще немає.</td></tr>{% endfor %}</tbody></table></div></section>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function surveyOptionRows(){return Array.from(document.querySelectorAll('#surveyOptionRows .survey-option-input-row'));}
 function renumberSurveyOptions(){surveyOptionRows().forEach((row,i)=>{row.querySelector('span').textContent=i+1;row.querySelector('input').placeholder='Варіант '+(i+1);});}
 function addSurveyOption(value=''){const box=document.getElementById('surveyOptionRows');const row=document.createElement('div');row.className='survey-option-input-row';row.innerHTML='<span></span><input type="text"><button type="button" class="survey-option-remove" aria-label="Видалити">×</button>';row.querySelector('input').value=value;row.querySelector('button').onclick=()=>removeSurveyOption(row.querySelector('button'));box.appendChild(row);renumberSurveyOptions();row.querySelector('input').focus();}

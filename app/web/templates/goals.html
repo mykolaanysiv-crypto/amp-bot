@@ -77,7 +77,7 @@
   </article>
 {% else %}<section class="card"><p class="empty">Цілей ще немає.</p></section>{% endfor %}
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function toggleGoalUser(){document.getElementById('goalUserField').style.display=document.getElementById('goalScope').value==='personal'?'flex':'none';}
 toggleGoalUser();
 </script>

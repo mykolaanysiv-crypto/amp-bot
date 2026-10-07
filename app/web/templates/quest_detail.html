@@ -50,7 +50,7 @@
     {% if is_superadmin %}<form method="post" action="/admin/quests/{{q.id}}/delete" class="entity-action-form destructive-form" onsubmit="return confirm('ОСТАТОЧНО видалити квест? Учасники отримають повідомлення. Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><label>Причина видалення<textarea name="reason" maxlength="700" required placeholder="Обов’язково вкажіть причину видалення"></textarea></label><button class="danger-btn" type="submit">🗑 Видалити квест</button><small>Видалення доступне лише суперадміністратору. Уже нарахований XP не скасовується.</small></form>{% endif %}
   </div>
 </section>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (function(){
   const form=document.querySelector('form[action$="/update"]');if(!form)return;
   function toggle(){const type=form.querySelector('[name="quest_type"]'), mode=form.querySelector('[name="completion_mode"]');if(!type||!mode)return;
