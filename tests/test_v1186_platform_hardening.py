@@ -18,13 +18,13 @@ def read(rel: str) -> str:
 
 
 def test_v1186_version_runtime_and_cache_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.18.6"
-    assert read("VERSION_CHECK.txt").strip() == "1.18.6"
-    assert '"1.18.6"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.18.7"
+    assert read("VERSION_CHECK.txt").strip() == "1.18.7"
+    assert '"1.18.7"' in read("app/version.py")
     assert "FROM python:3.13-slim" in read("Dockerfile")
     assert read(".python-version").strip() == "3.13"
     for template in ("base.html", "login.html", "login_2fa.html"):
-        assert "v=1.18.6" in read(f"app/web/templates/{template}")
+        assert "v=1.18.7" in read(f"app/web/templates/{template}")
 
 
 def test_v1186_ci_has_js_static_backup_and_postdeploy_gates():
@@ -33,7 +33,7 @@ def test_v1186_ci_has_js_static_backup_and_postdeploy_gates():
         "image: public.ecr.aws/docker/library/postgres:18",
         "node tests/js/test_admin_forms.js",
         "ruff check --select E9,F63,F7,F82",
-        "pip-audit -r requirements.txt",
+        "pip-audit -r requirements.lock",
         "Restore-verify fresh pre-deploy backup",
         "scripts.mark_backup_verified",
         "Post-deploy readiness and version smoke",

@@ -1,0 +1,59 @@
+AMP XP v1.18.7 build verification — 07.10.2026
+
+SOURCE OF TRUTH
+- Source artifact: amp_bot_v1186_release_git.zip
+- Source SHA256: d8c86cff18b2daa285ed14946525f894929f9f0e8b82995b98b66d4b590e34cb
+- Source Git HEAD captured in archive: 7188d8a (hotfix/v1.18.6-heroku-url)
+- Older amp_bot_v1186(1).zip was NOT used as the source of truth.
+
+LOCAL ENVIRONMENT
+- Python: 3.13.5
+- Network access to the Python package index: unavailable
+- Some application/CI dependencies (aiogram, aiosqlite, asyncpg, Ruff, pip-audit) are absent from the sandbox
+
+ACTUALLY EXECUTED — PASS
+- Python compileall: PASS
+- scripts.dependency_lock_check: PASS
+- scripts.release_consistency_check: PASS
+- scripts.production_preflight: PASS
+- Admin JavaScript smoke: PASS
+- Source/release regression suite: PASS (58/58)
+- Jinja2 syntax parse: PASS (61 templates)
+- GitHub CI YAML parse: PASS
+- GitHub backup YAML parse: PASS
+- Dependabot YAML parse: PASS
+- verify_backup_restore.sh shell syntax (bash -n): PASS
+- no-index diff whitespace check against supplied source baseline: PASS at final packaging stage
+- Alembic head static/source verification: PASS, remains 20260925_0015
+- New Alembic migration: NO
+
+ATTEMPTED BUT NOT CLAIMED AS PASS
+- Full non-integration pytest: collection stopped because aiogram is not installed in the sandbox.
+- PostgreSQL integration pytest: collection stopped because aiogram is not installed in the sandbox.
+- schema_drift_check: could not execute because aiosqlite is not installed in the sandbox.
+- alembic current/runtime migration connection: could not execute because aiosqlite is not installed in the sandbox.
+- Ruff: module not installed locally.
+- pip-audit: module not installed locally.
+- Clean install from requirements-dev.lock: cannot be performed because package-index network access is unavailable.
+
+DEFERRED — MANDATORY IN GITHUB ACTIONS BEFORE MERGE/DEPLOY
+- Clean dependency installation from requirements-dev.lock
+- Ruff critical checks
+- blocking pip-audit against requirements.lock
+- pip check
+- full unit/regression suite
+- PostgreSQL 18 integration suite
+- Alembic upgrade from previous production schema
+- Alembic downgrade/upgrade roundtrip
+- real release/startup smoke on PostgreSQL 18
+- alembic current on PostgreSQL 18
+- schema drift check
+- fresh Heroku PGBackup capture
+- real restore verification against isolated PostgreSQL 18
+- Heroku deploy
+- /health/ready + /health/live + version smoke
+- production backup marker verification
+- post-deploy sensitive-field re-encryption
+
+IMPORTANT
+This report does NOT claim v1.18.7 is production. Production status requires a green GitHub Production Gate and successful Heroku post-deploy verification.

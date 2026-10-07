@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from app.model_domains import Idea, RequestCase, RequestMessage, Survey
+from app.time_utils import clock
 from app.domain_services import xp_total
 from app.workflows import award_idea_approval_once, complete_survey_once
 from tests.conftest import create_user
@@ -45,7 +44,7 @@ async def test_case_assignment_reply_close(db):
         session.add(case); await session.flush()
         case.status = "in_progress"
         session.add(RequestMessage(case_id=case.id, sender_type="staff", sender_user_id=staff.id, body="Відповідь"))
-        case.status = "closed"; case.resolved_at = datetime.utcnow(); case.updated_at = datetime.utcnow()
+        case.status = "closed"; case.resolved_at = clock.storage_utc(); case.updated_at = clock.storage_utc()
         await session.commit()
         assert case.assigned_user_id == staff.id
         assert case.status == "closed"

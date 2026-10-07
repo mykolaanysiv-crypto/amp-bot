@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from app.model_domains import BroadcastCampaign, BroadcastRecipient
+from app.time_utils import clock
 from tests.conftest import create_user
 
 
@@ -12,7 +11,7 @@ async def test_broadcast_recipient_retry_state_is_persisted(db):
         recipient = BroadcastRecipient(
             campaign_id=campaign.id, user_id=user.id, recipient_name=user.full_name,
             recipient_tg_id=user.tg_id, status="retry", attempt_count=1,
-            next_retry_at=datetime.utcnow(), error_text="temporary",
+            next_retry_at=clock.storage_utc(), error_text="temporary",
         )
         session.add(recipient); await session.commit()
         assert recipient.status == "retry"

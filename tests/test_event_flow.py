@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.model_domains import UserRole
+from app.time_utils import clock
 from app.domain_services import checkin_for_event, confirm_single_event_attendance, create_event, register_for_event, xp_total
 from tests.conftest import create_user
 
@@ -9,7 +10,7 @@ async def test_event_register_checkin_confirm_awards_xp_once(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=11001, name="Адмін АМП", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=11002)
-        event = await create_event(session, "Тестова подія", "", datetime.utcnow() + timedelta(minutes=30), "АМП", 20, 1.5, admin.id)
+        event = await create_event(session, "Тестова подія", "", clock.storage_utc() + timedelta(minutes=30), "АМП", 20, 1.5, admin.id)
         reg = await register_for_event(session, user.id, event.id)
         assert reg.status == "registered"
         checked_event, state = await checkin_for_event(session, user.id, event.checkin_token)

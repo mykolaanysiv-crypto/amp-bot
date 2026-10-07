@@ -1,0 +1,58 @@
+AMP XP / АМПасадори v1.18.7 — BUILD MANIFEST
+Prepared: 2026-10-07
+Source artifact: amp_bot_v1186_release_git.zip
+Source artifact SHA256: d8c86cff18b2daa285ed14946525f894929f9f0e8b82995b98b66d4b590e34cb
+Source Git HEAD: 7188d8a (hotfix/v1.18.6-heroku-url)
+Version: 1.18.7
+Alembic head: 20260925_0015
+New migration: NO
+Runtime target: Python 3.13
+PostgreSQL target: PostgreSQL 18
+Container registry: public.ecr.aws/docker/library/postgres:18
+
+Dependency locks:
+requirements.lock SHA256: 8ab3ed41512725a4973e851faf08ba46b427703f75a7575c7d2344ffe67e557c
+requirements-dev.lock SHA256: f6389ea8b6e97272c4c5c350b9a1a652aed885dd509ea4d54c79ba6005d43aec
+Heroku wrapper: requirements.txt -> requirements.lock
+CI/dev wrapper: requirements-dev.txt -> requirements-dev.lock
+
+Critical runtime files:
+run.py
+run_web.py
+app/main.py
+app/bot_runtime.py
+app/web/factory.py
+app/web/lifespan.py
+app/domain_services/quest_auto.py
+scripts/heroku_release.py
+scripts/startup_smoke.py
+scripts/schema_drift_check.py
+scripts/verify_backup_restore.sh
+.github/workflows/ci.yml
+.github/workflows/backup.yml
+
+Release files:
+AUDIT_V1187_BASELINE_UA.md
+VERSION.txt
+VERSION_CHECK.txt
+README.md
+HEROKU_DEPLOY.md
+CHANGELOG.md
+RELEASE_V1187_UA.md
+BUILD_MANIFEST_V1187.txt
+TEST_REPORT_V1187.txt
+COMMANDS_V1187.txt
+requirements.in
+requirements.lock
+requirements-dev.in
+requirements-dev.lock
+
+Release invariants:
+- XP/wallet/attendance/QR/gamification semantics unchanged
+- permissions/privacy suppression/idempotency/audit trail unchanged
+- FIELD_ENCRYPTION_KEY hardening preserved
+- restore-verified backup preserved
+- post-deploy health/version smoke preserved
+- upload-size protection preserved
+- orphan MediaAsset detection preserved
+- pip-audit is blocking

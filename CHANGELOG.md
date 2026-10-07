@@ -1,3 +1,12 @@
+## v1.18.7 — Reproducible Production Baseline
+- Зафіксовано post-v1.18.6 production baseline без зміни бізнес-логіки та без нової Alembic-міграції; head залишається `20260925_0015`.
+- Додано `requirements.in` / `requirements.lock` та dev-пару з точними direct pins; Heroku/Docker/CI інсталюють lock-файли, а CI перевіряє consistency.
+- `pip-audit` переведено з advisory у blocking release gate; додано `pip check`. `cryptography` зафіксовано на `50.0.2`.
+- Додано `scripts/dependency_lock_check.py` і `scripts/release_consistency_check.py`: VERSION, README, HEROKU_DEPLOY, Alembic head, static cache tokens, release manifest, lock fingerprints і required runtime files перевіряються автоматично.
+- Docker/local baseline вирівняно на Python 3.13 + PostgreSQL 18 через public ECR mirror; Docker install використовує `requirements.lock`.
+- Додано `path_separator = os` в Alembic config та прибрано безпечні `datetime.utcnow()` / openpyxl copy deprecation у тестах через canonical Clock/stdlib copy.
+- Збережено FIELD_ENCRYPTION_KEY hardening, restore-verified backup, post-deploy health/version smoke, upload protection, orphan media scan, permissions/privacy/idempotency/audit semantics.
+
 ## v1.18.6 — Platform Hardening
 - `cryptography` оновлено до безпечної гілки 50.x (мінімум 50.0.2) після security audit; Fernet API та encrypted-field workflow залишаються сумісними.
 - Runtime вирівняно на Python 3.13 у `.python-version`, GitHub Actions і Docker; CI PostgreSQL переведено на 18.
