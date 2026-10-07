@@ -187,7 +187,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_URL="$(heroku apps:info -a "$HEROKU_APP_NAME" --json | python -c 'import json,sys; print(json.load(sys.stdin).get("web_url", "").rstrip("/"))')"
+          APP_URL="$(heroku apps:info -a "$HEROKU_APP_NAME" --json | python -c 'import json,sys; d=json.load(sys.stdin); a=d.get("app") if isinstance(d.get("app"),dict) else d; print((a.get("web_url") or a.get("web-url") or a.get("webUrl") or d.get("web_url") or d.get("web-url") or d.get("webUrl") or "").rstrip("/"))')"
           test -n "$APP_URL" || { echo "Could not resolve Heroku web URL"; exit 1; }
           echo "Checking $APP_URL"
           READY=0
