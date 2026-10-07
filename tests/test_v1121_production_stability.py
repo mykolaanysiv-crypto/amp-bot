@@ -44,7 +44,7 @@ def test_startup_smoke_covers_required_order_and_real_web_lifespan():
 
 def test_ci_has_postgres18_real_release_gate_and_deploy_dependency():
     src = read(".github/workflows/ci.yml")
-    assert "image: postgres:18" in src
+    assert "image: public.ecr.aws/docker/library/postgres:18" in src
     assert "Real release/startup smoke on PostgreSQL 18" in src
     assert "python -m scripts.heroku_release" in src
     assert "needs: test" in src

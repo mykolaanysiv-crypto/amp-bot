@@ -29,7 +29,7 @@ curl -fL --retry 3 --retry-delay 2 "$BACKUP_URL" -o "$DUMP"
 test -s "$DUMP"
 
 echo "[3/5] Restoring into isolated PostgreSQL verification database..."
-docker run --rm --network host --volume "$DUMP:/backup.dump:ro" postgres:18 pg_restore --no-owner --no-acl --clean --if-exists --exit-on-error -d "$TARGET_URL" /backup.dump
+docker run --rm --network host --volume "$DUMP:/backup.dump:ro" public.ecr.aws/docker/library/postgres:18 pg_restore --no-owner --no-acl --clean --if-exists --exit-on-error -d "$TARGET_URL" /backup.dump
 
 echo "[4/5] Validating restored schema and core tables..."
 TABLE_COUNT="$(psql "$TARGET_URL" -Atc "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE';")"

@@ -1,4 +1,5 @@
 ## v1.18.6 — Platform Hardening
+- `cryptography` оновлено до безпечної гілки 50.x (мінімум 50.0.2) після security audit; Fernet API та encrypted-field workflow залишаються сумісними.
 - Runtime вирівняно на Python 3.13 у `.python-version`, GitHub Actions і Docker; CI PostgreSQL переведено на 18.
 - Deploy gate тепер restore-verify свіжий Heroku PGBackup у ізольованому PostgreSQL 18 до push коду та виконує post-deploy `/health/ready` + `/health/live` + version smoke.
 - `FIELD_ENCRYPTION_KEY` став обов’язковим окремим production secret; додано migration bridge і post-deploy re-encryption legacy sensitive fields.
