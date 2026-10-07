@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        image: public.ecr.aws/docker/library/postgres:18
         env:
           POSTGRES_USER: amp
           POSTGRES_PASSWORD: amp
@@ -100,7 +100,7 @@ jobs:
     environment: production
     services:
       postgres:
-        image: postgres:18
+        image: public.ecr.aws/docker/library/postgres:18
         env:
           POSTGRES_USER: amp
           POSTGRES_PASSWORD: amp
