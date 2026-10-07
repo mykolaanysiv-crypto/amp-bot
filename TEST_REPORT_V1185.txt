@@ -1,0 +1,9 @@
+AMP XP v1.18.5 build verification
+- Production preflight: PASS
+- Python compileall: PASS
+- Release/source regression gates: PASS
+- Backup shell syntax: PASS
+- Jinja template syntax: PASS
+- Full-release quest_auto presence gate: PASS
+- PostgreSQL 18 backup verifier source gate: PASS
+- Full dependency-heavy pytest: deferred to GitHub Actions (local build container lacks aiogram)

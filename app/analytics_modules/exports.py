@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..document_layout import apply_excel_word_wrap
+
 from io import BytesIO
 from math import ceil
 from typing import Any
@@ -45,7 +47,7 @@ def analytics_excel(data: dict[str, Any], metric_key: str | None = None) -> byte
             ("Когорта — АМПасадори", "cohort_ambassadors"),
             ("Повернення за 30 днів, %", "retention_30_pct"),
             ("Повернення за 90 днів, %", "retention_90_pct"),
-            ("Середній engagement score", "engagement_average"),
+            ("Середній індекс залученості", "engagement_average"),
             ("Залученість 75–100", "engagement_high"),
             ("Активні за 30 днів", "active30"),
             ("Активні за 90 днів", "active90"),
@@ -139,6 +141,8 @@ def analytics_excel(data: dict[str, Any], metric_key: str | None = None) -> byte
             width = max(12, min(44, max((len(str(ws.cell(r, col_idx).value or "")) for r in range(1, min(ws.max_row, 100) + 1)), default=12) + 2))
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
+    for ws in wb.worksheets:
+        apply_excel_word_wrap(ws)
     bio = BytesIO()
     wb.save(bio)
     return bio.getvalue()

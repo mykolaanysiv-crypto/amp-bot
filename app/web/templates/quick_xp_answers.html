@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Відповіді · Швидкі XP · АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/quick-xp">Швидкі XP</a><span>›</span><b>Відповіді учасників</b></nav>
+<div class="page-head"><div><span class="eyebrow">РЕЗУЛЬТАТИ ЗАВДАННЯ</span><h1>📋 {{ challenge.title }}</h1><p>{{ kind_label(challenge.kind) }} · {{ total }} учасників із відповідями{% if challenge.kind == 'quiz' %} · враховано також незавершені спроби{% endif %}</p></div><a class="soft-button" href="/admin/quick-xp#quick-xp-{{ challenge.id }}">← До завдання</a></div>
+{% for user in participants %}
+  {% set done = completion_map.get(user.id) %}
+  {% set responses = answer_map.get(user.id, {}) %}
+  <section class="card quick-xp-response-card">
+    <div class="quick-xp-response-heading">
+      <div><h2><a href="/admin/users/{{ user.id }}">{{ user.full_name }}</a></h2><small class="muted">АМП-{{ '%04d'|format(user.id) }}{% if done %} · Завершено {{ done.completed_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}</small></div>
+      <div class="quick-xp-response-badges"><span class="tag {{ 'good' if done else '' }}">{{ 'Виконано' if done else 'У процесі' }}</span>{% if done %}<span class="tag good">+{{ done.xp_awarded }} XP</span>{% endif %}</div>
+    </div>
+    {% if challenge.kind == 'quiz' %}
+      {% for question in questions %}
+      {% set answer = responses.get(question.id) %}
+      {% set options = parse_options(question.options_json) %}
+      <div class="quick-xp-response-question">
+        <b>{{ loop.index }}. {{ question.text }}</b>
+        {% if answer %}
+          <p>Відповідь: <strong>{{ options[answer.answer_option] if answer.answer_option is not none and answer.answer_option >= 0 and answer.answer_option < options|length else 'Варіант більше недоступний' }}</strong></p>
+          <small>{{ '✅ Правильно' if answer.correct else '❌ Неправильно' }} · +{{ answer.xp_awarded }} XP · {{ answer.answered_at.strftime('%d.%m.%Y %H:%M') }}</small>
+        {% else %}<p class="muted">Поки немає відповіді.</p>{% endif %}
+      </div>
+      {% else %}<p class="muted">Питання видалено або поки не додано.</p>{% endfor %}
+    {% elif done %}
+      {% set options = parse_options(challenge.options_json) %}
+      <div class="quick-xp-response-question"><b>{{ challenge.question or 'Відповідь учасника' }}</b>
+      {% if challenge.kind == 'comment' %}<p class="quick-xp-response-text">{{ done.answer_text or 'Порожня відповідь' }}</p>
+      {% else %}<p>Обрано: <strong>{{ options[done.answer_option] if done.answer_option is not none and done.answer_option >= 0 and done.answer_option < options|length else 'Варіант більше недоступний' }}</strong></p>
+      {% if challenge.kind == 'video' and challenge.correct_option is not none %}<small>{{ '✅ Правильно' if done.answer_option == challenge.correct_option else '❌ Неправильно' }}</small>{% endif %}
+      {% endif %}
+      </div>
+    {% endif %}
+  </section>
+{% else %}<section class="card"><p class="muted">На це завдання ще немає відповідей.</p></section>{% endfor %}
+{% if has_prev or has_next %}<nav class="quick-xp-answer-pagination" aria-label="Сторінки відповідей">{% if has_prev %}<a class="soft-button" href="?page={{ page-1 }}">← Попередня</a>{% endif %}<span>Сторінка {{ page }}</span>{% if has_next %}<a class="soft-button" href="?page={{ page+1 }}">Наступна →</a>{% endif %}</nav>{% endif %}
+{% endblock %}

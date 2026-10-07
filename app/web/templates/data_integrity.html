@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Data Integrity Center — АМПасадори{% endblock %}
+{% block title %}Цілісність даних — АМПасадори{% endblock %}
 {% block content %}
 <div class="page-shell data-integrity-page">
-  <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Data Integrity Center</b></div>
+  <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Цілісність даних</b></div>
   <div class="page-heading-row">
     <div>
-      <h1>🧹 Data Integrity Center</h1>
+      <h1>🧹 Центр цілісності даних</h1>
       <p class="muted">Безпечна діагностика профілів, XP, подій, винагород, зв’язків БД і медіа. Система не зливає профілі й не видаляє історичні дані автоматично.</p>
     </div>
     <a class="soft-button" href="/admin/data-integrity">↻ Пересканувати</a>
@@ -13,11 +13,11 @@
 
   {% if notice %}
   <div class="notice success">
-    {% if notice.startswith('retention:') %}Retention cleanup завершено. Видалено службових/тимчасових записів: <b>{{ notice.split(':')[1] }}</b>.
-    {% elif notice.startswith('events:') %}Lifecycle подій оновлено. Змінено записів: <b>{{ notice.split(':')[1] }}</b>.
+    {% if notice.startswith('retention:') %}Очищення за політикою зберігання завершено. Видалено службових/тимчасових записів: <b>{{ notice.split(':')[1] }}</b>.
+    {% elif notice.startswith('events:') %}Життєвий цикл подій оновлено. Змінено записів: <b>{{ notice.split(':')[1] }}</b>.
     {% elif notice.startswith('duplicate:') %}
       {% set parts = notice.split(':') %}
-      Дублікат АМП-{{ '%04d'|format(parts[2]|int) }} видалено. {% if parts[1]=='physical' %}Порожній запис фізично видалено з БД.{% else %}Історичний профіль безпечно архівовано, щоб не втратити XP/attendance/audit-зв’язки.{% endif %} Основний профіль: <b>АМП-{{ '%04d'|format(parts[3]|int) }}</b>.
+      Дублікат АМП-{{ '%04d'|format(parts[2]|int) }} видалено. {% if parts[1]=='physical' %}Порожній запис фізично видалено з БД.{% else %}Історичний профіль безпечно архівовано, щоб не втратити зв’язки XP, відвідувань і журналу аудиту.{% endif %} Основний профіль: <b>АМП-{{ '%04d'|format(parts[3]|int) }}</b>.
     {% else %}Операцію виконано.{% endif %}
   </div>
   {% endif %}
@@ -78,7 +78,7 @@
                       <button class="danger-btn" type="submit">Підтвердити видалення дубліката</button>
                     </form>
                   </details>
-                  {% else %}<small class="muted">Staff-профіль не видаляється тут.</small>{% endif %}
+                  {% else %}<small class="muted">Профіль працівника тут не видаляється.</small>{% endif %}
                 </td>
               </tr>
             {% endfor %}
@@ -92,9 +92,9 @@
   {% endif %}
 
   <section class="panel">
-    <div class="panel-heading"><div><h2>Політика retention</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує privacy-retention scheduler.</p></div></div>
-    <form method="post" action="/admin/data-integrity/retention-cleanup" onsubmit="return confirm('Запустити очищення прострочених чернеток, старих сесій, завершених службових delivery-записів і тимчасових файлів? Історія XP, attendance, audit та профілі не видаляються.')">
-      <button class="soft-button" type="submit">🧹 Запустити retention cleanup</button>
+    <div class="panel-heading"><div><h2>Політика зберігання даних</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує планувальник політики зберігання даних.</p></div></div>
+    <form method="post" action="/admin/data-integrity/retention-cleanup" onsubmit="return confirm('Запустити очищення прострочених чернеток, старих сесій, завершених службових записів доставки і тимчасових файлів? Історія XP, відвідувань, аудиту та профілі не видаляється.')">
+      <button class="soft-button" type="submit">🧹 Запустити очищення за політикою зберігання</button>
     </form>
   </section>
 
@@ -112,7 +112,7 @@
         <div class="integrity-actions">
           {% if issue.href %}<a class="soft-button" href="{{ issue.href }}">Відкрити для перевірки</a>{% endif %}
           {% if issue.action == 'refresh_event_operations' %}
-          <form method="post" action="/admin/data-integrity/refresh-event-operations"><button class="soft-button" type="submit">Оновити lifecycle подій</button></form>
+          <form method="post" action="/admin/data-integrity/refresh-event-operations"><button class="soft-button" type="submit">Оновити життєвий цикл подій</button></form>
           {% endif %}
         </div>
       </section>

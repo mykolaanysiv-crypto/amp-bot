@@ -12,6 +12,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection
 from docx import Document
 
 from .model_domains import Event, EventRegistration, User
+from .document_layout import apply_excel_word_wrap, enable_docx_word_wrap
 from .profile_data import gender_label, media_consent_label
 from .ui_labels import label, event_registration_status_label
 
@@ -161,12 +162,12 @@ def fill_excel_template(raw: bytes, event: Event, registrations: list[tuple[Even
         for idx, (reg, user) in enumerate(registrations, start=1):
             v = _participant_values(idx, reg, user, event, include_sensitive=include_sensitive)
             ws.append([v["number"], v["amp_id"], v["full_name"], v["birth_date"], v["age"], v["settlement"], v["status"], v["checkin_at"], v["confirmed_at"], v["signature"]])
-        out = BytesIO(); wb.save(out); return out.getvalue()
+        out = BytesIO(); [apply_excel_word_wrap(sheet) for sheet in wb.worksheets]; wb.save(out); return out.getvalue()
 
     ws, header_row, mapping = target
     template_row = header_row + 1
     if count == 0:
-        out = BytesIO(); wb.save(out); return out.getvalue()
+        out = BytesIO(); [apply_excel_word_wrap(sheet) for sheet in wb.worksheets]; wb.save(out); return out.getvalue()
 
     # Save row style before insertion. Inserting rows moves donor footers and
     # leaves their design intact. The first row below the header acts as the
@@ -182,7 +183,7 @@ def fill_excel_template(raw: bytes, event: Event, registrations: list[tuple[Even
         for col, field in mapping.items():
             ws.cell(row, col).value = values.get(field, "")
 
-    out = BytesIO(); wb.save(out); return out.getvalue()
+    out = BytesIO(); [apply_excel_word_wrap(sheet) for sheet in wb.worksheets]; wb.save(out); return out.getvalue()
 
 
 def _replace_docx_paragraph(paragraph, event: Event, count: int) -> None:
@@ -250,11 +251,11 @@ def fill_docx_template(raw: bytes, event: Event, registrations: list[tuple[Event
             vals = [v["number"], v["amp_id"], v["full_name"], v["age"], v["settlement"], v["status"], v["confirmed_at"], v["signature"]]
             for i, value in enumerate(vals):
                 row.cells[i].text = "" if value is None else str(value)
-        out = BytesIO(); doc.save(out); return out.getvalue()
+        out = BytesIO(); enable_docx_word_wrap(doc); doc.save(out); return out.getvalue()
 
     table, header_idx, mapping = target
     if not registrations:
-        out = BytesIO(); doc.save(out); return out.getvalue()
+        out = BytesIO(); enable_docx_word_wrap(doc); doc.save(out); return out.getvalue()
 
     # Use the first row after the header as a styling template. If the donor
     # supplied headers only, Word creates a new row as a fallback.
@@ -276,7 +277,7 @@ def fill_docx_template(raw: bytes, event: Event, registrations: list[tuple[Event
             if col < len(row.cells):
                 _set_docx_cell_text(row.cells[col], values.get(field, ""))
 
-    out = BytesIO(); doc.save(out); return out.getvalue()
+    out = BytesIO(); enable_docx_word_wrap(doc); doc.save(out); return out.getvalue()
 
 
 def fill_registration_template(
