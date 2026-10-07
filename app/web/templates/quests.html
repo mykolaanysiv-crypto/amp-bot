@@ -23,7 +23,10 @@
     <label class="span2">Назва<input name="title" required></label>
     <label>Тип<select name="quest_type"><option value="individual">Індивідуальний</option><option value="team">Командний</option></select></label>
     <label>Нагорода, XP<input name="xp_reward" type="number" min="5" max="35" value="20"><small>Індивідуальний: 10–35 XP. Командний: 5–20 XP кожному.</small></label>
-    <label>Ціль<input name="target_value" type="number" value="1" min="1"></label>
+    <label class="quest-team-target">Спільна ціль команди<input name="target_value" type="number" value="1" min="1"></label>
+<label class="quest-automatic-mode">Спосіб підтвердження<select name="completion_mode"><option value="manual" selected>Координатором вручну</option><option value="qr_on_time" >Автоматично за своєчасною QR-відміткою</option></select></label>
+<label class="quest-auto-field">Подія для QR-квесту<select name="event_id"><option value="0">Оберіть подію</option>{% for event in event_options %}<option value="{{event.id}}" >{{event.title}} · {{event.starts_at.strftime('%d.%m.%Y %H:%M')}}</option>{% endfor %}</select></label>
+<label class="quest-auto-field">Допустиме запізнення, хвилин<input name="punctuality_grace_minutes" type="number" min="0" max="120" value="0"><small>0 — зараховується лише відмітка не пізніше початку події. Відвідуваність і квест мають окремі нагороди.</small></label>
     <label class="span2 upload-field">Фото<input name="photo" type="file" accept="image/*"><small>До 20 МБ</small></label>
     {{ optional_datetime_fields('deadline') }}
     <label class="check-line"><input type="checkbox" name="active" checked> Активний</label>
@@ -46,7 +49,7 @@
       <h3>{{q.title}}</h3>
       <div class="entity-card-info">
         <span>⚡ {{q.xp_reward}} XP</span><span>👥 {{participant_counts.get(q.id,0)}} уч.</span><span>✅ {{completed_counts.get(q.id,0)}} виконали</span><span>👁 {{view_stats.get(q.id, {}).get('views', 0)}} перегл.</span>
-        {% if q.quest_type=='team' %}<span>🎯 {{q.progress_value}} / {{q.target_value}}</span>{% endif %}
+        {% if q.quest_type=='team' %}<span>🎯 {{q.progress_value}} / {{q.target_value}}</span>{% elif q.completion_mode=='qr_on_time' %}<span>⏱️ Автоматично за QR</span>{% endif %}
       </div>
       {% if q.cancelled_at %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{q.cancellation_reason or 'не зазначено'}}</p>{% elif q.description %}<p class="entity-card-description">{{q.description[:180]}}{{'…' if q.description|length > 180 else ''}}</p>{% endif %}
       {% if q.quest_type=='team' %}<div class="progress"><i style="width:{{ [100,(q.progress_value*100/q.target_value)|int]|min }}%"></i></div>{% endif %}
@@ -58,7 +61,10 @@
             <label class="span2">Назва<input name="title" value="{{q.title}}" required></label>
             <label>Тип<select name="quest_type"><option value="individual" {% if q.quest_type=='individual' %}selected{% endif %}>Індивідуальний</option><option value="team" {% if q.quest_type=='team' %}selected{% endif %}>Командний</option></select></label>
             <label>XP<input name="xp_reward" type="number" min="5" max="35" value="{{q.xp_reward}}"></label>
-            <label>Ціль<input name="target_value" type="number" min="1" value="{{q.target_value}}"></label>
+            <label class="quest-team-target">Спільна ціль команди<input name="target_value" type="number" min="1" value="{{q.target_value}}"></label>
+<label class="quest-automatic-mode">Спосіб підтвердження<select name="completion_mode"><option value="manual" {% if q.completion_mode!='qr_on_time' %}selected{% endif %}>Координатором вручну</option><option value="qr_on_time" {% if q.completion_mode=='qr_on_time' %}selected{% endif %}>Автоматично за своєчасною QR-відміткою</option></select></label>
+<label class="quest-auto-field">Подія для QR-квесту<select name="event_id"><option value="0">Оберіть подію</option>{% for event in event_options %}<option value="{{event.id}}" {% if q.event_id==event.id %}selected{% endif %}>{{event.title}} · {{event.starts_at.strftime('%d.%m.%Y %H:%M')}}</option>{% endfor %}</select></label>
+<label class="quest-auto-field">Допустиме запізнення, хвилин<input name="punctuality_grace_minutes" type="number" min="0" max="120" value="{{q.punctuality_grace_minutes or 0}}"><small>0 — зараховується лише відмітка не пізніше початку події. Відвідуваність і квест мають окремі нагороди.</small></label>
             {{ optional_datetime_fields('deadline', q.ends_at) }}
             {% if q.cancelled_at or q.status in ['cancelled','completed','postponed'] %}<div class="entity-action-locked"><b>{{lifecycle_status_label('cancelled' if q.cancelled_at else q.status)}}</b><span>{% if q.status=='postponed' and not q.cancelled_at %}Перенесення керується на детальній сторінці.{% else %}Повторна активація через звичайне редагування вимкнена.{% endif %}</span></div>{% else %}<label class="check-line"><input type="checkbox" name="active" {% if q.active %}checked{% endif %}> Активний</label>{% endif %}
             <label class="span2 upload-field">Нове фото<input name="photo" type="file" accept="image/*"></label>
@@ -74,4 +80,22 @@
   <section class="card"><p class="empty">Квестів ще немає.</p></section>
 {% endfor %}
 </div>
+<script>
+(function(){
+  function toggle(form){
+    const type=form.querySelector('[name="quest_type"]'), mode=form.querySelector('[name="completion_mode"]');
+    if(!type||!mode)return;
+    const team=type.value==='team';
+    if(team)mode.value='manual';
+    for(const el of form.querySelectorAll('.quest-team-target'))el.hidden=!team;
+    for(const el of form.querySelectorAll('.quest-automatic-mode'))el.hidden=team;
+    for(const el of form.querySelectorAll('.quest-auto-field'))el.hidden=team||mode.value!=='qr_on_time';
+    const ev=form.querySelector('[name="event_id"]');if(ev)ev.required=!team&&mode.value==='qr_on_time';
+  }
+  for(const form of document.querySelectorAll('form[action$="/create"],form[action$="/update"]')){
+    if(!form.querySelector('[name="quest_type"]'))continue;
+    form.addEventListener('change',()=>toggle(form));toggle(form);
+  }
+})();
+</script>
 {% endblock %}

@@ -3511,3 +3511,185 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 }
 /* v1.18.0 operational intelligence */
 .ops-grid{display:grid;gap:16px}.ops-card{border-left:5px solid var(--line,#d8dee9)}.ops-card.severity-critical{border-left-color:#b42318}.ops-card.severity-high{border-left-color:#d97706}.ops-card.severity-medium{border-left-color:#ca8a04}.ops-card.severity-low{border-left-color:#2563eb}.ops-card .form-actions-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.ops-card form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ops-card form input{min-width:220px}
+
+/* v1.18.2: optional quest fields really disappear in form-grid layouts. */
+.quest-team-target[hidden],
+.quest-automatic-mode[hidden],
+.quest-auto-field[hidden] { display: none !important; }
+
+
+/* v1.18.3 — consistent geometry and spacing in the admin interface */
+.content :where(.form-grid,.filters,.row-actions,.card-actions,.form-actions-row,.section-title,.quick-xp-question-actions,.quick-xp-question-fields,.quick-xp-response-heading,.quick-xp-response-badges,.quick-xp-answer-pagination){gap:max(5px, var(--amp-space, 10px));}
+.content :where(.form-grid,.event-date-fields,.quick-xp-question-builder,.quick-xp-question-list)>*{min-width:0;}
+.content :where(label:not(.check):not(.check-line))> :where(input,select,textarea){margin-top:5px;}
+.content :where(.card,section,article) :where(h1,h2,h3,h4,p){word-break:normal;overflow-wrap:break-word;}
+.content .card>form+form{margin-top:5px;}
+.event-cards-grid{align-items:stretch;grid-auto-rows:auto;}
+.event-cards-grid>.event-card-v2{height:100%;min-height:0;align-self:stretch;}
+.event-card-v2 .event-card-media{aspect-ratio:16/9;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.event-card-v2 .event-card-media img{width:100%;height:100%;max-height:none;object-fit:contain;}
+.event-card-v2 .event-placeholder{width:100%;height:100%;min-height:0;}
+.event-card-v2 .event-card-body{flex:1 1 auto;}
+.event-card-v2 .event-card-actions-v2{margin-top:auto;}
+.event-card-v2 .event-card-topline{justify-content:flex-start;align-content:flex-start;min-height:34px;}
+.amp-form-errors{grid-column:1/-1;display:block;padding:11px 13px;border:1px solid var(--danger);border-radius:12px;background:var(--danger-bg);color:var(--danger);font-weight:700;line-height:1.5;white-space:normal;overflow-wrap:break-word;}
+.amp-form-errors[hidden]{display:none!important;}
+.content :where(input,select,textarea).amp-invalid-field{border-color:var(--danger)!important;outline:2px solid color-mix(in srgb,var(--danger) 30%,transparent);outline-offset:1px;}
+.quick-xp-answer-entry{margin:12px 0 8px;}
+.quick-xp-answer-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;text-align:center;}
+.quick-xp-response-card{margin-bottom:14px;}
+.quick-xp-response-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.quick-xp-response-heading h2{font-size:18px;margin:0 0 5px;}
+.quick-xp-response-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.quick-xp-response-question{padding:12px 0;border-top:1px solid var(--line);margin-top:10px;overflow-wrap:break-word;}
+.quick-xp-response-question p{margin:5px 0;white-space:pre-wrap;}
+.quick-xp-answer-pagination{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:20px 0;}
+@media(max-width:680px){.quick-xp-response-heading{flex-direction:column;}.event-card-v2 .event-card-media{aspect-ratio:16/9;}}
+
+.content .form-grid label>small{margin-top:5px;}
+.content :where(.tag + .tag){margin-left:5px;}
+.content :where(.calendar-month-items,.calendar-day-items,.calendar-week-grid,.reorder-actions,.filters,.event-card-info){gap:max(5px, var(--amp-inner-gap, 7px));}
+
+/* =========================================================
+   v1.18.4 — UI alignment, Quick XP answers, localization polish
+   ========================================================= */
+:root{
+  --amp-gap-xs:8px;
+  --amp-gap-sm:12px;
+  --amp-gap-md:18px;
+}
+
+/* Never let the generic adjacent-card rhythm push one grid column down. */
+.content :where(
+  .grid2,.cards,.dashboard-duo,.health-grid,.survey-grid,.work-cards-grid,
+  .event-cards-grid,.badge-library-grid,.reward-library-grid,
+  .giveaway-library-grid,.giveaway-prize-grid,.opportunity-board
+) > :where(.card,.dashboard-card,.health-card,.survey-card,.entity-card-v2,.event-card-v2,.badge-card,.reward-card,.giveaway-card,.giveaway-prize-card,.opportunity-card) {
+  margin-top:0!important;
+  margin-bottom:0!important;
+  align-self:stretch!important;
+  height:100%;
+  min-width:0;
+}
+.content :where(
+  .grid2,.cards,.dashboard-duo,.health-grid,.survey-grid,.work-cards-grid,
+  .event-cards-grid,.badge-library-grid,.reward-library-grid,
+  .giveaway-library-grid,.giveaway-prize-grid,.opportunity-board
+){
+  align-items:stretch!important;
+  gap:max(8px,var(--amp-gap-md))!important;
+}
+.content .dashboard-duo>.dashboard-card{display:flex;flex-direction:column}
+.content .dashboard-duo>.dashboard-card>:last-child{margin-bottom:0}
+
+/* A single predictable minimum rhythm throughout the web panel. */
+.content :where(.card,.panel,.hero,.idea-admin-card,.activity-catalog-card,.activity-app-card,.health-card){
+  --amp-space:10px;
+}
+.content :where(.row-actions,.card-actions,.form-actions-row,.filter-actions,.entity-card-tags,.entity-card-info,.chips,.mini-facts,.quick-xp-response-badges){
+  gap:max(5px,var(--amp-gap-xs))!important;
+}
+.content :where(.form-grid,.smart-filters,.filters,.facts,.kpis,.health-kpi-grid){
+  gap:max(8px,var(--amp-gap-sm))!important;
+}
+
+/* Quick XP: the answers action is a first-class, always visible control. */
+.quick-xp-card-actions{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:stretch!important;
+}
+.quick-xp-card-actions>a,.quick-xp-card-actions>form,.quick-xp-card-actions>details{
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+}
+.quick-xp-card-actions>form>button,.quick-xp-card-actions>.quick-xp-answer-link,
+.quick-xp-card-actions>details>summary{
+  width:100%!important;
+  height:52px!important;
+  min-height:52px!important;
+}
+.quick-xp-answer-link{font-weight:800;text-decoration:none}
+.quick-xp-response-card{overflow:visible}
+.quick-xp-response-question:last-child{padding-bottom:0}
+
+/* Notification filters: controls remain in one aligned row and buttons cannot drift. */
+.notification-filters{
+  grid-template-columns:minmax(260px,1.35fr) minmax(170px,.65fr) minmax(170px,.65fr) minmax(260px,.8fr)!important;
+  align-items:end!important;
+}
+.notification-filters .filter-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(120px,1fr));
+  align-items:stretch;
+  gap:8px!important;
+  min-width:260px;
+}
+.notification-filters .filter-actions>*{
+  width:100%!important;
+  min-width:0!important;
+  min-height:44px!important;
+  margin:0!important;
+}
+
+/* Card media use stable frames so image dimensions do not change card geometry. */
+.event-card-media,.entity-card-media,.opportunity-card-media{
+  aspect-ratio:16/9;
+  min-height:0!important;
+  overflow:hidden!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:var(--surface-2)!important;
+}
+.event-card-media img,.entity-card-media img,.opportunity-card-media img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.reward-library-grid .reward-card>.cover{
+  width:100%!important;
+  height:220px!important;
+  min-height:220px!important;
+  max-height:220px!important;
+  aspect-ratio:16/9;
+  object-fit:contain!important;
+  object-position:center!important;
+  margin-bottom:4px!important;
+}
+.reward-library-grid .reward-card>.cover.placeholder{display:grid!important;place-items:center!important}
+.badge-card{justify-content:flex-start}
+.badge-card .big-icon{min-height:72px;display:flex;align-items:center;margin:0}
+.ambassador-badge-preview{height:180px;min-height:180px!important}
+.ambassador-badge-preview img{width:100%;height:100%;max-width:180px!important;max-height:160px!important;object-fit:contain!important}
+
+/* Equal-height content cards keep actions at the bottom. */
+.survey-card,.giveaway-card,.reward-card,.badge-card,.opportunity-card{display:flex!important;flex-direction:column!important}
+.survey-card .unified-card-actions,.opportunity-card-actions,.reward-card details,.badge-card .badge-edit-details{margin-top:auto!important}
+.giveaway-card .card-actions,.giveaway-card>a:last-child{margin-top:auto}
+
+/* Long headings never force neighbouring cards out of alignment. */
+.content :where(.card,.idea-admin-card,.opportunity-card,.survey-card,.giveaway-card) :where(h2,h3,h4){
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
+}
+
+@media(max-width:1100px){
+  .notification-filters{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .notification-filters .filter-actions{min-width:0}
+  .quick-xp-card-actions{grid-template-columns:1fr 1fr!important}
+  .quick-xp-card-actions>.quick-xp-edit-details{grid-column:1/-1!important}
+}
+@media(max-width:720px){
+  .notification-filters{grid-template-columns:1fr!important}
+  .notification-filters .filter-actions{grid-template-columns:1fr 1fr}
+  .quick-xp-card-actions{grid-template-columns:1fr!important}
+  .quick-xp-card-actions>.quick-xp-edit-details{grid-column:auto!important}
+  .reward-library-grid .reward-card>.cover{height:190px!important;min-height:190px!important;max-height:190px!important}
+}
+@media(max-width:430px){
+  .notification-filters .filter-actions{grid-template-columns:1fr}
+}

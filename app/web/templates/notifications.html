@@ -4,7 +4,7 @@
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Сповіщення</b></nav>
 <section class="page-head">
   <div><span class="eyebrow">Єдиний центр доставки</span><h1>🔔 Сповіщення</h1><p class="muted">Системні повідомлення, події, розсилки, звернення, серії та опитування в одному механізмі.</p></div>
-  <form method="post" action="/admin/notifications/retry-failed"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn" type="submit">🔁 Повторити невдалі</button></form>
+  <form method="post" action="/admin/notifications/retry-failed"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🔁 Повторити невдалі</button></form>
 </section>
 <section class="kpis notification-kpis">
   <article class="kpi"><span>⏳ В черзі</span><strong>{{ kpi.queued }}</strong></article>
@@ -12,11 +12,11 @@
   <article class="kpi"><span>⚠️ Помилки</span><strong>{{ kpi.failed }}</strong></article>
 </section>
 <section class="card">
-  <form method="get" class="smart-filters">
+  <form method="get" class="smart-filters notification-filters">
     <label>Пошук<input type="search" name="q" value="{{ q }}" placeholder="Назва або текст"></label>
     <label>Тип<select name="type"><option value="">Усі</option>{% for value,label in filters %}<option value="{{ value }}" {% if filter_type==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     <label>Статус<select name="status"><option value="">Усі</option><option value="queued" {% if filter_status=='queued' %}selected{% endif %}>В черзі</option><option value="sent" {% if filter_status=='sent' %}selected{% endif %}>Надіслано</option><option value="failed" {% if filter_status=='failed' %}selected{% endif %}>Помилки</option></select></label>
-    <div class="filter-actions"><button class="btn" type="submit">Застосувати</button><a class="btn ghost" href="/admin/notifications">Скинути</a></div>
+    <div class="filter-actions"><button class="primary" type="submit">Застосувати</button><a class="soft-button" href="/admin/notifications">Скинути</a></div>
   </form>
 </section>
 <section class="card table-card">

@@ -1,3 +1,4 @@
+from ..document_layout import apply_excel_word_wrap, word_lines
 from ..time_utils import clock
 from .common import (
     ActivityApplication, ActivityType, Alignment, AsyncSession, Border, BytesIO, Event, EventRegistration, Font, Idea, Path, PatternFill, Referral, RequestCase, Reward, RewardClaim, Side, User, UserBadge, VolunteerTask, VolunteerTaskParticipation, Workbook, XPTransaction, event_registration_status_label, gender_label, get_column_letter, media_consent_label, select, split_display_name, vulnerability_labels
@@ -20,7 +21,6 @@ def export_event_participants_pdf(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
-    from textwrap import shorten
 
     plt.rcParams["font.family"] = "DejaVu Sans"
     out = BytesIO()
@@ -32,14 +32,46 @@ def export_event_participants_pdf(
         "Внутрішній робочий список • без контактних і чутливих соціальних даних"
     )
     if include_sensitive:
-        headers = ["№", "ПІБ", "Вік", "Стать", "Соціальний статус", "Email", "Телефон", "Фото/відео", "Статус", "ID АМП"]
+        headers = ["№", "ПІБ", "Вік", "Стать", "Соціальний статус", "Ел. пошта", "Телефон", "Фото/відео", "Статус", "ID АМП"]
         widths = [0.035, 0.16, 0.045, 0.075, 0.18, 0.14, 0.10, 0.09, 0.095, 0.08]
     else:
         headers = ["№", "ПІБ", "Вік", "Статус участі", "ID АМП"]
         widths = [0.06, 0.40, 0.09, 0.27, 0.18]
 
-    rows_per_page = 22 if include_sensitive else 28
-    chunks = [registrations[i:i + rows_per_page] for i in range(0, len(registrations), rows_per_page)] or [[]]
+    # Prepare and paginate by *rendered line count*, not an arbitrary number of
+    # people. PDF tables cannot auto-grow like Word, so we size each row below.
+    rendered = []
+    font_size = 7.2 if include_sensitive else 8.6
+    for i, (reg, user) in enumerate(registrations, start=1):
+        age = age_on(user.birth_date, event.starts_at.date()) if user.birth_date else "—"
+        if include_sensitive:
+            values = [i, user.full_name or "—", age,
+                      gender_label(user.gender) if user.gender else "—",
+                      ", ".join(vulnerability_labels(user.vulnerability_categories)) or "—",
+                      user.email or "—", user.phone or "—",
+                      media_consent_label(user.media_consent),
+                      event_registration_status_label(reg.status), f"АМП-{user.id:04d}"]
+        else:
+            values = [i, user.full_name or "—", age,
+                      event_registration_status_label(reg.status), f"АМП-{user.id:04d}"]
+        wrapped = []
+        for j, value in enumerate(values):
+            # Matplotlib's table has no word wrapping: insert only WORD breaks.
+            # The font is smaller on the sensitive extended list.
+            width = max(5, int(widths[j] * (147 if include_sensitive else 117)))
+            wrapped.append("\n".join(word_lines(value, width)) or "—")
+        height = .034 + .019 * max(0, max(x.count("\n") + 1 for x in wrapped) - 1)
+        rendered.append((wrapped, height))
+    chunks = []
+    current, used = [], .055
+    for item in rendered:
+        if current and used + item[1] > .93:
+            chunks.append(current)
+            current, used = [], .055
+        current.append(item)
+        used += item[1]
+    if current or not chunks:
+        chunks.append(current)
     with PdfPages(out) as pdf:
         for page_no, chunk in enumerate(chunks, start=1):
             fig = plt.figure(figsize=(11.69, 8.27), facecolor="white")
@@ -51,34 +83,22 @@ def export_event_participants_pdf(
             fig.text(.125, .916, "Список учасників події", fontsize=11.5, color="#DDF8FA", va="center")
             fig.text(.965, .948, f"{page_no}/{len(chunks)}", fontsize=9, color="white", ha="right", va="center")
 
-            fig.text(.04, .845, event.title, fontsize=16, weight="bold", color="#173B43")
+            fig.text(.04, .845, "\n".join(word_lines(event.title, 90)), fontsize=14, weight="bold", color="#173B43", va="top")
             meta = f"{event.starts_at.strftime('%d.%m.%Y • %H:%M')}   •   {event.location or 'Локацію не зазначено'}   •   {len(registrations)} реєстрацій"
-            fig.text(.04, .812, meta, fontsize=9.5, color="#607C83")
+            fig.text(.04, .812, "\n".join(word_lines(meta, 135)), fontsize=9, color="#607C83", va="top")
             fig.text(.04, .782, privacy, fontsize=8.2, color="#7A9095")
 
             ax = fig.add_axes([.035, .09, .93, .66]); ax.axis("off")
-            body=[]
-            for i, (reg, user) in enumerate(chunk, start=(page_no-1)*rows_per_page+1):
-                age = age_on(user.birth_date, event.starts_at.date()) if user.birth_date else "—"
-                if include_sensitive:
-                    vulnerabilities = ", ".join(vulnerability_labels(user.vulnerability_categories)) or "—"
-                    body.append([
-                        i,
-                        shorten(user.full_name or "—", width=32, placeholder="…"),
-                        age,
-                        gender_label(user.gender) if user.gender else "—",
-                        shorten(vulnerabilities, width=45, placeholder="…"),
-                        shorten(user.email or "—", width=28, placeholder="…"),
-                        user.phone or "—",
-                        media_consent_label(user.media_consent),
-                        event_registration_status_label(reg.status),
-                        f"АМП-{user.id:04d}",
-                    ])
-                else:
-                    body.append([i, user.full_name or "—", age, event_registration_status_label(reg.status), f"АМП-{user.id:04d}"])
+            body = [cells for cells, _height in chunk]
+            body_heights = [height for _cells, height in chunk]
             if body:
                 table = ax.table(cellText=body, colLabels=headers, cellLoc="left", colLoc="left", loc="upper left", colWidths=widths)
-                table.auto_set_font_size(False); table.set_fontsize(7.2 if include_sensitive else 8.6); table.scale(1, 1.42)
+                table.auto_set_font_size(False); table.set_fontsize(font_size)
+                for col in range(len(headers)):
+                    table[(0, col)].set_height(.052)
+                for row_no, height in enumerate(body_heights, 1):
+                    for col in range(len(headers)):
+                        table[(row_no, col)].set_height(height)
                 for (r,c), cell in table.get_celld().items():
                     cell.set_edgecolor("#D4E6E9")
                     cell.set_linewidth(.55)
@@ -261,6 +281,8 @@ def export_event_participants_excel(
     wb.properties.creator = "АМП XP / АМПасадори"
 
     bio = BytesIO()
+    for ws in wb.worksheets:
+        apply_excel_word_wrap(ws)
     wb.save(bio)
     return bio.getvalue()
 
@@ -297,6 +319,8 @@ async def export_basic_excel(session: AsyncSession) -> bytes:
         ws2.append([e.id, e.title, e.starts_at, e.location, e.xp_reward, e.volunteer_hours, e.status])
 
     bio = BytesIO()
+    for ws in wb.worksheets:
+        apply_excel_word_wrap(ws)
     wb.save(bio)
     return bio.getvalue()
 
@@ -305,7 +329,7 @@ async def export_excel(session: AsyncSession) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "Учасники"
-    ws.append(["ID", "ID Telegram", "Прізвище", "Ім’я", "ПІБ", "Дата народження", "Вік", "Стать", "Телефон", "Email", "Telegram", "Статус", "Роль", "Населений пункт", "Соціальний статус / категорії вразливості", "Згода на фото/відео", "XP загальний", "XP сезону", "XP-гаманець", "Волонтерські години", "Код запрошення", "Ознайомлення з даними — версія", "Ознайомлення — дата", "Блокування до", "Причина блокування"])
+    ws.append(["ID", "ID Telegram", "Прізвище", "Ім’я", "ПІБ", "Дата народження", "Вік", "Стать", "Телефон", "Ел. пошта", "Telegram", "Статус", "Роль", "Населений пункт", "Соціальний статус / категорії вразливості", "Згода на фото/відео", "XP загальний", "XP сезону", "XP-гаманець", "Волонтерські години", "Код запрошення", "Ознайомлення з даними — версія", "Ознайомлення — дата", "Блокування до", "Причина блокування"])
     users = (await session.scalars(select(User).order_by(User.id))).all()
     season = await current_season(session)
     for u in users:
@@ -411,6 +435,8 @@ async def export_excel(session: AsyncSession) -> bytes:
         ws12.append([a.id, a.activity_type_id, a.user_id, a.status, a.plan_text, a.result_note, a.xp_reward, a.hours_reward, a.requested_at, a.approved_at, a.completed_at])
 
     bio = BytesIO()
+    for ws in wb.worksheets:
+        apply_excel_word_wrap(ws)
     wb.save(bio)
     return bio.getvalue()
 

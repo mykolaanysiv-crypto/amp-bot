@@ -9,7 +9,7 @@ def read(relative):
 
 
 def test_version_and_inherited_alembic_head():
-    assert read('VERSION.txt').strip() == read('VERSION_CHECK.txt').strip() == '1.18.3'
+    assert read('VERSION.txt').strip() == read('VERSION_CHECK.txt').strip() == '1.18.4'
     assert 'revision = "20260921_0014"' in read('migrations/versions/20260921_0014_operational_governance.py')
     assert 'revision = "20260925_0015"' in read('migrations/versions/20260925_0015_quest_qr_on_time.py')
 
@@ -60,7 +60,7 @@ def test_local_entrypoints_and_frontend_cache_versions():
         assert 'run_web.py' in source and 'run.py' in source
         assert 'run_all.py' not in source
     for path in ('base.html', 'login.html', 'login_2fa.html'):
-        assert 'v=1.18.3' in read(f'app/web/templates/{path}')
+        assert 'v=1.18.4' in read(f'app/web/templates/{path}')
 
 
 def test_shared_local_supervisor_runs_both_canonical_processes():

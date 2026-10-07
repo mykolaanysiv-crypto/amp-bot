@@ -252,7 +252,7 @@ async def build_gamification_insights(session: AsyncSession, *, now: datetime | 
     if notified >= 10 and interests == 0:
         recommendations.append({"level": "watch", "title": "Розумні можливості", "text": "Є персональні сповіщення, але немає зафіксованих інтересів. Перевірте формулювання та CTA, не змінюючи алгоритм оцінювання."})
     if referral_total >= 5 and _rate(referral_first_activity, referral_total) < 40:
-        recommendations.append({"level": "watch", "title": "Воронка запрошень", "text": "Менше 40% запрошених доходять до першої активності. Варто покращувати onboarding, а не збільшувати referral XP."})
+        recommendations.append({"level": "watch", "title": "Шлях залучення за запрошеннями", "text": "Менше 40% запрошених доходять до першої активності. Варто покращувати перші кроки учасника, а не збільшувати бонусні бали за запрошення."})
 
     return {
         "generated_at": now,
