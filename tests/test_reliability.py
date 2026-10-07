@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy import select, update
 
 from app.model_domains import Notification, ScheduledJob
 from app.reliability import acquire_job_lock, finish_job_lock, process_due_telegram_deliveries, queue_telegram_delivery
+from app.time_utils import clock
 
 
 class FlakyBot:
@@ -36,7 +37,7 @@ async def test_notification_retry_then_success(db):
     assert first["retry"] == 1
     async with db.session_factory() as session:
         row = await session.scalar(select(Notification).where(Notification.dedupe_key == "test:retry"))
-        row.scheduled_at = datetime.utcnow() - timedelta(seconds=1)
+        row.scheduled_at = clock.storage_utc() - timedelta(seconds=1)
         await session.commit()
     second = await process_due_telegram_deliveries(bot, db)
     assert second["sent"] == 1
@@ -69,7 +70,7 @@ async def test_notification_retries_three_times_then_fails(db):
             assert row.status == expected
             if expected == "retry":
                 assert result["retry"] == 1
-                row.scheduled_at = datetime.utcnow() - timedelta(seconds=1)
+                row.scheduled_at = clock.storage_utc() - timedelta(seconds=1)
                 await session.commit()
             else:
                 assert result["failed"] == 1

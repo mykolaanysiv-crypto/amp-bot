@@ -1,0 +1,28 @@
+AMP XP v1.18.7 — перевірка і реліз
+
+# Локально / у CI
+python -m pip install -r requirements-dev.lock
+python -m scripts.dependency_lock_check
+python -m scripts.release_consistency_check
+python -m compileall -q app scripts migrations tests
+python -m scripts.production_preflight
+ruff check --select E9,F63,F7,F82 app scripts tests
+node tests/js/test_admin_forms.js
+pip-audit -r requirements.lock --progress-spinner=off
+pip check
+pytest -q --ignore=tests/integration
+pytest -q tests/integration
+python -m scripts.schema_drift_check
+alembic current
+
+# Git
+git switch -c release/v1.18.7
+git add -A
+git diff --cached --check
+git commit -m "AMP XP v1.18.7 reproducible production baseline"
+git push -u origin release/v1.18.7
+
+# Після green PR gate — merge у main. Deploy виконує GitHub Actions.
+# Production підтверджувати тільки після green main workflow і /health/live + /health/ready version=1.18.7.
+
+# Expected Alembic head: 20260925_0015

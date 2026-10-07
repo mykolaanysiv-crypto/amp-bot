@@ -45,8 +45,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Dependency lock consistency
+        run: python -m scripts.dependency_lock_check
+
+      - name: Release/documentation consistency
+        run: python -m scripts.release_consistency_check
+
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.lock
 
       - name: Compile Python
         run: python -m compileall -q app scripts migrations tests
@@ -61,8 +67,10 @@ jobs:
         run: node tests/js/test_admin_forms.js
 
       - name: Dependency vulnerability audit
-        continue-on-error: true
-        run: pip-audit -r requirements.txt --progress-spinner=off
+        run: pip-audit -r requirements.lock --progress-spinner=off
+
+      - name: Installed dependency consistency
+        run: pip check
 
       - name: Unit and regression tests
         run: pytest -q --ignore=tests/integration

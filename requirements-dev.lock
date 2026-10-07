@@ -1,0 +1,8 @@
+# AMP XP v1.18.7 direct development dependency lock.
+-r requirements.lock
+pytest==9.0.2
+pytest-asyncio==1.4.0
+httpx==0.28.1
+ruff==0.16.10
+pip-audit==2.10.1
+pip-tools==7.6.2

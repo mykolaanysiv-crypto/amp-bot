@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from datetime import datetime, timedelta
 from io import BytesIO
 
@@ -85,7 +86,9 @@ async def test_donor_xlsx_template_preserves_layout_and_fills_confirmation_code(
         ws["A2"] = "Подія: {{event_title}}"
         ws.append(["№", "ПІБ", "Статус участі", "Цифровий код підтвердження"])
         ws.append(["", "", "", ""])
-        ws["A4"].font = ws["A1"].font.copy(bold=True)
+        font = copy(ws["A1"].font)
+        font.bold = True
+        ws["A4"].font = font
         original = BytesIO(); wb.save(original)
 
         data, _, ext = fill_registration_template(original.getvalue(), "donor.xlsx", event, [(reg, user)], include_sensitive=False)

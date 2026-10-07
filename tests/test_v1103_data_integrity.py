@@ -15,6 +15,7 @@ from app.domain_services import (
     xp_total,
 )
 from app.settlements import ensure_settlement_directory, settlement_quality_report
+from app.time_utils import clock
 from tests.conftest import create_user
 from tests.source_layout import event_routes_source
 
@@ -27,7 +28,7 @@ async def test_checkin_day_before_is_blocked_without_mutation(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21001, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21002)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now + timedelta(days=1))
         reg = await register_for_event(session, user.id, event.id)
 
@@ -44,7 +45,7 @@ async def test_checkin_before_window_is_blocked(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21101, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21102)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now + timedelta(minutes=61))
         reg = await register_for_event(session, user.id, event.id)
 
@@ -59,7 +60,7 @@ async def test_checkin_window_boundaries_are_inclusive(db):
         admin = await create_user(session, tg_id=21201, name="Адмін", role=UserRole.ADMIN.value)
         user_open = await create_user(session, tg_id=21202)
         user_close = await create_user(session, tg_id=21203)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now + timedelta(hours=2))
         await register_for_event(session, user_open.id, event.id)
         await register_for_event(session, user_close.id, event.id)
@@ -81,7 +82,7 @@ async def test_checkin_after_window_is_blocked(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21301, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21302)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now - timedelta(minutes=361))
         reg = await register_for_event(session, user.id, event.id)
 
@@ -96,7 +97,7 @@ async def test_manual_override_requires_reason_and_awards_once(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21401, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21402)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now + timedelta(days=1))
         reg = EventRegistration(event_id=event.id, user_id=user.id, status="checked_in", checkin_at=now)
         session.add(reg)
@@ -121,7 +122,7 @@ async def test_repeat_checkin_is_idempotent_and_does_not_award_xp(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21501, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21502)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now + timedelta(minutes=30))
         reg = await register_for_event(session, user.id, event.id)
 
@@ -141,7 +142,7 @@ async def test_double_attendance_confirmation_cannot_double_xp(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21601, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21602)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         event = await _event(session, admin, starts_at=now)
         reg = await register_for_event(session, user.id, event.id)
         _, state = await checkin_for_event(session, user.id, event.checkin_token, now=now)
@@ -159,7 +160,7 @@ async def test_future_attendance_never_enters_monthly_attendance_kpis(db):
     async with db.session_factory() as session:
         admin = await create_user(session, tg_id=21701, name="Адмін", role=UserRole.ADMIN.value)
         user = await create_user(session, tg_id=21702)
-        now = datetime.utcnow().replace(microsecond=0)
+        now = clock.storage_utc().replace(microsecond=0)
         # Use next month so this remains a genuine future monthly report regardless
         # of the current day within this month.
         if now.month == 12:
