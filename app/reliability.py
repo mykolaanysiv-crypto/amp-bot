@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .observability import log_extra
+from .metrics import runtime_metrics
 from .time_utils import clock
 
 import asyncio
@@ -310,6 +311,7 @@ async def send_notification_now(bot, session, notification: Notification) -> boo
         await _sync_legacy_broadcast(session, notification)
         return True
     except Exception as exc:
+        runtime_metrics.record_telegram_failure()
         next_retry_count = int(notification.retry_count or 0) + 1
         notification.retry_count = next_retry_count
         notification.error = str(exc)[:500]
@@ -366,6 +368,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                     row.error = ""
                     summary["sent"] += 1
                 except TelegramForbiddenError as exc:
+                    runtime_metrics.record_telegram_failure()
                     row.error = str(exc)[:500]
                     row.status = "failed"
                     summary["failed"] += 1
@@ -382,6 +385,7 @@ async def process_due_telegram_deliveries(bot, db, *, limit: int = 50) -> dict[s
                             inviter, removed_xp, days_after = revoked
                             await queue_notification(session, inviter.tg_id, f"🤝 <b>Реферальний бонус скориговано</b>\n\nВаш запрошений учасник <b>{user.full_name}</b> був видалений з активного доступу через {days_after} дн. після активації. Оскільки це сталося протягом 30 днів, скасовано <b>{removed_xp} XP</b> реферального бонусу.", source="referral_clawback", dedupe_key=f"referral_clawback:{user.id}")
                 except Exception as exc:
+                    runtime_metrics.record_telegram_failure()
                     next_retry_count = int(row.retry_count or 0) + 1
                     row.retry_count = next_retry_count
                     row.error = str(exc)[:500]

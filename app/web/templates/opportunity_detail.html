@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{item.title}} • Можливість<script>
+{% block title %}{{item.title}} • Можливість<script nonce="{{ request.state.csp_nonce }}">
 function copyOpportunityLink(button){
   const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
   navigator.clipboard.writeText(url).then(()=>{
@@ -110,7 +110,7 @@ function shareOpportunity(button){
     <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Збіг</th><th>Сповіщення</th></tr></thead><tbody>{% for row,u in match_rows if row.status in ['matched','notified'] %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><b>{{row.score}}%</b></td><td>{{'✅ Надіслано' if row.notified_at or row.status=='notified' else 'Очікує'}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Персональних збігів поки немає.</td></tr>{% endfor %}</tbody></table></div>
   </section>
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function copyOpportunityLink(button){
   const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
   navigator.clipboard.writeText(url).then(()=>{

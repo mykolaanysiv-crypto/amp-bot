@@ -1,6 +1,6 @@
 """Domain-split SQLAlchemy model definitions for AMP v1.13.0."""
 from .base import Base, UserRole, UserStatus
-from .identity import MediaAsset, SettlementReference, User, RegistrationJourney, BanRecord, ConsentHistory, UserStatusChangeRequest, WebStaffAccount, WebAdminSession, AuditLog
+from .identity import MediaAsset, SettlementReference, User, RegistrationJourney, BanRecord, ConsentHistory, UserStatusChangeRequest, WebStaffAccount, WebAuthnCredential, WebAdminSession, AuditLog
 from .gamification import Season, XPTransaction, Team, TeamMember, Badge, UserBadge, Referral, Reward, RewardClaim, Giveaway, GiveawayPrize, GiveawayEntry, GiveawayWinner, ParticipationStreak, StreakFreeze, Goal, GoalReward, GamificationRuleVersion
 from .events import Event, EventRegistration, EventFeedback
 from .engagement import Quest, QuestParticipation, TeamQuestContribution, Idea, RequestCase, RequestMessage, VolunteerTask, VolunteerTaskParticipation, ActivityType, ActivityApplication, QuickXPChallenge, QuickXPQuestion, QuickXPAnswer, QuickXPCompletion, Opportunity, OpportunityMatch, OpportunityInterest, Survey, SurveyAudienceUser, SurveyQuestion, SurveyResponse, ContentView
@@ -21,6 +21,7 @@ __all__ = [
     "ConsentHistory",
     "UserStatusChangeRequest",
     "WebStaffAccount",
+    "WebAuthnCredential",
     "WebAdminSession",
     "AuditLog",
     "Season",

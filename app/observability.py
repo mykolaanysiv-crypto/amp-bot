@@ -8,9 +8,12 @@ import os
 import re
 import sys
 import uuid
+import time
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, Iterable
+
+from .metrics import runtime_metrics
 
 _request_id: ContextVar[str] = ContextVar("amp_request_id", default="")
 
@@ -187,8 +190,13 @@ class RequestContextMiddleware:
         request_id = headers.get("x-request-id") or uuid.uuid4().hex[:16]
         token = set_request_id(request_id)
 
+        started = time.perf_counter()
+        status_code = 500
+
         async def send_with_id(message):
+            nonlocal status_code
             if message.get("type") == "http.response.start":
+                status_code = int(message.get("status") or 500)
                 raw_headers = list(message.get("headers") or [])
                 raw_headers.append((b"x-request-id", request_id.encode("ascii", "ignore")))
                 message["headers"] = raw_headers
@@ -197,4 +205,9 @@ class RequestContextMiddleware:
         try:
             await self.app(scope, receive, send_with_id)
         finally:
+            runtime_metrics.record_http(
+                path=str(scope.get("path") or "/"),
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                status=status_code,
+            )
             reset_request_id(token)

@@ -1,0 +1,100 @@
+AMP XP v1.19.0 — release / deployment commands
+Status before deploy: RELEASE CANDIDATE
+
+SOURCE OF TRUTH
+Use the complete amp_bot_v1190 build, not an old patch or older ZIP.
+
+1) LOCAL / PRE-MERGE
+python -m pip install -r requirements-dev.lock
+python -m scripts.dependency_lock_check
+python -m scripts.release_consistency_check
+python -m compileall -q app scripts migrations tests
+python -m scripts.production_preflight
+ruff check --select E9,F63,F7,F82 app scripts tests
+node tests/js/test_admin_forms.js
+pip-audit -r requirements.lock --progress-spinner=off
+pip check
+pytest -q --ignore=tests/integration
+
+2) POSTGRESQL 18 / ALEMBIC
+export TEST_DATABASE_URL='postgresql+asyncpg://amp:amp@127.0.0.1:5432/amp_test'
+pytest -q tests/integration
+pytest -q \
+  tests/integration/test_alembic_full_adoption.py::test_alembic_upgrade_from_previous_production_schema \
+  tests/integration/test_alembic_full_adoption.py::test_latest_revision_downgrade_upgrade_roundtrip
+DATABASE_URL="$TEST_DATABASE_URL" python -m scripts.schema_drift_check
+# expected head: 20261007_0016
+
+3) GIT
+# Run inside the real repository that contains .git.
+git switch main
+git pull --ff-only origin main
+git switch -c release/v1.19.0
+# Copy/sync the complete v1.19.0 build into the repository, preserving .git/.env/.venv.
+git add -A
+git diff --cached --check
+git status --short
+git commit -m 'AMP XP v1.19.0 security and observability 2.0'
+git push -u origin release/v1.19.0
+
+4) PULL REQUEST
+# Create PR release/v1.19.0 -> main and require the complete green Production Gate.
+gh pr checks --watch
+# Do not merge while anything is failing/pending.
+gh pr merge --merge
+
+5) WEBAUTHN HEROKU CONFIG
+export HEROKU_APP='amp-bot-ver-1-5-0'
+export APP_URL="$(heroku apps:info -a "$HEROKU_APP" --json | python -c 'import json,sys; from urllib.parse import urlparse; d=json.load(sys.stdin); a=d.get("app") if isinstance(d.get("app"),dict) else d; print((a.get("web_url") or a.get("web-url") or a.get("webUrl") or d.get("web_url") or d.get("web-url") or d.get("webUrl") or "").rstrip("/"))')"
+APP_HOST="$(python -c 'import os; from urllib.parse import urlparse; print(urlparse(os.environ["APP_URL"]).hostname or "")')"
+test -n "$APP_URL" && test -n "$APP_HOST"
+echo "WebAuthn origin: $APP_URL"
+echo "WebAuthn RP ID:  $APP_HOST"
+heroku config:set -a "$HEROKU_APP" \
+  WEBAUTHN_ORIGIN="$APP_URL" \
+  WEBAUTHN_RP_ID="$APP_HOST" \
+  WEBAUTHN_RP_NAME='АМПасадори / АМП XP'
+
+6) MAIN PRODUCTION WORKFLOW
+# After merge GitHub Actions must perform: tests -> PG18/Alembic/schema drift -> fresh backup -> real restore verification -> deploy -> health/version smoke.
+git switch main
+git pull --ff-only origin main
+gh run list --workflow 'AMP CI' --branch main --event push --limit 5
+RUN_ID="$(gh run list --workflow 'AMP CI' --branch main --event push --limit 1 --json databaseId --jq '.[0].databaseId')"
+gh run watch "$RUN_ID" --exit-status
+# On failure:
+# gh run view "$RUN_ID" --log-failed
+
+7) POST-DEPLOY VERIFICATION
+heroku run -a "$HEROKU_APP" -- alembic current
+# expected: 20261007_0016
+heroku run -a "$HEROKU_APP" -- python -m scripts.verify_backup_marker
+curl -fsS "$APP_URL/health/live" | python -m json.tool
+curl -fsS "$APP_URL/health/ready" | python -m json.tool
+heroku ps -a "$HEROKU_APP"
+heroku releases -a "$HEROKU_APP" | head -10
+heroku logs --num 300 -a "$HEROKU_APP" | grep -Ei 'traceback|critical|fatal|crash' || echo 'No critical log patterns found'
+
+8) MANUAL SECURITY SMOKE AFTER DEPLOY
+- Login using the existing password + Telegram OTP path.
+- Open /admin/security-center with an account that has security.manage.
+- Verify an account without security.manage receives 403.
+- Enroll one TEST passkey from /admin/account after current-password step-up.
+- Logout, login again, and verify passkey authentication.
+- Verify "Use Telegram code" fallback still works for an account with Telegram 2FA configured.
+- Revoke the test passkey and verify it can no longer authenticate.
+- Verify no secret values are visible in Security Center.
+
+9) SAFE ROLLBACK
+# Preferred emergency rollback: roll back application code first and KEEP schema 0016.
+heroku releases -a "$HEROKU_APP" | head -15
+# Choose the known-good previous release number, then:
+# heroku releases:rollback vNNN -a "$HEROKU_APP"
+# Do not blindly downgrade Alembic if any passkeys have been enrolled.
+# If absolutely certain web_authn_credentials contains no data, after fresh verified backup and code rollback:
+# heroku run -a "$HEROKU_APP" -- alembic downgrade 20260925_0015
+# Never delete FIELD_ENCRYPTION_KEY or required previous encryption keys during rollback.
+
+10) ONLY AFTER CONFIRMED PRODUCTION
+git tag -a v1.19.0 -m 'AMP XP v1.19.0 — Security & Observability 2.0'
+git push origin v1.19.0

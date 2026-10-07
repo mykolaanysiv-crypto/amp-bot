@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from .dependencies import (
     Bot, Form, HTMLResponse, HTTPException, LOGIN_LOCK_MINUTES, LOGIN_MAX_ATTEMPTS,
     OTP_MAX_ATTEMPTS, OTP_TTL_MINUTES, PERMISSION_GROUPS, RedirectResponse, Request, User,
@@ -10,6 +13,9 @@ from .dependencies import (
     log_audit, logged_in, or_, otp_hash, password_errors, select, session_expiry, settings,
     templates, timedelta, token_hash, token_urlsafe, verify_otp, verify_password, _csrf_token,
 )
+from ..model_domains import WebAuthnCredential
+from ..passkeys import authentication_options, registration_options, verify_authentication, verify_registration
+
 
 router = APIRouter()
 
@@ -48,6 +54,28 @@ async def _send_web_2fa_code(account: WebStaffAccount, code: str) -> None:
         )
     finally:
         await bot.session.close()
+
+
+async def _begin_telegram_otp(request: Request, session, account: WebStaffAccount) -> RedirectResponse:
+    now = clock.storage_utc()
+    code = generate_otp()
+    nonce = token_urlsafe(16)
+    await _send_web_2fa_code(account, code)
+    await log_audit(
+        session, "web_login_password_ok_2fa", actor_label=account.display_name,
+        entity_type="web_staff_account", entity_id=account.id,
+        details="Пароль правильний; надіслано одноразовий Telegram-код",
+    )
+    await session.commit()
+    csrf = _csrf_token(request)
+    request.session.clear()
+    request.session["csrf_token"] = csrf
+    request.session["pending_2fa_account_id"] = account.id
+    request.session["pending_2fa_nonce"] = nonce
+    request.session["pending_2fa_hash"] = otp_hash(code, nonce)
+    request.session["pending_2fa_expires"] = (now + timedelta(minutes=OTP_TTL_MINUTES)).isoformat()
+    request.session["pending_2fa_attempts"] = 0
+    return RedirectResponse("/admin/login/2fa", status_code=303)
 
 
 async def _establish_web_session(request: Request, db_session, account: WebStaffAccount) -> None:
@@ -135,31 +163,159 @@ async def login(request: Request, username: str = Form(...), password: str = For
         account.failed_attempts = 0
         account.locked_until = None
         account.updated_at = now
-        requires_2fa = account.role == "superadmin" or bool(account.two_factor_enabled)
-        if requires_2fa:
-            code = generate_otp()
-            nonce = token_urlsafe(16)
-            try:
-                await _send_web_2fa_code(account, code)
-            except HTTPException as exc:
-                await log_audit(session, "web_2fa_unavailable", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=str(exc.detail))
-                await session.commit()
-                return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error=str(exc.detail)), status_code=503)
-            await log_audit(session, "web_login_password_ok_2fa", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details="Пароль правильний; надіслано одноразовий код")
+        passkeys = list((await session.scalars(select(WebAuthnCredential).where(
+            WebAuthnCredential.account_id == account.id,
+            WebAuthnCredential.revoked_at.is_(None),
+        ))).all())
+        passkeys_available = bool(passkeys) and bool(settings.webauthn_enabled)
+        requires_2fa = account.role == "superadmin" or bool(account.two_factor_enabled) or passkeys_available
+        if passkeys_available:
+            await log_audit(
+                session, "web_login_password_ok_passkey", actor_label=account.display_name,
+                entity_type="web_staff_account", entity_id=account.id,
+                details=f"Пароль правильний; доступних passkeys: {len(passkeys)}",
+            )
             await session.commit()
             csrf = _csrf_token(request)
             request.session.clear()
             request.session["csrf_token"] = csrf
-            request.session["pending_2fa_account_id"] = account.id
-            request.session["pending_2fa_nonce"] = nonce
-            request.session["pending_2fa_hash"] = otp_hash(code, nonce)
-            request.session["pending_2fa_expires"] = (now + timedelta(minutes=OTP_TTL_MINUTES)).isoformat()
-            request.session["pending_2fa_attempts"] = 0
-            return RedirectResponse("/admin/login/2fa", status_code=303)
+            request.session["pending_passkey_account_id"] = account.id
+            request.session["pending_passkey_expires"] = (now + timedelta(minutes=5)).isoformat()
+            request.session["pending_passkey_attempts"] = 0
+            return RedirectResponse("/admin/login/passkey", status_code=303)
+
+        if requires_2fa:
+            try:
+                return await _begin_telegram_otp(request, session, account)
+            except HTTPException as exc:
+                await log_audit(session, "web_2fa_unavailable", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=str(exc.detail))
+                await session.commit()
+                return templates.TemplateResponse(request=request, name="login.html", context=ctx(request, error=str(exc.detail)), status_code=503)
 
         await _establish_web_session(request, session, account)
         target = "/admin/account/password?required=1" if account.must_change_password else "/admin/dashboard"
         return RedirectResponse(target, status_code=303)
+
+
+@router.get("/admin/login/passkey", response_class=HTMLResponse)
+async def login_passkey_page(request: Request):
+    if not settings.webauthn_enabled:
+        return RedirectResponse("/admin/login", status_code=303)
+    account_id = request.session.get("pending_passkey_account_id")
+    expires_raw = str(request.session.get("pending_passkey_expires") or "")
+    if not account_id:
+        return RedirectResponse("/admin/login", status_code=303)
+    try:
+        expires = datetime.fromisoformat(expires_raw)
+    except ValueError:
+        expires = datetime.min
+    if clock.storage_utc() > expires:
+        csrf = _csrf_token(request)
+        request.session.clear(); request.session["csrf_token"] = csrf
+        return RedirectResponse("/admin/login", status_code=303)
+    return templates.TemplateResponse(request=request, name="login_passkey.html", context=ctx(request, error=None))
+
+
+@router.post("/admin/login/passkey/options")
+async def login_passkey_options(request: Request):
+    if not settings.webauthn_enabled:
+        return JSONResponse({"detail": "Passkey не налаштований для цього deployment"}, status_code=503)
+    account_id = request.session.get("pending_passkey_account_id")
+    if not account_id:
+        return JSONResponse({"detail": "Сесію входу не знайдено"}, status_code=401)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, int(account_id))
+        credentials = list((await session.scalars(select(WebAuthnCredential).where(
+            WebAuthnCredential.account_id == int(account_id), WebAuthnCredential.revoked_at.is_(None)
+        ))).all())
+        if not account or not account.active or not credentials:
+            return JSONResponse({"detail": "Passkey недоступний"}, status_code=401)
+        options, challenge = authentication_options(credentials=credentials, rp_id=settings.webauthn_rp_id)
+        request.session["pending_passkey_challenge"] = challenge
+        request.session["pending_passkey_challenge_expires"] = (clock.storage_utc() + timedelta(minutes=2)).isoformat()
+        return JSONResponse(options, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/admin/login/passkey/verify")
+async def login_passkey_verify(request: Request, credential_json: str = Form(...)):
+    if not settings.webauthn_enabled:
+        return JSONResponse({"detail": "Passkey не налаштований для цього deployment"}, status_code=503)
+    account_id = request.session.get("pending_passkey_account_id")
+    challenge = str(request.session.get("pending_passkey_challenge") or "")
+    expires_raw = str(request.session.get("pending_passkey_challenge_expires") or "")
+    attempts = int(request.session.get("pending_passkey_attempts") or 0)
+    if not account_id or not challenge:
+        return JSONResponse({"detail": "Passkey challenge відсутній або застарів"}, status_code=401)
+    try:
+        expires = datetime.fromisoformat(expires_raw)
+        credential = json.loads(credential_json)
+        credential_id = str(credential.get("id") or credential.get("rawId") or "")
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JSONResponse({"detail": "Некоректна відповідь passkey"}, status_code=400)
+    if clock.storage_utc() > expires:
+        return JSONResponse({"detail": "Passkey challenge застарів"}, status_code=401)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, int(account_id))
+        stored = await session.scalar(select(WebAuthnCredential).where(
+            WebAuthnCredential.account_id == int(account_id),
+            WebAuthnCredential.credential_id_b64 == credential_id,
+            WebAuthnCredential.revoked_at.is_(None),
+        ))
+        if not account or not account.active or not stored:
+            return JSONResponse({"detail": "Passkey не знайдено"}, status_code=401)
+        try:
+            verified = verify_authentication(
+                credential=credential, stored=stored, challenge_b64=challenge,
+                rp_id=settings.webauthn_rp_id, origin=settings.webauthn_origin,
+            )
+        except Exception as exc:
+            attempts += 1
+            request.session["pending_passkey_attempts"] = attempts
+            await log_audit(
+                session, "web_passkey_auth_failed", actor_label=account.display_name,
+                entity_type="web_authn_credential", entity_id=stored.id,
+                details=f"Passkey verification failed; attempt={attempts}; error={type(exc).__name__}",
+            )
+            await session.commit()
+            if attempts >= OTP_MAX_ATTEMPTS:
+                csrf = _csrf_token(request)
+                request.session.clear(); request.session["csrf_token"] = csrf
+                return JSONResponse({"detail": "Забагато невдалих passkey-спроб. Увійдіть заново."}, status_code=401)
+            return JSONResponse({"detail": "Passkey не підтверджено"}, status_code=401)
+        stored.sign_count = verified.new_sign_count
+        stored.device_type = verified.device_type
+        stored.backed_up = verified.backed_up
+        stored.last_used_at = clock.storage_utc()
+        await log_audit(
+            session, "web_passkey_auth_success", actor_label=account.display_name,
+            entity_type="web_authn_credential", entity_id=stored.id, details="Passkey підтверджено",
+        )
+        request.session.pop("pending_passkey_challenge", None)
+        request.session.pop("pending_passkey_challenge_expires", None)
+        await _establish_web_session(request, session, account)
+        target = "/admin/account/password?required=1" if account.must_change_password else "/admin/dashboard"
+        return JSONResponse({"ok": True, "redirect": target}, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/admin/login/passkey/fallback")
+async def login_passkey_fallback(request: Request):
+    account_id = request.session.get("pending_passkey_account_id")
+    if not account_id:
+        return RedirectResponse("/admin/login", status_code=303)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, int(account_id))
+        if not account or not account.active:
+            return RedirectResponse("/admin/login", status_code=303)
+        try:
+            await log_audit(
+                session, "web_passkey_fallback_requested", actor_label=account.display_name,
+                entity_type="web_staff_account", entity_id=account.id, details="Запитано резервний Telegram OTP",
+            )
+            return await _begin_telegram_otp(request, session, account)
+        except HTTPException as exc:
+            await log_audit(session, "web_2fa_unavailable", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=str(exc.detail))
+            await session.commit()
+            return templates.TemplateResponse(request=request, name="login_passkey.html", context=ctx(request, error=str(exc.detail)), status_code=503)
 
 
 @router.get("/admin/login/2fa", response_class=HTMLResponse)
@@ -229,6 +385,7 @@ async def _account_security_context(request: Request, *, error: str | None = Non
     async with db.session_factory() as session:
         account = await session.get(WebStaffAccount, int(account_id)) if account_id else None
         sessions = []
+        passkeys = []
         if account:
             sessions = list((await session.scalars(
                 select(WebAdminSession).where(
@@ -236,9 +393,15 @@ async def _account_security_context(request: Request, *, error: str | None = Non
                     WebAdminSession.revoked_at.is_(None),
                 ).order_by(WebAdminSession.last_seen_at.desc())
             )).all())
+            passkeys = list((await session.scalars(
+                select(WebAuthnCredential).where(
+                    WebAuthnCredential.account_id == account.id,
+                    WebAuthnCredential.revoked_at.is_(None),
+                ).order_by(WebAuthnCredential.created_at.desc())
+            )).all())
     current_hash = token_hash(str(request.session.get("admin_session_token") or ""))
     return ctx(
-        request, account=account, web_sessions=sessions, current_session_hash=current_hash,
+        request, account=account, web_sessions=sessions, passkeys=passkeys, passkeys_enabled=settings.webauthn_enabled, current_session_hash=current_hash,
         browser_label=browser_label, error=error, success=success, password_required=required,
     )
 
@@ -336,6 +499,130 @@ async def account_2fa_update(request: Request, enabled: str = Form(""), telegram
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
+@router.post("/admin/account/passkeys/options")
+async def account_passkey_options(request: Request, current_password: str = Form(...)):
+    if r := guard(request): return r
+    if not settings.webauthn_enabled:
+        return JSONResponse({"detail": "Passkey не налаштований. Встановіть HTTPS WEBAUTHN_ORIGIN/PUBLIC_BASE_URL."}, status_code=503)
+    account_id = int(request.session.get("admin_account_id") or 0)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account or not account.active:
+            return JSONResponse({"detail": "Акаунт не знайдено"}, status_code=401)
+        if not verify_password(current_password, account.password_hash):
+            await log_audit(
+                session, "web_passkey_stepup_failed", actor_label=account.display_name,
+                entity_type="web_staff_account", entity_id=account.id,
+                details="Невірний поточний пароль під час enrollment passkey",
+            )
+            await session.commit()
+            return JSONResponse({"detail": "Для додавання passkey підтвердьте поточний пароль"}, status_code=401)
+        credentials = list((await session.scalars(select(WebAuthnCredential).where(
+            WebAuthnCredential.account_id == account.id, WebAuthnCredential.revoked_at.is_(None)
+        ))).all())
+        options, challenge = registration_options(
+            account=account, credentials=credentials, rp_id=settings.webauthn_rp_id, rp_name=settings.webauthn_rp_name
+        )
+        request.session["passkey_registration_challenge"] = challenge
+        request.session["passkey_registration_expires"] = (clock.storage_utc() + timedelta(minutes=2)).isoformat()
+        return JSONResponse(options, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/admin/account/passkeys/register")
+async def account_passkey_register(request: Request, credential_json: str = Form(...), label: str = Form("Passkey")):
+    if r := guard(request): return r
+    if not settings.webauthn_enabled:
+        return JSONResponse({"detail": "Passkey не налаштований для цього deployment"}, status_code=503)
+    account_id = int(request.session.get("admin_account_id") or 0)
+    challenge = str(request.session.get("passkey_registration_challenge") or "")
+    expires_raw = str(request.session.get("passkey_registration_expires") or "")
+    try:
+        expires = datetime.fromisoformat(expires_raw)
+        credential = json.loads(credential_json)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return JSONResponse({"detail": "Некоректна відповідь passkey"}, status_code=400)
+    if not challenge or clock.storage_utc() > expires:
+        return JSONResponse({"detail": "Challenge реєстрації застарів. Спробуйте ще раз."}, status_code=401)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account or not account.active:
+            return JSONResponse({"detail": "Акаунт не знайдено"}, status_code=401)
+        try:
+            registered = verify_registration(
+                credential=credential, challenge_b64=challenge,
+                rp_id=settings.webauthn_rp_id, origin=settings.webauthn_origin,
+            )
+        except Exception as exc:
+            await log_audit(
+                session, "web_passkey_register_failed", actor_label=account.display_name,
+                entity_type="web_staff_account", entity_id=account.id, details=f"error={type(exc).__name__}",
+            )
+            await session.commit()
+            return JSONResponse({"detail": "Не вдалося перевірити passkey"}, status_code=400)
+        existing = await session.scalar(select(WebAuthnCredential).where(
+            WebAuthnCredential.credential_id_b64 == registered.credential_id_b64
+        ))
+        if existing and existing.account_id != account.id:
+            # A credential id is globally unique and must never be moved between
+            # staff identities, even after revocation.
+            await log_audit(
+                session, "web_passkey_register_collision", actor_label=account.display_name,
+                entity_type="web_staff_account", entity_id=account.id,
+                details="Credential id already belongs to another staff account",
+            )
+            await session.commit()
+            return JSONResponse({"detail": "Цей passkey вже прив’язаний до іншого акаунта"}, status_code=409)
+        if existing and existing.revoked_at is None:
+            return JSONResponse({"detail": "Цей passkey вже зареєстровано"}, status_code=409)
+        if existing:
+            existing.public_key = registered.public_key
+            existing.sign_count = registered.sign_count
+            existing.device_type = registered.device_type
+            existing.backed_up = registered.backed_up
+            existing.transports_json = registered.transports_json
+            existing.label = (label.strip() or "Passkey")[:120]
+            existing.revoked_at = None
+            existing.last_used_at = None
+            row = existing
+        else:
+            row = WebAuthnCredential(
+                account_id=account.id, credential_id_b64=registered.credential_id_b64,
+                public_key=registered.public_key, sign_count=registered.sign_count,
+                device_type=registered.device_type, backed_up=registered.backed_up,
+                transports_json=registered.transports_json, label=(label.strip() or "Passkey")[:120],
+                created_at=clock.storage_utc(),
+            )
+            session.add(row)
+        await session.flush()
+        await log_audit(
+            session, "web_passkey_registered", actor_label=account.display_name,
+            entity_type="web_authn_credential", entity_id=row.id,
+            details=f"label={row.label}; device_type={row.device_type}; backed_up={row.backed_up}",
+        )
+        await session.commit()
+        request.session.pop("passkey_registration_challenge", None)
+        request.session.pop("passkey_registration_expires", None)
+        return JSONResponse({"ok": True, "reload": True}, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/admin/account/passkeys/{credential_id}/revoke")
+async def account_passkey_revoke(request: Request, credential_id: int):
+    if r := guard(request): return r
+    account_id = int(request.session.get("admin_account_id") or 0)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        row = await session.get(WebAuthnCredential, credential_id)
+        if not account or not row or row.account_id != account.id or row.revoked_at is not None:
+            raise HTTPException(status_code=404, detail="Passkey не знайдено")
+        row.revoked_at = clock.storage_utc()
+        await log_audit(
+            session, "web_passkey_revoked", actor_label=account.display_name,
+            entity_type="web_authn_credential", entity_id=row.id, details=f"label={row.label}",
+        )
+        await session.commit()
+    return RedirectResponse("/admin/account#passkeys", status_code=303)
+
+
 @router.post("/admin/account/sessions/{session_id}/revoke")
 async def account_session_revoke(request: Request, session_id: int):
     if r := guard(request): return r
@@ -359,18 +646,22 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
     async with db.session_factory() as session:
         accounts = list((await session.scalars(select(WebStaffAccount).order_by(WebStaffAccount.role.desc(), WebStaffAccount.display_name.asc()))).all())
         active_counts = {}
+        passkey_counts = {}
         for account in accounts:
             active_counts[account.id] = int(await session.scalar(select(func.count(WebAdminSession.id)).where(
                 WebAdminSession.account_id == account.id,
                 WebAdminSession.revoked_at.is_(None),
                 or_(WebAdminSession.expires_at.is_(None), WebAdminSession.expires_at > clock.storage_utc()),
             )) or 0)
+            passkey_counts[account.id] = int(await session.scalar(select(func.count(WebAuthnCredential.id)).where(
+                WebAuthnCredential.account_id == account.id, WebAuthnCredential.revoked_at.is_(None),
+            )) or 0)
         telegram_staff = list((await session.scalars(
             select(User).where(User.role.in_([UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value]))
             .order_by(User.role.desc(), User.full_name.asc())
         )).all())
     return ctx(
-        request, staff_accounts=accounts, telegram_staff=telegram_staff, active_session_counts=active_counts,
+        request, staff_accounts=accounts, telegram_staff=telegram_staff, active_session_counts=active_counts, passkey_counts=passkey_counts,
         permission_groups=PERMISSION_GROUPS, effective_permissions=effective_permissions,
         temp_password=temp_password, temp_username=temp_username, success=success, now=clock.storage_utc(),
     )

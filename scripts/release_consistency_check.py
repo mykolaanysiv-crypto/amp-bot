@@ -6,8 +6,8 @@ import re
 from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "1.18.7"
-EXPECTED_ALEMBIC_HEAD = "20260925_0015"
+EXPECTED_VERSION = "1.19.0"
+EXPECTED_ALEMBIC_HEAD = "20261007_0016"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"
 
@@ -18,7 +18,17 @@ CRITICAL_RUNTIME_FILES = (
     "app/bot_runtime.py",
     "app/web/factory.py",
     "app/web/lifespan.py",
+    "app/web/auth_routes.py",
+    "app/web/security_middleware.py",
+    "app/web/routes/security_center.py",
+    "app/web/static/passkeys.js",
+    "app/passkeys.py",
+    "app/rate_limit.py",
+    "app/metrics.py",
+    "app/observability_snapshot.py",
+    "app/security_center.py",
     "app/domain_services/quest_auto.py",
+    "migrations/versions/20261007_0016_security_observability.py",
     "scripts/heroku_release.py",
     "scripts/startup_smoke.py",
     "scripts/schema_drift_check.py",
@@ -65,10 +75,11 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "BUILD_MANIFEST_V1187.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "RELEASE_V1187_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "AUDIT_V1187_BASELINE_UA.md": ("1.18.6", EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "COMMANDS_V1187.txt": (EXPECTED_VERSION,),
+        "BUILD_MANIFEST_V1190.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "RELEASE_V1190_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "AUDIT_V1190_BASELINE_UA.md": ("1.18.7", EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "COMMANDS_V1190.txt": (EXPECTED_VERSION,),
+        "TEST_REPORT_V1190.txt": (EXPECTED_VERSION,),
     }
     for name, tokens in docs.items():
         path = root / name
@@ -79,7 +90,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         if missing:
             raise SystemExit(f"{name} is not synchronized; missing {missing}")
 
-    manifest = (root / "BUILD_MANIFEST_V1187.txt").read_text(encoding="utf-8")
+    manifest = (root / "BUILD_MANIFEST_V1190.txt").read_text(encoding="utf-8")
     for lock_name, digest in hashes.items():
         token = f"{lock_name} SHA256: {digest}"
         if token not in manifest:
@@ -116,10 +127,29 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     if "continue-on-error" in audit_block:
         raise SystemExit("pip-audit must be a blocking release gate")
 
-    for template in ("base.html", "login.html", "login_2fa.html"):
+    for template in ("base.html", "login.html", "login_2fa.html", "login_passkey.html", "account_security.html"):
         text = (root / "app" / "web" / "templates" / template).read_text(encoding="utf-8")
         if f"v={EXPECTED_VERSION}" not in text:
             raise SystemExit(f"Static cache token mismatch in {template}")
+
+    requirements = (root / "requirements.lock").read_text(encoding="utf-8")
+    if "webauthn==3.0.1" not in requirements:
+        raise SystemExit("v1.19.0 passkey dependency is not locked")
+
+    migration = (root / "migrations" / "versions" / "20261007_0016_security_observability.py").read_text(encoding="utf-8")
+    for token in ("web_authn_credentials", 'down_revision: Union[str, None] = "20260925_0015"', "def downgrade"):
+        if token not in migration:
+            raise SystemExit(f"v1.19.0 additive migration gate missing: {token}")
+
+    security_middleware = (root / "app" / "web" / "security_middleware.py").read_text(encoding="utf-8")
+    for token in ("content-security-policy", "content-security-policy-report-only", "csp_nonce"):
+        if token not in security_middleware:
+            raise SystemExit(f"v1.19.0 CSP gate missing: {token}")
+
+    factory = (root / "app" / "web" / "factory.py").read_text(encoding="utf-8")
+    for token in ("RateLimitMiddleware", "security_center_routes"):
+        if token not in factory:
+            raise SystemExit(f"v1.19.0 web security composition gate missing: {token}")
 
     alembic_ini = (root / "alembic.ini").read_text(encoding="utf-8")
     if "path_separator = os" not in alembic_ini:

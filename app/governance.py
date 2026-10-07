@@ -5,6 +5,8 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from .model_domains import AuditLog, GamificationRuleVersion, OperationalIssue, Event, EventFeedback, EventRegistration, Notification, RewardClaim, User, XPTransaction, SystemSetting
 from .reliability import backup_verification_status
+from .data_integrity import scan_data_integrity
+from .runtime_health import runtime_health_snapshot
 from .runtime_config import get_runtime_int
 from .time_utils import clock
 
@@ -108,6 +110,9 @@ async def _upsert_issue(session: AsyncSession, *, fingerprint: str, issue_type: 
 
 async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours: int=48,
                                   backup_warning_age_hours: int=36,
+                                  worker_stale_seconds: int = 120,
+                                  startup_grace_seconds: int = 180,
+                                  db_pool_status: dict[str, Any] | None = None,
                                   now: datetime | None = None) -> int:
     """One complete transactional scan. Call only under the distributed job lock.
 
@@ -189,12 +194,15 @@ async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours
 
     # Single grouped query replaces one ledger SUM per participant (N+1).
     wallet_rows = (await session.execute(
-        select(User.id, User.wallet_xp, func.coalesce(func.sum(XPTransaction.amount), 0))
+        select(User.id, User.full_name, User.wallet_xp, func.coalesce(func.sum(XPTransaction.amount), 0))
         .outerjoin(XPTransaction, XPTransaction.user_id == User.id)
-        .where(User.status != "deleted_permanent")
+        .where(
+            User.status != "deleted_permanent",
+            User.permanent_deleted_at.is_(None),
+        )
         .group_by(User.id, User.wallet_xp)
     )).all()
-    for user_id, wallet_raw, earned_raw in wallet_rows:
+    for user_id, _full_name, wallet_raw, earned_raw in wallet_rows:
         wallet, earned = int(wallet_raw or 0), int(earned_raw or 0)
         if wallet < 0 or wallet > max(0, earned):
             await report(fingerprint=f"xp_wallet:{user_id}", issue_type="xp_anomaly",
@@ -225,6 +233,69 @@ async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours
             severity="critical", title="Backup потребує уваги",
             details=f"Стан: {backup.get('status')}; вік: {backup.get('age_hours') if backup.get('age_hours') is not None else '—'} год",
             action_url="/admin/system-health")
+
+    # v1.19.0 Observability 2.0: runtime health is converted into advisory
+    # Operational Issues. The scanner never restarts processes, deletes data or
+    # mutates participant state; the operator remains in control.
+    runtime = await runtime_health_snapshot(
+        session,
+        worker_stale_seconds=worker_stale_seconds,
+        startup_grace_seconds=startup_grace_seconds,
+        now=clock.from_storage_utc(now),
+    )
+    worker = runtime.get("worker") or {}
+    if not runtime.get("worker_ok"):
+        await report(
+            fingerprint="runtime_worker_stale", issue_type="worker_stale", severity="critical",
+            title="Telegram worker не подає актуальний heartbeat",
+            details=f"status={worker.get('status') or 'unknown'}; age={worker.get('age_seconds') if worker.get('age_seconds') is not None else '—'} сек",
+            action_url="/admin/security-center",
+        )
+    for scheduler in runtime.get("schedulers") or []:
+        if scheduler.get("healthy"):
+            continue
+        name = str(scheduler.get("name") or "unknown")
+        await report(
+            fingerprint=f"runtime_scheduler_stale:{name}", issue_type="scheduler_stale", severity="high",
+            title=f"Scheduler неактивний: {scheduler.get('label') or name}",
+            details=f"status={scheduler.get('status') or 'unknown'}; age={scheduler.get('age_seconds') if scheduler.get('age_seconds') is not None else '—'} сек; error={scheduler.get('error') or '—'}",
+            action_url="/admin/security-center", entity_type="scheduler",
+        )
+
+    login_failures_15m = int(await session.scalar(select(func.count(AuditLog.id)).where(
+        AuditLog.action.in_(["web_login_failed", "web_2fa_failed", "web_passkey_auth_failed"]),
+        AuditLog.created_at >= now - timedelta(minutes=15),
+    )) or 0)
+    if login_failures_15m >= 5:
+        await report(
+            fingerprint="security_login_failures_high", issue_type="login_failures_high", severity="high",
+            title="Підвищена кількість невдалих входів",
+            details=f"Невдалих login/MFA перевірок за 15 хв: {login_failures_15m}",
+            action_url="/admin/security-center",
+        )
+
+    pool = db_pool_status or {}
+    utilization = pool.get("utilization_pct")
+    if isinstance(utilization, (int, float)) and float(utilization) >= 80.0:
+        await report(
+            fingerprint="db_pool_pressure", issue_type="db_pool_pressure", severity="high",
+            title="Високе використання пулу PostgreSQL",
+            details=f"DB pool utilization: {float(utilization):.1f}%",
+            action_url="/admin/security-center",
+        )
+
+    integrity = await scan_data_integrity(session, lifetime_rows=wallet_rows)
+    integrity_totals = integrity.get("totals") or {}
+    integrity_critical = int(integrity_totals.get("critical") or 0)
+    integrity_high = int(integrity_totals.get("high") or 0)
+    if integrity_critical or integrity_high:
+        await report(
+            fingerprint="data_integrity_high_risk", issue_type="integrity_anomaly",
+            severity="critical" if integrity_critical else "high",
+            title="Цілісність даних потребує ручної перевірки",
+            details=f"critical={integrity_critical}; high={integrity_high}; issue_groups={int(integrity.get('issue_groups') or 0)}",
+            action_url="/admin/data-integrity",
+        )
 
     # Only after every source has been checked can vanished issues be closed.
     open_rows = (await session.scalars(select(OperationalIssue).where(

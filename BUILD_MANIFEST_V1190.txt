@@ -1,0 +1,67 @@
+AMP XP v1.19.0 — BUILD MANIFEST
+Build date: 2026-10-07
+Source baseline: user-provided amp_bot_v1187(1).zip (v1.18.7)
+Source VCS commit: unavailable inside source ZIP; verify against Git branch before production merge
+
+APP VERSION: 1.19.0
+Python: 3.13
+PostgreSQL: 18
+Alembic head: 20261007_0016
+Previous production Alembic head: 20260925_0015
+
+Dependency locks
+requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+Security dependency: cryptography==50.0.2
+WebAuthn dependency: webauthn==3.0.1
+
+Critical runtime/release files
+run.py
+run_web.py
+app/main.py
+app/bot_runtime.py
+app/db.py
+app/governance.py
+app/jobs/operations.py
+app/reliability.py
+app/web/factory.py
+app/web/lifespan.py
+app/web/auth_routes.py
+app/web/security_middleware.py
+app/web/routes/security_center.py
+app/web/templates/security_center.html
+app/web/static/passkeys.js
+app/passkeys.py
+app/rate_limit.py
+app/metrics.py
+app/observability_snapshot.py
+app/security_center.py
+app/domain_services/quest_auto.py
+migrations/versions/20261007_0016_security_observability.py
+scripts/heroku_release.py
+scripts/startup_smoke.py
+scripts/schema_drift_check.py
+scripts/verify_backup_restore.sh
+.github/workflows/ci.yml
+.github/workflows/backup.yml
+
+Release controls
+- exact direct dependency locks
+- blocking pip-audit
+- production_preflight
+- release/documentation consistency gate
+- PostgreSQL 18 integration
+- Alembic previous-production upgrade and downgrade/upgrade roundtrip
+- schema drift gate
+- restore-verified backup before deployment
+- post-deploy live/ready/version smoke
+- dedicated FIELD_ENCRYPTION_KEY preserved
+
+Release documentation
+README.md
+HEROKU_DEPLOY.md
+RELEASE_V1190_UA.md
+AUDIT_V1190_BASELINE_UA.md
+TEST_REPORT_V1190.txt
+COMMANDS_V1190.txt
+BUILD_MANIFEST_V1190.txt

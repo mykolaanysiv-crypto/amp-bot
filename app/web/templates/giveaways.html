@@ -39,7 +39,7 @@
   </article>
 {% else %}<p class="empty">Розіграшів ще немає.</p>{% endfor %}
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (function(){
   const form=document.getElementById('giveawayCreateForm'); if(!form) return;
   const mode=form.querySelector('#createParticipationMode'), audience=form.querySelector('#createAudienceType');

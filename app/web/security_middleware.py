@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..time_utils import clock
 
 from datetime import datetime, timedelta
+import secrets
 from hmac import compare_digest
 
 from fastapi import Request
@@ -200,7 +201,13 @@ class AdminSessionValidationMiddleware:
 
 
 class SecurityHeadersMiddleware:
-    """Add conservative browser hardening headers to all HTTP responses."""
+    """Add browser hardening and staged CSP with a per-request nonce.
+
+    v1.19.0 enforces an origin allow-list while keeping ``unsafe-inline`` for
+    legacy inline event attributes that still exist in the Jinja UI. In
+    parallel a nonce-first Report-Only policy exposes what remains to migrate
+    before ``unsafe-inline`` can be removed safely.
+    """
 
     def __init__(self, app, *, hsts: bool = False):
         self.app = app
@@ -211,6 +218,30 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
 
+        nonce = secrets.token_urlsafe(18)
+        state = scope.setdefault("state", {})
+        state["csp_nonce"] = nonce
+        enforced_csp = (
+            "default-src 'self'; "
+            "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://telegram.org; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' https://api.telegram.org https://*.telegram.org; "
+            "media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'"
+        )
+        report_only_csp = (
+            "default-src 'self'; "
+            "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; "
+            f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net https://telegram.org; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' https://api.telegram.org https://*.telegram.org; "
+            "media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'"
+        )
+
         async def send_wrapper(message):
             if message.get("type") == "http.response.start":
                 headers = list(message.get("headers") or [])
@@ -219,10 +250,10 @@ class SecurityHeadersMiddleware:
                     (b"x-frame-options", b"DENY"),
                     (b"referrer-policy", b"same-origin"),
                     (b"permissions-policy", b"camera=(self), microphone=(), geolocation=()"),
+                    (b"content-security-policy", enforced_csp.encode("ascii")),
+                    (b"content-security-policy-report-only", report_only_csp.encode("ascii")),
                 ])
                 if str(scope.get("path") or "").startswith("/admin"):
-                    # Admin pages may contain personal, financial or operational
-                    # data and must not be stored in browser/shared proxy caches.
                     headers.append((b"cache-control", b"no-store, private"))
                     headers.append((b"pragma", b"no-cache"))
                 if self.hsts:

@@ -193,7 +193,7 @@
     <div class="quick-xp-question-fields"><label>№ правильної відповіді<input type="number" name="quiz_question_correct" min="1" max="12" value="1" required></label><label>XP за правильну відповідь<input type="number" name="quiz_question_xp" min="1" max="20" value="1" required></label></div>
   </div>
 </template>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function setPanelControls(panel, enabled){panel.querySelectorAll('input,textarea,select').forEach(el=>{if(el.name!=='_csrf')el.disabled=!enabled;});}
 function syncQuickXpKind(form){const kind=form.querySelector('.quick-xp-kind-select')?.value;form.querySelectorAll('[data-kind-panel]').forEach(panel=>{const active=panel.dataset.kindPanel===kind;panel.hidden=!active;setPanelControls(panel,active);});}
 document.querySelectorAll('[data-kind-form]').forEach(form=>{const select=form.querySelector('.quick-xp-kind-select');syncQuickXpKind(form);select?.addEventListener('change',()=>syncQuickXpKind(form));});

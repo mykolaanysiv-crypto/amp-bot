@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 import os
 import shutil
 import json
@@ -158,6 +159,10 @@ class Settings:
     organization_name: str
     bot_name: str
     public_base_url: str
+    webauthn_rp_id: str
+    webauthn_origin: str
+    webauthn_rp_name: str
+    webauthn_enabled: bool
     web_host: str
     web_port: int
     web_admin_username: str
@@ -212,6 +217,28 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         media_storage = "database" if is_postgres else "local"
 
     public_base_url = os.getenv("PUBLIC_BASE_URL", "http://localhost:8080").strip().rstrip("/")
+    webauthn_origin = (os.getenv("WEBAUTHN_ORIGIN", "").strip() or public_base_url).rstrip("/")
+    parsed_webauthn_origin = urlparse(webauthn_origin)
+    webauthn_rp_id = (os.getenv("WEBAUTHN_RP_ID", "").strip() or parsed_webauthn_origin.hostname or "localhost").lower()
+    webauthn_rp_name = os.getenv("WEBAUTHN_RP_NAME", os.getenv("BOT_NAME", "АМПасадори / АМП XP")).strip()
+    if not webauthn_rp_id or any(token in webauthn_rp_id for token in ("://", "/", " ")):
+        raise RuntimeError("WEBAUTHN_RP_ID має бути коректним hostname без протоколу")
+    if parsed_webauthn_origin.scheme not in {"http", "https"} or not parsed_webauthn_origin.hostname:
+        raise RuntimeError("WEBAUTHN_ORIGIN має бути абсолютним http(s) origin без path")
+    if parsed_webauthn_origin.path not in {"", "/"} or parsed_webauthn_origin.query or parsed_webauthn_origin.fragment:
+        raise RuntimeError("WEBAUTHN_ORIGIN має містити лише scheme + host (+ port), без path/query")
+    webauthn_origin_host = (parsed_webauthn_origin.hostname or "").lower()
+    if webauthn_origin_host != webauthn_rp_id and not webauthn_origin_host.endswith("." + webauthn_rp_id):
+        raise RuntimeError("WEBAUTHN_RP_ID має дорівнювати hostname WEBAUTHN_ORIGIN або бути його батьківським доменом")
+    # Backward-compatible rollout: a production dyno without an explicitly configured
+    # HTTPS origin keeps the existing Telegram OTP flow and cannot enroll/use passkeys.
+    # This avoids making the new security control a boot-time dependency.
+    webauthn_enabled = (
+        parsed_webauthn_origin.scheme == "https"
+        or (parsed_webauthn_origin.scheme == "http" and parsed_webauthn_origin.hostname in {"localhost", "127.0.0.1", "::1"})
+    )
+    if os.getenv("DYNO") and parsed_webauthn_origin.scheme != "https":
+        webauthn_enabled = False
 
     web_session_secret = os.getenv("WEB_SESSION_SECRET", "").strip()
     if os.getenv("DYNO") and len(web_session_secret) < 32:
@@ -245,6 +272,10 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         organization_name=os.getenv("ORGANIZATION_NAME", "Анисівський молодіжний простір").strip(),
         bot_name=os.getenv("BOT_NAME", "АМПасадори / АМП XP").strip(),
         public_base_url=public_base_url,
+        webauthn_rp_id=webauthn_rp_id,
+        webauthn_origin=webauthn_origin,
+        webauthn_rp_name=webauthn_rp_name,
+        webauthn_enabled=webauthn_enabled,
         web_host=os.getenv("WEB_HOST", "0.0.0.0").strip(),
         web_port=int(os.getenv("PORT", os.getenv("WEB_PORT", "8080"))),
         web_admin_username=os.getenv("WEB_ADMIN_USERNAME", "admin").strip(),

@@ -3,9 +3,9 @@ from pathlib import Path
 
 def _read_version() -> str:
     try:
-        return (Path(__file__).resolve().parent.parent / "VERSION.txt").read_text(encoding="utf-8").strip() or "1.18.7"
+        return (Path(__file__).resolve().parent.parent / "VERSION.txt").read_text(encoding="utf-8").strip() or "1.19.0"
     except Exception:
-        return "1.18.7"
+        return "1.19.0"
 
 
 APP_VERSION = _read_version()

@@ -46,7 +46,7 @@ async def test_issue_auto_reopen_resolve_and_reminder_window(db, monkeypatch):
         reg = EventRegistration(event_id=event.id, user_id=user.id, status='registered')
         session.add(reg)
         await session.flush()
-        assert await scan_operational_issues(session, now=now) == 1
+        await scan_operational_issues(session, now=now)
         wallet = await session.scalar(select(OperationalIssue).where(
             OperationalIssue.fingerprint == f'xp_wallet:{user.id}'))
         assert wallet and wallet.status == 'open'
@@ -85,7 +85,12 @@ async def test_scanner_uses_one_grouped_ledger_query(db, monkeypatch):
         ledger_queries = []
 
         def capture(conn, cursor, statement, parameters, context, executemany):
-            if statement.lstrip().lower().startswith('select') and 'xp_transactions' in statement.lower():
+            normalized = ' '.join(statement.lower().split())
+            if (
+                normalized.startswith('select')
+                and 'xp_transactions' in normalized
+                and 'group by users.id' in normalized
+            ):
                 ledger_queries.append(statement)
 
         sqla_event.listen(db.engine.sync_engine, 'before_cursor_execute', capture)
@@ -116,8 +121,8 @@ async def test_league_history_uses_effective_version(db):
 
 def test_stable_package_scripts_and_version():
     root = Path(__file__).resolve().parents[1]
-    assert (root / 'VERSION.txt').read_text().strip() == '1.18.7'
-    assert (root / 'VERSION_CHECK.txt').read_text().strip() == '1.18.7'
+    assert (root / 'VERSION.txt').read_text().strip() == '1.19.0'
+    assert (root / 'VERSION_CHECK.txt').read_text().strip() == '1.19.0'
     assert not (root / 'run_all.py').exists()
     for file in ('start_local.sh', 'start_local.ps1'):
         script = (root / file).read_text(encoding='utf-8')

@@ -1,17 +1,18 @@
-# Heroku deployment — АМПасадори v1.18.7
+# Heroku deployment — AMP XP v1.19.0
 
-Production is deployed from GitHub Actions only after the full `Production gate` passes on `main`.
+Production deployment is allowed only from GitHub Actions after the full Production Gate passes on `main`.
 
 ## Required GitHub secrets
 - `HEROKU_API_KEY`
 - `HEROKU_APP_NAME`
 
 ## Required production config
-- `WEB_SESSION_SECRET` — at least 32 characters.
-- `FIELD_ENCRYPTION_KEY` — separate secret, at least 32 characters.
-- `FIELD_ENCRYPTION_PREVIOUS_KEYS` — retained as needed for safe key rotation/migration.
+- `WEB_SESSION_SECRET` — random, at least 32 characters.
+- `FIELD_ENCRYPTION_KEY` — separate random secret, at least 32 characters.
+- `FIELD_ENCRYPTION_PREVIOUS_KEYS` — only while required for safe key rotation.
+- `COOKIE_SECURE=1`.
 
-Recommended defaults:
+Recommended:
 
 ```text
 BACKUP_UNKNOWN_GRACE_HOURS=24
@@ -20,10 +21,18 @@ BACKUP_MAX_AGE_HOURS=48
 WEB_MAX_REQUEST_MB=25
 ```
 
-## Reproducible dependency files
-Production install: `requirements.lock` via `requirements.txt`.
-CI/dev install: `requirements-dev.lock` via `requirements-dev.txt`.
-Do not edit a lock without updating the corresponding `.in` file and release manifest.
+## Passkeys / WebAuthn
+For passkeys set the real HTTPS deployment origin:
+
+```text
+WEBAUTHN_ORIGIN=https://YOUR_APP_HOST
+WEBAUTHN_RP_ID=YOUR_APP_HOST
+WEBAUTHN_RP_NAME=АМПасадори / АМП XP
+```
+
+`WEBAUTHN_RP_ID` is hostname only: no scheme and no path. It must equal the `WEBAUTHN_ORIGIN` hostname or be its parent domain. Changing RP ID/origin later may make previously registered credentials unusable, so treat these values as stable production identity configuration.
+
+Backward compatibility: if no valid HTTPS WebAuthn origin is configured on a production dyno, the app still starts, passkey enrollment/login is disabled, and Telegram OTP remains the fallback path.
 
 ## Local/pre-merge checks
 
@@ -38,30 +47,39 @@ node tests/js/test_admin_forms.js
 pip-audit -r requirements.lock --progress-spinner=off
 pip check
 pytest -q --ignore=tests/integration
-# With TEST_DATABASE_URL/POSTGRES_SMOKE_URL pointed to PostgreSQL 18:
+# PostgreSQL 18:
 pytest -q tests/integration
 python -m scripts.schema_drift_check
 ```
 
-## Automatic production deploy sequence
-1. Dependency lock and release/documentation consistency gates pass.
-2. Compile/preflight/Ruff/JS/pip-audit/pip-check/unit/regression/PostgreSQL/Alembic/schema-drift gates pass.
-3. Deploy job verifies Heroku secrets and encryption-key configuration.
-4. Fresh Heroku PGBackup is captured.
-5. That backup is downloaded and restore-verified against isolated PostgreSQL 18.
-6. The tested commit is pushed to Heroku.
-7. Heroku release process runs startup smoke and Alembic lifecycle gate.
-8. GitHub polls `/health/ready`, checks `/health/live`, and verifies the deployed version equals `VERSION.txt`.
-9. Only after successful post-deploy smoke is the fresh restore-verified marker recorded.
-10. Legacy sensitive fields are re-encrypted with the dedicated field key.
+## Automatic production sequence
+1. Dependency/release consistency checks.
+2. Compile/preflight/Ruff/JS/pip-audit/pip-check/unit/regression gates.
+3. PostgreSQL 18 integration and Alembic previous-production upgrade + downgrade/upgrade roundtrip.
+4. Schema-drift gate.
+5. Verify required Heroku secrets/config.
+6. Capture fresh Heroku PGBackup.
+7. Restore and verify the backup in isolated PostgreSQL 18.
+8. Deploy the tested commit.
+9. Heroku release process performs startup smoke and `alembic upgrade head`.
+10. Post-deploy `/health/ready`, `/health/live`, deployed version smoke.
+11. Record restore-verified marker only after successful post-deploy smoke.
+12. Continue field-encryption rotation workflow as configured.
 
 ## Expected DB state
 
 ```text
-Alembic head: 20260925_0015
+Alembic head: 20261007_0016
+Previous production head: 20260925_0015
 ```
 
-v1.18.7 contains no new migration. Do not manually alter production schema.
+The migration only creates `web_authn_credentials` and is reversible by downgrade to `20260925_0015` when code is also rolled back.
 
 ## Rollback
-Because schema is unchanged, code rollback is supported. Roll back to the last confirmed production commit/release, but never remove `FIELD_ENCRYPTION_KEY` or required previous keys. After rollback verify `/health/live`, `/health/ready`, version, worker/scheduler health and backup marker.
+Preferred rollback is application release rollback after confirming whether migration 0016 contains passkey data.
+
+- If no passkeys have been enrolled, code rollback plus Alembic downgrade to `20260925_0015` is safe after a fresh verified backup.
+- If passkeys have been enrolled, do not blindly downgrade because it would drop `web_authn_credentials`. Either keep schema 0016 while rolling code back if the older code tolerates the extra table, or export/retain credential records and schedule a controlled downgrade.
+- Never remove `FIELD_ENCRYPTION_KEY` or required previous encryption keys during rollback.
+
+After any rollback verify `/health/live`, `/health/ready`, version, web/worker/scheduler state and verified-backup marker.

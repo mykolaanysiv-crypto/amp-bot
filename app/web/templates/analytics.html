@@ -70,8 +70,8 @@
 </div>
 
 <p class="analytics-generated">Оновлено автоматично: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script>
+<script nonce="{{ request.state.csp_nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
 const analyticsMetrics = {{ analytics.metrics|tojson }};
 const css = getComputedStyle(document.documentElement);
 const chartBase = '#06AEBB';

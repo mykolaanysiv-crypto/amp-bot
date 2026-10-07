@@ -1,3 +1,16 @@
+# AMP XP v1.19.0 — Security & Observability 2.0 (2026-10-07)
+
+- Added staff WebAuthn/passkeys with user verification, password step-up enrollment and Telegram OTP fallback/recovery.
+- Added additive Alembic revision `20261007_0016` with `web_authn_credentials`; no participant/XP/attendance schema changes.
+- Added central Web Security Center for login/MFA failures, locks, sessions, passkey/2FA coverage, sensitive audit activity, encryption-key status (status only) and production telemetry.
+- Added server-side rate limits for login/MFA/password reset/QR/sensitive exports/uploads/public share endpoints.
+- Added staged Content Security Policy: enforced allow-list plus per-request nonce strict Report-Only policy.
+- Added bounded non-PII runtime metrics for HTTP p50/p95, DB query latency, exports and Telegram API failures.
+- Added operational snapshot metrics for DB pool, notification queue age/failures, scheduler lag/failures, backup age/last verification and media storage.
+- Expanded Operational Intelligence with advisory issues for stale worker/schedulers, login failure spikes, DB pool pressure and high-risk data-integrity anomalies.
+- Preserved blocking pip-audit, restore-verified backups, schema drift gates, permissions, privacy suppression, audit trail and idempotency controls.
+- No changes to XP, wallet, attendance, QR participant semantics, gamification or participant Telegram workflows.
+
 ## v1.18.7 — Reproducible Production Baseline
 - Зафіксовано post-v1.18.6 production baseline без зміни бізнес-логіки та без нової Alembic-міграції; head залишається `20260925_0015`.
 - Додано `requirements.in` / `requirements.lock` та dev-пару з точними direct pins; Heroku/Docker/CI інсталюють lock-файли, а CI перевіряє consistency.

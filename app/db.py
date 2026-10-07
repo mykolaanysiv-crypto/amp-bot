@@ -5,10 +5,13 @@ from .time_utils import clock
 import asyncio
 import logging
 import shutil
+import time
 from pathlib import Path
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from .config import Settings
+from .metrics import runtime_metrics
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +39,36 @@ class Database:
                 pool_recycle=settings.db_pool_recycle,
             )
         self.engine: AsyncEngine = create_async_engine(settings.database_url, **engine_kwargs)
+        self._install_query_metrics()
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
+
+    def _install_query_metrics(self) -> None:
+        """Measure DB execution latency without recording SQL text or bind values."""
+        sync_engine = self.engine.sync_engine
+
+        @event.listens_for(sync_engine, "before_cursor_execute")
+        def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # noqa: ARG001
+            stack = conn.info.setdefault("amp_query_started", [])
+            stack.append(time.perf_counter())
+
+        def _finish_query(conn) -> None:
+            stack = conn.info.get("amp_query_started") or []
+            if not stack:
+                return
+            started = stack.pop()
+            runtime_metrics.record_db(duration_ms=(time.perf_counter() - started) * 1000.0)
+
+        @event.listens_for(sync_engine, "after_cursor_execute")
+        def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # noqa: ARG001
+            _finish_query(conn)
+
+        @event.listens_for(sync_engine, "handle_error")
+        def _handle_error(exception_context):
+            # SQLAlchemy may report an engine-level failure before a Connection
+            # object exists. Observability must never mask the original DB error.
+            conn = exception_context.connection
+            if conn is not None:
+                _finish_query(conn)
 
     async def init(self) -> None:
         """Initialize the runtime connection only.

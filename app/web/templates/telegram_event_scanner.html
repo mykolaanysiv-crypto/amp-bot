@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>QR-сканер • {{ event.title }}</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script nonce="{{ request.state.csp_nonce }}" src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light dark}
     body{margin:0;padding:18px;background:var(--tg-theme-bg-color,#f6f8f8);color:var(--tg-theme-text-color,#102728)}
@@ -27,7 +27,7 @@
     <button id="open-сканер" type="button">📷 Відкрити камеру</button>
     <button id="close-app" type="button">✅ Завершити сканування</button>
   </main>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 (() => {
   const tg = window.Telegram && window.Telegram.WebApp;
   const statusEl = document.getElementById('status');

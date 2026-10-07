@@ -1,3 +1,24 @@
+# v1.19.0 Security & Observability 2.0
+
+## Staff passkeys / WebAuthn
+- Staff can enroll WebAuthn/passkeys after an authenticated session plus current-password step-up.
+- Server verification requires user verification and checks expected challenge, RP ID, origin, stored public key and signature counter.
+- Credential public key/counter/device metadata are stored; biometric data never leave the authenticator.
+- Passkey is a preferred second factor after password when configured; Telegram OTP remains fallback/recovery.
+- Production passkeys require a stable HTTPS `WEBAUTHN_ORIGIN` and hostname-only `WEBAUTHN_RP_ID`.
+
+## Request protection
+- Server-side process-local rate limits protect login, MFA/passkey, password reset, QR/check-in, sensitive export, multipart upload and public share surfaces.
+- Database-backed login lockout remains authoritative; rate limiting is defense-in-depth.
+- CSP is enforced with a restricted origin allow-list. All script tags receive a per-request nonce; a stricter nonce-first policy runs in Report-Only while legacy inline event handlers are migrated.
+
+## Security Center / telemetry
+- `/admin/security-center` requires `security.manage`.
+- It exposes security state and aggregates only, never secret values.
+- Runtime metrics are bounded in memory and do not retain request bodies, SQL statements/bind values, participant identifiers, Telegram ids or secrets.
+
+---
+
 # Security baseline v1.7.3
 
 - Web-паролі: PBKDF2-SHA256 hash у `web_staff_accounts`; plaintext Config Vars використовуються лише для першого bootstrap/migration і після перевірки входів мають бути видалені.

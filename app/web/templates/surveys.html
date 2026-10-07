@@ -48,7 +48,7 @@
   </article>
 {% else %}<section class="card"><p class="muted">Опитувань ще немає.</p></section>{% endfor %}
 </div>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function surveyAudienceChecks(suffix){return Array.from(document.querySelectorAll('#surveyUserPicker'+suffix+' input[name="audience_user_ids"]'));}
 function updateSurveyAudienceCount(suffix){const el=document.getElementById('surveyAudienceCount'+suffix);if(el)el.textContent=surveyAudienceChecks(suffix).filter(x=>x.checked).length;}
 function filterSurveyAudience(suffix){const q=(document.getElementById('surveyAudienceSearch'+suffix)?.value||'').trim().toLowerCase();document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{row.hidden=q&&!row.dataset.search.includes(q);});}

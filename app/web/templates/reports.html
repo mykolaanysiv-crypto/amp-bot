@@ -18,7 +18,7 @@
   </form>
 </section>
 <section class="card report-info-card"><h2>Що включається автоматично</h2><div class="report-feature-grid"><span>📅 Події та відвідування</span><span>👥 Унікальні учасники</span><span>⏱ Волонтерські години</span><span>⚡ Активності та XP</span><span>🎯 Квести</span><span>💡 Ідеї</span><span>🆘 Звернення</span><span>📋 Опитування та відповіді</span><span>🌍 Інтерес до можливостей</span><span>🎂 Вікова статистика</span><span>⚧ Гендерна статистика</span><span>📍 Населені пункти</span><span>🏅 Отримані бейджі та динаміка по тижнях</span><span>🏆 Ліги та серії участі</span><span>🧊 Заморозки серій</span><span>🛡 Категорії вразливості — лише агреговано</span></div></section>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
 function togglePeriodFields(){const t=document.getElementById('periodType').value;document.querySelectorAll('.period-field').forEach(el=>{el.style.display=el.dataset.period===t?'flex':'none';});}
 togglePeriodFields();
 </script>
