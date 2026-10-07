@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..time_utils import utc_storage_now
 from .base import Base, UserRole, UserStatus
+
+if TYPE_CHECKING:
+    from .gamification import Team
+    from .identity import User
 
 class Quest(Base):
     __tablename__ = "quests"
