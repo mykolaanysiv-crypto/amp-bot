@@ -1,3 +1,13 @@
+# AMP XP v1.19.1 — Media Storage & Data Lifecycle (2026-10-08)
+
+- Added MediaStorage abstraction with database, local and S3-compatible backends.
+- Added AWS S3 / Cloudflare R2 / Backblaze B2 compatible SigV4 storage without SDK dependency.
+- Added checksum, content MIME sniffing, size validation and deep media integrity scanning.
+- Added Media Integrity Center and lifecycle detect → candidate → review → quarantine → delete.
+- Automatic media hard-delete is disabled; normal removal quarantines database media.
+- Added safe database → S3 migration tool with dry-run/copy/verify/switch/rollback; source DB bytes are retained after switch.
+- Added additive Alembic revision `20261008_0017`; no XP/attendance/gamification semantics changed.
+
 # AMP XP v1.19.0 — Security & Observability 2.0 (2026-10-07)
 
 - Added staff WebAuthn/passkeys with user verification, password step-up enrollment and Telegram OTP fallback/recovery.

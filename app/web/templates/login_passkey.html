@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#06B8C5">
-  <link rel="stylesheet" href="/static/admin.css?v=1.19.0">
+  <link rel="stylesheet" href="/static/admin.css?v=1.19.1">
   <title>Passkey • АМПасадори</title>
 </head>
 <body class="login-body">
   <div class="login-card" data-passkey-login data-csrf="{{ csrf_token }}">
-    <img class="login-brand" src="/static/amp_logo.png?v=1.19.0" alt="АМПасадори">
+    <img class="login-brand" src="/static/amp_logo.png?v=1.19.1" alt="АМПасадори">
     <span class="eyebrow">БЕЗПЕЧНИЙ ВХІД</span>
     <h1>Підтвердіть passkey</h1>
     <p>Використайте Touch ID, Face ID, Windows Hello або фізичний ключ безпеки. Пароль уже перевірено.</p>
@@ -22,6 +22,6 @@
     </form>
     <a class="soft-button login-back" href="/admin/login">← Почати вхід заново</a>
   </div>
-  <script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.19.0"></script>
+  <script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.19.1"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
-# AMP XP / «АМПасадори» v1.19.0
+# AMP XP / «АМПасадори» v1.19.1
 
 Production-oriented Telegram + FastAPI + PostgreSQL system for the AMP participant programme.
 
-Current release: **Security & Observability 2.0**. v1.19.0 builds on the reproducible v1.18.7 baseline and adds staff passkeys/WebAuthn, a centralized Security Center, server-side rate limiting, staged Content Security Policy and expanded operational telemetry without changing participant, XP, attendance or gamification semantics.
+Current release: **Media Storage & Data Lifecycle**. v1.19.1 adds a storage abstraction, safe S3-compatible preparation, media integrity checks and quarantine-first lifecycle without automatically moving production media or changing XP/attendance/gamification semantics.
 
 ## Runtime
 - Python 3.13
@@ -10,7 +10,7 @@ Current release: **Security & Observability 2.0**. v1.19.0 builds on the reprodu
 - FastAPI 0.142.2 + Jinja2 3.1.6
 - SQLAlchemy async
 - PostgreSQL 18 baseline for CI/local/restore verification
-- Alembic head: `20261007_0016`
+- Alembic head: `20261008_0017`
 
 ## Security & Observability 2.0
 - WebAuthn/passkeys for authenticated staff; user verification required.
@@ -42,14 +42,14 @@ If production has no valid HTTPS WebAuthn origin, the application remains backwa
 - `pip-audit` remains a blocking CI gate.
 
 ## Database
-v1.19.0 adds one additive migration:
+v1.19.1 adds one additive migration:
 
 ```text
-20260925_0015 -> 20261007_0016
+20260925_0015 -> 20261008_0017
 ```
 
 It creates `web_authn_credentials`. No participant/XP/attendance tables are altered.
 
-See `RELEASE_V1190_UA.md`, `AUDIT_V1190_BASELINE_UA.md`, `BUILD_MANIFEST_V1190.txt`, `TEST_REPORT_V1190.txt`, `COMMANDS_V1190.txt`, `HEROKU_DEPLOY.md` and `SECURITY.md`.
+See `RELEASE_V1191_UA.md`, `AUDIT_V1191_BASELINE_UA.md`, `BUILD_MANIFEST_V1191.txt`, `TEST_REPORT_V1191.txt`, `COMMANDS_V1191.txt`, `HEROKU_DEPLOY.md` and `SECURITY.md`.
 
-A ZIP or local test result is not proof of production. v1.19.0 becomes production only after green GitHub production gates, restore-verified backup, successful Heroku release and post-deploy health/version verification.
+A ZIP or local test result is not proof of production. v1.19.1 becomes production only after green GitHub production gates, restore-verified backup, successful Heroku release and post-deploy health/version verification.

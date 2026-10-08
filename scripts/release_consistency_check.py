@@ -6,8 +6,8 @@ import re
 from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "1.19.0"
-EXPECTED_ALEMBIC_HEAD = "20261007_0016"
+EXPECTED_VERSION = "1.19.1"
+EXPECTED_ALEMBIC_HEAD = "20261008_0017"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"
 
@@ -29,6 +29,11 @@ CRITICAL_RUNTIME_FILES = (
     "app/security_center.py",
     "app/domain_services/quest_auto.py",
     "migrations/versions/20261007_0016_security_observability.py",
+    "migrations/versions/20261008_0017_media_storage_lifecycle.py",
+    "app/media_storage.py",
+    "app/media_integrity.py",
+    "app/web/routes/media_integrity.py",
+    "scripts/migrate_media_storage.py",
     "scripts/heroku_release.py",
     "scripts/startup_smoke.py",
     "scripts/schema_drift_check.py",
@@ -75,11 +80,11 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "BUILD_MANIFEST_V1190.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "RELEASE_V1190_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "AUDIT_V1190_BASELINE_UA.md": ("1.18.7", EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "COMMANDS_V1190.txt": (EXPECTED_VERSION,),
-        "TEST_REPORT_V1190.txt": (EXPECTED_VERSION,),
+        "BUILD_MANIFEST_V1191.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "RELEASE_V1191_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "AUDIT_V1191_BASELINE_UA.md": ("1.19.0", EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "COMMANDS_V1191.txt": (EXPECTED_VERSION,),
+        "TEST_REPORT_V1191.txt": (EXPECTED_VERSION,),
     }
     for name, tokens in docs.items():
         path = root / name
@@ -90,7 +95,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         if missing:
             raise SystemExit(f"{name} is not synchronized; missing {missing}")
 
-    manifest = (root / "BUILD_MANIFEST_V1190.txt").read_text(encoding="utf-8")
+    manifest = (root / "BUILD_MANIFEST_V1191.txt").read_text(encoding="utf-8")
     for lock_name, digest in hashes.items():
         token = f"{lock_name} SHA256: {digest}"
         if token not in manifest:
@@ -150,6 +155,19 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     for token in ("RateLimitMiddleware", "security_center_routes"):
         if token not in factory:
             raise SystemExit(f"v1.19.0 web security composition gate missing: {token}")
+
+    media_storage = (root / "app" / "media_storage.py").read_text(encoding="utf-8")
+    for token in ("class MediaStorage", "class DatabaseMediaStorage", "class LocalMediaStorage", "class S3CompatibleMediaStorage", "checksum_bytes", "validate_media_payload"):
+        if token not in media_storage:
+            raise SystemExit(f"v1.19.1 media storage gate missing: {token}")
+    migration_1191 = (root / "migrations" / "versions" / "20261008_0017_media_storage_lifecycle.py").read_text(encoding="utf-8")
+    for token in ("storage_backend", "checksum_sha256", "lifecycle_state", 'down_revision: Union[str, None] = "20261007_0016"'):
+        if token not in migration_1191:
+            raise SystemExit(f"v1.19.1 migration gate missing: {token}")
+    migration_tool = (root / "scripts" / "migrate_media_storage.py").read_text(encoding="utf-8")
+    for token in ("dry-run", "copy", "verify", "switch", "rollback", "database bytes retained"):
+        if token not in migration_tool:
+            raise SystemExit(f"v1.19.1 migration tool gate missing: {token}")
 
     alembic_ini = (root / "alembic.ini").read_text(encoding="utf-8")
     if "path_separator = os" not in alembic_ini:

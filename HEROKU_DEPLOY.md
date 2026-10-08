@@ -1,4 +1,4 @@
-# Heroku deployment — AMP XP v1.19.0
+# Heroku deployment — AMP XP v1.19.1
 
 Production deployment is allowed only from GitHub Actions after the full Production Gate passes on `main`.
 
@@ -69,7 +69,7 @@ python -m scripts.schema_drift_check
 ## Expected DB state
 
 ```text
-Alembic head: 20261007_0016
+Alembic head: 20261008_0017
 Previous production head: 20260925_0015
 ```
 
@@ -83,3 +83,16 @@ Preferred rollback is application release rollback after confirming whether migr
 - Never remove `FIELD_ENCRYPTION_KEY` or required previous encryption keys during rollback.
 
 After any rollback verify `/health/live`, `/health/ready`, version, web/worker/scheduler state and verified-backup marker.
+
+## v1.19.1 media storage
+Deployment does **not** migrate existing database media automatically. Default production behavior remains database-backed unless `MEDIA_STORAGE=s3` is explicitly configured.
+
+S3-compatible configuration (AWS S3 / Cloudflare R2 / Backblaze B2):
+- `MEDIA_STORAGE=s3`
+- `S3_ENDPOINT=https://...`
+- `S3_BUCKET=...`
+- `S3_REGION=...` (`auto` is accepted by compatible providers that use it)
+- `S3_ACCESS_KEY=...`
+- `S3_SECRET_KEY=...`
+
+Never place access/secret keys in logs or release files. Before any switch, require fresh restore-verified PostgreSQL backup, run `dry-run`, `copy`, `verify`, then `switch`. v1.19.1 intentionally retains original database bytes after switch so `rollback` remains possible.

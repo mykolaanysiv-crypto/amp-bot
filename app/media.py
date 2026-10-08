@@ -7,16 +7,24 @@ from uuid import uuid4
 from aiogram import Bot
 from aiogram.types import BufferedInputFile, FSInputFile
 from PIL import Image, ImageOps
-from sqlalchemy import delete
+from sqlalchemy import select
 
 from .config import get_settings
 from .db import Database
+from .media_storage import (
+    MAX_MEDIA_BYTES,
+    checksum_bytes,
+    get_media_storage,
+    read_media_asset_bytes,
+    sniff_mime,
+    validate_media_payload,
+)
 from .model_domains import MediaAsset
-from .security import media_access_level
+from .time_utils import clock
 
 
 def normalize_image_bytes(raw: bytes) -> bytes:
-    """Normalize an uploaded image to a compact WebP without cropping."""
+    """Normalize an uploaded image to compact WebP without cropping."""
     try:
         img = Image.open(BytesIO(raw))
         img = ImageOps.exif_transpose(img)
@@ -36,44 +44,8 @@ def normalize_image_bytes(raw: bytes) -> bytes:
         raise ValueError("Не вдалося обробити фото. Надішліть JPG, PNG або WebP.") from exc
 
 
-def _local_storage_folder(category: str) -> tuple[str, Path]:
-    settings = get_settings(require_bot_token=False)
-    level = media_access_level(category)
-    root_name = "uploads" if level == "public" else "private"
-    folder = Path(settings.data_dir) / root_name / category
-    folder.mkdir(parents=True, exist_ok=True)
-    return root_name, folder
-
-
-async def store_image_bytes(db: Database, raw: bytes, category: str, *, original_name: str = "image") -> str:
-    """Store normalized media persistently with secure-by-default local paths."""
-    settings = get_settings(require_bot_token=False)
-    normalized = normalize_image_bytes(raw)
-    filename = f"{uuid4().hex}.webp"
-
-    if settings.media_storage == "database":
-        async with db.session_factory() as session:
-            asset = MediaAsset(
-                category=category,
-                filename=filename,
-                content_type="image/webp",
-                data=normalized,
-                size_bytes=len(normalized),
-            )
-            session.add(asset)
-            await session.flush()
-            asset_id = asset.id
-            await session.commit()
-        return f"/media/{asset_id}"
-
-    root_name, folder = _local_storage_folder(category)
-    out = folder / filename
-    out.write_bytes(normalized)
-    return f"/{root_name}/{category}/{filename}"
-
-
 def normalize_transparent_png_bytes(raw: bytes) -> bytes:
-    """Normalize an ambassador badge artwork while preserving alpha transparency."""
+    """Normalize ambassador badge artwork while preserving alpha transparency."""
     try:
         img = Image.open(BytesIO(raw))
         img = ImageOps.exif_transpose(img).convert("RGBA")
@@ -85,44 +57,53 @@ def normalize_transparent_png_bytes(raw: bytes) -> bytes:
         raise ValueError("Не вдалося обробити PNG. Завантажте коректне PNG-зображення.") from exc
 
 
+async def store_image_bytes(db: Database, raw: bytes, category: str, *, original_name: str = "image") -> str:
+    """Validate, normalize and store an image through the configured MediaStorage backend."""
+    validate_media_payload(raw, filename=original_name, image_only=True, max_bytes=MAX_MEDIA_BYTES)
+    normalized = normalize_image_bytes(raw)
+    filename = f"{uuid4().hex}.webp"
+    stored = await get_media_storage().store(
+        db, normalized, category=category, filename=filename, content_type="image/webp"
+    )
+    return stored.path
+
+
 async def store_transparent_png(db: Database, raw: bytes, category: str, *, original_name: str = "badge.png") -> str:
-    settings = get_settings(require_bot_token=False)
+    validate_media_payload(raw, filename=original_name, image_only=True, max_bytes=MAX_MEDIA_BYTES)
     normalized = normalize_transparent_png_bytes(raw)
     filename = f"{uuid4().hex}.png"
-    if settings.media_storage == "database":
-        async with db.session_factory() as session:
-            asset = MediaAsset(category=category, filename=filename, content_type="image/png", data=normalized, size_bytes=len(normalized))
-            session.add(asset)
-            await session.flush()
-            asset_id = asset.id
-            await session.commit()
-        return f"/media/{asset_id}"
-    root_name, folder = _local_storage_folder(category)
-    out = folder / filename
-    out.write_bytes(normalized)
-    return f"/{root_name}/{category}/{filename}"
+    stored = await get_media_storage().store(
+        db, normalized, category=category, filename=filename, content_type="image/png"
+    )
+    return stored.path
 
 
-async def store_file_bytes(db: Database, raw: bytes, category: str, *, original_name: str = "file", content_type: str = "application/octet-stream") -> str:
-    """Store an arbitrary file. Non-public categories never live under /uploads."""
-    settings = get_settings(require_bot_token=False)
+async def store_file_bytes(
+    db: Database,
+    raw: bytes,
+    category: str,
+    *,
+    original_name: str = "file",
+    content_type: str = "application/octet-stream",
+) -> str:
+    """Validate and store a supported arbitrary document through MediaStorage."""
+    detected = validate_media_payload(
+        raw,
+        filename=original_name,
+        claimed_mime=content_type,
+        image_only=False,
+        max_bytes=MAX_MEDIA_BYTES,
+    )
     suffix = Path(original_name or "file").suffix.lower()[:10]
     filename = f"{uuid4().hex}{suffix}"
-    if settings.media_storage == "database":
-        async with db.session_factory() as session:
-            asset = MediaAsset(category=category, filename=filename, content_type=content_type or "application/octet-stream", data=raw, size_bytes=len(raw))
-            session.add(asset)
-            await session.flush()
-            asset_id = asset.id
-            await session.commit()
-        return f"/media/{asset_id}"
-    root_name, folder = _local_storage_folder(category)
-    out = folder / filename
-    out.write_bytes(raw)
-    return f"/{root_name}/{category}/{filename}"
+    stored = await get_media_storage().store(
+        db, raw, category=category, filename=filename, content_type=detected
+    )
+    return stored.path
 
 
 async def delete_stored_image(db: Database, image_path: str | None) -> None:
+    """Detach-safe delete: database media are quarantined, never hard-deleted automatically."""
     if not image_path:
         return
     if image_path.startswith("/media/"):
@@ -131,22 +112,31 @@ async def delete_stored_image(db: Database, image_path: str | None) -> None:
         except ValueError:
             return
         async with db.session_factory() as session:
-            await session.execute(delete(MediaAsset).where(MediaAsset.id == asset_id))
-            await session.commit()
+            asset = await session.get(MediaAsset, asset_id)
+            if asset:
+                asset.lifecycle_state = "quarantine"
+                asset.quarantined_at = clock.storage_utc()
+                asset.integrity_status = "pending_review"
+                await session.commit()
         return
 
+    # Legacy/local paths are moved into quarantine instead of being silently destroyed.
     if image_path.startswith(("/uploads/", "/private/")):
         settings = get_settings(require_bot_token=False)
-        fp = Path(settings.data_dir) / image_path.lstrip("/")
+        root = Path(settings.data_dir).resolve()
+        fp = (root / image_path.lstrip("/")).resolve()
+        if root not in fp.parents or not fp.exists() or not fp.is_file():
+            return
+        quarantine = root / "quarantine" / image_path.lstrip("/")
+        quarantine.parent.mkdir(parents=True, exist_ok=True)
         try:
-            if fp.exists():
-                fp.unlink()
+            fp.replace(quarantine)
         except OSError:
             pass
 
 
 def media_file(image_path: str | None) -> Path | None:
-    """Resolve local public/private media to a safe local file path."""
+    """Resolve legacy/local public/private media to a safe local file path."""
     if not image_path:
         return None
     clean = image_path.lstrip("/")
@@ -156,13 +146,13 @@ def media_file(image_path: str | None) -> Path | None:
         p = (root / clean).resolve()
         if root not in p.parents:
             return None
-        return p if p.exists() else None
+        return p if p.exists() and p.is_file() else None
     p = Path(image_path).expanduser()
-    return p if p.exists() else None
+    return p if p.exists() and p.is_file() else None
 
 
 async def load_file_bytes(db: Database, file_path: str | None) -> bytes | None:
-    """Load arbitrary stored file bytes without routing through HTTP."""
+    """Load stored bytes without exposing private media through a public URL."""
     if not file_path:
         return None
     if file_path.startswith("/media/"):
@@ -172,7 +162,9 @@ async def load_file_bytes(db: Database, file_path: str | None) -> bytes | None:
             return None
         async with db.session_factory() as session:
             asset = await session.get(MediaAsset, asset_id)
-            return bytes(asset.data) if asset and asset.data is not None else None
+            if not asset or asset.lifecycle_state == "deleted":
+                return None
+            return await read_media_asset_bytes(db, asset)
     p = media_file(file_path)
     if not p:
         return None
@@ -183,32 +175,11 @@ async def load_file_bytes(db: Database, file_path: str | None) -> bytes | None:
 
 
 async def load_image_bytes(db: Database, image_path: str | None) -> bytes | None:
-    """Load stored image bytes without going through a public HTTP URL."""
-    if not image_path:
-        return None
-    if image_path.startswith("/media/"):
-        try:
-            asset_id = int(image_path.rstrip("/").split("/")[-1])
-        except ValueError:
-            return None
-        async with db.session_factory() as session:
-            asset = await session.get(MediaAsset, asset_id)
-            return bytes(asset.data) if asset and asset.data else None
-    p = media_file(image_path)
-    if not p:
-        return None
-    try:
-        return p.read_bytes()
-    except OSError:
-        return None
+    return await load_file_bytes(db, image_path)
 
 
 async def telegram_photo_input(db: Database, image_path: str | None):
-    """Return an aiogram input without exposing private DB media over HTTP.
-
-    Database-backed media are sent as bytes. Local media are sent directly from
-    disk. This allows /media and /private routes to remain access-controlled.
-    """
+    """Return aiogram input without exposing private media over HTTP."""
     if not image_path:
         return None
     if image_path.startswith("/media/"):
@@ -218,10 +189,12 @@ async def telegram_photo_input(db: Database, image_path: str | None):
             return None
         async with db.session_factory() as session:
             asset = await session.get(MediaAsset, asset_id)
-            if not asset or not asset.data:
+            if not asset or asset.lifecycle_state == "deleted":
                 return None
-            filename = asset.filename or "image"
-            return BufferedInputFile(bytes(asset.data), filename=filename)
+            data = await read_media_asset_bytes(db, asset)
+            if not data:
+                return None
+            return BufferedInputFile(data, filename=asset.filename or "image")
     p = media_file(image_path)
     return FSInputFile(p) if p else None
 
@@ -234,3 +207,29 @@ async def save_telegram_photo(bot: Bot, file_id: str, category: str, db: Databas
     if len(raw) > max_mb * 1024 * 1024:
         raise ValueError(f"Фото завелике. Максимум — {max_mb} МБ.")
     return await store_image_bytes(db, raw, category, original_name=tg_file.file_path or "telegram-photo")
+
+
+async def verify_media_asset(db: Database, asset_id: int) -> dict[str, object]:
+    """Verify one canonical MediaAsset against size, MIME and checksum metadata."""
+    async with db.session_factory() as session:
+        asset = await session.get(MediaAsset, asset_id)
+        if not asset:
+            return {"ok": False, "reason": "missing_asset"}
+        data = await read_media_asset_bytes(db, asset)
+        if data is None:
+            asset.integrity_status = "missing"
+            await session.commit()
+            return {"ok": False, "reason": "missing_object"}
+        actual_checksum = checksum_bytes(data)
+        detected = sniff_mime(data, asset.filename)
+        if asset.checksum_sha256 and actual_checksum != asset.checksum_sha256:
+            asset.integrity_status = "corrupt"
+            await session.commit()
+            return {"ok": False, "reason": "checksum_mismatch", "checksum": actual_checksum}
+        asset.checksum_sha256 = actual_checksum
+        asset.detected_mime = detected
+        asset.size_bytes = len(data)
+        asset.integrity_status = "ok"
+        asset.last_verified_at = clock.storage_utc()
+        await session.commit()
+        return {"ok": True, "checksum": actual_checksum, "mime": detected, "size": len(data)}

@@ -35,6 +35,7 @@ from .routes import (
     operations as operations_routes,
     governance as governance_routes,
     security_center as security_center_routes,
+    media_integrity as media_integrity_routes,
 )
 
 
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
         operations_routes,
         governance_routes,
         security_center_routes,
+        media_integrity_routes,
     ):
         app.include_router(module.router)
     return app

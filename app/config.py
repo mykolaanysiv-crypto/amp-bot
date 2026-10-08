@@ -173,6 +173,11 @@ class Settings:
     season_name: str
     season_start: date
     season_end: date
+    s3_endpoint: str = ""
+    s3_bucket: str = ""
+    s3_region: str = "auto"
+    s3_access_key: str = field(default="", repr=False)
+    s3_secret_key: str = field(default="", repr=False)
     donation_jar_url: str = "https://send.monobank.ua/jar/5S531LWQuc"
     monobank_token: str = field(default="", repr=False)
     # v1.12.1 production stability: small explicit per-dyno PostgreSQL pools.
@@ -213,8 +218,18 @@ def get_settings(require_bot_token: bool = True) -> Settings:
     media_storage = os.getenv("MEDIA_STORAGE", "").strip().lower()
     if not media_storage:
         media_storage = "database" if is_postgres else "local"
-    if media_storage not in {"local", "database"}:
+    if media_storage in {"aws_s3", "r2", "b2"}:
+        media_storage = "s3"
+    if media_storage not in {"local", "database", "s3"}:
         media_storage = "database" if is_postgres else "local"
+
+    s3_endpoint = os.getenv("S3_ENDPOINT", "").strip().rstrip("/")
+    s3_bucket = os.getenv("S3_BUCKET", "").strip()
+    s3_region = os.getenv("S3_REGION", "auto").strip() or "auto"
+    s3_access_key = os.getenv("S3_ACCESS_KEY", "").strip()
+    s3_secret_key = os.getenv("S3_SECRET_KEY", "").strip()
+    if media_storage == "s3" and not all((s3_endpoint, s3_bucket, s3_access_key, s3_secret_key)):
+        raise RuntimeError("MEDIA_STORAGE=s3 потребує S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY і S3_SECRET_KEY")
 
     public_base_url = os.getenv("PUBLIC_BASE_URL", "http://localhost:8080").strip().rstrip("/")
     webauthn_origin = (os.getenv("WEBAUTHN_ORIGIN", "").strip() or public_base_url).rstrip("/")
@@ -267,6 +282,11 @@ def get_settings(require_bot_token: bool = True) -> Settings:
         database_url=database_url,
         data_dir=str(root),
         media_storage=media_storage,
+        s3_endpoint=s3_endpoint,
+        s3_bucket=s3_bucket,
+        s3_region=s3_region,
+        s3_access_key=s3_access_key,
+        s3_secret_key=s3_secret_key,
         superadmin_ids=_parse_ids(os.getenv("SUPERADMIN_IDS")),
         timezone=os.getenv("TIMEZONE", "Europe/Kyiv").strip(),
         organization_name=os.getenv("ORGANIZATION_NAME", "Анисівський молодіжний простір").strip(),

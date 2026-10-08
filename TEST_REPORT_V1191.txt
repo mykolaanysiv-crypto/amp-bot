@@ -1,0 +1,22 @@
+AMP XP v1.19.1 — TEST REPORT
+
+Actually executed in build sandbox:
+- Python compileall: PASS.
+- v1.19.1 targeted static/unit test file: 5 static/unit checks PASS; 1 async DB contract test DEFERRED because sandbox lacks aiosqlite.
+- Python module syntax for media storage, media integrity, routes, migration tool: PASS via compileall.
+
+Deferred to user's locked environment / GitHub Actions:
+- dependency clean install and pip check
+- Ruff
+- pip-audit
+- full unit/regression suite
+- v1.19.1 async DB backend/integrity contract test
+- PostgreSQL 18 integration
+- Alembic 0016 -> 0017
+- downgrade/upgrade roundtrip
+- schema drift
+- backup restore verification
+- Heroku deploy and post-deploy health/version
+- live S3 provider tests (AWS S3 / R2 / B2 credentials are intentionally unavailable in build sandbox)
+
+No deferred check is claimed as PASS.
