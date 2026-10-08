@@ -538,8 +538,8 @@ def main() -> None:
 
     # v1.19.0 Security & Observability 2.0 release guards. These stay source-level
     # so a broken security composition fails before Heroku deployment.
-    if APP_VERSION != "1.19.0":
-        raise SystemExit(f"v1.19.0 preflight failed: APP_VERSION={APP_VERSION}")
+    if APP_VERSION != "1.19.1":
+        raise SystemExit(f"v1.19.1 preflight failed: APP_VERSION={APP_VERSION}")
     passkeys_source = (root / "app" / "passkeys.py").read_text(encoding="utf-8")
     auth_source = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
     rate_limit_source = (root / "app" / "rate_limit.py").read_text(encoding="utf-8")
@@ -574,6 +574,28 @@ def main() -> None:
     for token in ("content-security-policy", "content-security-policy-report-only", "csp_nonce"):
         if token not in security_middleware_source:
             raise SystemExit(f"v1.19.0 CSP preflight failed: {token} missing")
+
+    # v1.19.1 Media Storage & Data Lifecycle guards.
+    media_storage_source = (root / "app" / "media_storage.py").read_text(encoding="utf-8")
+    media_integrity_source = (root / "app" / "media_integrity.py").read_text(encoding="utf-8")
+    media_route_source = (root / "app" / "web" / "routes" / "media_integrity.py").read_text(encoding="utf-8")
+    media_migration_source = (root / "migrations" / "versions" / "20261008_0017_media_storage_lifecycle.py").read_text(encoding="utf-8")
+    media_tool_source = (root / "scripts" / "migrate_media_storage.py").read_text(encoding="utf-8")
+    for token in ("class MediaStorage", "class DatabaseMediaStorage", "class LocalMediaStorage", "class S3CompatibleMediaStorage", "validate_media_payload"):
+        if token not in media_storage_source:
+            raise SystemExit(f"v1.19.1 media abstraction preflight failed: {token} missing")
+    for token in ("duplicate_groups", "missing_ids", "corrupt_ids", "oversized_ids"):
+        if token not in media_integrity_source:
+            raise SystemExit(f"v1.19.1 media integrity preflight failed: {token} missing")
+    for token in ("guard_superadmin", "quarantine", "ВИДАЛИТИ", "media_reference_count"):
+        if token not in media_route_source:
+            raise SystemExit(f"v1.19.1 media lifecycle preflight failed: {token} missing")
+    for token in ("storage_backend", "checksum_sha256", "lifecycle_state", 'down_revision: Union[str, None] = "20261007_0016"'):
+        if token not in media_migration_source:
+            raise SystemExit(f"v1.19.1 media migration preflight failed: {token} missing")
+    for token in ("dry-run", "copy", "verify", "switch", "rollback"):
+        if token not in media_tool_source:
+            raise SystemExit(f"v1.19.1 migration tooling preflight failed: {token} missing")
 
     # v1.18.7 reproducibility/documentation gates are stdlib-only and must
     # fail the release before application dependencies or deployment can drift.

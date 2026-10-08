@@ -146,3 +146,6 @@ heroku pg:backups:schedules --app amp-bot-ver-1-5-0
 
 ## v1.18.0 — governance safety
 Operational Intelligence is advisory: detection does not mutate participant data or silently repair anomalies. Resolution requires an explicit web action and is audited. Gamification rule changes are versioned append-only and do not trigger automatic recalculation of historical XP/wallet transactions.
+
+## Media storage security — v1.19.1
+Unknown media categories remain private by default and are never promoted to public automatically. S3 credentials are configuration secrets and are not rendered in the web UI. Sensitive media access continues to use existing access classification and audit logging. Media lifecycle hard-delete is manual, superadmin-only, requires quarantine and refuses deletion while active mapped references remain.

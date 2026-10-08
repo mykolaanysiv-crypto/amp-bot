@@ -1,0 +1,44 @@
+AMP XP v1.19.1 — BUILD MANIFEST
+APP VERSION: 1.19.1
+Python: 3.13
+PostgreSQL: 18
+Alembic head: 20261008_0017
+requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+
+Critical runtime/release files:
+run.py
+run_web.py
+app/main.py
+app/bot_runtime.py
+app/web/factory.py
+app/web/lifespan.py
+app/web/auth_routes.py
+app/web/security_middleware.py
+app/web/routes/security_center.py
+app/web/static/passkeys.js
+app/passkeys.py
+app/rate_limit.py
+app/metrics.py
+app/observability_snapshot.py
+app/security_center.py
+app/domain_services/quest_auto.py
+migrations/versions/20261007_0016_security_observability.py
+migrations/versions/20261008_0017_media_storage_lifecycle.py
+app/media_storage.py
+app/media_integrity.py
+app/web/routes/media_integrity.py
+scripts/migrate_media_storage.py
+scripts/heroku_release.py
+scripts/startup_smoke.py
+scripts/schema_drift_check.py
+scripts/verify_backup_restore.sh
+.github/workflows/ci.yml
+.github/workflows/backup.yml
+
+Release documents:
+RELEASE_V1191_UA.md
+AUDIT_V1191_BASELINE_UA.md
+TEST_REPORT_V1191.txt
+COMMANDS_V1191.txt
+BUILD_MANIFEST_V1191.txt

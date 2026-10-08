@@ -6,6 +6,7 @@ from fastapi.responses import Response
 
 from .dependencies import db, is_superadmin, logged_in, log_audit, media_access_level, settings
 from ..model_domains import MediaAsset
+from ..media_storage import read_media_asset_bytes
 
 router = APIRouter()
 
@@ -35,8 +36,11 @@ async def media_asset(request: Request, asset_id: int, download: int = 0):
                 details=f"category={asset.category}; access={level}",
             )
             await session.commit()
+        payload = await read_media_asset_bytes(db, asset)
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Файл не знайдено")
         return Response(
-            content=asset.data,
+            content=payload,
             media_type=asset.content_type or "application/octet-stream",
             headers={
                 "Cache-Control": "public, max-age=86400" if level == "public" else "private, no-store",
