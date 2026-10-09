@@ -1,4 +1,4 @@
-"""v1.19.1 web UI hotfix regression/source gates."""
+"""v1.20.0 web UI hotfix regression/source gates."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,11 +9,11 @@ def read(path: str) -> str:
 
 
 def test_release_version_and_asset_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.19.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.19.1"
-    assert '"1.19.1"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.20.0"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.0"
+    assert '"1.20.0"' in read("app/version.py")
     for path in ("base.html", "login.html", "login_2fa.html"):
-        assert "v=1.19.1" in read(f"app/web/templates/{path}")
+        assert "v=1.20.0" in read(f"app/web/templates/{path}")
 
 
 def test_quick_xp_answers_are_first_class_and_include_partial_respondents():

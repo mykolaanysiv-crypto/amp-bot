@@ -1,31 +1,45 @@
 {% extends "base.html" %}
+{% block title %}Медіа • АМПасадори{% endblock %}
+{% block topbar_context %}Медіа{% endblock %}
+{% block topbar_hint %}Цілісність, сховища та життєвий цикл{% endblock %}
 {% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Медіа</b></nav>
 <div class="page-shell data-integrity-page">
-  <div class="page-header">
-    <div><h1>Медіа: цілісність і життєвий цикл</h1><p class="muted">Безпечний контроль DB / local / S3. Сканування саме по собі нічого не видаляє.</p></div>
-    <div class="button-row"><a class="soft-button" href="/admin/media-integrity">Швидке сканування</a><a class="soft-button" href="/admin/media-integrity?deep=1">Глибока перевірка checksum</a></div>
+  <header class="page-header">
+    <div><span class="eyebrow">MEDIA INTEGRITY</span><h1>Цілісність медіа</h1><p>Безпечний контроль DB, local та S3-compatible сховищ. Сканування лише виявляє проблеми й ніколи не видаляє файли автоматично.</p></div>
+    <div class="button-row" aria-label="Дії перевірки"><a class="soft-button" href="/admin/media-integrity">Швидке сканування</a><a class="primary" href="/admin/media-integrity?deep=1">Глибока перевірка checksum</a></div>
+  </header>
+  {% if notice %}<div class="notice" role="status">Операцію виконано: {{ notice }}</div>{% endif %}
+
+  <section aria-labelledby="media-summary-title">
+    <div class="section-title"><div><h2 id="media-summary-title">Огляд сховища</h2><p>Ключові показники стану медіа на момент останнього сканування.</p></div></div>
+    <div class="health-grid integrity-summary-grid">
+      <div class="stat-card"><b>{{ report.total_media }}</b><span>Усього медіа</span></div>
+      <div class="stat-card"><b>{{ report.db_storage_bytes }}</b><span>Байт у базі даних</span></div>
+      <div class="stat-card"><b>{{ report.orphan_ids|length }}</b><span>Без активних посилань</span></div>
+      <div class="stat-card"><b>{{ report.missing_ids|length }}</b><span>Відсутні файли</span></div>
+      <div class="stat-card"><b>{{ report.duplicate_groups|length }}</b><span>Групи дублікатів</span></div>
+      <div class="stat-card"><b>{{ report.invalid_mime_ids|length }}</b><span>Некоректний MIME</span></div>
+      <div class="stat-card"><b>{{ report.oversized_ids|length }}</b><span>Завеликі файли</span></div>
+      <div class="stat-card"><b>{{ report.corrupt_ids|length }}</b><span>Пошкоджені файли</span></div>
+      <div class="stat-card"><b>{{ report.quarantine_candidates|length }}</b><span>Кандидати на карантин</span></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><div class="section-title"><div><h2>Сховища</h2><p>Фактичний розподіл об’єктів між backend.</p></div></div><pre>{{ report.backend_counts }}</pre><p class="muted">S3-compatible backend підтримує AWS S3, Cloudflare R2 та Backblaze B2.</p></section>
+    <section class="card"><div class="section-title"><div><h2>Життєвий цикл</h2><p>Підозрілий файл не переходить одразу до hard-delete.</p></div></div><div class="lifecycle-flow" aria-label="detect, candidate, review, quarantine, delete"><span class="tag">detect</span><span aria-hidden="true">→</span><span class="tag">candidate</span><span aria-hidden="true">→</span><span class="tag">review</span><span aria-hidden="true">→</span><span class="tag pending">quarantine</span><span aria-hidden="true">→</span><span class="tag blocked">delete</span></div><p class="muted">Остаточне видалення можливе лише вручну після review і quarantine, без активних посилань та з typed confirmation.</p></section>
   </div>
-  {% if notice %}<div class="notice">Операцію виконано: {{ notice }}</div>{% endif %}
-  <section class="health-grid integrity-summary-grid">
-    <div class="stat-card"><b>{{ report.total_media }}</b><span>MediaAsset</span></div>
-    <div class="stat-card"><b>{{ report.db_storage_bytes }}</b><span>байт у БД</span></div>
-    <div class="stat-card"><b>{{ report.orphan_ids|length }}</b><span>orphan</span></div>
-    <div class="stat-card"><b>{{ report.missing_ids|length }}</b><span>missing</span></div>
-    <div class="stat-card"><b>{{ report.duplicate_groups|length }}</b><span>duplicate checksum</span></div>
-    <div class="stat-card"><b>{{ report.invalid_mime_ids|length }}</b><span>invalid MIME</span></div>
-    <div class="stat-card"><b>{{ report.oversized_ids|length }}</b><span>oversized</span></div>
-    <div class="stat-card"><b>{{ report.corrupt_ids|length }}</b><span>corrupt</span></div>
-    <div class="stat-card"><b>{{ report.quarantine_candidates|length }}</b><span>lifecycle candidates</span></div>
+
+  <section class="card" aria-labelledby="media-findings-title"><div class="section-title"><div><h2 id="media-findings-title">Виявлені проблеми</h2><p>Список для перевірки адміністратором. Жодна з цих категорій не означає автоматичне видалення.</p></div></div>
+    <div class="security-facts">
+      <div><span>Без активних посилань</span><b>{{ report.orphan_ids or 'немає' }}</b></div>
+      <div><span>Відсутні</span><b>{{ report.missing_ids or 'немає' }}</b></div>
+      <div><span>Пошкоджені</span><b>{{ report.corrupt_ids or 'немає' }}</b></div>
+      <div><span>Некоректний MIME</span><b>{{ report.invalid_mime_ids or 'немає' }}</b></div>
+      <div><span>Завеликі</span><b>{{ report.oversized_ids or 'немає' }}</b></div>
+    </div>
+    {% if report.remote_scan_truncated %}<p class="warning" role="status">S3 scan обмежено першими 250 об’єктами за один запуск.</p>{% endif %}
   </section>
-  <section class="panel"><h2>Сховища</h2><pre>{{ report.backend_counts }}</pre><p class="muted">S3 означає S3-compatible API: AWS S3, Cloudflare R2 або Backblaze B2.</p></section>
-  <section class="panel"><h2>Виявлені проблеми</h2>
-    <p><b>Orphan:</b> {{ report.orphan_ids or 'немає' }}</p>
-    <p><b>Missing:</b> {{ report.missing_ids or 'немає' }}</p>
-    <p><b>Corrupt:</b> {{ report.corrupt_ids or 'немає' }}</p>
-    <p><b>Invalid MIME:</b> {{ report.invalid_mime_ids or 'немає' }}</p>
-    <p><b>Oversized:</b> {{ report.oversized_ids or 'немає' }}</p>
-    {% if report.remote_scan_truncated %}<p class="warning">S3 scan обмежено першими 250 об'єктами за один запуск.</p>{% endif %}
-  </section>
-  <section class="panel"><h2>Lifecycle</h2><p>detect → candidate → review → quarantine → delete</p><p class="muted">Остаточне видалення можливе лише вручну, після quarantine, без активних посилань і з введенням слова ВИДАЛИТИ.</p></section>
 </div>
 {% endblock %}

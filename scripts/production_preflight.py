@@ -538,8 +538,8 @@ def main() -> None:
 
     # v1.19.0 Security & Observability 2.0 release guards. These stay source-level
     # so a broken security composition fails before Heroku deployment.
-    if APP_VERSION != "1.19.1":
-        raise SystemExit(f"v1.19.1 preflight failed: APP_VERSION={APP_VERSION}")
+    if APP_VERSION != "1.20.0":
+        raise SystemExit(f"v1.20.0 preflight failed: APP_VERSION={APP_VERSION}")
     passkeys_source = (root / "app" / "passkeys.py").read_text(encoding="utf-8")
     auth_source = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
     rate_limit_source = (root / "app" / "rate_limit.py").read_text(encoding="utf-8")
@@ -596,6 +596,25 @@ def main() -> None:
     for token in ("dry-run", "copy", "verify", "switch", "rollback"):
         if token not in media_tool_source:
             raise SystemExit(f"v1.19.1 migration tooling preflight failed: {token} missing")
+
+    # v1.20.0 Design System & Accessibility 2.0 guards.
+    base_ui_source = (root / "app" / "web" / "templates" / "base.html").read_text(encoding="utf-8")
+    shell_js_source = (root / "app" / "web" / "static" / "app_shell.js").read_text(encoding="utf-8")
+    tokens_ui_source = (root / "app" / "web" / "static" / "tokens.css").read_text(encoding="utf-8")
+    base_css_source = (root / "app" / "web" / "static" / "base.css").read_text(encoding="utf-8")
+    for token in ("skip-link", "data-sidebar-collapse", "data-mobile-menu", 'id="main-content"'):
+        if token not in base_ui_source:
+            raise SystemExit(f"v1.20.0 app-shell preflight failed: {token} missing")
+    if "onclick=" in base_ui_source:
+        raise SystemExit("v1.20.0 app-shell preflight failed: inline onclick remains")
+    for token in ("amp-sidebar-collapsed", "trapSidebarFocus", "mobileReturnFocus", "localStorage"):
+        if token not in shell_js_source:
+            raise SystemExit(f"v1.20.0 sidebar accessibility preflight failed: {token} missing")
+    for token in ("--color-primary", "--color-focus", "--space-4", "--radius-lg"):
+        if token not in tokens_ui_source:
+            raise SystemExit(f"v1.20.0 design-token preflight failed: {token} missing")
+    if "prefers-reduced-motion" not in base_css_source or ":focus-visible" not in base_css_source:
+        raise SystemExit("v1.20.0 accessibility preflight failed: focus/reduced-motion guards missing")
 
     # v1.18.7 reproducibility/documentation gates are stdlib-only and must
     # fail the release before application dependencies or deployment can drift.

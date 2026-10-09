@@ -23,8 +23,8 @@ def test_donation_models_permissions_and_sidebar_exist():
         assert f"class {name}" in models
     assert '"donations.manage"' in text("app/permissions.py")
     base = text("app/web/templates/base.html")
-    assert "💙 Донати" in base
-    assert 'href="/admin/donations"' in base
+    assert "nav_link('/admin/donations','Донати','heart'" in base
+    assert "nav_link('/admin/donations','Донати','heart'" in base
 
 
 def test_telegram_support_and_reporting_flow():
@@ -72,7 +72,7 @@ def test_registrations_are_separate_intake_queue():
     assert 'User.registration_review_status == "pending"' in route
     assert 'web_user_registration_approved' in route
     assert 'web_user_registration_rejected' in route
-    assert 'href="/admin/registrations"' in base
+    assert "nav_link('/admin/registrations','Реєстрації','clipboard'" in base
     for label in ("Очікують", "Схвалено сьогодні", "Відхилено", "Дата", "ПІБ", "Вік", "Населений пункт", "Telegram", "Телефон", "Статус", "Дії", "👁 Переглянути", "✅ Схвалити", "❌ Відхилити"):
         assert label in tpl
 
@@ -106,7 +106,8 @@ def test_theme_mobile_overflow_dark_danger_and_permission_ui_fixes():
     # No theme switcher remains in the sidebar; responsive top bars show one at a time.
     sidebar = base[base.index('<aside class="sidebar"'):base.index('</aside>')]
     assert "toggleTheme" not in sidebar
-    assert base.count('onclick="toggleTheme()"') == 1
+    assert 'data-theme-toggle' in base
+    assert 'onclick=' not in base
     assert "body[data-theme=\"dark\"] .entity-action-form.destructive-form" in css
     assert ".unified-action-button{min-width:0!important;width:100%!important;max-width:100%!important}" in css
     assert ".upcoming-item{min-width:0;max-width:100%;width:100%;box-sizing:border-box;overflow:hidden}" in css

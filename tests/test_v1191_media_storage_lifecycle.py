@@ -23,8 +23,8 @@ def read(path: str) -> str:
 
 
 def test_v1191_release_contract():
-    assert read("VERSION.txt").strip() == "1.19.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.19.1"
+    assert read("VERSION.txt").strip() == "1.20.0"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.0"
     migration = read("migrations/versions/20261008_0017_media_storage_lifecycle.py")
     assert 'revision: str = "20261008_0017"' in migration
     assert 'down_revision: Union[str, None] = "20261007_0016"' in migration
@@ -120,5 +120,5 @@ def test_media_center_is_superadmin_and_hard_delete_is_guarded():
     assert "media_reference_count" in route
     assert "confirmation.strip().upper() != 'ВИДАЛИТИ'" in route
     template = read("app/web/templates/media_integrity.html")
-    for token in ("Orphan", "Missing", "duplicate checksum", "invalid MIME", "oversized", "Lifecycle"):
+    for token in ("Без активних посилань", "Відсутні файли", "Групи дублікатів", "Некоректний MIME", "Завеликі файли", "Життєвий цикл"):
         assert token in template

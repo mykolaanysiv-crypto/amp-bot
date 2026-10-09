@@ -26,7 +26,7 @@ def test_giveaway_surface_is_wired_into_web_and_telegram():
     assert 'giveaway_prizes' in migration and 'giveaway_entries' in migration and 'giveaway_winners' in migration
     assert '/admin/giveaways/{giveaway_id}/draw' in web
     assert 'run_draw(session, giveaway)' in web
-    assert '🎲 Розіграші' in sidebar
+    assert "nav_link('/admin/giveaways','Розіграші','dice'" in sidebar
     assert '🎲 Розіграші' in keyboards
     assert 'GiveawayEntryState.photo' in tg
     assert 'фото-підтвердження обов’язкове' in tg

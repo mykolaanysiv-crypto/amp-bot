@@ -64,7 +64,9 @@ jobs:
         run: ruff check --select E9,F63,F7,F82 app scripts tests
 
       - name: Admin JavaScript smoke
-        run: node tests/js/test_admin_forms.js
+        run: |
+          node tests/js/test_admin_forms.js
+          node tests/js/test_app_shell.js
 
       - name: Dependency vulnerability audit
         run: pip-audit -r requirements.lock --progress-spinner=off
