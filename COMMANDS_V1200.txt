@@ -1,0 +1,27 @@
+AMP XP v1.20.0 — deployment outline
+
+1. Start from current production main v1.19.1.
+2. git switch -c release/v1.20.0
+3. Copy complete v1.20.0 artifact preserving .git/.env/.venv.
+4. python -m pip install -r requirements-dev.lock
+5. python -m scripts.dependency_lock_check
+6. python -m scripts.build_admin_css
+7. python -m scripts.release_consistency_check
+8. python -m compileall -q app scripts migrations tests
+9. python -m scripts.production_preflight
+10. python -m ruff check --select E9,F63,F7,F82 app scripts tests
+11. node tests/js/test_admin_forms.js
+12. node tests/js/test_app_shell.js
+13. python -m pip_audit -r requirements.lock --progress-spinner=off
+14. python -m pip check
+15. python -m pytest -q --ignore=tests/integration
+16. GitHub Actions: PostgreSQL 18 integration + schema drift + backup restore verification.
+17. git add -A && git diff --cached --check
+18. git commit -m "AMP XP v1.20.0 design system and accessibility 2.0"
+19. git push -u origin release/v1.20.0
+20. Open PR to main; merge only after all checks pass.
+21. Watch main AMP CI deployment.
+22. Verify Heroku /health/live, /health/ready, version=1.20.0 and alembic current=20261008_0017.
+23. Run manual UI_VISUAL_CHECKLIST_V1200.md before tagging v1.20.0.
+
+Rollback: application release rollback only; v1.20.0 adds no DB migration.

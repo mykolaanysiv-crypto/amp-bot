@@ -1,0 +1,89 @@
+AMP XP v1.20.0 — TEST REPORT
+Generated: 2026-10-09
+Status: Release Candidate
+Production status: NOT confirmed. Release becomes production only after mandatory GitHub/Heroku gates and manual UI/accessibility smoke pass.
+
+SOURCE BASELINE
+- Input artifact: amp_bot_v1191(1).zip
+- Input version: 1.19.1
+- Input ZIP SHA256: d602e39c663bd19ef5fb42b7f0152a6c357c7613a2e96b1cda1dcadf2a67b0b9
+- No production database or production media were modified while building this artifact.
+
+ACTUALLY EXECUTED — PASS
+1. python3 -m scripts.build_admin_css
+   PASS — deterministic admin.css bundle rebuilt.
+2. python3 -m scripts.dependency_lock_check
+   PASS.
+   requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+   requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+3. python3 -m scripts.release_consistency_check
+   PASS — AMP v1.20.0; Alembic head=20261008_0017.
+4. python3 -m compileall -q app scripts migrations tests
+   PASS.
+5. python3 -m scripts.production_preflight
+   PASS — Production preflight OK for AMP v1.20.0.
+6. node tests/js/test_admin_forms.js
+   PASS.
+7. node tests/js/test_app_shell.js
+   PASS — collapse persistence, mobile focus/ESC and CSP-safe bindings.
+8. node --check app/web/static/app_shell.js
+   PASS.
+9. node --check app/web/static/admin_forms.js
+   PASS.
+10. bash -n scripts/verify_backup_restore.sh
+    PASS.
+11. Jinja parser over app/web/templates/**/*.html
+    PASS — 65 templates.
+12. YAML parse:
+    .github/workflows/ci.yml — PASS
+    .github/workflows/backup.yml — PASS
+13. Targeted security/UI regression:
+    tests/test_v1200_design_accessibility.py
+    tests/test_v1190_security_observability.py::test_operational_intelligence_has_required_advisory_signals_only
+    PASS — 9 tests.
+14. Broader UI/static compatibility suite across v1.10.4/v1.17/v1.18/v1.19.1/v1.20.0 source/UI gates
+    PASS — 57 tests.
+
+ATTEMPTED BUT NOT COMPLETED IN THIS BUILD SANDBOX
+1. python3 -m pytest -q --ignore=tests/integration
+   NOT PASS / NOT FAIL OF PRODUCT LOGIC: collection stopped because this sandbox does not contain aiogram.
+   Affected collection modules:
+   - tests/test_reliability.py
+   - tests/test_v11721_duplicate_management.py
+   - tests/test_v1181_operational_integrity.py
+   Error: ModuleNotFoundError: No module named 'aiogram'.
+2. Ruff
+   DEFERRED — ruff module is not installed in the sandbox.
+3. pip-audit
+   DEFERRED — pip_audit module is not installed in the sandbox.
+4. async DB tests requiring aiosqlite
+   DEFERRED — aiosqlite is not installed in the sandbox.
+5. python3 -m pip check
+   SHARED-ENV RESULT IS NOT A PROJECT RESULT: the container's unrelated global moviepy package requires pillow<12 while this environment has Pillow 12.3.0. moviepy is not part of the AMP XP lock. A clean venv/CI pip check is mandatory.
+6. Clean install from requirements-dev.lock
+   DEFERRED in sandbox because external package-index/network access is unavailable.
+
+MANDATORY GATES STILL REQUIRED BEFORE MERGE / PRODUCTION
+- clean Python 3.13 venv install from requirements-dev.lock;
+- python -m pip check;
+- python -m ruff check --select E9,F63,F7,F82 app scripts tests;
+- python -m pip_audit -r requirements.lock --progress-spinner=off;
+- python -m pytest -q --ignore=tests/integration;
+- PostgreSQL 18 integration tests;
+- schema drift check;
+- backup capture + actual restore verification;
+- production deploy workflow;
+- /health/live and /health/ready with version=1.20.0;
+- Alembic current=20261008_0017;
+- manual UI_VISUAL_CHECKLIST_V1200.md including keyboard, 320px/mobile, tablet, desktop and accessibility smoke.
+
+KNOWN / INTENTIONAL LIMITATIONS
+- v1.20.0 introduces no Alembic migration; schema head intentionally remains 20261008_0017.
+- The new app shell itself contains no inline onclick handlers and uses CSP nonce-compatible external JavaScript. Historical page-specific inline handlers remain in some legacy templates as compatibility debt; this release does not expand them and does not weaken CSP to accommodate the redesign.
+- Legacy CSS remains as an explicit compatibility layer. New design tokens/components override it incrementally rather than rewriting all 65 templates at once.
+- Automated visual screenshot regression and real VoiceOver/NVDA/device testing were not available in this build sandbox; manual checklist is required before tagging.
+
+ARTIFACT / PATCH VERIFICATION
+- Portable unified patch generated as AMP_XP_v1.20.0_from_v1.19.1.patch.
+- Patch applied to a clean copy of v1.19.1 with `patch -p1` — PASS.
+- Patched tree compared against the v1.20.0 release tree (excluding runtime/cache artifacts) — exact match PASS.

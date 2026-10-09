@@ -1,27 +1,30 @@
+{% from "_ui_macros.html" import icon %}
 <!doctype html>
 <html lang="uk">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#06B8C5">
-  <link rel="stylesheet" href="/static/admin.css?v=1.19.1">
+  <meta name="theme-color" content="#057E8B">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="/static/admin.css?v=1.20.0">
   <title>Двоетапний вхід • АМПасадори</title>
 </head>
 <body class="login-body">
-  <div class="login-card">
-    <img class="login-brand" src="/static/amp_logo.png?v=1.19.1" alt="АМПасадори">
+  <main class="login-card" aria-labelledby="mfa-title">
+    <img class="login-brand" src="/static/amp_logo.png?v=1.20.0" alt="Логотип АМПасадорів">
     <span class="eyebrow">ДВОЕТАПНИЙ ВХІД</span>
-    <h1>Підтвердіть вхід</h1>
+    <h1 id="mfa-title">Підтвердіть вхід</h1>
     <p>Ми надіслали одноразовий 6-значний код у Telegram. Код діє обмежений час.</p>
-    {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+    {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="/admin/login/2fa">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      <label>Одноразовий код
-        <input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="otp-input" placeholder="000000">
+      <label for="otp-code">Одноразовий код
+        <input id="otp-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="otp-input" placeholder="000000" aria-describedby="otp-help">
       </label>
-      <button class="primary" type="submit">🔐 Підтвердити</button>
+      <small id="otp-help" class="muted">Введіть лише шість цифр із повідомлення в Telegram.</small>
+      <button class="primary" type="submit"><span class="icon">{{ icon('shield') }}</span>Підтвердити</button>
     </form>
-    <a class="soft-button login-back" href="/admin/login">← Повернутися до входу</a>
-  </div>
+    <a class="soft-button login-back" href="/admin/login">Повернутися до входу</a>
+  </main>
 </body>
 </html>

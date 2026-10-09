@@ -1,3 +1,15 @@
+# AMP XP v1.20.0 — Design System & Accessibility 2.0 (2026-10-09)
+
+- New accessible app shell with collapsible desktop sidebar and mobile drawer.
+- Sidebar state persists via localStorage; no server dependency for UI preference.
+- Single SVG icon system for core navigation.
+- Modular design tokens/CSS architecture with deterministic admin.css bundle.
+- Skip-link, focus-visible, reduced-motion and keyboard focus management.
+- Responsive layout from 320px; safe progressive table wrapping.
+- Modernized login/OTP/passkey, Security Center and Media Integrity Center.
+- No domain/business logic or Alembic schema change.
+- Historical tests changed only where the production UI requirement intentionally changed (emoji navigation / inline onclick).
+
 # AMP XP v1.19.1 — Media Storage & Data Lifecycle (2026-10-08)
 
 - Added MediaStorage abstraction with database, local and S3-compatible backends.

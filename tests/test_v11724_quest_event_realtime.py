@@ -77,15 +77,19 @@ def test_event_forms_collect_start_and_end_and_web_has_live_regions():
     events_tpl = text("app/web/templates/events.html")
     detail_tpl = text("app/web/templates/event_detail.html")
     base = text("app/web/templates/base.html")
+    shell = text("app/web/static/app_shell.js")
     mutations = text("app/web/event_routes/mutations.py")
     for name in ["end_day", "end_month", "end_year", "end_time"]:
         assert f'name="{name}"' in events_tpl
     assert "ends_at <= starts_at" in mutations
     assert 'data-live-region="event-cards-live"' in events_tpl
     assert "data-live-region" in detail_tpl
-    assert "window.setInterval(sync,POLL_MS)" in base
-    assert "POLL_MS=5000" in base.replace(" ", "")
-    assert "fetch(location.href" in base
+    # v1.20.0 intentionally moved live polling from inline base.html
+    # into the CSP-safe modular app_shell.js.
+    assert 'src="/static/app_shell.js?v=' in base
+    assert "window.setInterval(sync,POLL_MS)" in shell
+    assert "POLL_MS=5000" in shell.replace(" ", "")
+    assert "fetch(location.href" in shell
 
 
 def test_web_edits_push_current_event_and_quest_data_to_telegram():

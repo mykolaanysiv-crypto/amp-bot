@@ -1,55 +1,50 @@
-# AMP XP / «АМПасадори» v1.19.1
+# AMP XP / «АМПасадори» v1.20.0
 
 Production-oriented Telegram + FastAPI + PostgreSQL system for the AMP participant programme.
 
-Current release: **Media Storage & Data Lifecycle**. v1.19.1 adds a storage abstraction, safe S3-compatible preparation, media integrity checks and quarantine-first lifecycle without automatically moving production media or changing XP/attendance/gamification semantics.
+Current release: **Design System & Accessibility 2.0**. v1.20.0 modernizes the entire web shell and common component layer while preserving existing routes, permissions and domain semantics.
 
 ## Runtime
 - Python 3.13
 - Aiogram 3.31.0
-- FastAPI 0.142.2 + Jinja2 3.1.6
+- FastAPI + Jinja2 server-rendered web UI
 - SQLAlchemy async
 - PostgreSQL 18 baseline for CI/local/restore verification
 - Alembic head: `20261008_0017`
 
-## Security & Observability 2.0
-- WebAuthn/passkeys for authenticated staff; user verification required.
-- Passkey is used as the preferred second factor when configured; Telegram OTP remains fallback/recovery and remains mandatory fallback for superadmin policy.
-- Passkey enrollment requires the current password as step-up confirmation.
-- Central Security Center for login failures, locks, active/stale sessions, MFA/passkey coverage, sensitive audit activity, encryption configuration and operational telemetry.
-- Server-side rate limits for login/MFA/passkey management/password reset/QR/sensitive exports/uploads/public share routes.
-- Enforced CSP origin allow-list plus nonce-first Report-Only policy for migration away from legacy inline handlers.
-- Bounded in-process HTTP/DB/export/Telegram telemetry with no request bodies, SQL text, parameters or participant identifiers.
-- Notification queue age/failures, DB pool utilization, scheduler lag/failures, verified backup age, media storage usage.
-- Operational advisory issues for stale worker/schedulers, failed notifications, old backup, missing reminders, low feedback, login failure spikes, DB pool pressure and high-risk integrity anomalies.
-- No automatic destructive response to operational alerts.
+## Design System & Accessibility 2.0
+- desktop sidebar: expanded / collapsed;
+- persisted sidebar preference via localStorage;
+- accessible mobile drawer: backdrop, ESC, focus trap, focus return, body scroll lock;
+- one inline SVG icon system for app-shell navigation;
+- semantic design tokens for brand, surfaces, text, status, focus, spacing, typography and radii;
+- modular CSS source with deterministic `admin.css` bundle;
+- skip-link, global focus-visible styling and reduced-motion support;
+- responsive shell down to 320px;
+- unified cards, KPI, buttons, fields, tables, status chips, alerts and auth surfaces;
+- modernized login/OTP/passkey, Security Center and Media Integrity Center;
+- light/dark/system theme architecture.
 
-## Passkey production configuration
-Set an HTTPS origin matching the actual production host:
+## Security & data guarantees
+v1.20.0 does not weaken CSRF, CSP, permission checks, 2FA, WebAuthn, privacy suppression, audit trail, media lifecycle, dependency audit, backup restore verification or schema drift gates.
 
-```text
-WEBAUTHN_ORIGIN=https://YOUR_APP_HOST
-WEBAUTHN_RP_ID=YOUR_APP_HOST
-WEBAUTHN_RP_NAME=АМПасадори / АМП XP
-```
-
-If production has no valid HTTPS WebAuthn origin, the application remains backward compatible: passkey enrollment/authentication is disabled and existing Telegram OTP flow remains available. Secrets are never displayed in Security Center.
-
-## Dependencies
-- `requirements.in` — production intent.
-- `requirements.lock` — exact direct production pins; includes `webauthn==3.0.1` and `cryptography==50.0.2`.
-- `requirements-dev.lock` — exact direct development/test pins plus production lock.
-- `pip-audit` remains a blocking CI gate.
+## Media Storage & Data Lifecycle
+v1.19.1 functionality remains intact: `MediaStorage` abstraction, DB/local/S3-compatible backends, checksum/MIME/size validation, integrity detection, quarantine-first lifecycle and database→S3 dry-run/copy/verify/switch/rollback tooling. No production media migration happens automatically.
 
 ## Database
-v1.19.1 adds one additive migration:
+v1.20.0 adds **no schema migration**. Current Alembic head remains:
 
 ```text
-20260925_0015 -> 20261008_0017
+20261008_0017
 ```
 
-It creates `web_authn_credentials`. No participant/XP/attendance tables are altered.
+## UI source architecture
+- `app/web/static/legacy.css` — v1.19.1 compatibility layer;
+- `tokens.css`, `base.css`, `layout.css`, `components.css`, `utilities.css` — v1.20.0 modular design sources;
+- `scripts/build_admin_css.py` — deterministic production bundle builder;
+- `app/web/static/app_shell.js` — sidebar, theme, mobile navigation, accessibility and progressive enhancements;
+- `app/web/templates/_ui_macros.html` — shared SVG icon/navigation macros.
 
-See `RELEASE_V1191_UA.md`, `AUDIT_V1191_BASELINE_UA.md`, `BUILD_MANIFEST_V1191.txt`, `TEST_REPORT_V1191.txt`, `COMMANDS_V1191.txt`, `HEROKU_DEPLOY.md` and `SECURITY.md`.
+See `RELEASE_V1200_UA.md`, `AUDIT_UI_V1200_UA.md`, `DESIGN_SYSTEM_V1200.md`, `ACCESSIBILITY_V1200.md`, `UI_VISUAL_CHECKLIST_V1200.md`, `BUILD_MANIFEST_V1200.txt`, `TEST_REPORT_V1200.txt`, `COMMANDS_V1200.txt` and `HEROKU_DEPLOY.md`.
 
-A ZIP or local test result is not proof of production. v1.19.1 becomes production only after green GitHub production gates, restore-verified backup, successful Heroku release and post-deploy health/version verification.
+A ZIP or local test result is not proof of production. v1.20.0 becomes production only after green GitHub gates, restore-verified backup, successful Heroku release, health/version verification and manual critical-page visual QA.

@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Security Center • АМПасадори{% endblock %}
+{% block topbar_context %}Security Center{% endblock %}
+{% block topbar_hint %}Аутентифікація, сесії та production telemetry{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Security Center</b></nav>
-<div class="page-head security-page-head"><div><span class="eyebrow">SECURITY & OBSERVABILITY 2.0</span><h1>🛡 Security Center</h1><p>Єдине місце для стану входів, сесій, passkeys, чутливих дій, шифрування та production-telemetry. Значення секретів ніколи не показуються.</p></div></div>
+<div class="page-head security-page-head"><div><span class="eyebrow">SECURITY & OBSERVABILITY</span><h1>Security Center</h1><p>Єдине місце для стану входів, сесій, passkeys, чутливих дій, шифрування та production telemetry. Значення секретів ніколи не показуються.</p></div><span class="tag active">Захищений контур</span></div>
 
 {% if snapshot.warnings %}
 <section class="card security-card">
-  <div class="section-title"><div><h2>⚠️ Потребує уваги</h2></div><span class="count-badge">{{ snapshot.warnings|length }}</span></div>
+  <div class="section-title"><div><h2>Потребує уваги</h2></div><span class="count-badge">{{ snapshot.warnings|length }}</span></div>
   <div class="ops-list">
   {% for item in snapshot.warnings %}<div class="alert {{ 'danger' if item.severity=='critical' else 'warning' if item.severity=='high' else 'info' }}"><b>{{ item.title }}</b><br><small>{{ item.detail }}</small></div>{% endfor %}
   </div>
@@ -24,7 +26,7 @@
 
 <div class="security-grid">
   <section class="card security-card">
-    <div class="section-title"><div><h2>🔐 Шифрування</h2><p>Показується тільки стан конфігурації.</p></div></div>
+    <div class="section-title"><div><h2>Шифрування</h2><p>Показується тільки стан конфігурації.</p></div></div>
     <div class="security-facts">
       <div><span>FIELD_ENCRYPTION_KEY</span><b>{{ '✅ SET' if snapshot.encryption.field_key_configured else '❌ MISSING' }}</b></div>
       <div><span>Окремий від session secret</span><b>{{ '✅ Так' if snapshot.encryption.field_key_separate else '❌ Ні' }}</b></div>
@@ -35,7 +37,7 @@
     </div>
   </section>
   <section class="card security-card">
-    <div class="section-title"><div><h2>🗄 Backup</h2></div></div>
+    <div class="section-title"><div><h2>Backup</h2></div></div>
     <div class="security-facts">
       <div><span>Статус</span><b>{{ snapshot.telemetry.backup.status }}</b></div>
       <div><span>Вік</span><b>{{ snapshot.telemetry.backup.age_hours if snapshot.telemetry.backup.age_hours is not none else '—' }} год</b></div>
@@ -45,7 +47,7 @@
 </div>
 
 <section class="card security-card">
-  <div class="section-title"><div><h2>📈 Observability · останні 15 хв</h2></div></div>
+  <div class="section-title"><div><h2>Observability · останні 15 хв</h2></div></div>
   {% set pm = snapshot.telemetry.process_metrics %}
   <div class="kpi-grid">
     <div class="kpi"><span>HTTP p50</span><b>{{ pm.http.p50_ms if pm.http.p50_ms is not none else '—' }} ms</b></div>
@@ -70,8 +72,8 @@
 </section>
 {%- endmacro %}
 
-{{ audit_table('📤 Чутливі експорти', snapshot.sensitive_exports) }}
-{{ audit_table('👁 Доступ до приватних медіа', snapshot.sensitive_media) }}
-{{ audit_table('🧩 Зміни прав доступу', snapshot.permission_changes) }}
-{{ audit_table('🚨 Критичні security events', snapshot.critical_events) }}
+{{ audit_table('Чутливі експорти', snapshot.sensitive_exports) }}
+{{ audit_table('Доступ до приватних медіа', snapshot.sensitive_media) }}
+{{ audit_table('Зміни прав доступу', snapshot.permission_changes) }}
+{{ audit_table('Критичні security events', snapshot.critical_events) }}
 {% endblock %}
