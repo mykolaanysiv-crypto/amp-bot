@@ -84,8 +84,7 @@ def test_event_forms_collect_start_and_end_and_web_has_live_regions():
     assert "ends_at <= starts_at" in mutations
     assert 'data-live-region="event-cards-live"' in events_tpl
     assert "data-live-region" in detail_tpl
-    # v1.20.0 intentionally moved live polling from inline base.html
-    # into the CSP-safe modular app_shell.js.
+    # Since v1.20.0 live polling is intentionally externalized into the CSP-safe app shell.
     assert 'src="/static/app_shell.js?v=' in base
     assert "window.setInterval(sync,POLL_MS)" in shell
     assert "POLL_MS=5000" in shell.replace(" ", "")

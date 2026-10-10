@@ -1,24 +1,33 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Безпека доступу • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Безпека доступу</b></nav>
-<div class="page-head security-page-head"><div><span class="eyebrow">СУПЕРАДМІН</span><h1>🛡 Безпека та права доступу</h1><p>Іменні вебакаунти, працівники Telegram, двоетапний вхід, сесії та гнучкі права доступу.</p></div></div>
+<div class="page-head security-page-head"><div><span class="eyebrow">СУПЕРАДМІН</span><h1>Безпека та права доступу</h1><p>Іменні вебакаунти, працівники Telegram, двоетапний вхід, сесії та гнучкі права доступу.</p></div></div>
 {% if success %}<div class="alert success">{{ success }}</div>{% endif %}
 {% if temp_password %}<div class="card temp-password-card"><span class="eyebrow">ПОКАЗУЄТЬСЯ ОДИН РАЗ</span><h2>Тимчасовий пароль для {{ temp_username }}</h2><code>{{ temp_password }}</code><p>Передайте його безпечним каналом. Після першого входу користувач буде зобов'язаний змінити пароль.</p></div>{% endif %}
 
 <section class="card security-card">
-  <div class="section-title"><div><h2>🌐 Вебакаунти</h2><p>Роль задає безпечний стартовий профіль, а права можна налаштувати точково.</p></div><span class="count-badge">{{ staff_accounts|length }}</span></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('user') }}</span><span>Вебакаунти</span></h2><p>Роль задає безпечний стартовий профіль, а права можна налаштувати точково.</p></div><span class="count-badge">{{ staff_accounts|length }}</span></div>
   <div class="security-account-list">
     {% for item in staff_accounts %}
     {% set current = effective_permissions(item.role, item.permissions_json) %}
     <article class="security-account-row permissions-account-row">
       <div class="security-account-main"><div><b>{{ item.display_name }}</b><span>@{{ item.username }}</span></div><div class="security-account-tags"><span class="status-pill">{{ 'Суперадмін' if item.role=='superadmin' else 'Адмін' }}</span>{% if item.permissions_json and item.role!='superadmin' %}<span class="status-pill good">Індивідуальні права</span>{% else %}<span class="status-pill">Права за роллю</span>{% endif %}{% if item.must_change_password %}<span class="status-pill warning">Зміна пароля</span>{% endif %}{% if item.locked_until and item.locked_until > now %}<span class="status-pill danger">Заблокований</span>{% endif %}</div><small>2FA: {{ 'увімкнено' if item.two_factor_enabled or item.role=='superadmin' or passkey_counts.get(item.id,0) else 'вимкнено' }} • passkeys: {{ passkey_counts.get(item.id,0) }} • сесій: {{ active_session_counts.get(item.id,0) }} • останній вхід: {{ item.last_login_at.strftime('%d.%m.%Y %H:%M') if item.last_login_at else '—' }}</small></div>
       <div class="security-account-actions">
-        <form method="post" action="/admin/security/accounts/{{ item.id }}/reset-password" onsubmit="return confirm('Створити новий тимчасовий пароль і завершити всі сесії цього акаунта?')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🔑 Скинути пароль</button></form>
-        <form method="post" action="/admin/security/accounts/{{ item.id }}/sessions/revoke-all" onsubmit="return confirm('Завершити всі активні сесії цього акаунта?')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">↪ Завершити сесії</button></form>
+        <form method="post" action="/admin/security/accounts/{{ item.id }}/reset-password" data-confirm-message="Створити новий тимчасовий пароль і завершити всі активні сесії цього акаунта?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit"><span class="icon">{{ icon('key') }}</span> Скинути пароль</button></form>
+        <form method="post" action="/admin/security/accounts/{{ item.id }}/sessions/revoke-all" data-confirm-message="Завершити всі активні сесії цього акаунта?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Завершити сесії</button></form>
       </div>
+      <form method="post" action="/admin/security/accounts/{{ item.id }}/profile-link" class="security-account-profile-link">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>Пов’язаний participant-профіль
+          <input name="linked_user_id" inputmode="numeric" value="{{ item.linked_user_id or '' }}" placeholder="AMP ID, наприклад 42">
+          <small>{{ linked_user_names.get(item.id, 'Не пов’язано') }}</small>
+        </label>
+        <button class="soft-button" type="submit">Зберегти зв’язок</button>
+      </form>
       <details class="permission-editor">
-        <summary>🧩 Права доступу · {{ current|length }}</summary>
+        <summary>Права доступу · {{ current|length }}</summary>
         <form method="post" action="/admin/security/accounts/{{ item.id }}/permissions" class="permission-form">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           {% if item.role=='superadmin' %}<div class="alert info compact-alert">Суперадміністратор завжди має повний доступ. Це аварійна роль із незмінним повним набором прав.</div>{% endif %}
@@ -29,7 +38,7 @@
             </fieldset>
           {% endfor %}
           </div>
-          {% if item.role!='superadmin' %}<div class="permission-actions"><button class="primary" type="submit" name="mode" value="custom">💾 Зберегти права</button><button class="soft-button" type="submit" name="mode" value="inherit">↩ Права за роллю</button></div>{% endif %}
+          {% if item.role!='superadmin' %}<div class="permission-actions"><button class="primary" type="submit" name="mode" value="custom">Зберегти права</button><button class="soft-button" type="submit" name="mode" value="inherit">Права за роллю</button></div>{% endif %}
         </form>
       </details>
     </article>
@@ -38,14 +47,14 @@
 </section>
 
 <section class="card security-card">
-  <div class="section-title"><div><h2>📱 Telegram-працівники</h2><p>Права визначають, які розділи та дії бачить працівник у Telegram-адмінці.</p></div><span class="count-badge">{{ telegram_staff|length }}</span></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('megaphone') }}</span><span>Telegram-працівники</span></h2><p>Права визначають, які розділи та дії бачить працівник у Telegram-адмінці.</p></div><span class="count-badge">{{ telegram_staff|length }}</span></div>
   <div class="security-account-list">
   {% for item in telegram_staff %}
     {% set current = effective_permissions(item.role, item.staff_permissions_json) %}
     <article class="security-account-row permissions-account-row">
       <div class="security-account-main"><div><b>{{ item.full_name }}</b><span>АМП-{{ '%04d'|format(item.id) }}{% if item.username %} · @{{item.username}}{% endif %}</span></div><div class="security-account-tags"><span class="status-pill">{{ label(item.role) }}</span>{% if item.staff_permissions_json and item.role!='superadmin' %}<span class="status-pill good">Індивідуальні права</span>{% else %}<span class="status-pill">Права за роллю</span>{% endif %}</div></div>
       <details class="permission-editor">
-        <summary>🧩 Права Telegram · {{ current|length }}</summary>
+        <summary>Права Telegram · {{ current|length }}</summary>
         <form method="post" action="/admin/security/telegram/{{ item.id }}/permissions" class="permission-form">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           {% if item.role=='superadmin' %}<div class="alert info compact-alert">Суперадміністратор завжди має повний доступ.</div>{% endif %}
@@ -56,7 +65,7 @@
             </fieldset>
           {% endfor %}
           </div>
-          {% if item.role!='superadmin' %}<div class="permission-actions"><button class="primary" type="submit" name="mode" value="custom">💾 Зберегти права Telegram</button><button class="soft-button" type="submit" name="mode" value="inherit">↩ Права за роллю</button></div>{% endif %}
+          {% if item.role!='superadmin' %}<div class="permission-actions"><button class="primary" type="submit" name="mode" value="custom">Зберегти права Telegram</button><button class="soft-button" type="submit" name="mode" value="inherit">Права за роллю</button></div>{% endif %}
         </form>
       </details>
     </article>

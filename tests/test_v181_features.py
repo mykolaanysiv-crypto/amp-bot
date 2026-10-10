@@ -44,8 +44,7 @@ def test_participant_360_and_health_label():
     assert "Профіль учасника 360°" in template
     for tab in ["Огляд", "Активність", "XP", "Події", "Волонтерство", "Ідеї", "Опитування", "Бейджі", "Документи"]:
         assert tab in template
-    # v1.20.0 uses the unified SVG icon system instead of emoji.
-    # Preserve the real production requirements: permission, route and label.
+    # v1.20+ uses the unified SVG icon system; preserve route, label and permission requirement.
     assert 'has_permission("system.health")' in base
     assert "nav_link('/admin/system-health','Стан системи','health'" in base
 

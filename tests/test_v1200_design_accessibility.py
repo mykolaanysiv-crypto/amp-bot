@@ -12,12 +12,12 @@ def read(rel: str) -> str:
 
 
 def test_v1200_version_schema_and_cache_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.20.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.20.0"
-    assert '"1.20.0"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.20.1"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.1"
+    assert '"1.20.1"' in read("app/version.py")
     assert 'revision: str = "20261008_0017"' in read("migrations/versions/20261008_0017_media_storage_lifecycle.py")
     for template in ("base.html", "login.html", "login_2fa.html", "login_passkey.html", "account_security.html"):
-        assert "v=1.20.0" in read(f"app/web/templates/{template}")
+        assert "v=1.20.1" in read(f"app/web/templates/{template}")
 
 
 def test_app_shell_has_collapsible_desktop_and_accessible_mobile_drawer():
@@ -39,7 +39,7 @@ def test_app_shell_has_collapsible_desktop_and_accessible_mobile_drawer():
 
 def test_design_system_is_tokenized_modular_and_bundle_is_reproducible():
     admin = read("app/web/static/admin.css")
-    for name in ("tokens.css", "base.css", "layout.css", "components.css", "utilities.css"):
+    for name in ("tokens.css", "base.css", "layout.css", "components.css", "experience.css", "utilities.css"):
         assert f"===== {name} =====" in admin
         assert (ROOT / "app/web/static" / name).exists()
     tokens = read("app/web/static/tokens.css")
@@ -50,7 +50,7 @@ def test_design_system_is_tokenized_modular_and_bundle_is_reproducible():
         assert token in tokens
     assert "prefers-reduced-motion" in read("app/web/static/base.css")
     assert "focus-visible" in read("app/web/static/base.css")
-    assert "scripts/build_admin_css.py" in read("BUILD_MANIFEST_V1200.txt")
+    assert "scripts/build_admin_css.py" in read("BUILD_MANIFEST_V1201.txt")
 
 
 def test_permission_aware_navigation_and_security_semantics_remain_server_side():
@@ -85,8 +85,8 @@ def test_csp_nonce_architecture_is_preserved_for_scripts():
     base = read("app/web/templates/base.html")
     middleware = read("app/web/security_middleware.py")
     assert 'nonce="{{ request.state.csp_nonce }}"' in base
-    assert '/static/app_shell.js?v=1.20.0' in base
-    assert '/static/admin_forms.js?v=1.20.0' in base
+    assert '/static/app_shell.js?v=1.20.1' in base
+    assert '/static/admin_forms.js?v=1.20.1' in base
     assert "unsafe-eval" not in base
     assert "content-security-policy" in middleware
     assert "csp_nonce" in middleware

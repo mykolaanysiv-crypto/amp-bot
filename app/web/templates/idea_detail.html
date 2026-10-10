@@ -62,6 +62,6 @@
 
     <label class="span2">Внутрішня примітка команди<textarea name="admin_note" placeholder="Рішення команди, наступний крок, домовленості...">{{idea.admin_note or ''}}</textarea></label>
   </form>
-  <div class="idea-detail-actions"><button class="primary" type="submit" form="idea-update-form">💾 Зберегти</button><form method="post" action="/admin/ideas/{{idea.id}}/delete" onsubmit="return confirm('Видалити цю ідею назавжди?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">🗑 Видалити ідею</button></form></div>
+  <div class="idea-detail-actions"><button class="primary" type="submit" form="idea-update-form">💾 Зберегти</button><form method="post" action="/admin/ideas/{{idea.id}}/delete" data-confirm-message="Видалити цю ідею назавжди?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">🗑 Видалити ідею</button></form></div>
 </section>
 {% endblock %}

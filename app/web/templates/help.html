@@ -1,62 +1,128 @@
-{% extends "base.html" %}{% block title %}Довідка • АМПасадори{% endblock %}{% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Довідка</b></nav>
-<div class="help-page">
-<div class="page-head"><div><span class="eyebrow">ДОВІДКА</span><h1>Як працює система</h1><p>Команди Telegram, логіка ідей, звернень, XP та відмітки присутності через QR.</p></div></div>
+{% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
+{% block title %}Центр допомоги • АМПасадори{% endblock %}
+{% block topbar_context %}Центр допомоги{% endblock %}
+{% block topbar_hint %}Інструкції для щоденної роботи в AMP XP{% endblock %}
+{% block content %}
+<div class="help-center">
+  <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Центр допомоги</b></nav>
 
-<div class="help-grid">
-  <section class="card help-card">
-    <h2>Команди Telegram</h2>
-    <div class="command-table-wrap">
-      <table class="commands-table">
-        <tbody>
-          <tr><td><code>/start</code></td><td>Запуск бота, реєстрація, а також відкриття QR або спеціального посилання.</td></tr>
-          <tr><td><code>/menu</code></td><td>Повернути головне меню.</td></tr>
-          <tr><td><code>/help</code></td><td>Коротка довідка.</td></tr>
-          <tr><td><code>/myqr</code></td><td>Персональний QR-бейдж учасника.</td></tr>
-          <tr><td><code>/invite</code></td><td>Активне персональне посилання для запрошення друга.</td></tr>
-          <tr><td><code>/cancel</code></td><td>Скасувати незавершену форму або адміністративний майстер.</td></tr>
-          <tr><td><code>/setrole</code></td><td>Службова команда суперадміністратора для зміни ролі.</td></tr>
-        </tbody>
-      </table>
+  <section class="help-hero">
+    <span class="eyebrow" style="color:#fff">AMP XP HELP CENTER</span>
+    <h1>Як можемо допомогти?</h1>
+    <p>Знайдіть коротку інструкцію для подій, учасників, квестів, профілю, безпеки, медіа або звітності. Пошук працює одразу на цій сторінці.</p>
+    <label class="help-search"><span class="icon">{{ icon('search') }}</span><span class="sr-only">Пошук у довідці</span><input data-help-search type="search" placeholder="Наприклад: QR, passkey, бейдж, звіт, аватар…" autocomplete="off"></label>
+  </section>
+
+  <section>
+    <div class="section-title"><div><span class="eyebrow">ШВИДКИЙ СТАРТ</span><h2>Почніть з потрібної задачі</h2></div></div>
+    <div class="help-quick-grid">
+      <button class="help-quick-card" type="button" data-help-query="події QR реєстрація"><span class="topic-icon">{{ icon('calendar') }}</span><b>Провести подію</b><p>Створення, реєстрація, QR-відмітка, підтвердження участі та відгуки.</p></button>
+      <button class="help-quick-card" type="button" data-help-query="учасник профіль"><span class="topic-icon">{{ icon('users') }}</span><b>Працювати з учасником</b><p>Профіль 360°, статуси, контакти, згоди, історія та активність.</p></button>
+      <button class="help-quick-card" type="button" data-help-query="квест бейдж XP винагорода"><span class="topic-icon">{{ icon('trophy') }}</span><b>Гейміфікація</b><p>XP, квести, бейджі, серії, винагороди та правила.</p></button>
+      <button class="help-quick-card" type="button" data-help-query="безпека 2FA passkey"><span class="topic-icon">{{ icon('shield') }}</span><b>Безпека акаунта</b><p>Пароль, Telegram 2FA, passkeys, сесії та права доступу.</p></button>
     </div>
   </section>
 
-  <section class="card help-card qr-help-card">
-    <h2>Два різні QR</h2>
-    <div class="help-point"><b>🎫 Персональний QR</b><p>Ідентифікує учасника та відкриває його безпечну публічну картку. Сам по собі не ставить відмітку на події.</p></div>
-    <div class="help-point"><b>📅 QR події</b><p>Створюється окремо для кожної події. Саме його учасники сканують на вході, щоб зафіксувати присутність.</p></div>
-    <p class="muted help-note">Після сканування XP ще не нараховані — координатор підтверджує фактичну присутність після події.</p>
-  </section>
-</div>
-
-<section class="card"><h2>✨ Нове у v1.11.1</h2><ol class="steps-list"><li><b>Операційний центр події:</b> реєстрації, черга/резерв, відмітка, підтверджена участь, XP і зворотний зв’язок зібрані на одній сторінці.</li><li><b>QR-сканер і масові дії:</b> видно стан вікна відмітки, останнє сканування; доступні оновлення черги, підтвердження відмічених і масове «Не прийшов» після закриття вікна.</li><li><b>Звітність 2.0:</b> чітке «Дані станом на … за київським часом», потокові та моментні показники, етапи залучення, якість даних і визначення показників.</li><li><b>Розумна динаміка:</b> короткі періоди показуються по днях, середні — по тижнях, довгі — по місяцях; лінія з однієї точки більше не будується.</li><li><b>Журнал доступу:</b> колонка «Хто» читається цілісно без розривання слів.</li></ol></section>
-
-<section class="card"><h2>Як відмічати людей на події через QR</h2><ol class="steps-list"><li><b>Основний режим:</b> Telegram → <b>Адмін-панель → 📷 QR-сканер</b> → натисніть потрібну подію.</li><li>Відкриється міні-застосунок Telegram і вбудована QR-камера. Після одного бейджа камера <b>не закривається</b> — можна одразу сканувати наступного учасника.</li><li>Після кожного сканування бот надсилає адміністратору в чат ПІБ, АМП-код, назву події та чи зареєстрований/відмічений учасник.</li><li>Якщо учасник не зареєстрований, у чаті з’являється <b>Зареєструвати та підтвердити</b>.</li><li>Резервний режим АМП-код/текст QR збережено; вебсторінка події також може відкрити сканер через Telegram.</li></ol></section>
-
-<section class="card"><h2>⚖️ Баланс XP</h2>
-  <div class="xp-guide-grid">
-    <div><b>Звичайна подія</b><span>10 XP</span><small>Допустимо 5–25 XP</small></div>
-    <div><b>Навчання / тренінг</b><span>15 XP</span><small>Типовий орієнтир</small></div>
-    <div><b>Толока / волонтерство</b><span>20 XP</span><small>За підтверджену участь</small></div>
-    <div><b>Волонтерська задача</b><span>10–40 XP</span><small>Залежно від складності та часу</small></div>
-    <div><b>Індивідуальний квест</b><span>10–35 XP</span><small>Типово 20 XP</small></div>
-    <div><b>Командний квест</b><span>5–20 XP</span><small>Кожному учаснику</small></div>
-    <div><b>Особливий внесок</b><span>до 40 XP</span><small>Ручне підтверджене нарахування</small></div>
-    <div><b>Запрошення друга</b><span>10 → 1 XP</span><small>Кожного кварталу лічильник починається заново</small></div>
+  <div class="help-chip-row" aria-label="Популярні теми">
+    <button class="help-chip" type="button" data-help-query="QR">QR</button>
+    <button class="help-chip" type="button" data-help-query="профіль">Профіль</button>
+    <button class="help-chip" type="button" data-help-query="звіт">Звіти</button>
+    <button class="help-chip" type="button" data-help-query="медіа">Медіа</button>
+    <button class="help-chip" type="button" data-help-query="passkey">Passkey</button>
+    <button class="help-chip" type="button" data-help-query="XP">XP</button>
+    <button class="help-chip" type="button" data-help-query="Telegram">Telegram</button>
   </div>
-  <p class="muted help-note">Реферальний бонус у межах календарного кварталу: 1-й успішний реферал — 10 XP, 2-й — 9 XP … 10-й — 1 XP, усі наступні — по 1 XP. Новий цикл починається 1 січня, 1 квітня, 1 липня та 1 жовтня.</p>
-</section>
 
+  <div class="help-topic-grid" data-help-results>
+    <article class="help-topic-card" data-help-card data-help-keywords="початок навігація меню користувач кабінет профіль">
+      <h2><span class="icon">{{ icon('home') }}</span>Початок роботи</h2>
+      <p>Після входу починайте з «Огляду»: він показує операційні сигнали, найближчі події та задачі, які потребують дії.</p>
+      <ol><li>Використовуйте бокове меню для основних модулів.</li><li>Глобальний пошук у верхній панелі знаходить учасників, події та кейси.</li><li>«Мій кабінет» містить ваш профіль, досягнення, пароль, 2FA, passkeys і сесії.</li><li>На мобільному відкривайте меню через hamburger; клавіша Esc закриває drawer і діалоги.</li></ol>
+    </article>
 
-<section class="card"><h2>⚡ Активності за заявкою</h2><ol class="steps-list"><li>Учасник відкриває в Telegram <b>⚡ Активності</b> та бачить точну винагороду XP і волонтерські години за кожен вид.</li><li>Він відкриває потрібний вид, натискає <b>«Подати заявку»</b> та пояснює, що саме планує зробити.</li><li>Адміністратор у <b>Вебпанель → Активності</b> або Telegram-адмінці дозволяє чи відхиляє заявку.</li><li>Після погодження учасник виконує активність і через «Мої заявки» надсилає короткий результат.</li><li>Адміністратор натискає <b>«Виконано + нарахувати XP»</b>. Система сама додає XP, години й запис у журнал.</li></ol><p class="muted help-note">Цей блок не дублює QR-події, квести, волонтерські задачі чи реферальні бонуси — для них XP нараховуються за окремою логікою.</p></section>
-<section class="card"><h2>Логіка ідей</h2><p>У Telegram учасник відповідає на послідовні питання: назва → напрям → проблема → рішення → аудиторія → очікуваний результат → ресурси. У вебпанелі ці відповіді відображаються окремими полями. Команда призначає відповідального, додає внутрішню примітку та може змінювати статус ідеї у будь-який момент.</p></section>
-<section class="card privacy-help-card"><h2>🔐 Захист персональних даних</h2><div class="privacy-help-grid"><div><b>Адміністратор</b><p>Бачить базову картку, XP, статуси та частково приховані контакти. Не бачить дату народження, стать, ідентифікатор Telegram і категорії вразливості.</p></div><div><b>Суперадміністратор</b><p>Має повний доступ до картки, редагування персональних даних, модерації, розширених Excel-експортів і точних агрегованих значень аналітики. Персональні списки вразливих категорій у модулі аналітики не формуються.</p></div><div><b>Журнал доступу</b><p>Відкриття повної картки та завантаження розширених Excel автоматично фіксуються із назвою облікового запису.</p></div><div><b>Мінімізація</b><p>Для щоденної роботи доступні базові експорти без контактів і категорій вразливості.</p></div></div></section>
+    <article class="help-topic-card" data-help-card data-help-keywords="події event QR реєстрація checkin attendance відмітка">
+      <h2><span class="icon">{{ icon('calendar') }}</span>Події та QR-відмітка</h2>
+      <ol><li>Створіть подію у «Події» та заповніть дату, час, локацію, XP і параметри реєстрації.</li><li>QR події використовується для фактичної відмітки присутності. Персональний QR учасника лише ідентифікує людину.</li><li>Після сканування присутність ще не є фінальним нарахуванням XP — координатор підтверджує участь.</li><li>Після завершення події перевірте no-show, підтвердження та відгуки.</li><li>Якщо подію переносите або скасовуєте, система використовує відповідні workflow і сповіщення.</li></ol>
+    </article>
 
-<section class="card"><h2>🏆 Нове у v1.7.0</h2><ol class="steps-list"><li>Рейтинг поділено на <b>загальний ТОП-20</b> і <b>ТОП-10 своєї ліги</b>; ліга автоматично визначається за сезонним XP.</li><li>Додано <b>тижневу серію активності</b> та <b>суперсерію відвідування подій</b> з допустимими пропусками й автоматичним бейджем за 30+ днів.</li><li>У <b>Винагородах</b> є спеціальний тип для відновлення втраченої суперсерії за XP.</li><li>Новий веброзділ <b>Рейтинг і серії</b> дозволяє переглядати ліги, аналітику, коригувати серії та перераховувати їх з історії.</li><li>При призначенні відповідальним за ідею чи звернення учасник отримує Telegram-повідомлення з кнопкою <b>Детально</b>.</li></ol></section>
-<section class="card"><h2>🚀 Нове у v1.6.5</h2><ol class="steps-list"><li>Пункти головного меню Telegram більше не потрапляють у відповіді незавершених форм: перехід у меню автоматично скасовує поточний майстер.</li><li>Події, квести та волонтерські задачі підтримують статуси <b>Перенесено</b> і <b>Завершено</b>; при перенесенні учасники автоматично отримують нову дату, час і причину.</li><li>Учасники можуть скасувати власну участь, а адміністратор — зробити це у вебпанелі без стирання історії.</li><li>Розділ <b>📄 Звіти</b> формує Excel/PDF за місяць, кілька місяців, квартал або рік.</li><li>Розділ <b>🏁 Цілі & місії</b> підтримує персональні, сезонні та командні цілі; Telegram показує серію і прогрес до наступного рівня.</li><li>У <b>🌍 Можливості</b> можна вести повний каталог та бачити кількість позначок «Мені цікаво».</li><li>У <b>📊 Аналітика</b> доступний PNG як для всієї оглядової панелі, так і для окремого графіка.</li></ol></section>
-<section class="card"><h2>📊 Автоматизована аналітика</h2><ol class="steps-list"><li>Відкрийте <b>Вебпанель → Аналітика</b>. Дані рахуються автоматично з актуальної бази при кожному відкритті сторінки або формуванні звіту.</li><li>Головна сторінка показує нові реєстрації, активність 30/90 днів, відвідування, середню відвідуваність, волонтерські години, демографічні розподіли, джерела XP, ідеї та агреговані категорії вразливості.</li><li>Кожна картка має кнопку <b>«Детально»</b>, а також окремі завантаження <b>Excel</b>, <b>PDF</b> і <b>PNG</b>.</li><li>Кнопки <b>«Загальний Excel»</b>, <b>«Загальний PDF»</b> і <b>«PNG»</b> формують повний експорт по всіх графіках.</li><li>У Telegram відкрийте <b>🛠 Адмін-панель → 📊 Аналітика</b>, щоб побачити коротке зведення та перейти до повної вебаналітики.</li></ol><p class="muted help-note">Категорії вразливості показуються тільки як агреговані числа. ПІБ, контакти й списки конкретних учасників у цьому модулі не формуються.</p></section>
-<section class="card"><h2>📣 Комунікаційний центр</h2><ol class="steps-list"><li>Розділ доступний лише суперадміністратору через <b>Вебпанель → Розсилки</b>.</li><li>Оберіть аудиторію: усі активні учасники, АМПасадори, вікова група, населений пункт, учасники конкретної події або ті, хто давно не взаємодіяв із ботом.</li><li>Оберіть готовий шаблон або напишіть власний текст. Для персоналізації можна використати <code>{first_name}</code> та <code>{full_name}</code>.</li><li>Натисніть <b>«Попередній перегляд»</b>: система покаже кількість одержувачів, вибірку ПІБ і приклад повідомлення.</li><li>Після підтвердження розсилка надсилається у фоні через Telegram, а для кожного одержувача зберігається статус доставки.</li></ol><p class="muted help-note">Історія кампаній зберігає автора, аудиторію, текст, кількість успішних доставок і помилок. Незавершена кампанія після перезапуску сервера продовжується лише для тих одержувачів, які ще не отримали повідомлення.</p></section>
-<section class="card"><h2>Збереження даних</h2><p>На Mac локальні дані зберігаються у <code>~/AMP_Bot_Data</code>. На Heroku робоча база зберігається у PostgreSQL, а фото — у сховищі медіа бази даних. Для робочого середовища рекомендовано щоденну резервну копію Heroku PGBackup; команда налаштування входить до <code>SERVER_UPDATE.md</code>.</p></section>
+    <article class="help-topic-card" data-help-card data-help-keywords="учасник users профіль 360 контакти згода персональні дані">
+      <h2><span class="icon">{{ icon('users') }}</span>Учасники та профіль 360°</h2>
+      <p>Картка учасника об’єднує XP, події, квести, волонтерство, ідеї, опитування, бейджі та документи.</p>
+      <ul><li>Базові операційні дані редагуйте лише з permission <code>participants.edit</code>.</li><li>Чутливі поля та документи доступні лише відповідно до ролей і privacy rules.</li><li>Не копіюйте персональні дані у сторонні таблиці без робочої потреби.</li><li>Зміни згод і доступу журналюються.</li></ul>
+    </article>
 
+    <article class="help-topic-card" data-help-card data-help-keywords="кабінет web профіль аватар про себе бейджі тема">
+      <h2><span class="icon">{{ icon('user') }}</span>Мій кабінет</h2>
+      <p>Це профіль саме користувача вебплатформи, а не окрема форма Telegram-бота.</p>
+      <ul><li>Додайте аватар, роль/підпис, контакти та короткий блок «Про себе».</li><li>Фото профілю зберігається як приватне staff-медіа.</li><li>Якщо суперадміністратор пов’яже вебакаунт із participant-профілем, у кабінеті з’являться власні бейджі та показники участі.</li><li>Світла/темна тема зберігається локально у вашому браузері.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="квести quests XP швидкі XP цілі гейміфікація">
+      <h2><span class="icon">{{ icon('target') }}</span>Квести, XP і цілі</h2>
+      <ul><li>Не нараховуйте XP вручну, якщо для активності вже існує автоматичний workflow.</li><li>Квест має чітко пояснювати умову виконання, доказ і винагороду.</li><li>Автоматичні QR-квести та інші нарахування захищені від повторного дублювання.</li><li>Для зміни правил гейміфікації використовуйте відповідні адміністративні модулі — не редагуйте історичні XP-транзакції напряму.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="бейдж badge нагорода reward streak рейтинг">
+      <h2><span class="icon">{{ icon('badge') }}</span>Бейджі, серії та винагороди</h2>
+      <ul><li>Бейджі можуть бути автоматичними або адміністративними залежно від правила.</li><li>Серії та ліги формуються з історичних даних і не повинні коригуватися шляхом стирання XP.</li><li>Винагороди мають вартість у XP та можуть мати обмежений залишок.</li><li>Профіль користувача показує отримані бейджі як окрему галерею.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="опитування survey feedback відгуки">
+      <h2><span class="icon">{{ icon('survey') }}</span>Опитування та відгуки</h2>
+      <ul><li>Створіть опитування, налаштуйте аудиторію і питання.</li><li>Для подій використовуйте мікровідгуки та стежте за конверсією завершення.</li><li>Не включайте чутливі поля у звичайні експорти без відповідного permission.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="звіти analytics excel pdf png export аналітика">
+      <h2><span class="icon">{{ icon('report') }}</span>Аналітика, звіти та експорт</h2>
+      <ul><li>«Аналітика» рахується з актуальної бази та показує агреговані показники.</li><li>«Звіти» формують Excel/PDF за вибраний період.</li><li>Базовий експорт мінімізує персональні дані; sensitive export доступний лише з окремим permission.</li><li>Великі вибірки перевіряйте на дату/період перед передаванням донору або партнеру.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="media медіа файли integrity quarantine S3 фото документи">
+      <h2><span class="icon">{{ icon('media') }}</span>Медіа та файли</h2>
+      <ul><li>Media Integrity Center показує missing, orphan, duplicate, MIME, checksum та quarantine-кандидатів.</li><li>Невідома категорія медіа за замовчуванням приватна.</li><li>Quarantine — це не hard-delete. Підозрілий файл спочатку проходить review.</li><li>Міграція database → S3 виконується окремо через dry-run → copy → verify → switch. Deploy самостійно файли не переносить.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="security безпека пароль 2FA Telegram passkey session">
+      <h2><span class="icon">{{ icon('shield') }}</span>Безпека акаунта</h2>
+      <ul><li>Використовуйте унікальний пароль і не передавайте його в чатах.</li><li>Telegram 2FA залишається резервним фактором; passkey може використовувати Touch ID, Face ID, Windows Hello або security key.</li><li>У «Моєму кабінеті» переглядайте активні сесії та завершуйте невідомі.</li><li>Security Center показує невдалі входи, сесії, 2FA, passkeys, sensitive operations та audit events.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="permissions права доступу superadmin admin staff аудит">
+      <h2><span class="icon">{{ icon('key') }}</span>Права доступу</h2>
+      <p>Прихований пункт меню не є механізмом безпеки — backend permission checks залишаються обов’язковими.</p>
+      <ul><li>Суперадміністратор має повний доступ.</li><li>Для інших вебакаунтів можна використовувати права за роллю або індивідуальний набір.</li><li>Зміни permissions і reset пароля фіксуються в аудиті.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="Telegram bot команди start menu help myqr invite cancel">
+      <h2><span class="icon">{{ icon('megaphone') }}</span>Telegram-бот</h2>
+      <div class="table-wrap"><table><tbody><tr><td><code>/start</code></td><td>Запуск, реєстрація та відкриття спеціальних посилань.</td></tr><tr><td><code>/menu</code></td><td>Головне меню.</td></tr><tr><td><code>/help</code></td><td>Коротка довідка.</td></tr><tr><td><code>/myqr</code></td><td>Персональний QR-бейдж.</td></tr><tr><td><code>/invite</code></td><td>Персональне реферальне посилання.</td></tr><tr><td><code>/cancel</code></td><td>Скасувати незавершену форму.</td></tr></tbody></table></div>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="операції operational system health backup scheduler notification">
+      <h2><span class="icon">{{ icon('health') }}</span>Стан системи та операційні задачі</h2>
+      <ul><li>«Стан системи» показує health, scheduler, worker, backup та інші технічні сигнали.</li><li>Operational Intelligence створює advisory issues, але не виконує destructive actions автоматично.</li><li>Після production deploy перевіряйте health/live, health/ready та verified backup marker.</li></ul>
+    </article>
+
+    <article class="help-topic-card" data-help-card data-help-keywords="help FAQ помилка не бачу кнопку доступ">
+      <h2><span class="icon">{{ icon('help') }}</span>Якщо щось не працює</h2>
+      <ol><li>Оновіть сторінку та перевірте, чи проблема повторюється.</li><li>Якщо не бачите кнопку або розділ — перевірте роль/permissions.</li><li>Не повторюйте destructive дію кілька разів, якщо сервер відповідає повільно.</li><li>Зафіксуйте сторінку, час і дію, після якої виникла помилка; не надсилайте паролі, OTP або encryption keys.</li></ol>
+    </article>
+  </div>
+
+  <div class="help-empty-search" data-help-empty hidden><b>Нічого не знайдено.</b><br>Спробуйте коротший запит: «QR», «профіль», «XP», «passkey», «медіа» або «звіт».</div>
+
+  <section class="card help-faq" data-help-card data-help-keywords="FAQ часті питання">
+    <div class="section-title"><div><span class="eyebrow">FAQ</span><h2>Часті питання</h2></div></div>
+    <details><summary>Чим персональний QR відрізняється від QR події?</summary><div>Персональний QR ідентифікує учасника. QR конкретної події використовується для check-in саме на цій події.</div></details>
+    <details><summary>Чи нараховується XP одразу після QR?</summary><div>Не завжди. Для подій фактичну участь підтверджує відповідальний workflow; це захищає систему від помилкових нарахувань.</div></details>
+    <details><summary>Чи можна видалити медіа одразу?</summary><div>Проблемні або непотрібні файли проходять lifecycle detect → candidate → review → quarantine → delete. Система не повинна робити автоматичний hard-delete без review.</div></details>
+    <details><summary>Навіщо пов’язувати вебакаунт із participant-профілем?</summary><div>Це дозволяє показувати у власному кабінеті особисті бейджі та показники участі. Пов’язання виконує суперадміністратор.</div></details>
+  </section>
+
+  <section class="card" data-help-card data-help-keywords="нове реліз 1.20.1 visual experience profile help modal">
+    <div class="section-title"><div><span class="eyebrow">ЩО НОВОГО</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('sparkle') }}</span><span>AMP XP v1.20.1</span></h2></div></div>
+    <ul><li>Новий особистий кабінет вебкористувача з аватаром, описом, контактами, бейджами та показниками.</li><li>Єдина modal/dialog система для редагування та підтвердження небезпечних дій.</li><li>Більш виразні внутрішні блоки, градієнти, surfaces, анімації та кольорові акценти.</li><li>Повністю перебудований Help Center із пошуком і короткими інструкціями для основних workflow.</li></ul>
+  </section>
 </div>
 {% endblock %}

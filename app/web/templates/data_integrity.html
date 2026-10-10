@@ -65,7 +65,7 @@
                   {% if member.role in ['participant','ambassador'] %}
                   <details class="duplicate-delete-details">
                     <summary class="danger-link">🗑 Видалити як дублікат</summary>
-                    <form method="post" action="/admin/data-integrity/duplicate-delete" class="duplicate-delete-form" onsubmit="return confirm('Ви впевнені? Профіль буде фізично видалено лише якщо він не має історичних зв’язків; інакше — архівовано назавжди.')">
+                    <form method="post" action="/admin/data-integrity/duplicate-delete" class="duplicate-delete-form" data-confirm-message="Ви впевнені? Профіль буде фізично видалено лише якщо він не має історичних зв’язків; інакше — архівовано назавжди.">
                       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                       <input type="hidden" name="duplicate_user_id" value="{{member.id}}">
                       <label>Основний профіль, який залишаємо
@@ -93,7 +93,7 @@
 
   <section class="panel">
     <div class="panel-heading"><div><h2>Політика зберігання даних</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує планувальник політики зберігання даних.</p></div></div>
-    <form method="post" action="/admin/data-integrity/retention-cleanup" onsubmit="return confirm('Запустити очищення прострочених чернеток, старих сесій, завершених службових записів доставки і тимчасових файлів? Історія XP, відвідувань, аудиту та профілі не видаляється.')">
+    <form method="post" action="/admin/data-integrity/retention-cleanup" data-confirm-message="Запустити очищення прострочених чернеток, старих сесій, завершених службових записів доставки і тимчасових файлів? Історія XP, відвідувань, аудиту та профілі не видаляється.">
       <button class="soft-button" type="submit">🧹 Запустити очищення за політикою зберігання</button>
     </form>
   </section>

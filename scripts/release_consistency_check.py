@@ -6,8 +6,8 @@ import re
 from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "1.20.0"
-EXPECTED_ALEMBIC_HEAD = "20261008_0017"
+EXPECTED_VERSION = "1.20.1"
+EXPECTED_ALEMBIC_HEAD = "20261010_0018"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"
 
@@ -25,6 +25,8 @@ CRITICAL_RUNTIME_FILES = (
     "app/web/static/passkeys.js",
     "app/web/static/admin_forms.js",
     "app/web/static/app_shell.js",
+    "app/web/static/experience.js",
+    "app/web/static/experience.css",
     "app/web/static/admin.css",
     "app/web/static/tokens.css",
     "app/web/static/base.css",
@@ -41,6 +43,7 @@ CRITICAL_RUNTIME_FILES = (
     "app/domain_services/quest_auto.py",
     "migrations/versions/20261007_0016_security_observability.py",
     "migrations/versions/20261008_0017_media_storage_lifecycle.py",
+    "migrations/versions/20261010_0018_web_user_profiles.py",
     "app/media_storage.py",
     "app/media_integrity.py",
     "scripts/migrate_media_storage.py",
@@ -50,7 +53,9 @@ CRITICAL_RUNTIME_FILES = (
     "scripts/schema_drift_check.py",
     "scripts/verify_backup_restore.sh",
     "tests/test_v1200_design_accessibility.py",
+    "tests/test_v1201_visual_experience_profiles.py",
     "tests/js/test_app_shell.js",
+    "tests/js/test_experience.js",
     ".github/workflows/ci.yml",
     ".github/workflows/backup.yml",
 )
@@ -93,14 +98,14 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "BUILD_MANIFEST_V1200.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "RELEASE_V1200_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "AUDIT_UI_V1200_UA.md": (EXPECTED_VERSION,),
-        "DESIGN_SYSTEM_V1200.md": (EXPECTED_VERSION,),
-        "ACCESSIBILITY_V1200.md": ("WCAG 2.2 AA", EXPECTED_VERSION),
-        "UI_VISUAL_CHECKLIST_V1200.md": (EXPECTED_VERSION,),
-        "COMMANDS_V1200.txt": (EXPECTED_VERSION,),
-        "TEST_REPORT_V1200.txt": (EXPECTED_VERSION,),
+        "BUILD_MANIFEST_V1201.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "RELEASE_V1201_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "AUDIT_UI_V1201_UA.md": (EXPECTED_VERSION,),
+        "DESIGN_SYSTEM_V1201.md": (EXPECTED_VERSION,),
+        "ACCESSIBILITY_V1201.md": ("WCAG 2.2 AA", EXPECTED_VERSION),
+        "UI_VISUAL_CHECKLIST_V1201.md": (EXPECTED_VERSION,),
+        "COMMANDS_V1201.txt": (EXPECTED_VERSION,),
+        "TEST_REPORT_V1201.txt": (EXPECTED_VERSION,),
     }
     for name, tokens in docs.items():
         path = root / name
@@ -111,7 +116,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         if missing:
             raise SystemExit(f"{name} is not synchronized; missing {missing}")
 
-    manifest = (root / "BUILD_MANIFEST_V1200.txt").read_text(encoding="utf-8")
+    manifest = (root / "BUILD_MANIFEST_V1201.txt").read_text(encoding="utf-8")
     for lock_name, digest in hashes.items():
         token = f"{lock_name} SHA256: {digest}"
         if token not in manifest:
@@ -136,6 +141,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         "python -m scripts.release_consistency_check",
         "node tests/js/test_admin_forms.js",
         "node tests/js/test_app_shell.js",
+        "node tests/js/test_experience.js",
         "pip-audit -r requirements.lock --progress-spinner=off",
         "pip check",
         "image: public.ecr.aws/docker/library/postgres:18",
@@ -168,24 +174,58 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         if token not in migration_1191:
             raise SystemExit(f"v1.19.1 migration gate missing: {token}")
 
+
+    migration_1201 = (root / "migrations" / "versions" / "20261010_0018_web_user_profiles.py").read_text(encoding="utf-8")
+    for token in ("profile_title", "profile_bio", "avatar_path", "linked_user_id", 'down_revision: Union[str, None] = "20261008_0017"', "def downgrade"):
+        if token not in migration_1201:
+            raise SystemExit(f"v1.20.1 profile migration gate missing: {token}")
+
     base_template = (root / "app" / "web" / "templates" / "base.html").read_text(encoding="utf-8")
     for token in ("skip-link", "data-sidebar-collapse", "data-mobile-menu", 'id="main-content"', "_ui_macros.html"):
         if token not in base_template:
-            raise SystemExit(f"v1.20.0 app-shell gate missing: {token}")
+            raise SystemExit(f"v1.20.1 app-shell gate missing: {token}")
     if "onclick=" in base_template:
-        raise SystemExit("v1.20.0 app shell must use CSP-safe event listeners, not inline onclick")
+        raise SystemExit("v1.20.1 app shell must use CSP-safe event listeners, not inline onclick")
 
     app_shell = (root / "app" / "web" / "static" / "app_shell.js").read_text(encoding="utf-8")
     for token in ("amp-sidebar-collapsed", "trapSidebarFocus", "mobileReturnFocus", "localStorage", "prefers-color-scheme"):
         if token not in app_shell:
-            raise SystemExit(f"v1.20.0 app-shell behavior gate missing: {token}")
+            raise SystemExit(f"v1.20.1 app-shell behavior gate missing: {token}")
 
     tokens_css = (root / "app" / "web" / "static" / "tokens.css").read_text(encoding="utf-8")
-    for token in ("--color-primary", "--color-focus", "--space-4", "--radius-lg", "--sidebar-expanded"):
+    for token in ("--color-primary", "--color-focus", "--space-4", "--radius-lg", "--sidebar-expanded", "--gradient-brand", "--color-accent-cyan", "--color-accent-lime"):
         if token not in tokens_css:
-            raise SystemExit(f"v1.20.0 design token gate missing: {token}")
+            raise SystemExit(f"v1.20.1 design token gate missing: {token}")
     if "prefers-reduced-motion" not in (root / "app" / "web" / "static" / "base.css").read_text(encoding="utf-8"):
-        raise SystemExit("v1.20.0 reduced-motion accessibility gate missing")
+        raise SystemExit("v1.20.1 reduced-motion accessibility gate missing")
+
+    experience_js = (root / "app" / "web" / "static" / "experience.js").read_text(encoding="utf-8")
+    for token in ("data-modal-open", "confirmMessage", "showModal", "amp-theme", "data-help-search", "edit-action-button"):
+        if token not in experience_js:
+            raise SystemExit(f"v1.20.1 experience behavior gate missing: {token}")
+    experience_css = (root / "app" / "web" / "static" / "experience.css").read_text(encoding="utf-8")
+    for token in (".amp-modal", ".profile-hero", ".help-hero", ".dashboard-experience-hero", ".page-shell{width:min(100%,1480px)"):
+        if token not in experience_css:
+            raise SystemExit(f"v1.20.1 visual-experience gate missing: {token}")
+    account_template = (root / "app" / "web" / "templates" / "account_security.html").read_text(encoding="utf-8")
+    for token in ("profileEditDialog", "avatarDialog", "Мій кабінет", "badge-gallery"):
+        if token not in account_template:
+            raise SystemExit(f"v1.20.1 web-cabinet gate missing: {token}")
+    help_template = (root / "app" / "web" / "templates" / "help.html").read_text(encoding="utf-8")
+    for token in ("Центр допомоги", "data-help-search", "2FA", "Media Integrity", "ЩО НОВОГО"):
+        if token not in help_template:
+            raise SystemExit(f"v1.20.1 Help Center gate missing: {token}")
+    security_source = (root / "app" / "security.py").read_text(encoding="utf-8")
+    if '"staff_profiles"' not in security_source:
+        raise SystemExit("v1.20.1 profile avatars must remain staff-private")
+    identity_source = (root / "app" / "model_domains" / "identity.py").read_text(encoding="utf-8")
+    for token in (
+        "profile_bio: Mapped[str | None] = mapped_column(EncryptedText()",
+        "profile_email: Mapped[str | None] = mapped_column(EncryptedText()",
+        "profile_phone: Mapped[str | None] = mapped_column(EncryptedText()",
+    ):
+        if token not in identity_source:
+            raise SystemExit(f"v1.20.1 profile privacy gate missing: {token}")
 
     # admin.css is a reproducible bundle from modular sources and compatibility CSS.
     from scripts.build_admin_css import build

@@ -1,4 +1,4 @@
-# Heroku deployment — AMP XP v1.20.0
+# Heroku deployment — AMP XP v1.20.1
 
 Production deployment is allowed only from GitHub Actions after the full Production Gate passes on `main`.
 
@@ -30,7 +30,7 @@ python -m pip check
 python -m pytest -q --ignore=tests/integration
 ```
 
-PostgreSQL 18 integration and `python -m scripts.schema_drift_check` remain mandatory in GitHub CI. v1.20.0 has no new Alembic revision; expected head is `20261008_0017`.
+PostgreSQL 18 integration and `python -m scripts.schema_drift_check` remain mandatory in GitHub CI. v1.20.1 adds the additive web-profile revision; expected head is `20261010_0018`.
 
 ## Automatic production sequence
 1. dependency/release consistency;
@@ -48,8 +48,8 @@ PostgreSQL 18 integration and `python -m scripts.schema_drift_check` remain mand
 ## Expected DB state
 
 ```text
-Alembic head: 20261008_0017
-No v1.20.0 schema migration
+Alembic head: 20261010_0018
+No v1.20.1 schema migration
 ```
 
 ## UI post-deploy smoke
@@ -63,10 +63,10 @@ No v1.20.0 schema migration
 - light/dark theme;
 - keyboard-only navigation and visible focus.
 
-Use `UI_VISUAL_CHECKLIST_V1200.md` before tagging the release.
+Use `UI_VISUAL_CHECKLIST_V1201.md` before tagging the release.
 
 ## Rollback
-Preferred rollback is application release rollback to the last confirmed v1.19.1 release. v1.20.0 adds no database migration, so do not downgrade Alembic for a pure UI rollback. Continue to protect `FIELD_ENCRYPTION_KEY`, previous encryption keys and existing media storage configuration.
+Preferred rollback is application release rollback to the last confirmed v1.19.1 release. v1.20.1 adds no database migration, so do not downgrade Alembic for a pure UI rollback. Continue to protect `FIELD_ENCRYPTION_KEY`, previous encryption keys and existing media storage configuration.
 
 ## Media storage
 Do not run database→S3 `copy`/`switch` as part of this UI release. v1.19.1 migration tooling remains a separate, explicitly reviewed operational process.

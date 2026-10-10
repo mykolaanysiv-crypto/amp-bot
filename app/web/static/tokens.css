@@ -1,4 +1,4 @@
-/* AMP XP v1.20.0 — design tokens. Keep semantic names stable across modules. */
+/* AMP XP v1.20.1 — design tokens. Keep semantic names stable across modules. */
 :root{
   --color-primary:#057E8B;
   --color-primary-hover:#046B76;
@@ -93,4 +93,31 @@ body[data-theme="dark"]{
   --shadow-md:none;
   --shadow-lg:none;
   color-scheme:dark;
+}
+
+/* AMP XP v1.20.1 — expressive brand layer. */
+:root{
+  --color-accent-cyan:#19C5D1;
+  --color-accent-lime:#B8D93D;
+  --color-accent-violet:#7A69F5;
+  --color-accent-coral:#FF7C6E;
+  --gradient-brand:linear-gradient(135deg,#057E8B 0%,#0AA6B4 46%,#5A52D5 100%);
+  --gradient-brand-soft:linear-gradient(135deg,color-mix(in srgb,var(--color-primary-soft) 90%,#fff) 0%,color-mix(in srgb,#EDEAFF 74%,var(--color-surface)) 100%);
+  --gradient-energy:linear-gradient(135deg,#0A8996 0%,#27B9C5 52%,#A9CC35 100%);
+  --gradient-warm:linear-gradient(135deg,#FFF8D9 0%,#FFE8D6 48%,#F0ECFF 100%);
+  --shadow-float:0 18px 42px rgba(11,65,77,.12),0 3px 12px rgba(11,65,77,.08);
+  --shadow-modal:0 30px 80px rgba(4,30,36,.28);
+  --content-reading:1120px;
+}
+body[data-theme="dark"]{
+  --color-accent-cyan:#5EE4EC;
+  --color-accent-lime:#D0EB70;
+  --color-accent-violet:#B6AEFF;
+  --color-accent-coral:#FFABA2;
+  --gradient-brand:linear-gradient(135deg,#0B6874 0%,#0E8E9C 48%,#5F57D7 100%);
+  --gradient-brand-soft:linear-gradient(135deg,#12373D 0%,#272743 100%);
+  --gradient-energy:linear-gradient(135deg,#0C6874 0%,#1699A5 52%,#6E851F 100%);
+  --gradient-warm:linear-gradient(135deg,#332D18 0%,#3C2924 48%,#2F2948 100%);
+  --shadow-float:0 16px 40px rgba(0,0,0,.28);
+  --shadow-modal:0 28px 80px rgba(0,0,0,.55);
 }

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.20.0">
+  <link rel="stylesheet" href="/static/admin.css?v=1.20.1">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Перейти до основного вмісту</a>
@@ -20,7 +20,7 @@
     <span class="icon">{{ icon('menu') }}</span>
   </button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.20.0" alt="" width="34" height="34">
+    <img src="/static/amp_logo.png?v=1.20.1" alt="" width="34" height="34">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
   <button class="mobile-theme-button" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему">
@@ -33,7 +33,7 @@
 <aside class="sidebar" id="adminSidebar" aria-label="Основна навігація">
   <div class="sidebar-header">
     <a class="brand" href="/admin/dashboard" title="АМПасадори — огляд">
-      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.0" alt="Логотип АМПасадорів" width="42" height="42">
+      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.1" alt="Логотип АМПасадорів" width="42" height="42">
       <span class="brand-copy"><b>АМПасадори</b><span>панель керування</span></span>
     </a>
     <button class="sidebar-collapse" type="button" aria-label="Згорнути бокове меню" aria-controls="adminSidebar" aria-expanded="true" data-sidebar-collapse>
@@ -99,7 +99,7 @@
         {{ nav_link('/admin/media-integrity','Медіа','media',request.url.path.startswith('/admin/media-integrity')) }}
       {% endif %}
       {% if has_permission("settings.manage") %}{{ nav_link('/admin/settings','Налаштування','settings',request.url.path.startswith('/admin/settings')) }}{% endif %}
-      {{ nav_link('/admin/account','Мій доступ','key',request.url.path.startswith('/admin/account')) }}
+      {{ nav_link('/admin/account','Мій кабінет','user',request.url.path.startswith('/admin/account')) }}
       {% if has_permission("security.manage") %}{{ nav_link('/admin/security-center','Security Center','shield',request.url.path.startswith('/admin/security-center')) }}{% endif %}
       {% if is_superadmin %}{{ nav_link('/admin/security','Права доступу','key',request.url.path == '/admin/security') }}{% endif %}
       {{ nav_link('/admin/help','Довідка','help',request.url.path.startswith('/admin/help')) }}
@@ -107,7 +107,7 @@
   </nav>
 
   <div class="sidebar-bottom">
-    <a class="sidebar-access sidebar-access-link" href="/admin/account" title="Мій доступ і безпека">
+    <a class="sidebar-access sidebar-access-link" href="/admin/account" title="Мій кабінет і безпека">
       <span class="sidebar-avatar" aria-hidden="true">{{ (admin_name or 'А')[:1]|upper }}</span>
       <span class="sidebar-access-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор • обмежений доступ' }}</span></span>
     </a>
@@ -132,15 +132,27 @@
   <div class="topbar-actions">
     <button class="topbar-icon" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему"><span class="icon">{{ icon('theme') }}</span></button>
     <a class="topbar-icon" href="/admin/dashboard#attention" aria-label="Пункти, що потребують уваги" title="Потребує уваги"><span class="icon">{{ icon('bell') }}</span></a>
-    <a class="topbar-user" href="/admin/account" title="Мій профіль доступу"><span class="topbar-user-avatar" aria-hidden="true">{{ (admin_name or 'А')[:1]|upper }}</span><span class="topbar-user-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></span></a>
+    <a class="topbar-user" href="/admin/account" title="Мій кабінет"><span class="topbar-user-avatar" aria-hidden="true">{{ (admin_name or 'А')[:1]|upper }}</span><span class="topbar-user-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></span></a>
   </div>
 </header>
 
 <main class="content" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
 <div class="amp-toast-region" aria-live="polite" aria-atomic="true" data-toast-region></div>
 
-<script nonce="{{ request.state.csp_nonce }}">window.AMP_UI={csrfToken:{{ csrf_token|tojson }},version:"1.20.0"};</script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.0"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.0"></script>
+<dialog class="amp-modal" id="ampConfirmDialog" aria-labelledby="ampConfirmTitle">
+  <div class="amp-modal-shell">
+    <div class="amp-modal-header">
+      <div class="confirm-symbol"><span class="icon">{{ icon('shield') }}</span></div>
+      <div><span class="eyebrow">ПІДТВЕРДЖЕННЯ ДІЇ</span><h2 id="ampConfirmTitle">Підтвердьте дію</h2><p data-confirm-text>Перевірте дію перед продовженням.</p></div>
+      <button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button>
+    </div>
+    <div class="amp-modal-footer"><button class="soft-button" type="button" data-modal-close>Скасувати</button><button class="danger-btn" type="button" data-confirm-submit>Підтвердити</button></div>
+  </div>
+</dialog>
+
+<script nonce="{{ request.state.csp_nonce }}">window.AMP_UI={csrfToken:{{ csrf_token|tojson }},version:"1.20.1"};</script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.1"></script>
 </body>
 </html>

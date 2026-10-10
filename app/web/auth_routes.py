@@ -5,12 +5,12 @@ import json
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from .dependencies import (
-    Bot, Form, HTMLResponse, HTTPException, LOGIN_LOCK_MINUTES, LOGIN_MAX_ATTEMPTS,
-    OTP_MAX_ATTEMPTS, OTP_TTL_MINUTES, PERMISSION_GROUPS, RedirectResponse, Request, User,
-    UserRole, WebAdminSession, WebStaffAccount, browser_label, client_ip, clock, ctx, datetime,
-    db, dump_permissions, effective_permissions, func, generate_csrf_token, generate_otp,
+    Badge, Bot, EventRegistration, File, Form, HTMLResponse, HTTPException, LOGIN_LOCK_MINUTES, LOGIN_MAX_ATTEMPTS,
+    OTP_MAX_ATTEMPTS, OTP_TTL_MINUTES, PERMISSION_GROUPS, QuestParticipation, RedirectResponse, Request, RewardClaim, User,
+    UserBadge, UserRole, UploadFile, WebAdminSession, WebStaffAccount, browser_label, client_ip, clock, ctx, datetime,
+    db, delete_stored_image, dump_permissions, effective_permissions, func, generate_csrf_token, generate_otp,
     generate_session_token, generate_temporary_password, guard, guard_superadmin, hash_password,
-    log_audit, logged_in, or_, otp_hash, password_errors, select, session_expiry, settings,
+    log_audit, logged_in, or_, otp_hash, password_errors, save_image, select, session_expiry, settings,
     templates, timedelta, token_hash, token_urlsafe, verify_otp, verify_password, _csrf_token,
 )
 from ..model_domains import WebAuthnCredential
@@ -384,8 +384,11 @@ async def _account_security_context(request: Request, *, error: str | None = Non
     account_id = request.session.get("admin_account_id")
     async with db.session_factory() as session:
         account = await session.get(WebStaffAccount, int(account_id)) if account_id else None
-        sessions = []
-        passkeys = []
+        sessions: list[WebAdminSession] = []
+        passkeys: list[WebAuthnCredential] = []
+        linked_user = None
+        profile_badges: list[Badge] = []
+        profile_stats = {"xp": 0, "badges": 0, "events": 0, "quests": 0, "rewards": 0}
         if account:
             sessions = list((await session.scalars(
                 select(WebAdminSession).where(
@@ -399,10 +402,44 @@ async def _account_security_context(request: Request, *, error: str | None = Non
                     WebAuthnCredential.revoked_at.is_(None),
                 ).order_by(WebAuthnCredential.created_at.desc())
             )).all())
+            if account.linked_user_id:
+                linked_user = await session.get(User, int(account.linked_user_id))
+            if linked_user:
+                profile_badges = list((await session.scalars(
+                    select(Badge).join(UserBadge, UserBadge.badge_id == Badge.id)
+                    .where(UserBadge.user_id == linked_user.id)
+                    .order_by(Badge.name.asc())
+                )).all())
+                profile_stats = {
+                    "xp": int(linked_user.wallet_xp or 0),
+                    "badges": len(profile_badges),
+                    "events": int(await session.scalar(select(func.count(EventRegistration.id)).where(
+                        EventRegistration.user_id == linked_user.id,
+                        EventRegistration.status == "attended",
+                    )) or 0),
+                    "quests": int(await session.scalar(select(func.count(QuestParticipation.id)).where(
+                        QuestParticipation.user_id == linked_user.id,
+                        QuestParticipation.status == "approved",
+                    )) or 0),
+                    "rewards": int(await session.scalar(select(func.count(RewardClaim.id)).where(
+                        RewardClaim.user_id == linked_user.id,
+                    )) or 0),
+                }
     current_hash = token_hash(str(request.session.get("admin_session_token") or ""))
     return ctx(
-        request, account=account, web_sessions=sessions, passkeys=passkeys, passkeys_enabled=settings.webauthn_enabled, current_session_hash=current_hash,
-        browser_label=browser_label, error=error, success=success, password_required=required,
+        request,
+        account=account,
+        web_sessions=sessions,
+        passkeys=passkeys,
+        passkeys_enabled=settings.webauthn_enabled,
+        current_session_hash=current_hash,
+        browser_label=browser_label,
+        linked_user=linked_user,
+        profile_badges=profile_badges,
+        profile_stats=profile_stats,
+        error=error,
+        success=success,
+        password_required=required,
     )
 
 
@@ -411,6 +448,106 @@ async def account_security(request: Request):
     if r := guard(request): return r
     context = await _account_security_context(request)
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
+
+
+@router.post("/admin/account/profile", response_class=HTMLResponse)
+async def account_profile_update(
+    request: Request,
+    display_name: str = Form(...),
+    profile_title: str = Form(""),
+    profile_bio: str = Form(""),
+    profile_email: str = Form(""),
+    profile_phone: str = Form(""),
+):
+    if r := guard(request): return r
+    account_id = int(request.session.get("admin_account_id") or 0)
+    name = (display_name or "").strip()
+    title = (profile_title or "").strip()
+    bio = (profile_bio or "").strip()
+    email = (profile_email or "").strip()
+    phone = (profile_phone or "").strip()
+    if not name or len(name) > 160:
+        context = await _account_security_context(request, error="Ім’я профілю є обов’язковим і має містити до 160 символів.")
+        return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
+    if len(title) > 120 or len(bio) > 1200 or len(email) > 160 or len(phone) > 32:
+        context = await _account_security_context(request, error="Перевірте довжину полів профілю.")
+        return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
+    if email and ("@" not in email or email.startswith("@") or email.endswith("@")):
+        context = await _account_security_context(request, error="Вкажіть коректну електронну адресу.")
+        return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account or not account.active:
+            request.session.clear(); request.session["csrf_token"] = generate_csrf_token()
+            return RedirectResponse("/admin/login", 303)
+        before_name = account.display_name
+        account.display_name = name
+        account.profile_title = title or None
+        account.profile_bio = bio or None
+        account.profile_email = email or None
+        account.profile_phone = phone or None
+        account.updated_at = clock.storage_utc()
+        await log_audit(
+            session, "web_profile_updated", actor_label=name,
+            entity_type="web_staff_account", entity_id=account.id,
+            details=f"display_name_changed={before_name != name}; title={'set' if title else 'empty'}; bio={'set' if bio else 'empty'}; email={'set' if email else 'empty'}; phone={'set' if phone else 'empty'}",
+        )
+        await session.commit()
+        request.session["admin_name"] = name
+    context = await _account_security_context(request, success="Профіль оновлено.")
+    return templates.TemplateResponse(request=request, name="account_security.html", context=context)
+
+
+@router.post("/admin/account/avatar", response_class=HTMLResponse)
+async def account_avatar_update(request: Request, avatar: UploadFile = File(...)):
+    if r := guard(request): return r
+    account_id = int(request.session.get("admin_account_id") or 0)
+    try:
+        new_path = await save_image(avatar, "staff_profiles")
+    except HTTPException as exc:
+        context = await _account_security_context(request, error=str(exc.detail))
+        return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=exc.status_code)
+    if not new_path:
+        context = await _account_security_context(request, error="Оберіть зображення для аватара.")
+        return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
+    old_path = None
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account:
+            return RedirectResponse("/admin/login", 303)
+        old_path = account.avatar_path
+        account.avatar_path = new_path
+        account.updated_at = clock.storage_utc()
+        await log_audit(
+            session, "web_profile_avatar_updated", actor_label=account.display_name,
+            entity_type="web_staff_account", entity_id=account.id, details="Оновлено аватар профілю",
+        )
+        await session.commit()
+    if old_path and old_path != new_path:
+        await delete_stored_image(db, old_path)
+    return RedirectResponse("/admin/account#profile", status_code=303)
+
+
+@router.post("/admin/account/avatar/remove")
+async def account_avatar_remove(request: Request):
+    if r := guard(request): return r
+    account_id = int(request.session.get("admin_account_id") or 0)
+    old_path = None
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account:
+            return RedirectResponse("/admin/login", 303)
+        old_path = account.avatar_path
+        account.avatar_path = None
+        account.updated_at = clock.storage_utc()
+        await log_audit(
+            session, "web_profile_avatar_removed", actor_label=account.display_name,
+            entity_type="web_staff_account", entity_id=account.id, details="Аватар профілю прибрано",
+        )
+        await session.commit()
+    if old_path:
+        await delete_stored_image(db, old_path)
+    return RedirectResponse("/admin/account#profile", status_code=303)
 
 
 @router.get("/admin/account/password", response_class=HTMLResponse)
@@ -647,6 +784,7 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
         accounts = list((await session.scalars(select(WebStaffAccount).order_by(WebStaffAccount.role.desc(), WebStaffAccount.display_name.asc()))).all())
         active_counts = {}
         passkey_counts = {}
+        linked_user_names = {}
         for account in accounts:
             active_counts[account.id] = int(await session.scalar(select(func.count(WebAdminSession.id)).where(
                 WebAdminSession.account_id == account.id,
@@ -656,13 +794,17 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
             passkey_counts[account.id] = int(await session.scalar(select(func.count(WebAuthnCredential.id)).where(
                 WebAuthnCredential.account_id == account.id, WebAuthnCredential.revoked_at.is_(None),
             )) or 0)
+            if account.linked_user_id:
+                linked = await session.get(User, int(account.linked_user_id))
+                if linked:
+                    linked_user_names[account.id] = f"АМП-{linked.id:04d} · {linked.full_name}"
         telegram_staff = list((await session.scalars(
             select(User).where(User.role.in_([UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value]))
             .order_by(User.role.desc(), User.full_name.asc())
         )).all())
     return ctx(
         request, staff_accounts=accounts, telegram_staff=telegram_staff, active_session_counts=active_counts, passkey_counts=passkey_counts,
-        permission_groups=PERMISSION_GROUPS, effective_permissions=effective_permissions,
+        linked_user_names=linked_user_names, permission_groups=PERMISSION_GROUPS, effective_permissions=effective_permissions,
         temp_password=temp_password, temp_username=temp_username, success=success, now=clock.storage_utc(),
     )
 
@@ -671,6 +813,37 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
 async def security_accounts(request: Request):
     if r := guard_superadmin(request): return r
     return templates.TemplateResponse(request=request, name="security_accounts.html", context=await _security_accounts_context(request))
+
+
+@router.post("/admin/security/accounts/{account_id}/profile-link")
+async def security_account_profile_link(request: Request, account_id: int):
+    if r := guard_superadmin(request): return r
+    form = await request.form()
+    raw = str(form.get("linked_user_id") or "").strip()
+    linked_user_id = None
+    if raw:
+        try:
+            linked_user_id = int(raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="АМП ID має бути числом") from exc
+    async with db.session_factory() as session:
+        account = await session.get(WebStaffAccount, account_id)
+        if not account:
+            raise HTTPException(status_code=404, detail="Акаунт не знайдено")
+        linked = None
+        if linked_user_id is not None:
+            linked = await session.get(User, linked_user_id)
+            if not linked or linked.permanent_deleted_at is not None:
+                raise HTTPException(status_code=404, detail="Профіль учасника не знайдено")
+        account.linked_user_id = linked_user_id
+        account.updated_at = clock.storage_utc()
+        await log_audit(
+            session, "web_profile_link_updated", actor_label=request.session.get("admin_name", "web"),
+            entity_type="web_staff_account", entity_id=account.id,
+            details=f"linked_user_id={linked_user_id or 'none'}",
+        )
+        await session.commit()
+    return RedirectResponse("/admin/security", 303)
 
 
 @router.post("/admin/security/accounts/{account_id}/permissions")

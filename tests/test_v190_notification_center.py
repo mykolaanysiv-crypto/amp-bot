@@ -32,8 +32,7 @@ def test_notification_center_web_and_retry():
     assert "В черзі" in tpl and "Надіслано" in tpl and "Помилки" in tpl
     for label in ["Системні", "Події", "Розсилки", "Кейси", "Серії участі", "Опитування"]:
         assert label in route
-    # v1.20.0 uses the unified SVG icon system instead of emoji.
-    # Preserve permission-aware navigation and the Notification Center route.
+    # v1.20+ uses the unified SVG icon system; preserve route, label and permission requirement.
     assert 'has_permission("notifications.manage")' in base
     assert "nav_link('/admin/notifications','Сповіщення','bell'" in base
     assert f"/static/admin.css?v={(ROOT / 'VERSION.txt').read_text(encoding='utf-8').strip()}" in base

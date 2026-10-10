@@ -162,7 +162,7 @@
                 <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
               </form>
             </details>
-            <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/delete" onsubmit="return confirm('Видалити це питання?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action">🗑 Видалити</button></form>
+            <form method="post" action="/admin/quick-xp/{{ row.id }}/questions/{{ question.id }}/delete" data-confirm-message="Видалити це питання?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action">🗑 Видалити</button></form>
           </div>
         </div>
       </article>

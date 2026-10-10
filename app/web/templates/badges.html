@@ -96,7 +96,7 @@
       </form>
     </details>
     <div class="badge-card-actions">
-      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" onsubmit="return confirm('Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
+      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" data-confirm-message="Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
     </div>
   </article>
   {% else %}<p class="empty">Загальних бейджів ще немає.</p>{% endfor %}
@@ -130,7 +130,7 @@
       </form>
     </details>
     <div class="badge-card-actions">
-      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" onsubmit="return confirm('Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
+      {% if b.id in system_badge_ids %}<span class="muted badge-delete-note">⚙️ Системний бейдж: видалення остаточне, система не створить його повторно.</span>{% endif %}<form method="post" action="/admin/badges/{{b.id}}/delete" data-confirm-message="Видалити бейдж «{{b.name}}»? Він також буде прибраний із профілів учасників."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити бейдж</button></form>
     </div>
   </article>
   {% else %}<p class="empty">Бейджів АМПасадора ще немає.</p>{% endfor %}

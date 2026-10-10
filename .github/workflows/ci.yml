@@ -67,6 +67,7 @@ jobs:
         run: |
           node tests/js/test_admin_forms.js
           node tests/js/test_app_shell.js
+          node tests/js/test_experience.js
 
       - name: Dependency vulnerability audit
         run: pip-audit -r requirements.lock --progress-spinner=off

@@ -56,7 +56,7 @@
             <label>Новий строк від сьогодні<select name="remaining_days"><option value="1">1 день</option><option value="3">3 дні</option><option value="7">7 днів</option><option value="14">14 днів</option></select></label>
             <button class="soft-button" type="submit">⏳ Скоротити</button>
           </form>
-          <form method="post" action="/admin/moderation/{{ban.id}}/unban" onsubmit="return confirm('Зняти блокування з цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <form method="post" action="/admin/moderation/{{ban.id}}/unban" data-confirm-message="Зняти блокування з цього учасника?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <input type="hidden" name="lift_reason" value="Блокування знято суперадміністратором">
             <button class="primary" type="submit">✅ Зняти бан</button>
           </form>
