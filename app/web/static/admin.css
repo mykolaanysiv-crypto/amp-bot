@@ -3698,7 +3698,7 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 }
 
 /* ===== tokens.css ===== */
-/* AMP XP v1.20.3 — design tokens. Keep semantic names stable across modules. */
+/* AMP XP v1.20.3.1 — design tokens. Keep semantic names stable across modules. */
 :root{
   --color-primary:#057E8B;
   --color-primary-hover:#046B76;
@@ -3795,7 +3795,7 @@ body[data-theme="dark"]{
   color-scheme:dark;
 }
 
-/* AMP XP v1.20.3 — expressive brand layer. */
+/* AMP XP v1.20.3.1 — expressive brand layer. */
 :root{
   --color-accent-cyan:#19C5D1;
   --color-accent-lime:#B8D93D;
@@ -3823,7 +3823,7 @@ body[data-theme="dark"]{
 }
 
 /* ===== base.css ===== */
-/* AMP XP v1.20.3 — global base and accessibility. */
+/* AMP XP v1.20.3.1 — global base and accessibility. */
 *{box-sizing:border-box}
 html{min-width:320px;background:var(--color-background);scroll-behavior:smooth}
 body{margin:0;min-height:100vh;background:var(--color-background);color:var(--color-text);font:500 var(--font-size-base)/var(--line-height-base) var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -3850,7 +3850,7 @@ pre{max-width:100%;overflow:auto}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* ===== layout.css ===== */
-/* AMP XP v1.20.3 — app shell, navigation and responsive layout. */
+/* AMP XP v1.20.3.1 — app shell, navigation and responsive layout. */
 .mobile-topbar{display:none}
 .sidebar-backdrop{display:none}
 .sidebar{position:fixed!important;inset:0 auto 0 0!important;z-index:60!important;width:var(--sidebar-expanded)!important;padding:14px 12px!important;background:linear-gradient(180deg,var(--color-sidebar),var(--color-sidebar-strong))!important;border:0!important;color:var(--color-sidebar-text)!important;box-shadow:none!important;transition:width .2s ease,transform .2s ease!important}
@@ -3921,7 +3921,7 @@ body.sidebar-collapsed .sidebar-access-link{justify-content:center}
 @media (max-width:520px){.mobile-brand small{display:none!important}.content{padding-inline:10px!important}.hero{padding:20px!important}}
 
 /* ===== components.css ===== */
-/* AMP XP v1.20.3 — reusable visual components. */
+/* AMP XP v1.20.3.1 — reusable visual components. */
 .card,.panel,.stat-card{border:1px solid var(--color-border)!important;background:var(--color-surface)!important;box-shadow:var(--shadow-sm)!important}
 .card{margin-bottom:18px!important;padding:20px!important;border-radius:var(--radius-lg)!important;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease!important}.card:hover{border-color:var(--color-border-strong)!important;box-shadow:var(--shadow-md)!important}
 .panel{padding:20px!important;border-radius:var(--radius-lg)!important}
@@ -3955,7 +3955,7 @@ input,select,textarea{min-height:42px!important;padding:9px 11px!important;borde
 .lifecycle-flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:16px 0}.security-facts{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:10px!important}.security-facts>div{min-width:0;padding:13px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-secondary)}.security-facts span{display:block;margin-bottom:5px;color:var(--color-text-muted);font-size:10px;font-weight:800}.security-facts b{font-size:13px;overflow-wrap:anywhere}
 
 /* ===== experience.css ===== */
-/* AMP XP v1.20.3 — Visual Experience & User Profiles. */
+/* AMP XP v1.20.3.1 — Visual Experience & User Profiles. */
 body{background:
   radial-gradient(circle at 88% 4%,color-mix(in srgb,var(--color-primary-soft) 52%,transparent),transparent 26rem),
   radial-gradient(circle at 18% 72%,color-mix(in srgb,var(--color-secondary) 6%,transparent),transparent 32rem),
@@ -4030,9 +4030,9 @@ body.sidebar-collapsed .content::before{left:var(--sidebar-collapsed)}
 @media (max-width:480px){.profile-stat-grid,.help-quick-grid{grid-template-columns:1fr}.amp-modal-body{padding:18px}.amp-modal-header{padding:18px}.profile-hero{padding:22px}.profile-avatar{width:96px;height:96px;border-radius:24px}}
 @media (prefers-reduced-motion:reduce){.amp-modal[open]{animation:none}.card:hover,.kpi:hover,.stat-card:hover,.badge-tile:hover,.help-quick-card:hover{transform:none!important}}
 .severity-dot{width:14px!important;height:14px!important;min-width:14px!important;padding:0!important;border-radius:999px!important;background:var(--color-info)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-info) 13%,transparent)}
-.severity-critical{background:var(--color-danger)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-danger) 13%,transparent)}.severity-high{background:var(--color-accent-coral)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-accent-coral) 13%,transparent)}.severity-medium{background:var(--color-warning)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-warning) 13%,transparent)}.severity-low{background:var(--color-info)!important}
+.severity-dot.severity-critical{background:var(--color-danger)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--color-danger) 12%,transparent)}.severity-dot.severity-high{background:var(--color-accent-coral)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--color-accent-coral) 12%,transparent)}.severity-dot.severity-medium{background:var(--color-warning)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--color-warning) 12%,transparent)}.severity-dot.severity-low{background:var(--color-info)!important}
 
-/* v1.20.3 layout polish: readable maximums, predictable wrapping and media center balance. */
+/* v1.20.3.1 layout polish: readable maximums, predictable wrapping and media center balance. */
 .page-shell{width:min(100%,1480px)!important;margin-inline:auto}
 .page-head h1,.page-header h1,.hero h1{max-width:100%;font-size:clamp(1.65rem,2.15vw,2.25rem)!important;line-height:1.08!important;overflow-wrap:anywhere;text-wrap:balance}
 .page-head>div:first-child,.page-header>div:first-child{min-width:0;max-width:920px}
@@ -4052,7 +4052,7 @@ body.sidebar-collapsed .content::before{left:var(--sidebar-collapsed)}
 }
 
 /* ===== interaction.css ===== */
-/* AMP XP v1.20.3 — interaction, motion and layout polish. */
+/* AMP XP v1.20.3.1 — interaction, motion and layout polish. */
 :root{
   --motion-fast:120ms;
   --motion-base:200ms;
@@ -4160,7 +4160,7 @@ input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--color-tex
 }
 
 /* ===== refinement.css ===== */
-/* AMP XP v1.20.3 — Design System Refinement & Module UX. */
+/* AMP XP v1.20.3.1 — Design System Refinement & Module UX. */
 :root{
   --content-wide:1720px;
   --content-standard:1560px;
@@ -4184,8 +4184,8 @@ body{overflow-x:hidden;text-rendering:optimizeLegibility}
 .content{max-width:none!important;overflow-x:clip!important}
 .content>*{width:min(100%,var(--content-wide))!important;max-width:none!important}
 .content>:where(.breadcrumb,.page-head,.page-header,.hero,.card,.cards,.grid2,.kpis,.work-cards-grid,.event-cards-grid,.analytics-grid,.dashboard-duo,.help-center){margin-inline:auto!important}
-.content :where(h1,h2,h3,h4,p,li,td,th,label,b,strong,small,a,button,.tag,.pill,.status-pill,.event-date-badge,.nav-label){word-break:normal!important;overflow-wrap:break-word!important;hyphens:auto}
-.content :where(button,.primary,.soft-button,.danger-btn,.success-button,.tag,.pill,.status-pill,.event-date-badge,.amp-tab,.help-chip,.nav-item){white-space:normal!important;text-wrap:pretty}
+.content :where(h1,h2,h3,h4,p,li,td,th,label,b,strong,small,a,button,.tag,.pill,.status-pill,.event-date-badge,.nav-label){word-break:normal!important;overflow-wrap:normal!important;hyphens:none}
+.content :where(button,.primary,.soft-button,.danger-btn,.success-button,.tag,.pill,.status-pill,.event-date-badge,.amp-tab,.help-chip,.nav-item){white-space:nowrap!important;text-wrap:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;hyphens:none!important}
 .content :where(input,select,textarea,button,a,summary){min-width:0}
 
 /* Page composition: use the viewport, but keep prose readable. */
@@ -4330,5 +4330,145 @@ td .inline-form,td .inline{display:inline-flex!important;align-items:center!impo
 }
 
 /* ===== utilities.css ===== */
-/* AMP XP v1.20.3 — small composition utilities only. */
+/* AMP XP v1.20.3.1 — small composition utilities only. */
 .cluster{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}.stack{display:grid;gap:var(--space-3)}.stack-lg{display:grid;gap:var(--space-6)}.surface{border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface)}.text-muted{color:var(--color-text-muted)}.text-danger{color:var(--color-danger)}.text-success{color:var(--color-success)}.w-full{width:100%}.min-w-0{min-width:0}.button-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.page-shell{min-width:0}.page-shell>*+*{margin-top:16px}
+
+/* ===== polish.css ===== */
+/* AMP XP v1.20.3.1.1 — UI/UX Fix + Design Polish. Final override layer. */
+:root{
+  --shadow-sm:0 1px 2px rgba(11,50,58,.035),0 2px 6px rgba(11,50,58,.03);
+  --shadow-md:0 6px 18px rgba(11,50,58,.055);
+  --shadow-lg:0 10px 28px rgba(11,50,58,.08);
+  --shadow-float:0 7px 22px rgba(11,65,77,.065),0 2px 7px rgba(11,65,77,.04);
+  --shadow-modal:0 18px 46px rgba(4,30,36,.18);
+  --button-font-size:clamp(.78rem,.75rem + .16vw,.9rem);
+}
+
+/* Never split words into pieces. Paragraphs may wrap only at natural spaces. */
+.content :where(h1,h2,h3,h4,h5,h6,p,li,td,th,label,b,strong,small,a,span,summary){
+  word-break:normal!important;
+  overflow-wrap:normal!important;
+  hyphens:none!important;
+}
+
+/* Controls are single-line labels. If a row cannot fit, the row wraps — the word never does. */
+:where(button,.primary,.soft-button,.danger-btn,.success-button,.link-button,.ghost,.tag,.pill,.status-pill,.amp-tab,.help-chip,.nav-item,.topbar-icon,.topbar-user,.event-date-badge){
+  white-space:nowrap!important;
+  word-break:keep-all!important;
+  overflow-wrap:normal!important;
+  hyphens:none!important;
+  text-wrap:nowrap!important;
+}
+:where(button,.primary,.soft-button,.danger-btn,.success-button,.link-button){
+  width:auto;
+  min-width:max-content;
+  max-width:100%;
+  font-size:var(--button-font-size)!important;
+  box-shadow:var(--shadow-sm)!important;
+}
+:where(.button-row,.form-actions,.form-actions-row,.card-actions,.unified-card-actions,.event-card-actions-v2,.opportunity-card-actions,.registration-actions,.avatar-modal-actions,.tabs){
+  gap:12px!important;
+  row-gap:10px!important;
+  align-items:center!important;
+}
+
+/* Smaller interaction shadows: movement + border carry the hover state. */
+.card,.panel,.kpi,.stat-card,.metric-card,.help-topic-card,.profile-stat{box-shadow:var(--shadow-sm)!important}
+.card:hover,.panel:hover,.kpi:hover,.stat-card:hover,.metric-card:hover,.help-topic-card:hover,.profile-stat:hover{
+  box-shadow:var(--shadow-md)!important;
+  transform:translateY(-1px)!important;
+}
+.primary{box-shadow:0 4px 10px color-mix(in srgb,var(--color-primary) 12%,transparent)!important}
+.primary:hover{box-shadow:0 6px 14px color-mix(in srgb,var(--color-primary) 15%,transparent)!important;transform:translateY(-1px)!important}
+.soft-button:hover,.danger-btn:hover,.success-button:hover{box-shadow:var(--shadow-sm)!important;transform:translateY(-1px)!important}
+
+/* One desktop sidebar control only — the control inside the sidebar header. */
+.desktop-sidebar-toggle{display:none!important}
+.topbar-leading{min-width:max-content!important}
+
+/* Semantic icon tiles inside overview/KPI cards. */
+.kpi{justify-content:flex-start!important;align-items:flex-start!important;gap:0!important}
+.kpi-icon{display:grid;width:38px;height:38px;min-width:38px;place-items:center;margin-bottom:10px;border:1px solid var(--icon-border);border-radius:12px;background:var(--icon-bg);color:var(--color-primary-strong)}
+.kpi-icon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kpi>.kpi-icon+span{margin-top:0!important}
+
+/* Operations cards: severity is an accent, never the whole card background. */
+.ops-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,390px),1fr))!important;gap:18px!important}
+.ops-card{display:flex!important;min-width:0!important;flex-direction:column!important;gap:14px!important;background:var(--color-surface)!important;color:var(--color-text)!important;border:1px solid var(--color-border)!important;border-left-width:5px!important;box-shadow:var(--shadow-sm)!important}
+.ops-card.severity-critical{border-left-color:var(--color-danger)!important}
+.ops-card.severity-high{border-left-color:var(--color-accent-coral)!important}
+.ops-card.severity-medium{border-left-color:var(--color-warning)!important}
+.ops-card.severity-low{border-left-color:var(--color-info)!important}
+.ops-card .card-top{gap:12px!important;align-items:center!important}
+.ops-card h3{margin:0!important;line-height:1.25!important}
+.ops-card p{margin:0!important;line-height:1.55!important}
+.ops-card form{display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;margin:0!important}
+.ops-card form input{flex:1 1 220px!important;min-width:0!important}
+.ops-card .form-actions-row{margin-top:auto!important;padding-top:4px!important}
+.ops-card .form-actions-row>form{flex:1 1 280px!important}
+.ops-card .form-actions-row>a{flex:0 0 auto!important}
+.ops-card .tag{background:var(--color-surface-secondary)!important;color:var(--color-text)!important;box-shadow:none!important}
+.ops-card.severity-critical>.card-top .tag{border-color:color-mix(in srgb,var(--color-danger) 35%,var(--color-border))!important;color:var(--color-danger)!important}
+.ops-card.severity-high>.card-top .tag{border-color:color-mix(in srgb,var(--color-accent-coral) 38%,var(--color-border))!important;color:#9d4b40!important}
+.ops-card.severity-medium>.card-top .tag{border-color:color-mix(in srgb,var(--color-warning) 36%,var(--color-border))!important;color:var(--color-warning)!important}
+.ops-card.severity-low>.card-top .tag{border-color:color-mix(in srgb,var(--color-info) 34%,var(--color-border))!important;color:var(--color-info)!important}
+
+/* Dialogs: always centered, constrained and predictable. */
+dialog.amp-modal{
+  position:fixed!important;
+  inset:50% auto auto 50%!important;
+  width:min(720px,calc(100vw - 32px))!important;
+  max-width:calc(100vw - 32px)!important;
+  max-height:min(86dvh,820px)!important;
+  margin:0!important;
+  transform:translate(-50%,-50%)!important;
+  box-shadow:var(--shadow-modal)!important;
+}
+dialog.amp-modal.amp-editor-modal{width:min(780px,calc(100vw - 32px))!important}
+dialog.amp-modal.amp-modal-wide{width:min(880px,calc(100vw - 32px))!important}
+dialog.amp-modal[open] .amp-modal-shell{animation:amp-dialog-polish .18s var(--ease-emphasized) both!important}
+.amp-modal::backdrop{background:rgba(4,24,29,.38)!important;backdrop-filter:blur(3px)!important}
+.amp-modal-header,.amp-modal-body,.amp-modal-footer{min-width:0!important}
+.amp-modal-header{padding:18px 20px!important;gap:14px!important}
+.amp-modal-body{padding:20px!important}
+.amp-modal-footer{padding:14px 20px!important;gap:12px!important;flex-wrap:wrap!important}
+.amp-modal .form-actions,.amp-modal .form-actions-row{gap:12px!important;margin:18px -20px -20px!important;padding:14px 20px!important}
+@keyframes amp-dialog-polish{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+
+/* Compact toast system: lower-left, never a giant floating panel. */
+.amp-toast-region{position:fixed!important;z-index:190!important;top:auto!important;right:auto!important;left:calc(var(--sidebar-expanded) + 22px)!important;bottom:20px!important;display:grid!important;gap:8px!important;width:min(340px,calc(100vw - 40px))!important;pointer-events:none!important;transition:left .2s ease!important}
+body.sidebar-collapsed .amp-toast-region{left:calc(var(--sidebar-collapsed) + 22px)!important}
+.amp-toast{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:start!important;gap:10px!important;padding:11px 12px!important;border:1px solid var(--color-border)!important;border-left:3px solid var(--color-info)!important;border-radius:13px!important;background:color-mix(in srgb,var(--color-surface) 97%,transparent)!important;box-shadow:var(--shadow-md)!important;color:var(--color-text)!important;font-size:12px!important;line-height:1.4!important;transform:translateY(10px)!important;opacity:0!important;backdrop-filter:blur(10px)!important}
+.amp-toast.show{transform:translateY(0)!important;opacity:1!important}
+.amp-toast-icon{display:grid;width:26px;height:26px;place-items:center;border-radius:9px;background:var(--color-info-soft);color:var(--color-info)}
+.amp-toast-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.amp-toast-copy{min-width:0;word-break:normal!important;overflow-wrap:normal!important;hyphens:none!important}
+.amp-toast-close{display:grid!important;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;padding:0!important;place-items:center!important;border:0!important;border-radius:8px!important;background:transparent!important;color:var(--color-text-muted)!important;box-shadow:none!important}
+.amp-toast-close:hover{background:var(--color-surface-secondary)!important;color:var(--color-text)!important}
+.amp-toast.success{border-left-color:var(--color-success)!important}.amp-toast.success .amp-toast-icon{background:var(--color-success-soft);color:var(--color-success)}
+.amp-toast.warning{border-left-color:var(--color-warning)!important}.amp-toast.warning .amp-toast-icon{background:var(--color-warning-soft);color:var(--color-warning)}
+.amp-toast.error{border-left-color:var(--color-danger)!important}.amp-toast.error .amp-toast-icon{background:var(--color-danger-soft);color:var(--color-danger)}
+
+/* A flash converted to toast must not remain as a second giant message. */
+.alert[data-toast-source][data-toast-consumed="true"]{display:none!important}
+
+/* Stable action rows on cards and tables. */
+.table-wrap{max-width:100%!important}
+table{width:100%!important}
+.card-top{gap:12px!important;flex-wrap:wrap!important}
+.status,.tag,.pill{box-shadow:none!important}
+
+@media(max-width:1023px){
+  .amp-toast-region,body.sidebar-collapsed .amp-toast-region{left:14px!important;bottom:14px!important}
+}
+@media(max-width:640px){
+  :where(button,.primary,.soft-button,.danger-btn,.success-button,.link-button){font-size:.78rem!important;padding-inline:13px!important}
+  dialog.amp-modal,dialog.amp-modal.amp-editor-modal,dialog.amp-modal.amp-modal-wide{width:calc(100vw - 20px)!important;max-width:calc(100vw - 20px)!important;max-height:90dvh!important}
+  .amp-modal-header{padding:16px!important}.amp-modal-body{padding:16px!important}.amp-modal-footer{padding:12px 16px!important}
+  .amp-modal .form-actions,.amp-modal .form-actions-row{margin:16px -16px -16px!important;padding:12px 16px!important}
+  .ops-card .form-actions-row,.ops-card form{align-items:stretch!important}
+  .ops-card .form-actions-row>a,.ops-card .form-actions-row>form,.ops-card form>button{max-width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .amp-toast,dialog.amp-modal[open] .amp-modal-shell{transition:none!important;animation:none!important}
+}

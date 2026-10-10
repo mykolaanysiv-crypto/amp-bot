@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — analytics detail chart and drill-down. */
+/* AMP XP v1.20.3.1 — analytics detail chart and drill-down. */
 (function () {
   'use strict';
   const source=document.getElementById('analytics-metric-data');if(!source)return;

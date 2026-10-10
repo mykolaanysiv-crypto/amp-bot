@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — analytics chart rendering from inert JSON template data. */
+/* AMP XP v1.20.3.1 — analytics chart rendering from inert JSON template data. */
 (function () {
   'use strict';
   const source=document.getElementById('analytics-metrics-data');

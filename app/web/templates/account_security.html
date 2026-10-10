@@ -8,8 +8,8 @@
   <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Мій кабінет</b></nav>
 
   {% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи вебпанелі недоступні.</div>{% endif %}
-  {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
-  {% if success %}<div class="alert success">{{ success }}</div>{% endif %}
+  {% if error %}<div class="alert danger" data-toast-source>{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert success" data-toast-source>{{ success }}</div>{% endif %}
 
   <section class="profile-hero" aria-labelledby="profile-title">
     <div class="profile-avatar">
@@ -220,5 +220,5 @@
   </div>
 </dialog>
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.3.1"></script>
 {% endblock %}

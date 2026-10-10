@@ -34,7 +34,7 @@ def test_notification_center_web_and_retry():
         assert label in route
     # v1.20+ uses the unified SVG icon system; preserve route, label and permission requirement.
     assert 'has_permission("notifications.manage")' in base
-    assert "nav_link('/admin/notifications','Сповіщення','bell'" in base
+    assert "nav_link('/admin/notifications','Сповіщення','notification'" in base
     assert f"/static/admin.css?v={(ROOT / 'VERSION.txt').read_text(encoding='utf-8').strip()}" in base
 
 

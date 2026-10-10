@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.20.3">
+  <link rel="stylesheet" href="/static/admin.css?v=1.20.3.1">
 </head>
-<body data-csrf-token="{{ csrf_token }}" data-app-version="1.20.3">
+<body data-csrf-token="{{ csrf_token }}" data-app-version="1.20.3.1">
 <a class="skip-link" href="#main-content">Перейти до основного вмісту</a>
 
 <header class="mobile-topbar" aria-label="Мобільна навігація">
@@ -20,7 +20,7 @@
     <span class="icon">{{ icon('menu') }}</span>
   </button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.20.3" alt="" width="34" height="34">
+    <img src="/static/amp_logo.png?v=1.20.3.1" alt="" width="34" height="34">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
   <button class="mobile-theme-button" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему">
@@ -33,7 +33,7 @@
 <aside class="sidebar" id="adminSidebar" aria-label="Основна навігація">
   <div class="sidebar-header">
     <a class="brand" href="/admin/dashboard" title="АМПасадори — огляд">
-      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.3" alt="Логотип АМПасадорів" width="42" height="42">
+      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.3.1" alt="Логотип АМПасадорів" width="42" height="42">
       <span class="brand-copy"><b>АМПасадори</b><span>панель керування</span></span>
     </a>
     <button class="sidebar-collapse" type="button" aria-label="Згорнути бокове меню" aria-controls="adminSidebar" aria-expanded="true" data-sidebar-collapse>
@@ -43,10 +43,10 @@
 
   <nav class="sidebar-nav" aria-label="Розділи системи">
     <div class="nav-section"><span class="nav-section-title">Головне</span>
-      {{ nav_link('/admin/dashboard','Огляд','home',request.url.path.startswith('/admin/dashboard')) }}
+      {{ nav_link('/admin/dashboard','Огляд','dashboard',request.url.path.startswith('/admin/dashboard')) }}
       {% if has_permission("analytics.view") %}{{ nav_link('/admin/analytics','Аналітика','analytics',request.url.path.startswith('/admin/analytics')) }}{% endif %}
       {% if has_permission("reports.basic_export") or has_permission("reports.sensitive_export") %}{{ nav_link('/admin/reports','Звіти','report',request.url.path.startswith('/admin/reports')) }}{% endif %}
-      {% if has_permission("notifications.manage") %}{{ nav_link('/admin/notifications','Сповіщення','bell',request.url.path.startswith('/admin/notifications')) }}{% endif %}
+      {% if has_permission("notifications.manage") %}{{ nav_link('/admin/notifications','Сповіщення','notification',request.url.path.startswith('/admin/notifications')) }}{% endif %}
       {% if has_permission("events.edit") or has_permission("quests.manage") or has_permission("volunteer.manage") or has_permission("surveys.manage") %}{{ nav_link('/admin/calendar','Календар','calendar',request.url.path.startswith('/admin/calendar')) }}{% endif %}
     </div>
 
@@ -60,10 +60,10 @@
     <div class="nav-section"><span class="nav-section-title">Залучення</span>
       {% if has_permission("events.create") or has_permission("events.edit") or has_permission("events.delete") %}{{ nav_link('/admin/events','Події','calendar',request.url.path.startswith('/admin/events')) }}{% endif %}
       {% if has_permission("quests.manage") %}{{ nav_link('/admin/quests','Квести','target',request.url.path.startswith('/admin/quests')) }}{% endif %}
-      {% if has_permission("volunteer.manage") %}{{ nav_link('/admin/tasks','Волонтерство','check',request.url.path.startswith('/admin/tasks')) }}{% endif %}
+      {% if has_permission("volunteer.manage") %}{{ nav_link('/admin/tasks','Волонтерство','volunteer',request.url.path.startswith('/admin/tasks')) }}{% endif %}
       {% if has_permission("activities.manage") %}{{ nav_link('/admin/activities','Активності','bolt',request.url.path.startswith('/admin/activities')) }}{% endif %}
-      {% if has_permission("activities.manage") or has_permission("gamification.manage") %}{{ nav_link('/admin/quick-xp','Швидкі XP','bolt',request.url.path.startswith('/admin/quick-xp')) }}{% endif %}
-      {% if has_permission("opportunities.manage") %}{{ nav_link('/admin/opportunities','Можливості','globe',request.url.path.startswith('/admin/opportunities')) }}{% endif %}
+      {% if has_permission("activities.manage") or has_permission("gamification.manage") %}{{ nav_link('/admin/quick-xp','Швидкі XP','xp',request.url.path.startswith('/admin/quick-xp')) }}{% endif %}
+      {% if has_permission("opportunities.manage") %}{{ nav_link('/admin/opportunities','Можливості','opportunity',request.url.path.startswith('/admin/opportunities')) }}{% endif %}
       {% if has_permission("surveys.manage") %}{{ nav_link('/admin/surveys','Опитування','survey',request.url.path.startswith('/admin/surveys')) }}{% endif %}
     </div>
 
@@ -73,14 +73,14 @@
     </div>
 
     <div class="nav-section"><span class="nav-section-title">Гейміфікація</span>
-      {% if has_permission("gamification.manage") or has_permission("xp.award") %}{{ nav_link('/admin/leaderboard','Рейтинг і серії','trophy',request.url.path.startswith('/admin/leaderboard') or request.url.path.startswith('/admin/streaks')) }}{% endif %}
+      {% if has_permission("gamification.manage") or has_permission("xp.award") %}{{ nav_link('/admin/leaderboard','Рейтинг і серії','streak',request.url.path.startswith('/admin/leaderboard') or request.url.path.startswith('/admin/streaks')) }}{% endif %}
       {% if has_permission("gamification.manage") %}
         {{ nav_link('/admin/goals','Цілі','flag',request.url.path.startswith('/admin/goals')) }}
         {{ nav_link('/admin/badges','Бейджі','badge',request.url.path.startswith('/admin/badges')) }}
         {{ nav_link('/admin/rewards','Винагороди','gift',request.url.path.startswith('/admin/rewards')) }}
         {{ nav_link('/admin/giveaways','Розіграші','dice',request.url.path.startswith('/admin/giveaways') or request.url.path.startswith('/admin/giveaway-')) }}
-        {{ nav_link('/admin/seasons','Сезони','trend',request.url.path.startswith('/admin/seasons')) }}
-        {{ nav_link('/admin/gamification/insights','Гейміфікація 2.0','brain',request.url.path.startswith('/admin/gamification/insights')) }}
+        {{ nav_link('/admin/seasons','Сезони','season',request.url.path.startswith('/admin/seasons')) }}
+        {{ nav_link('/admin/gamification/insights','Гейміфікація 2.0','gamification',request.url.path.startswith('/admin/gamification/insights')) }}
         {% if is_superadmin %}{{ nav_link('/admin/gamification/governance','Контроль правил','audit',request.url.path.startswith('/admin/gamification/governance')) }}{% endif %}
       {% endif %}
     </div>
@@ -117,9 +117,6 @@
 
 <header class="admin-topbar" aria-label="Панель швидкого доступу">
   <div class="topbar-leading">
-    <button class="desktop-sidebar-toggle" type="button" aria-label="Згорнути бокове меню" aria-controls="adminSidebar" aria-expanded="true" data-sidebar-collapse>
-      <span class="icon">{{ icon('collapse') }}</span>
-    </button>
     <div class="topbar-context"><b>{% block topbar_context %}AMP XP{% endblock %}</b><span>{% block topbar_hint %}Керування простором і спільнотою{% endblock %}</span></div>
   </div>
   <form class="global-search-top" action="/admin/search" method="get" role="search">
@@ -130,7 +127,7 @@
   </form>
   <div class="topbar-actions">
     <button class="topbar-icon" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему"><span class="icon">{{ icon('theme') }}</span></button>
-    <a class="topbar-icon" href="/admin/dashboard#attention" aria-label="Пункти, що потребують уваги" title="Потребує уваги"><span class="icon">{{ icon('bell') }}</span></a>
+    {% if has_permission("notifications.manage") %}<a class="topbar-icon" href="/admin/notifications" aria-label="Відкрити центр сповіщень" title="Сповіщення"><span class="icon">{{ icon('notification') }}</span></a>{% else %}<a class="topbar-icon" href="/admin/dashboard#attention" aria-label="Пункти, що потребують уваги" title="Потребує уваги"><span class="icon">{{ icon('notification') }}</span></a>{% endif %}
     <div class="topbar-account">
       <button class="topbar-user" type="button" aria-haspopup="menu" aria-expanded="false" data-account-menu-button>
         <span class="topbar-user-avatar" aria-hidden="true">{% if admin_avatar_path %}<img src="{{ admin_avatar_path }}" alt="">{% else %}{{ (admin_name or 'А')[:1]|upper }}{% endif %}</span>
@@ -162,11 +159,12 @@
   </div>
 </dialog>
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.3"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.3"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.20.3"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/refinement.js?v=1.20.3"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.20.3"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/refinement.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/polish.js?v=1.20.3.1"></script>
 </body>
 </html>

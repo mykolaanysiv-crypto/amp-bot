@@ -1023,3 +1023,14 @@
 - Added branded fallback artwork for rewards without uploaded images.
 - Removed duplicate Copy action from opportunity sharing to reduce button clutter.
 - No domain, permission, security, backup, XP or schema semantics changed.
+
+## 1.20.3.1 — UI/UX Fix + Design Polish
+- Fixed broken Ukrainian word wrapping/hyphenation across controls.
+- Scoped severity colors so OperationalIssue cards no longer become full red/orange panels.
+- Reduced button/card/modal shadow intensity.
+- Removed duplicate topbar desktop sidebar toggle.
+- Added semantic Dashboard/Tasks/XP/Opportunity/Streak/Season/Gamification/Notification SVG icons.
+- Added semantic icons to Overview KPI cards.
+- Added compact bottom-left toast notification system with close button.
+- Centered and constrained modal dialogs; blocked empty generated editor dialogs.
+- Kept Alembic head `20261010_0018`; no domain or schema change.

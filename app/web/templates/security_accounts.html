@@ -4,7 +4,7 @@
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Безпека доступу</b></nav>
 <div class="page-head security-page-head"><div><span class="eyebrow">СУПЕРАДМІН</span><h1>Безпека та права доступу</h1><p>Іменні вебакаунти, працівники Telegram, двоетапний вхід, сесії та гнучкі права доступу.</p></div></div>
-{% if success %}<div class="alert success">{{ success }}</div>{% endif %}
+{% if success %}<div class="alert success" data-toast-source>{{ success }}</div>{% endif %}
 {% if temp_password %}<div class="card temp-password-card"><span class="eyebrow">ПОКАЗУЄТЬСЯ ОДИН РАЗ</span><h2>Тимчасовий пароль для {{ temp_username }}</h2><code>{{ temp_password }}</code><p>Передайте його безпечним каналом. Після першого входу користувач буде зобов'язаний змінити пароль.</p></div>{% endif %}
 
 <section class="card security-card">

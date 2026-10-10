@@ -13,7 +13,7 @@
 </div>
 
 {% if notice == 'feedback_resent' %}
-<div class="alert success"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Повторний запит відгуку поставлено в чергу для <b>{{ feedback_resend_sent }}</b> учасників.</div>
+<div class="alert success" data-toast-source><span class="icon ui-inline-icon">{{ icon('check') }}</span> Повторний запит відгуку поставлено в чергу для <b>{{ feedback_resend_sent }}</b> учасників.</div>
 {% elif notice == 'feedback_none' %}
 <div class="alert warning">ℹ Немає учасників, яким потрібно повторно надсилати відгук: усі підтверджені учасники вже відповіли або не мають активного Telegram-профілю.</div>
 {% endif %}
@@ -365,5 +365,5 @@
 </dialog>
 
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/event_detail.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/event_detail.js?v=1.20.3.1"></script>
 {% endblock %}

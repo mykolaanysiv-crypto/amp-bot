@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — tabs, account menu, combobox, avatar preview and motion feedback. */
+/* AMP XP v1.20.3.1 — tabs, account menu, combobox, avatar preview and motion feedback. */
 (function () {
   'use strict';
 
@@ -203,15 +203,6 @@
     });
   });
 
-  // Existing server flash messages receive an unobtrusive toast duplicate.
-  const region = document.querySelector('[data-toast-region]');
-  if (region) {
-    document.querySelectorAll('.alert.success,.alert.danger,.alert.warning,.alert.info').forEach((alert, index) => {
-      if (index > 2) return;
-      const toast=document.createElement('div');
-      toast.className=`amp-toast ${alert.classList.contains('danger')?'error':alert.classList.contains('warning')?'warning':alert.classList.contains('success')?'success':'info'}`;
-      toast.setAttribute('role','status'); toast.textContent=(alert.textContent||'').trim();
-      region.append(toast); setTimeout(()=>toast.classList.add('show'),20); setTimeout(()=>{toast.classList.remove('show');setTimeout(()=>toast.remove(),250);},4200);
-    });
-  }
+  // v1.20.3.1.1: transient server messages are handled centrally by polish.js.
+
 })();

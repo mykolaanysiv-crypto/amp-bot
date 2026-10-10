@@ -2,7 +2,7 @@
 {% from "_ui_macros.html" import icon %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Донати</b></nav>
 <div class="page-head"><div><span class="eyebrow">ФІНАНСОВА ПРОЗОРІСТЬ</span><h1><span class="icon ui-inline-icon">{{ icon('heart') }}</span> Донати</h1><p>Моніторинг банки АМП, транзакцій, публічної звітності та донатних бейджів.</p></div><a class="primary link-button" href="{{ jar_url }}" target="_blank" rel="noopener"><span class="icon ui-inline-icon">{{ icon('heart') }}</span> Відкрити банку</a></div>
-{% if notice %}<div class="alert info">{{ notice }}</div>{% endif %}
+{% if notice %}<div class="alert info" data-toast-source>{{ notice }}</div>{% endif %}
 {% if not monobank_enabled %}<div class="alert warning"><b>Автоматична синхронізація вимкнена.</b> Додайте секретну змінну <code>MONOBANK_TOKEN</code> у налаштування середовища. Публічне посилання на банку та звітність працюють і без токена.</div>{% endif %}
 {% if jar_state and jar_state.last_error %}<div class="alert warning">{{ jar_state.last_error }}</div>{% endif %}
 
