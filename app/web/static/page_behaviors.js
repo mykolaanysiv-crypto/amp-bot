@@ -1,4 +1,4 @@
-/* AMP XP v1.20.2 — CSP-safe page behaviours for server-rendered admin pages. */
+/* AMP XP v1.20.3 — CSP-safe page behaviours for server-rendered admin pages. */
 (function () {
   'use strict';
 

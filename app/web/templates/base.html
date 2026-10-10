@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.20.2">
+  <link rel="stylesheet" href="/static/admin.css?v=1.20.3">
 </head>
-<body data-csrf-token="{{ csrf_token }}" data-app-version="1.20.2">
+<body data-csrf-token="{{ csrf_token }}" data-app-version="1.20.3">
 <a class="skip-link" href="#main-content">Перейти до основного вмісту</a>
 
 <header class="mobile-topbar" aria-label="Мобільна навігація">
@@ -20,7 +20,7 @@
     <span class="icon">{{ icon('menu') }}</span>
   </button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.20.2" alt="" width="34" height="34">
+    <img src="/static/amp_logo.png?v=1.20.3" alt="" width="34" height="34">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
   <button class="mobile-theme-button" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему">
@@ -33,7 +33,7 @@
 <aside class="sidebar" id="adminSidebar" aria-label="Основна навігація">
   <div class="sidebar-header">
     <a class="brand" href="/admin/dashboard" title="АМПасадори — огляд">
-      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.2" alt="Логотип АМПасадорів" width="42" height="42">
+      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.3" alt="Логотип АМПасадорів" width="42" height="42">
       <span class="brand-copy"><b>АМПасадори</b><span>панель керування</span></span>
     </a>
     <button class="sidebar-collapse" type="button" aria-label="Згорнути бокове меню" aria-controls="adminSidebar" aria-expanded="true" data-sidebar-collapse>
@@ -162,10 +162,11 @@
   </div>
 </dialog>
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.2"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.2"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.20.2"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.20.2"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.2"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/refinement.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.20.3"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.3"></script>
 </body>
 </html>

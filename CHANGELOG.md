@@ -1012,3 +1012,14 @@
 - Added CSP externalization source/JS smoke gates to CI and release consistency/preflight.
 - Completed unified SVG web icon pass for pending/download/return/refresh/start/stop/external-link actions.
 - Kept Telegram/user-generated emoji semantics unchanged.
+
+## 1.20.3 — Design System Refinement & Module UX
+- Fixed nested-span CSS selectors that rendered SVG icon wrappers as empty rounded blocks in reports and metric chips.
+- Added semantic AMP SVG icons for registrations, team, events, quests, volunteering, journeys, rewards, history and settings sections.
+- Added final `refinement.css`/`refinement.js` UI layer for width, spacing, wrapping, grid, modal sizing and subtle motion.
+- Expanded wide admin layouts while preserving readable text widths.
+- Standardised action groups, forms, tables, tabs and responsive card grids.
+- Help quick-start cards now switch directly to the intended category instead of filling the search field.
+- Added branded fallback artwork for rewards without uploaded images.
+- Removed duplicate Copy action from opportunity sharing to reduce button clutter.
+- No domain, permission, security, backup, XP or schema semantics changed.

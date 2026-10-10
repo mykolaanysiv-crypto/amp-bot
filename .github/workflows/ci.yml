@@ -75,6 +75,7 @@ jobs:
           node --check app/web/static/telegram_event_scanner.js
           node --check app/web/static/analytics.js
           node --check app/web/static/analytics_detail.js
+          node --check app/web/static/refinement.js
 
       - name: Dependency vulnerability audit
         run: pip-audit -r requirements.lock --progress-spinner=off

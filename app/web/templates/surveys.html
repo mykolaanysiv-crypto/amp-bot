@@ -43,7 +43,7 @@
 {% for item in rows %}
   <article class="card survey-card">
     <div class="survey-card-head"><span class="tag survey-{{item.status}}">{% if item.status=='draft' %}Чернетка{% elif item.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span><span class="event-date-badge">{{ item.ends_at.strftime('%d.%m.%Y %H:%M') if item.ends_at else 'Без дедлайну' }}</span></div>
-    <h2>{{item.title}}</h2><p class="muted">{{item.description or 'Без опису'}}</p>
+    <h2><span class="icon ui-inline-icon">{{ icon('survey') }}</span> {{item.title}}</h2><p class="muted">{{item.description or 'Без опису'}}</p>
     <div class="survey-stats"><span><span class="icon ui-inline-icon">{{ icon('help') }}</span> {{qcounts.get(item.id,0)}} питань</span><span><span class="icon ui-inline-icon">{{ icon('users') }}</span> {{counts.get(item.id,0)}} відповідей</span><span><span class="icon ui-inline-icon">{{ icon('eye') }}</span> {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span><span><span class="icon ui-inline-icon">{{ icon('gift') }}</span> {{item.xp_reward}} XP</span><span><span class="icon ui-inline-icon">{{ icon('target') }}</span> {{audience_meta.get(item.id, ('Усі активні учасники',0))[0]}} · {{audience_meta.get(item.id, ('',0))[1]}}</span></div>
     <div class="unified-card-actions survey-card-actions"><a class="primary link-button unified-action-button" href="/admin/surveys/{{item.id}}"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Детально</a><a class="soft-button edit-action-button unified-action-button" href="/admin/surveys/{{item.id}}#survey-identity"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</a></div>
   </article>

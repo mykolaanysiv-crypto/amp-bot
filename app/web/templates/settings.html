@@ -16,7 +16,7 @@
   <div class="settings-grid">
   {% for section, meta in sections.items() %}
     <section class="card settings-card">
-      <div class="section-title"><div><h2>{{ meta[0] }}</h2><p class="muted">{{ meta[1] }}</p></div></div>
+      <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('settings-section') }}</span> {{ meta[0] }}</h2><p class="muted">{{ meta[1] }}</p></div></div>
       <div class="settings-fields">
       {% for spec in grouped[section] %}
         <label class="settings-field">

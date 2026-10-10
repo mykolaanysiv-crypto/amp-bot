@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}Ідеї • АМПасадори{% endblock %}{% block content %}
 {% from "_ui_macros.html" import icon %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Ідеї</b></nav>
-<div class="page-head"><div><span class="eyebrow">ІНІЦІАТИВИ</span><h1>Ідеї учасників</h1><p>Кожна ідея має автора, зрозумілий статус і окрему картку для роботи команди.</p></div></div>
+<div class="page-head"><div><span class="eyebrow">ІНІЦІАТИВИ</span><h1><span class="icon ui-inline-icon">{{ icon('idea') }}</span> Ідеї учасників</h1><p>Кожна ідея має автора, зрозумілий статус і окрему картку для роботи команди.</p></div></div>
 <form class="smart-filters card" method="get">
   <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва, проблема, автор"></label>
   <label><span>Статус</span><select name="status"><option value="all">Усі статуси</option>{% for st in statuses %}<option value="{{st}}" {% if selected==st %}selected{% endif %}>{{idea_status_label(st)}}</option>{% endfor %}</select></label>

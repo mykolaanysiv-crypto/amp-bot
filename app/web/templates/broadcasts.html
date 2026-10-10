@@ -15,7 +15,7 @@
 <form class="broadcast-compose" action="/admin/broadcasts/preview" method="post" id="broadcastForm"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
   <section class="card broadcast-panel">
     <div class="section-title broadcast-title-row">
-      <h2>1. Кому надсилаємо</h2>
+      <h2><span class="icon ui-inline-icon">{{ icon('users') }}</span> 1. Кому надсилаємо</h2>
       <span class="pill">Активні профілі</span>
     </div>
     <div class="broadcast-audience-grid">
@@ -85,7 +85,7 @@
 
   <section class="card broadcast-panel">
     <div class="section-title broadcast-title-row">
-      <h2>2. Повідомлення</h2>
+      <h2><span class="icon ui-inline-icon">{{ icon('message') }}</span> 2. Повідомлення</h2>
       <span class="pill">Telegram</span>
     </div>
 
@@ -158,7 +158,7 @@
 {% if preview %}
 <section class="card broadcast-preview-card" id="broadcastPreview">
   <div class="section-title">
-    <h2>3. Попередній перегляд</h2>
+    <h2><span class="icon ui-inline-icon">{{ icon('eye') }}</span> 3. Попередній перегляд</h2>
     <span class="tag {% if preview.count %}active{% else %}blocked{% endif %}">{{ preview.count }} одержувачів</span>
   </div>
   <div class="broadcast-preview-grid">
@@ -201,7 +201,7 @@
 
 <section class="card">
   <div class="section-title">
-    <h2>Історія розсилок</h2>
+    <h2><span class="icon ui-inline-icon">{{ icon('history') }}</span> Історія розсилок</h2>
     <span>{{ campaigns|length }} останніх</span>
   </div>
   {% if campaigns %}

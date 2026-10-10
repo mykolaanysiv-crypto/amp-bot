@@ -89,7 +89,7 @@
   <div class="split-head quick-xp-card-head">
     <div>
       <div class="entity-card-tags"><span class="tag">{{ kind_label(row.kind) }}</span><span class="tag {% if row.active %}good{% endif %}">{{ 'Активне' if row.active else 'Неактивне' }}</span>{% if row.featured_home %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('sparkle') }}</span> Рекомендоване</span>{% endif %}</div>
-      <h2>{{ row.title }}</h2><p>{{ row.description }}</p>
+      <h2><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> {{ row.title }}</h2><p>{{ row.description }}</p>
     </div>
     <div class="kpi-mini"><b>до +{{ reward_map.get(row.id, row.xp_reward) }} XP</b><span>{{ counts.get(row.id,0) }} виконань · {{ awarded.get(row.id,0) }} XP видано</span></div>
   </div>

@@ -3698,7 +3698,7 @@ body[data-theme="dark"] .money-positive{color:#7de2bb}
 }
 
 /* ===== tokens.css ===== */
-/* AMP XP v1.20.2 — design tokens. Keep semantic names stable across modules. */
+/* AMP XP v1.20.3 — design tokens. Keep semantic names stable across modules. */
 :root{
   --color-primary:#057E8B;
   --color-primary-hover:#046B76;
@@ -3795,7 +3795,7 @@ body[data-theme="dark"]{
   color-scheme:dark;
 }
 
-/* AMP XP v1.20.2 — expressive brand layer. */
+/* AMP XP v1.20.3 — expressive brand layer. */
 :root{
   --color-accent-cyan:#19C5D1;
   --color-accent-lime:#B8D93D;
@@ -3823,7 +3823,7 @@ body[data-theme="dark"]{
 }
 
 /* ===== base.css ===== */
-/* AMP XP v1.20.2 — global base and accessibility. */
+/* AMP XP v1.20.3 — global base and accessibility. */
 *{box-sizing:border-box}
 html{min-width:320px;background:var(--color-background);scroll-behavior:smooth}
 body{margin:0;min-height:100vh;background:var(--color-background);color:var(--color-text);font:500 var(--font-size-base)/var(--line-height-base) var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -3850,7 +3850,7 @@ pre{max-width:100%;overflow:auto}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* ===== layout.css ===== */
-/* AMP XP v1.20.2 — app shell, navigation and responsive layout. */
+/* AMP XP v1.20.3 — app shell, navigation and responsive layout. */
 .mobile-topbar{display:none}
 .sidebar-backdrop{display:none}
 .sidebar{position:fixed!important;inset:0 auto 0 0!important;z-index:60!important;width:var(--sidebar-expanded)!important;padding:14px 12px!important;background:linear-gradient(180deg,var(--color-sidebar),var(--color-sidebar-strong))!important;border:0!important;color:var(--color-sidebar-text)!important;box-shadow:none!important;transition:width .2s ease,transform .2s ease!important}
@@ -3921,7 +3921,7 @@ body.sidebar-collapsed .sidebar-access-link{justify-content:center}
 @media (max-width:520px){.mobile-brand small{display:none!important}.content{padding-inline:10px!important}.hero{padding:20px!important}}
 
 /* ===== components.css ===== */
-/* AMP XP v1.20.2 — reusable visual components. */
+/* AMP XP v1.20.3 — reusable visual components. */
 .card,.panel,.stat-card{border:1px solid var(--color-border)!important;background:var(--color-surface)!important;box-shadow:var(--shadow-sm)!important}
 .card{margin-bottom:18px!important;padding:20px!important;border-radius:var(--radius-lg)!important;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease!important}.card:hover{border-color:var(--color-border-strong)!important;box-shadow:var(--shadow-md)!important}
 .panel{padding:20px!important;border-radius:var(--radius-lg)!important}
@@ -3955,7 +3955,7 @@ input,select,textarea{min-height:42px!important;padding:9px 11px!important;borde
 .lifecycle-flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:16px 0}.security-facts{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;gap:10px!important}.security-facts>div{min-width:0;padding:13px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-secondary)}.security-facts span{display:block;margin-bottom:5px;color:var(--color-text-muted);font-size:10px;font-weight:800}.security-facts b{font-size:13px;overflow-wrap:anywhere}
 
 /* ===== experience.css ===== */
-/* AMP XP v1.20.2 — Visual Experience & User Profiles. */
+/* AMP XP v1.20.3 — Visual Experience & User Profiles. */
 body{background:
   radial-gradient(circle at 88% 4%,color-mix(in srgb,var(--color-primary-soft) 52%,transparent),transparent 26rem),
   radial-gradient(circle at 18% 72%,color-mix(in srgb,var(--color-secondary) 6%,transparent),transparent 32rem),
@@ -4032,7 +4032,7 @@ body.sidebar-collapsed .content::before{left:var(--sidebar-collapsed)}
 .severity-dot{width:14px!important;height:14px!important;min-width:14px!important;padding:0!important;border-radius:999px!important;background:var(--color-info)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-info) 13%,transparent)}
 .severity-critical{background:var(--color-danger)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-danger) 13%,transparent)}.severity-high{background:var(--color-accent-coral)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-accent-coral) 13%,transparent)}.severity-medium{background:var(--color-warning)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-warning) 13%,transparent)}.severity-low{background:var(--color-info)!important}
 
-/* v1.20.2 layout polish: readable maximums, predictable wrapping and media center balance. */
+/* v1.20.3 layout polish: readable maximums, predictable wrapping and media center balance. */
 .page-shell{width:min(100%,1480px)!important;margin-inline:auto}
 .page-head h1,.page-header h1,.hero h1{max-width:100%;font-size:clamp(1.65rem,2.15vw,2.25rem)!important;line-height:1.08!important;overflow-wrap:anywhere;text-wrap:balance}
 .page-head>div:first-child,.page-header>div:first-child{min-width:0;max-width:920px}
@@ -4052,7 +4052,7 @@ body.sidebar-collapsed .content::before{left:var(--sidebar-collapsed)}
 }
 
 /* ===== interaction.css ===== */
-/* AMP XP v1.20.2 — interaction, motion and layout polish. */
+/* AMP XP v1.20.3 — interaction, motion and layout polish. */
 :root{
   --motion-fast:120ms;
   --motion-base:200ms;
@@ -4159,6 +4159,176 @@ input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--color-tex
   *,*::before,*::after{scroll-behavior:auto!important}.panel-enter,.amp-modal[open]::backdrop,.amp-modal[open] .amp-modal-shell{animation:none!important}.amp-tab-indicator,.account-chevron{transition:none!important}
 }
 
+/* ===== refinement.css ===== */
+/* AMP XP v1.20.3 — Design System Refinement & Module UX. */
+:root{
+  --content-wide:1720px;
+  --content-standard:1560px;
+  --content-reading:1120px;
+  --control-height:46px;
+  --control-height-sm:40px;
+  --module-gap:22px;
+  --section-gap:24px;
+  --motion-fast:120ms;
+  --motion-base:210ms;
+  --motion-slow:340ms;
+  --ease-standard:cubic-bezier(.2,.75,.25,1);
+  --ease-emphasized:cubic-bezier(.2,.9,.25,1);
+  --icon-bg:color-mix(in srgb,var(--color-primary-soft) 78%,var(--color-surface));
+  --icon-border:color-mix(in srgb,var(--color-primary) 18%,var(--color-border));
+}
+
+/* Global readability and overflow safety. */
+html{overflow-x:hidden}
+body{overflow-x:hidden;text-rendering:optimizeLegibility}
+.content{max-width:none!important;overflow-x:clip!important}
+.content>*{width:min(100%,var(--content-wide))!important;max-width:none!important}
+.content>:where(.breadcrumb,.page-head,.page-header,.hero,.card,.cards,.grid2,.kpis,.work-cards-grid,.event-cards-grid,.analytics-grid,.dashboard-duo,.help-center){margin-inline:auto!important}
+.content :where(h1,h2,h3,h4,p,li,td,th,label,b,strong,small,a,button,.tag,.pill,.status-pill,.event-date-badge,.nav-label){word-break:normal!important;overflow-wrap:break-word!important;hyphens:auto}
+.content :where(button,.primary,.soft-button,.danger-btn,.success-button,.tag,.pill,.status-pill,.event-date-badge,.amp-tab,.help-chip,.nav-item){white-space:normal!important;text-wrap:pretty}
+.content :where(input,select,textarea,button,a,summary){min-width:0}
+
+/* Page composition: use the viewport, but keep prose readable. */
+.page-head,.page-header,.hero{width:100%!important;max-width:none!important;padding:clamp(20px,2vw,32px)!important;border:1px solid color-mix(in srgb,var(--color-primary) 14%,var(--color-border))!important;border-radius:26px!important;background:linear-gradient(135deg,var(--color-surface) 0%,color-mix(in srgb,var(--color-primary-soft) 48%,var(--color-surface)) 68%,color-mix(in srgb,var(--color-secondary) 7%,var(--color-surface)) 100%)!important;box-shadow:var(--shadow-sm)!important}
+.page-head>div:first-child,.page-header>div:first-child{max-width:min(1080px,100%)!important}
+.page-head h1,.page-header h1,.hero h1{display:flex;align-items:flex-start;gap:12px;text-wrap:balance;line-height:1.08!important}
+.page-head h1>.icon,.page-header h1>.icon,.hero h1>.icon{width:34px!important;height:34px!important;min-width:34px!important;margin-top:.05em;padding:7px;border:1px solid var(--icon-border);border-radius:11px;background:var(--icon-bg);color:var(--color-primary-strong)}
+.page-head p,.page-header p,.hero p{max-width:92ch!important;font-size:clamp(.95rem,1.05vw,1.08rem)!important;line-height:1.55!important}
+
+/* Section headings: recognizable icon tiles and predictable spacing. */
+.section-title{gap:18px!important;margin-bottom:18px!important}
+.section-title>div{min-width:0}
+.section-title h2,.section-heading-with-icon{display:flex!important;align-items:center!important;gap:10px!important;line-height:1.2!important}
+.section-title h2>.icon,.section-heading-with-icon>.section-icon,.module-heading-icon{display:grid!important;width:38px!important;height:38px!important;min-width:38px!important;place-items:center!important;padding:8px!important;border:1px solid var(--icon-border)!important;border-radius:12px!important;background:var(--icon-bg)!important;color:var(--color-primary-strong)!important}
+.section-title h2>.icon svg,.section-heading-with-icon>.section-icon svg,.module-heading-icon svg{width:20px!important;height:20px!important}
+
+/* Fix the nested-span icon bug that created empty boxes in reports/chips. */
+.report-feature-grid{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))!important;gap:14px!important;width:100%!important}
+.report-feature-grid>span{display:flex!important;align-items:center!important;gap:12px!important;min-height:72px!important;padding:14px 16px!important;border:1px solid var(--color-border)!important;border-radius:16px!important;background:linear-gradient(145deg,var(--color-surface),color-mix(in srgb,var(--color-primary-soft) 48%,var(--color-surface)))!important;color:var(--color-text)!important;font-weight:800!important;line-height:1.35!important;box-shadow:var(--shadow-sm)!important}
+.report-feature-grid>span>.icon{display:grid!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;margin:0!important;padding:8px!important;border:1px solid var(--icon-border)!important;border-radius:12px!important;background:var(--color-surface)!important;color:var(--color-primary-strong)!important}
+.report-feature-grid>span>.icon svg{width:20px!important;height:20px!important}
+
+/* Chips/meta: style only direct children; nested SVG icons must stay icons. */
+:is(.event-card-info,.entity-card-info,.opportunity-card-facts,.survey-stats,.survey-option-chips,.giveaway-mini-stats,.mini-facts,.chips){gap:8px!important;align-items:center!important}
+:is(.event-card-info,.entity-card-info,.opportunity-card-facts,.survey-stats,.survey-option-chips,.giveaway-mini-stats,.mini-facts,.chips)>span{display:inline-flex!important;align-items:center!important;gap:7px!important;min-height:34px!important;max-width:100%!important;padding:7px 11px!important;border:1px solid var(--color-border)!important;border-radius:999px!important;background:var(--color-surface-secondary)!important;color:var(--color-text)!important;font-size:11px!important;font-weight:800!important;line-height:1.2!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+:is(.event-card-info,.entity-card-info,.opportunity-card-facts,.survey-stats,.survey-option-chips,.giveaway-mini-stats,.mini-facts,.chips)>span>.icon{display:inline-flex!important;width:17px!important;height:17px!important;min-width:17px!important;min-height:17px!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:var(--color-primary)!important;box-shadow:none!important}
+:is(.event-card-info,.entity-card-info,.opportunity-card-facts,.survey-stats,.survey-option-chips,.giveaway-mini-stats,.mini-facts,.chips)>span>.icon svg{width:17px!important;height:17px!important}
+
+/* Full-width module layouts. */
+.registration-kpis,.notification-kpis,.event-analytics-kpis,.opportunity-analytics-kpis{width:100%!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}
+#team,.team-task-create,.team-task-grid,.opportunity-board,.ideas-board,.streak-admin-card,.report-builder-card,.report-info-card,.broadcast-compose,.broadcast-template-manager,.broadcast-history-card,.settings-grid,.gamification-insights-page,.season-page{max-width:none!important;width:100%!important}
+#team .table-wrap,.card>.table-wrap,.table-wrap.card{width:100%!important;max-width:100%!important}
+.ambassador-report-grid,.team-task-grid{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))!important}
+
+/* Generic grids — no accidental narrow columns or collisions. */
+.cards,.work-cards-grid,.event-cards-grid,.survey-grid,.reward-library-grid,.giveaway-library-grid,.badge-library-grid{width:100%!important;align-items:stretch!important;gap:var(--module-gap)!important}
+@media(min-width:1500px){.work-cards-grid,.event-cards-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.reward-library-grid,.giveaway-library-grid,.badge-library-grid,.survey-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(min-width:1900px){.work-cards-grid,.event-cards-grid,.reward-library-grid,.giveaway-library-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+.cards>*,.work-cards-grid>*,.event-cards-grid>*,.survey-grid>*,.reward-library-grid>*,.giveaway-library-grid>*{min-width:0!important;max-width:100%!important;height:100%}
+
+/* Cards: balanced whitespace and clear actions. */
+.card{padding:clamp(18px,1.6vw,26px)!important;border-radius:20px!important}
+.card:hover{transform:translateY(-2px)!important;border-color:color-mix(in srgb,var(--color-primary) 28%,var(--color-border))!important;box-shadow:var(--shadow-md)!important}
+.card-actions,.unified-card-actions,.event-card-actions-v2,.opportunity-card-actions,.form-actions,.form-actions-row,.button-row,.registration-actions,.goal-actions,.avatar-modal-actions{display:flex!important;align-items:center!important;gap:10px!important;flex-wrap:wrap!important}
+.card-actions>*,.unified-card-actions>*,.event-card-actions-v2>*,.opportunity-card-actions>*,.form-actions>*,.form-actions-row>*,.button-row>*,.registration-actions>*{margin:0!important}
+.unified-card-actions,.event-card-actions-v2,.opportunity-card-actions{margin-top:auto!important;padding-top:14px!important}
+
+/* Buttons: aligned, readable and never glued together. */
+.primary,.soft-button,.danger-btn,.success-button,.link-button,button{min-height:var(--control-height-sm)!important;padding:10px 16px!important;border-radius:12px!important;line-height:1.2!important}
+.primary{background:var(--gradient-brand)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 8px 18px color-mix(in srgb,var(--color-primary) 18%,transparent)!important}
+.primary:hover{transform:translateY(-2px)!important;filter:saturate(1.08) brightness(1.04)!important;box-shadow:0 13px 26px color-mix(in srgb,var(--color-primary) 26%,transparent)!important}
+.soft-button:hover{transform:translateY(-1px)!important;background:color-mix(in srgb,var(--color-primary-soft) 62%,var(--color-surface))!important;border-color:color-mix(in srgb,var(--color-primary) 28%,var(--color-border))!important}
+.danger-btn{margin-left:0!important}
+
+/* Forms: consistent geometry and spacing. */
+.form-grid{gap:16px!important;align-items:start!important}
+.form-grid>label,.settings-card label{display:grid!important;gap:7px!important;align-content:start!important}
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{width:100%!important;min-height:var(--control-height)!important;border-radius:13px!important;line-height:1.35!important}
+textarea{min-height:126px!important;resize:vertical}
+.check-line,.check-row,.check{display:flex!important;align-items:flex-start!important;gap:10px!important;min-height:44px;padding:11px 13px;border:1px solid var(--color-border);border-radius:13px;background:var(--color-surface-secondary)}
+.check-line input,.check-row input,.check input{margin-top:2px;flex:0 0 auto}
+.upload-field input[type="file"]{padding:8px!important;background:var(--color-surface)!important}
+
+/* Tables: use all width and keep actions legible. */
+.table-wrap{width:100%!important;max-width:100%!important;overflow:auto!important;border-radius:16px!important}
+table{width:100%!important;min-width:760px;border-collapse:separate!important;border-spacing:0!important}
+th{white-space:nowrap!important}
+td{vertical-align:middle!important}
+td .inline-form,td .inline{display:inline-flex!important;align-items:center!important;gap:8px!important;flex-wrap:wrap!important}
+
+/* Tabs: never split words; scroll horizontally on small screens. */
+.amp-tablist,.profile-nav{max-width:100%;overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x proximity}
+.amp-tab,.profile-nav a{flex:0 0 auto!important;white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;scroll-snap-align:start}
+
+/* Modal system: predictable widths, spacing and no accidental fly-outs. */
+.amp-modal{width:min(760px,calc(100vw - 32px))!important;max-height:min(88dvh,900px)!important;border-radius:22px!important}
+.amp-modal.amp-editor-modal{width:min(860px,calc(100vw - 32px))!important}
+.amp-modal.amp-modal-wide{width:min(980px,calc(100vw - 32px))!important}
+.amp-modal-shell{width:100%!important;max-width:100%!important}
+.amp-modal-header{gap:18px!important;padding:20px 22px!important}.amp-modal-body{padding:22px!important}.amp-modal-footer{gap:10px!important;padding:15px 22px!important}
+.amp-modal .form-actions,.amp-modal .form-actions-row{position:sticky!important;bottom:-22px!important;margin:18px -22px -22px!important;padding:14px 22px!important;border-top:1px solid var(--color-border)!important;background:color-mix(in srgb,var(--color-surface) 96%,transparent)!important;backdrop-filter:blur(10px)}
+.amp-modal:not([open]){display:none!important}
+
+/* Rewards and giveaways: always have meaningful visual media. */
+.reward-card,.giveaway-card{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.reward-card .cover,.reward-card .cover.placeholder,.giveaway-card .cover,.reward-placeholder{width:100%!important;aspect-ratio:16/9!important;min-height:180px!important;object-fit:cover!important;border-radius:16px!important;background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary-soft) 88%,#fff),color-mix(in srgb,var(--color-secondary) 12%,var(--color-surface)))!important}
+.reward-card .cover.placeholder{position:relative!important;background-image:url('/static/reward-placeholder.svg')!important;background-position:center!important;background-repeat:no-repeat!important;background-size:cover!important}
+.reward-card>details,.reward-card>.reward-delete-form{margin-top:auto!important}
+
+/* Ideas, seasons, gamification and streaks use the page width. */
+.idea-detail-page,.ideas-board,.season-history-grid,.season-grid,.streak-admin-card,.gamification-governance-page,.gamification-insights-page{width:100%!important;max-width:none!important}
+.idea-detail-page .card,.idea-workflow-card{max-width:none!important}
+.workflow-steps{display:grid!important;grid-template-columns:repeat(4,minmax(140px,1fr))!important;gap:12px!important}
+.workflow-step{min-width:0!important}
+.workflow-step::after{display:none!important}
+.workflow-step b{margin-inline:auto!important}
+.streak-rules{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;gap:14px!important}
+.streak-rules>span{display:flex!important;align-items:flex-start!important;gap:10px!important;min-height:74px!important;padding:15px!important}
+
+/* Reports, gamification and settings: icon-backed informational tiles. */
+.settings-grid{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))!important;gap:18px!important}
+.settings-card,.report-info-card,.streak-admin-card{overflow:hidden}
+.settings-card .section-title h2::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--gradient-brand);box-shadow:0 0 0 6px var(--color-primary-soft)}
+
+/* Help: quick tasks navigate to a category, never fill search with hidden text. */
+.help-quick-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))!important;gap:14px!important}
+.help-quick-card{min-height:150px!important;text-align:left!important;align-items:flex-start!important}
+.help-quick-card b{font-size:1rem!important}.help-quick-card p{font-size:.82rem!important;line-height:1.5!important}
+.help-quick-card .topic-icon{width:46px!important;height:46px!important;min-width:46px!important;padding:11px!important}
+.help-topic-grid{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))!important}
+
+/* Enter motion gives feedback without becoming decorative noise. */
+[data-ui-reveal]{opacity:0;transform:translateY(8px);transition:opacity var(--motion-slow) var(--ease-standard),transform var(--motion-slow) var(--ease-standard)}
+[data-ui-reveal].is-visible{opacity:1;transform:none}
+.card,.page-head,.page-header,.hero,.kpi,.stat-card{will-change:transform}
+
+/* Mobile/tablet safeguards. */
+@media(max-width:1024px){
+  .content>*{width:100%!important}
+  .page-head,.page-header,.hero{border-radius:20px!important}
+  .work-cards-grid,.event-cards-grid,.reward-library-grid,.giveaway-library-grid,.survey-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .workflow-steps{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:720px){
+  .work-cards-grid,.event-cards-grid,.reward-library-grid,.giveaway-library-grid,.survey-grid,.help-topic-grid{grid-template-columns:1fr!important}
+  .page-head h1,.page-header h1,.hero h1{font-size:clamp(1.55rem,7vw,2.2rem)!important}
+  .page-head h1>.icon,.page-header h1>.icon,.hero h1>.icon{width:32px!important;height:32px!important;min-width:32px!important}
+  .card-actions,.unified-card-actions,.event-card-actions-v2,.opportunity-card-actions,.form-actions,.form-actions-row,.button-row,.registration-actions{align-items:stretch!important}
+  .card-actions>*,.unified-card-actions>*,.event-card-actions-v2>*,.opportunity-card-actions>*,.form-actions>*,.form-actions-row>*,.button-row>*,.registration-actions>*{flex:1 1 100%!important;width:100%!important}
+  .amp-modal,.amp-modal.amp-editor-modal,.amp-modal.amp-modal-wide{width:calc(100vw - 20px)!important;max-height:92dvh!important;border-radius:18px!important}
+  .workflow-steps{grid-template-columns:1fr!important}
+  table{min-width:680px}
+}
+@media(max-width:480px){
+  .report-feature-grid{grid-template-columns:1fr!important}
+  .kpis,.kpi-grid,.registration-kpis{grid-template-columns:1fr!important}
+  .content :where(.event-card-info,.entity-card-info,.opportunity-card-facts,.survey-stats,.survey-option-chips,.giveaway-mini-stats)>span{white-space:normal!important}
+}
+@media(prefers-reduced-motion:reduce){
+  [data-ui-reveal]{opacity:1!important;transform:none!important;transition:none!important}
+  .card,.primary,.soft-button,.danger-btn,.help-quick-card{transition:none!important;transform:none!important}
+}
+
 /* ===== utilities.css ===== */
-/* AMP XP v1.20.2 — small composition utilities only. */
+/* AMP XP v1.20.3 — small composition utilities only. */
 .cluster{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}.stack{display:grid;gap:var(--space-3)}.stack-lg{display:grid;gap:var(--space-6)}.surface{border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface)}.text-muted{color:var(--color-text-muted)}.text-danger{color:var(--color-danger)}.text-success{color:var(--color-success)}.w-full{width:100%}.min-w-0{min-width:0}.button-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.page-shell{min-width:0}.page-shell>*+*{margin-top:16px}
