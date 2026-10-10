@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Розсилки • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Розсилки</b></nav>
 <section class="page-head">
   <div>
     <div class="eyebrow">КОМУНІКАЦІЙНИЙ ЦЕНТР</div>
-    <h1>📣 Розсилки</h1>
+    <h1><span class="icon ui-inline-icon">{{ icon('megaphone') }}</span> Розсилки</h1>
     <p>Оберіть аудиторію, підготуйте повідомлення, перевірте попередній перегляд і лише після цього запустіть надсилання через Telegram.</p>
   </div>
-  <div class="broadcast-security-note">🔐 Лише суперадмін</div>
+  <div class="broadcast-security-note"><span class="icon ui-inline-icon">{{ icon('lock') }}</span> Лише суперадмін</div>
 </section>
 
 <form class="broadcast-compose" action="/admin/broadcasts/preview" method="post" id="broadcastForm"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -105,14 +106,14 @@
       <span>Персоналізація: <code>{first_name}</code> або <code>{full_name}</code></span>
       <strong id="broadcastCharCount">0 / 3800</strong>
     </div>
-    <button class="primary broadcast-preview-button" type="submit">👁 Попередній перегляд</button>
+    <button class="primary broadcast-preview-button" type="submit"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Попередній перегляд</button>
   </section>
 </form>
 
 <section class="card broadcast-template-manager" id="customTemplates">
   <div class="section-title broadcast-title-row">
     <div>
-      <h2>🧩 Власні шаблони</h2>
+      <h2><span class="icon ui-inline-icon">{{ icon('settings') }}</span> Власні шаблони</h2>
       <p class="muted">Створюйте свої заготовки для регулярних повідомлень. Активні шаблони одразу з’являються вище в блоці «Повідомлення».</p>
     </div>
     <span class="pill">{{ custom_templates|length }} шаблонів</span>
@@ -127,7 +128,7 @@
         <textarea name="text" maxlength="3800" required placeholder="Текст шаблону. Можна використовувати {first_name} та {full_name}."></textarea>
       </label>
       <div class="custom-template-hint">Персоналізація: <code>{first_name}</code> або <code>{full_name}</code></div>
-      <button class="primary" type="submit">➕ Додати шаблон</button>
+      <button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Додати шаблон</button>
     </form>
 
     <div class="custom-template-list">
@@ -141,10 +142,10 @@
           <label>Назва<input name="title" maxlength="120" value="{{item.title}}" required></label>
           <label>Текст<textarea name="text" maxlength="3800" required>{{item.text}}</textarea></label>
           <label class="check-line"><input type="checkbox" name="active" {% if item.active %}checked{% endif %}> Активний шаблон</label>
-          <button class="primary" type="submit">💾 Зберегти</button>
+          <button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти</button>
         </form>
         <form method="post" action="/admin/broadcasts/templates/{{item.id}}/delete" class="custom-template-delete" data-confirm-message="Видалити цей шаблон?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-          <button class="danger-btn" type="submit">🗑 Видалити шаблон</button>
+          <button class="danger-btn" type="submit"><span class="icon ui-inline-icon">{{ icon('trash') }}</span> Видалити шаблон</button>
         </form>
       </details>
       {% else %}
@@ -191,8 +192,8 @@
     <input type="hidden" name="inactive_days" value="{{ form_data.get('inactive_days','30') }}">
     <input type="hidden" name="template_code" value="{{ form_data.get('template_code','') }}">
     <textarea name="message_text" hidden>{{ form_data.get('message_text','') }}</textarea>
-    <a class="soft-button" href="#broadcastForm">✏️ Повернутися до редагування</a>
-    <button class="primary" type="submit">📣 Надіслати {{ preview.count }} одержувачам</button>
+    <a class="soft-button" href="#broadcastForm"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Повернутися до редагування</a>
+    <button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('megaphone') }}</span> Надіслати {{ preview.count }} одержувачам</button>
   </form>
   {% endif %}
 </section>
@@ -227,49 +228,4 @@
   {% endif %}
 </section>
 
-<script nonce="{{ request.state.csp_nonce }}">
-(function(){
-  const audience = document.getElementById('audienceType');
-  const extras = Array.from(document.querySelectorAll('.broadcast-extra'));
-  function syncAudience(){
-    const value = audience.value;
-    extras.forEach(el => {
-      const active = el.dataset.audience === value;
-      el.hidden = !active;
-      el.querySelectorAll('select,input').forEach(input => {
-        if(input.name === 'settlement_value' || input.name === 'event_value') input.disabled = !active;
-      });
-    });
-  }
-  audience.addEventListener('change', syncAudience);
-  syncAudience();
-
-  document.querySelectorAll('[data-age]').forEach(btn => btn.addEventListener('click', function(){
-    const [min,max] = this.dataset.age.split(',');
-    document.querySelector('input[name="age_min"]').value=min;
-    document.querySelector('input[name="age_max"]').value=max;
-  }));
-
-  const textarea = document.getElementById('broadcastText');
-  const counter = document.getElementById('broadcastCharCount');
-  const templateCode = document.getElementById('templateCode');
-  function count(){ counter.textContent = `${textarea.value.length} / 3800`; }
-  textarea.addEventListener('input', count); count();
-
-  document.querySelectorAll('.broadcast-template-button').forEach(btn => btn.addEventListener('click', function(){
-    let text = this.dataset.templateText || '""';
-    try { text = JSON.parse(text); } catch(e) {}
-    textarea.value = text;
-    templateCode.value = this.dataset.templateCode || '';
-    document.querySelectorAll('.broadcast-template-button').forEach(x=>x.classList.remove('is-selected'));
-    this.classList.add('is-selected');
-    count();
-    textarea.focus();
-  }));
-
-  if(document.getElementById('broadcastPreview')){
-    setTimeout(()=>document.getElementById('broadcastPreview').scrollIntoView({behavior:'smooth',block:'start'}),100);
-  }
-})();
-</script>
 {% endblock %}

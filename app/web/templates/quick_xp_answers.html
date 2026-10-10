@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Відповіді · Швидкі XP · АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/quick-xp">Швидкі XP</a><span>›</span><b>Відповіді учасників</b></nav>
-<div class="page-head"><div><span class="eyebrow">РЕЗУЛЬТАТИ ЗАВДАННЯ</span><h1>📋 {{ challenge.title }}</h1><p>{{ kind_label(challenge.kind) }} · {{ total }} учасників із відповідями{% if challenge.kind == 'quiz' %} · враховано також незавершені спроби{% endif %}</p></div><a class="soft-button" href="/admin/quick-xp#quick-xp-{{ challenge.id }}">← До завдання</a></div>
+<div class="page-head"><div><span class="eyebrow">РЕЗУЛЬТАТИ ЗАВДАННЯ</span><h1><span class="icon ui-inline-icon">{{ icon('clipboard') }}</span> {{ challenge.title }}</h1><p>{{ kind_label(challenge.kind) }} · {{ total }} учасників із відповідями{% if challenge.kind == 'quiz' %} · враховано також незавершені спроби{% endif %}</p></div><a class="soft-button" href="/admin/quick-xp#quick-xp-{{ challenge.id }}">← До завдання</a></div>
 {% for user in participants %}
   {% set done = completion_map.get(user.id) %}
   {% set responses = answer_map.get(user.id, {}) %}
@@ -19,7 +20,7 @@
         <b>{{ loop.index }}. {{ question.text }}</b>
         {% if answer %}
           <p>Відповідь: <strong>{{ options[answer.answer_option] if answer.answer_option is not none and answer.answer_option >= 0 and answer.answer_option < options|length else 'Варіант більше недоступний' }}</strong></p>
-          <small>{{ '✅ Правильно' if answer.correct else '❌ Неправильно' }} · +{{ answer.xp_awarded }} XP · {{ answer.answered_at.strftime('%d.%m.%Y %H:%M') }}</small>
+          <small>{{ ' Правильно' if answer.correct else ' Неправильно' }} · +{{ answer.xp_awarded }} XP · {{ answer.answered_at.strftime('%d.%m.%Y %H:%M') }}</small>
         {% else %}<p class="muted">Поки немає відповіді.</p>{% endif %}
       </div>
       {% else %}<p class="muted">Питання видалено або поки не додано.</p>{% endfor %}
@@ -28,7 +29,7 @@
       <div class="quick-xp-response-question"><b>{{ challenge.question or 'Відповідь учасника' }}</b>
       {% if challenge.kind == 'comment' %}<p class="quick-xp-response-text">{{ done.answer_text or 'Порожня відповідь' }}</p>
       {% else %}<p>Обрано: <strong>{{ options[done.answer_option] if done.answer_option is not none and done.answer_option >= 0 and done.answer_option < options|length else 'Варіант більше недоступний' }}</strong></p>
-      {% if challenge.kind == 'video' and challenge.correct_option is not none %}<small>{{ '✅ Правильно' if done.answer_option == challenge.correct_option else '❌ Неправильно' }}</small>{% endif %}
+      {% if challenge.kind == 'video' and challenge.correct_option is not none %}<small>{{ ' Правильно' if done.answer_option == challenge.correct_option else ' Неправильно' }}</small>{% endif %}
       {% endif %}
       </div>
     {% endif %}

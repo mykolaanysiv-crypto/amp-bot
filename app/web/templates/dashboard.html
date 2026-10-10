@@ -63,7 +63,7 @@
 
 <section class="card attention-card" id="attention">
   <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('bell') }}</span><span>Потребує уваги</span></h2><p class="muted">Тільки те, що зараз вимагає дії команди.</p></div><span class="tag">{{ attention|length }}</span></div>
-  {% if attention %}<div class="attention-grid">{% for item in attention %}<a class="attention-item" href="{{item.url}}"><span class="attention-count">{{item.count}}</span><span><b>{{item.icon}} {{item.title}}</b><small>Перейти до відфільтрованого списку</small></span><span class="attention-action">{{item.action}} →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">Зараз немає термінових пунктів.</div>{% endif %}
+  {% if attention %}<div class="attention-grid">{% for item in attention %}<a class="attention-item" href="{{item.url}}"><span class="attention-count">{{item.count}}</span><span><b><span class="icon ui-inline-icon">{{ icon(item.icon) }}</span> {{item.title}}</b><small>Перейти до відфільтрованого списку</small></span><span class="attention-action">{{item.action}} →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">Зараз немає термінових пунктів.</div>{% endif %}
 </section>
 
 

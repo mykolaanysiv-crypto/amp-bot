@@ -47,7 +47,7 @@ def test_surveys_have_separate_identity_question_edit_and_reorder():
     assert '/admin/surveys/{survey_id}/identity' in routes
     assert '/questions/{question_id}/update' in routes
     assert '/questions/{question_id}/move' in routes
-    assert '✏️ Редагувати' in template
+    assert 'Редагувати' in template
     assert 'name="direction" value="up"' in template
     assert 'name="direction" value="down"' in template
     assert 'id="survey-identity"' in template
@@ -60,5 +60,6 @@ def test_quest_cards_use_equal_height_geometry_and_detail_action():
     assert '.work-cards-grid{align-items:stretch!important}' in css
     assert '.work-cards-grid>.entity-card-v2{height:100%!important}' in css
     assert '.quest-card-v2 .entity-card-media{height:230px' in css
-    assert 'href="/admin/quests/{{q.id}}">👁 Детально</a>' in template
+    assert 'href="/admin/quests/{{q.id}}"' in template
+    assert "icon('eye')" in template and "Детально" in template
     assert 'edit-action-button' in template

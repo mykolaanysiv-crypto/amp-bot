@@ -20,7 +20,7 @@ def test_calendar_has_day_week_month_and_all_requested_sources():
     assert '{"day", "week", "month"}' in route
     for model in ["Event", "Quest", "VolunteerTask", "Survey", "Opportunity", "RequestCase", "Idea", "StreakFreeze"]:
         assert model in route
-    for label in ["День", "Тиждень", "Місяць", "📅 Подія", "🎯 Квест", "✅ Задача", "📋 Опитування", "🌍 Можливість", "🆘 Кейс", "💡 Ідея", "❄️ Заморозка серії"]:
+    for label in ["День", "Тиждень", "Місяць", "Подія", "Квест", "Задача", "Опитування", "Можливість", "Кейс", "Ідея", "Заморозка серії"]:
         assert label in template
     assert "calendar-chip {{item.css}}" in template
 
@@ -28,13 +28,27 @@ def test_calendar_has_day_week_month_and_all_requested_sources():
 def test_qr_scanner_is_on_event_page_and_camera_is_allowed_for_self():
     route = event_routes_source()
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
+    scanner_js = (ROOT / "app/web/static/event_detail.js").read_text(encoding="utf-8")
     middleware = (ROOT / "app/web/security_middleware.py").read_text(encoding="utf-8")
+
     assert '@router.post("/admin/events/{event_id}/scanner")' in route
-    assert "BarcodeDetector" in template
-    assert "getUserMedia" in template
-    assert "📲 Відкрити QR-сканер у Telegram" in template
-    assert "🌐 Сканувати камерою браузера" in template
-    assert "Зареєструвати та підтвердити" in template
+
+    # v1.20.2 intentionally externalizes scanner JavaScript instead of
+    # putting executable scanner logic inside the Jinja template.
+    assert 'src="/static/event_detail.js?v=' in template
+
+    # Camera QR capability itself must still exist.
+    assert "BarcodeDetector" in scanner_js
+    assert "getUserMedia" in scanner_js
+
+    # User-visible scanner entry points remain on the event page.
+    assert "Відкрити QR-сканер у Telegram" in template
+    assert "Сканувати камерою браузера" in template
+
+    # This action is rendered dynamically by the external scanner module.
+    assert "Зареєструвати та підтвердити" in scanner_js
+
+    # Browser camera permission policy must remain enabled only for self.
     assert "camera=(self)" in middleware
 
 

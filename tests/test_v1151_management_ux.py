@@ -60,7 +60,8 @@ def test_opportunity_board_is_compact_and_detail_page_carries_full_content():
     route = read("app/web/routes/opportunities.py")
     public = read("app/web/templates/opportunity_public.html")
     css = read("app/web/static/admin.css")
-    assert 'href="/admin/opportunities/{{item.id}}">👁 Детально' in board
+    assert 'href="/admin/opportunities/{{item.id}}"' in board
+    assert "icon('eye')" in board and "Детально" in board
     assert "{{item.description or 'Без опису.'}}" not in board
     assert "opportunity-board" in board and "opportunity-card-actions" in board
     assert '@router.get("/admin/opportunities/{opportunity_id}"' in route

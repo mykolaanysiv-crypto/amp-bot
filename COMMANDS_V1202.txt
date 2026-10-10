@@ -1,0 +1,39 @@
+AMP XP v1.20.2 — UI Polish, Navigation & Interaction 3.0 — deployment outline
+
+SOURCE OF TRUTH: complete amp_bot_v1202 artifact based on confirmed production v1.20.1.
+
+1. git switch main && git pull --ff-only origin main
+2. verify VERSION.txt == 1.20.1 and clean working tree
+3. git switch -c release/v1.20.2
+4. sync complete v1.20.2 build preserving .git/.env/.venv
+5. python -m pip install -r requirements-dev.lock
+6. python -m pip check
+7. python -m scripts.dependency_lock_check
+8. python -m scripts.build_admin_css
+9. python -m scripts.release_consistency_check
+10. python -m compileall -q app scripts migrations tests
+11. python -m scripts.production_preflight
+12. python -m ruff check --select E9,F63,F7,F82 app scripts tests
+13. node tests/js/test_admin_forms.js
+14. node tests/js/test_app_shell.js
+15. node tests/js/test_experience.js
+16. node tests/js/test_interaction.js
+17. python -m pip_audit -r requirements.lock --progress-spinner=off
+18. python -m pytest -q --ignore=tests/integration
+19. GitHub CI: PostgreSQL 18 integration + schema drift; Alembic head must remain 20261010_0018 (NO v1.20.2 migration).
+20. GitHub deploy gate: fresh PGBackup → restore verification → deploy → health/version smoke → verified marker.
+21. git add -A && git diff --cached --check
+22. git commit -m "AMP XP v1.20.2 UI polish navigation and interaction 3.0"
+23. git push -u origin release/v1.20.2
+24. Merge PR only after all blocking checks pass.
+25. After production: verify /health/live and /health/ready version=1.20.2.
+26. heroku run -a amp-bot-ver-1-5-0 -- alembic current
+    Expected: 20261010_0018
+27. heroku run -a amp-bot-ver-1-5-0 -- python -m scripts.verify_backup_marker
+28. Complete UI_VISUAL_CHECKLIST_V1202.md.
+29. Tag v1.20.2 only after production confirmation.
+
+ROLLBACK
+Preferred: rollback application release to confirmed v1.20.1 and retain schema 0018.
+Do NOT downgrade Alembic for this UI-only v1.20.2 release.
+Do not weaken backup/schema/security/permissions/privacy/CSP/CSRF gates to force deploy or rollback.

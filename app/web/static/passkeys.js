@@ -125,7 +125,7 @@
             credential_json:JSON.stringify(registrationJSON(credential)),
             label:(label && label.value) || 'Passkey'
           });
-          location.assign('/admin/account#passkeys');
+          location.assign('/admin/account?tab=security');
         }catch(error){
           if(status) status.textContent=errorText(error);
           button.disabled=false;

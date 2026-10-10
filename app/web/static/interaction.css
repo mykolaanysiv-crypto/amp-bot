@@ -1,0 +1,106 @@
+/* AMP XP v1.20.2 — interaction, motion and layout polish. */
+:root{
+  --motion-fast:120ms;
+  --motion-base:200ms;
+  --motion-slow:320ms;
+  --ease-standard:cubic-bezier(.2,.7,.2,1);
+  --ease-emphasized:cubic-bezier(.2,.8,.2,1);
+}
+
+/* Full-space layout with readable text columns instead of a single narrow global max-width. */
+.content>*{width:min(100%,1600px)!important}
+.account-cabinet,.help-center{width:min(100%,1500px)!important}
+.data-integrity-page,.analytics-page{width:min(100%,1600px)!important}
+.card p,.panel p,.help-topic-card p,.profile-hero-copy p{max-width:78ch}
+
+/* Sidebar stability and one compact identity source. */
+.sidebar{display:flex!important;flex-direction:column!important}
+.sidebar-header{flex:0 0 auto;min-height:64px!important}
+.sidebar-nav{min-height:0!important}
+.sidebar-bottom{flex:0 0 auto!important}
+.sidebar-logo{display:block!important;aspect-ratio:1/1!important;object-fit:contain!important}
+.sidebar-avatar,.topbar-user-avatar{overflow:hidden!important;aspect-ratio:1/1!important}
+.sidebar-avatar img,.topbar-user-avatar img{display:block;width:100%;height:100%;object-fit:cover}
+body.sidebar-collapsed .sidebar-header{flex-wrap:nowrap!important;flex-direction:column!important;gap:8px!important}
+body.sidebar-collapsed .brand{flex:0 0 auto!important}
+body.sidebar-collapsed .sidebar-bottom{align-items:center!important}
+
+/* Account dropdown. */
+.topbar-account{position:relative}
+.topbar-user{cursor:pointer!important;font:inherit!important}
+.topbar-user:hover{border-color:color-mix(in srgb,var(--color-primary) 36%,var(--color-border));background:color-mix(in srgb,var(--color-primary-soft) 42%,var(--color-surface));transform:translateY(-1px)}
+.account-chevron{width:14px;height:14px;color:var(--color-text-muted);transition:transform var(--motion-base) var(--ease-standard)}
+.topbar-user[aria-expanded="true"] .account-chevron{transform:rotate(180deg)}
+.account-menu{position:absolute;right:0;top:calc(100% + 9px);z-index:90;min-width:220px;padding:8px;border:1px solid var(--color-border);border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-lg)}
+.account-menu[hidden]{display:none!important}
+.account-menu a,.account-menu button{display:flex;width:100%;align-items:center;gap:10px;padding:10px 11px;border:0;border-radius:10px;background:transparent;color:var(--color-text);font:750 13px/1.25 var(--font-body);text-decoration:none;text-align:left;cursor:pointer}
+.account-menu a:hover,.account-menu button:hover{background:var(--color-primary-soft);color:var(--color-primary-strong)}
+.account-menu form{margin:0}.account-menu-separator{height:1px;margin:6px 4px;background:var(--color-border)}
+
+/* Real tabs. */
+.amp-tabs{position:relative;margin:2px 0 2px}
+.amp-tablist{position:relative;display:flex;gap:4px;overflow-x:auto;padding:5px;border:1px solid var(--color-border);border-radius:18px;background:var(--color-surface);box-shadow:var(--shadow-sm);scrollbar-width:none}
+.amp-tab{position:relative;z-index:2;display:inline-flex;min-height:48px;align-items:center;gap:9px;padding:10px 18px;border:0;border-radius:13px;background:transparent;color:var(--color-text-muted);font:800 14px/1.2 var(--font-body);white-space:nowrap;cursor:pointer;transition:color var(--motion-base) var(--ease-standard),background var(--motion-base) var(--ease-standard),transform var(--motion-fast) var(--ease-standard)}
+.amp-tab:hover{color:var(--color-primary-strong);background:color-mix(in srgb,var(--color-primary-soft) 60%,transparent)}
+.amp-tab.active,.amp-tab[aria-selected="true"]{color:var(--color-primary-strong)}
+.amp-tab:active{transform:scale(.98)}
+.amp-tab-indicator{position:absolute;z-index:1;bottom:5px;left:5px;height:calc(100% - 10px);border-radius:13px;background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary-soft) 96%,#fff),color-mix(in srgb,var(--color-accent-violet) 13%,var(--color-primary-soft)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--color-primary) 14%,transparent);transition:width var(--motion-base) var(--ease-emphasized),transform var(--motion-base) var(--ease-emphasized)}
+.amp-tab-panel[hidden]{display:none!important}
+.amp-tab-panel{display:grid;gap:18px;min-width:0}
+.panel-enter{animation:amp-panel-enter var(--motion-base) var(--ease-standard)}
+@keyframes amp-panel-enter{from{opacity:.15;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.ui-inline-icon{display:inline-flex!important;width:1.05em!important;height:1.05em!important;min-width:1.05em!important;vertical-align:-.16em;color:currentColor;margin-right:.3em}.ui-inline-icon svg{width:100%!important;height:100%!important}
+
+/* Stronger interaction language. */
+.card,.panel,.stat-card,.profile-stat,.help-topic-card,.security-account-row{transition:transform var(--motion-base) var(--ease-standard),box-shadow var(--motion-base) var(--ease-standard),border-color var(--motion-base) var(--ease-standard),background-color var(--motion-base) var(--ease-standard)}
+.card:hover,.profile-stat:hover,.help-topic-card:hover,.security-account-row:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--color-primary) 28%,var(--color-border));box-shadow:var(--shadow-md)}
+button,.soft-button,.primary,.danger-btn,.nav-item,.topbar-icon{transition:transform var(--motion-fast) var(--ease-standard),box-shadow var(--motion-base) var(--ease-standard),background-color var(--motion-base) var(--ease-standard),border-color var(--motion-base) var(--ease-standard),color var(--motion-base) var(--ease-standard)!important}
+button:active,.soft-button:active,.primary:active,.danger-btn:active{transform:translateY(1px) scale(.985)}
+.primary:hover{filter:saturate(1.08) brightness(1.04);box-shadow:0 12px 24px color-mix(in srgb,var(--color-primary) 22%,transparent)}
+
+/* Dialog polish and avatar workflow. */
+.amp-modal[open]::backdrop{animation:amp-backdrop-in var(--motion-base) ease both}
+.amp-modal[open] .amp-modal-shell{animation:amp-dialog-in var(--motion-base) var(--ease-emphasized) both}
+@keyframes amp-backdrop-in{from{background:rgba(3,20,24,0)}to{background:rgba(3,20,24,.56)}}
+@keyframes amp-dialog-in{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.avatar-modal .amp-modal-shell{max-width:640px}
+.avatar-editor-preview{display:grid;width:128px;height:128px;margin:0 auto 18px;place-items:center;overflow:hidden;border:4px solid var(--color-surface);border-radius:32px;background:var(--gradient-brand-soft);box-shadow:0 0 0 1px var(--color-border),var(--shadow-md);color:var(--color-primary-strong);font:900 42px/1 var(--font-display)}
+.avatar-editor-preview img{width:100%;height:100%;object-fit:cover}
+.avatar-upload-form{display:grid;gap:16px}
+.avatar-dropzone{position:relative;display:grid;min-height:150px;place-items:center;text-align:center;padding:24px;border:1.5px dashed var(--color-border-strong);border-radius:20px;background:var(--color-surface-secondary);cursor:pointer;transition:border-color var(--motion-base),background var(--motion-base),transform var(--motion-base)}
+.avatar-dropzone:hover{border-color:var(--color-primary);background:var(--color-primary-soft);transform:translateY(-1px)}
+.avatar-dropzone .icon{width:30px;height:30px;color:var(--color-primary)}.avatar-dropzone strong{display:block;margin-top:8px}.avatar-dropzone>span:last-of-type{color:var(--color-text-muted);font-size:12px}.avatar-dropzone input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.avatar-modal-actions{padding-inline:0!important}
+.avatar-danger-zone{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid var(--color-border)}
+.avatar-danger-zone>div{display:grid;gap:3px}.avatar-danger-zone span{color:var(--color-text-muted);font-size:12px}
+
+/* Searchable participant picker. */
+.participant-combobox{position:relative;display:grid;gap:7px;min-width:min(100%,420px);flex:1}
+.participant-combobox-input{position:relative}.participant-combobox-input .icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);pointer-events:none}.participant-combobox-input input{width:100%;padding-left:42px!important}
+.combobox-list{position:absolute;z-index:100;top:calc(100% + 6px);left:0;right:0;max-height:300px;overflow:auto;padding:6px;border:1px solid var(--color-border);border-radius:14px;background:var(--color-surface);box-shadow:var(--shadow-lg)}
+.combobox-list[hidden]{display:none!important}.combobox-option{display:grid!important;width:100%;gap:2px;padding:10px 11px!important;border:0!important;border-radius:10px!important;background:transparent!important;color:var(--color-text)!important;text-align:left!important}.combobox-option:hover,.combobox-option:focus{background:var(--color-primary-soft)!important}.combobox-option span{color:var(--color-text-muted);font-size:11px}.combobox-selected{display:grid;gap:2px;color:var(--color-text)}.combobox-selected span{color:var(--color-text-muted);font-size:11px}
+
+/* Toasts. */
+.amp-toast-region{position:fixed;z-index:160;top:82px;right:20px;display:grid;gap:9px;width:min(360px,calc(100vw - 28px));pointer-events:none}
+.amp-toast{transform:translateX(14px);opacity:0;padding:13px 15px;border:1px solid var(--color-border);border-left:4px solid var(--color-info);border-radius:14px;background:var(--color-surface);box-shadow:var(--shadow-lg);color:var(--color-text);font-size:13px;transition:opacity var(--motion-base),transform var(--motion-base);pointer-events:auto}.amp-toast.show{opacity:1;transform:translateX(0)}.amp-toast.success{border-left-color:var(--color-success)}.amp-toast.warning{border-left-color:var(--color-warning)}.amp-toast.error{border-left-color:var(--color-danger)}
+
+/* Contrast corrections. */
+.dashboard-experience-hero .eyebrow,.help-hero .eyebrow{color:rgba(255,255,255,.86)!important}
+.dashboard-experience-hero p,.help-hero p{color:rgba(255,255,255,.92)!important;opacity:1!important}
+input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--color-text-muted) 82%,var(--color-surface))!important;opacity:1}
+
+/* Fluid type and predictable action sizes. */
+.profile-hero h1{font-size:clamp(2rem,3.4vw,3.7rem)!important;line-height:1.02!important}
+.idea-detail-page h1,.detail-hero h1{font-size:clamp(1.8rem,3vw,3.2rem)!important}
+.primary,.soft-button,.danger-btn{min-height:44px}.profile-hero-actions .primary{min-height:48px}
+
+/* Help categories are real panels, not anchor navigation. */
+.help-category-tabs{margin-block:2px 14px}.help-category-panel[hidden]{display:none!important}.help-category-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+
+@media(max-width:760px){
+  .amp-tablist{border-radius:15px}.amp-tab{min-height:44px;padding:9px 13px}.account-menu{position:fixed;right:12px;top:64px}.amp-toast-region{top:auto;right:14px;bottom:14px}.avatar-danger-zone{align-items:stretch;flex-direction:column}.help-category-panel{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important}.panel-enter,.amp-modal[open]::backdrop,.amp-modal[open] .amp-modal-shell{animation:none!important}.amp-tab-indicator,.account-chevron{transition:none!important}
+}

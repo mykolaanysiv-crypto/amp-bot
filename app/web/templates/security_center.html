@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Security Center • АМПасадори{% endblock %}
 {% block topbar_context %}Security Center{% endblock %}
 {% block topbar_hint %}Аутентифікація, сесії та production telemetry{% endblock %}
@@ -28,12 +29,12 @@
   <section class="card security-card">
     <div class="section-title"><div><h2>Шифрування</h2><p>Показується тільки стан конфігурації.</p></div></div>
     <div class="security-facts">
-      <div><span>FIELD_ENCRYPTION_KEY</span><b>{{ '✅ SET' if snapshot.encryption.field_key_configured else '❌ MISSING' }}</b></div>
-      <div><span>Окремий від session secret</span><b>{{ '✅ Так' if snapshot.encryption.field_key_separate else '❌ Ні' }}</b></div>
-      <div><span>Previous keys для rotation</span><b>{{ '✅ Налаштовано' if snapshot.encryption.previous_keys_configured else '— Немає' }}</b></div>
-      <div><span>Passkeys / WebAuthn</span><b>{{ '✅ Активні' if snapshot.passkeys.enabled else '⚠️ Не активовані' }}</b></div>
-      <div><span>WebAuthn HTTPS origin</span><b>{{ '✅ Так' if snapshot.passkeys.https_origin else '— Ні' }}</b></div>
-      <div><span>CSP</span><b>✅ Enforced + nonce Report-Only</b></div>
+      <div><span>FIELD_ENCRYPTION_KEY</span><b>{{ ' SET' if snapshot.encryption.field_key_configured else ' MISSING' }}</b></div>
+      <div><span>Окремий від session secret</span><b>{{ ' Так' if snapshot.encryption.field_key_separate else ' Ні' }}</b></div>
+      <div><span>Previous keys для rotation</span><b>{{ ' Налаштовано' if snapshot.encryption.previous_keys_configured else '— Немає' }}</b></div>
+      <div><span>Passkeys / WebAuthn</span><b>{{ ' Активні' if snapshot.passkeys.enabled else ' Не активовані' }}</b></div>
+      <div><span>WebAuthn HTTPS origin</span><b>{{ ' Так' if snapshot.passkeys.https_origin else '— Ні' }}</b></div>
+      <div><span>CSP</span><b><span class="icon ui-inline-icon">{{ icon('check') }}</span> Enforced + nonce Report-Only</b></div>
     </div>
   </section>
   <section class="card security-card">

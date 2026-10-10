@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Пошук • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Глобальний пошук</b></nav>
-<div class="page-head"><div><span class="eyebrow">ШВИДКА НАВІГАЦІЯ</span><h1>🔎 Глобальний пошук</h1><p>Шукайте учасників, події, кейси, ідеї, квести, задачі, активності, можливості й опитування.</p></div></div>
-<form class="card global-search-page-form" action="/admin/search" method="get"><input name="q" value="{{q}}" autofocus placeholder="АМП-0006, ПІБ, телефон, email, AMP-2026-0012, назва…"><button class="primary">🔎 Знайти</button></form>
+<div class="page-head"><div><span class="eyebrow">ШВИДКА НАВІГАЦІЯ</span><h1><span class="icon ui-inline-icon">{{ icon('search') }}</span> Глобальний пошук</h1><p>Шукайте учасників, події, кейси, ідеї, квести, задачі, активності, можливості й опитування.</p></div></div>
+<form class="card global-search-page-form" action="/admin/search" method="get"><input name="q" value="{{q}}" autofocus placeholder="АМП-0006, ПІБ, телефон, email, AMP-2026-0012, назва…"><button class="primary"><span class="icon ui-inline-icon">{{ icon('search') }}</span> Знайти</button></form>
 {% if q %}<p class="muted search-summary">Знайдено: <b>{{total}}</b> • запит «{{q}}»</p>{% endif %}
 <div class="search-groups">
 {% for group, rows in groups.items() %}

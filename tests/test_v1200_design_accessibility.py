@@ -12,12 +12,12 @@ def read(rel: str) -> str:
 
 
 def test_v1200_version_schema_and_cache_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.20.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.20.1"
-    assert '"1.20.1"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.20.2"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.2"
+    assert '"1.20.2"' in read("app/version.py")
     assert 'revision: str = "20261008_0017"' in read("migrations/versions/20261008_0017_media_storage_lifecycle.py")
     for template in ("base.html", "login.html", "login_2fa.html", "login_passkey.html", "account_security.html"):
-        assert "v=1.20.1" in read(f"app/web/templates/{template}")
+        assert "v=1.20.2" in read(f"app/web/templates/{template}")
 
 
 def test_app_shell_has_collapsible_desktop_and_accessible_mobile_drawer():
@@ -85,8 +85,8 @@ def test_csp_nonce_architecture_is_preserved_for_scripts():
     base = read("app/web/templates/base.html")
     middleware = read("app/web/security_middleware.py")
     assert 'nonce="{{ request.state.csp_nonce }}"' in base
-    assert '/static/app_shell.js?v=1.20.1' in base
-    assert '/static/admin_forms.js?v=1.20.1' in base
+    assert '/static/app_shell.js?v=1.20.2' in base
+    assert '/static/admin_forms.js?v=1.20.2' in base
     assert "unsafe-eval" not in base
     assert "content-security-policy" in middleware
     assert "csp_nonce" in middleware

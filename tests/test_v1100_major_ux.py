@@ -42,12 +42,34 @@ def test_my_amp_today_dashboard_exists():
 
 def test_participant_360_tabs_all_have_icons():
     tpl = text("app/web/templates/user_detail.html")
-    expected = [
-        "🏠 Огляд", "🎯 Квести", "⚡ Активності", "⚡ XP", "📅 Події", "✅ Волонтерство",
-        "💡 Ідеї", "📋 Опитування", "🏅 Бейджі", "🏆 Сезони", "📄 Документи",
-    ]
-    for label in expected:
-        assert f">{label}</button>" in tpl
+
+    # v1.20.2 intentionally replaced system emoji with the unified AMP SVG
+    # icon macro. Preserve the actual production requirement: every 360°
+    # tab must still have its expected icon and readable text label.
+    expected = {
+        "overview": ("home", "Огляд"),
+        "quests": ("target", "Квести"),
+        "activities": ("bolt", "Активності"),
+        "xp": ("bolt", "XP"),
+        "events": ("calendar", "Події"),
+        "volunteer": ("check", "Волонтерство"),
+        "ideas": ("idea", "Ідеї"),
+        "surveys": ("clipboard", "Опитування"),
+        "badges": ("badge", "Бейджі"),
+        "seasons": ("trophy", "Сезони"),
+        "documents": ("file", "Документи"),
+    }
+
+    for tab_name, (icon_name, label) in expected.items():
+        marker = f'data-tab="{tab_name}"'
+        assert marker in tpl
+
+        start = tpl.index(marker)
+        end = tpl.index("</button>", start)
+        button = tpl[start:end]
+
+        assert f"icon('{icon_name}')" in button
+        assert label in button
 
 
 def test_runtime_settings_are_editable_and_used():

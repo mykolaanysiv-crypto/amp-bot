@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}{{case.case_number or ('AMP-' ~ case.created_at.strftime('%Y') ~ '-' ~ case.id)}} • Звернення{% endblock %}
 {% block content %}
 {% set number = case.case_number or ('AMP-' ~ case.created_at.strftime('%Y') ~ '-' ~ case.id) %}
@@ -19,7 +20,7 @@
 
 <div class="request-detail-grid request-case-grid">
   <section class="card">
-    <div class="section-title"><div><h2>📌 Картка кейсу</h2><p class="muted">Основні параметри звернення та строки реагування.</p></div></div>
+    <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('pin') }}</span> Картка кейсу</h2><p class="muted">Основні параметри звернення та строки реагування.</p></div></div>
     <div class="facts case-facts">
       <div><span>Номер</span><b>{{number}}</b></div>
       <div><span>Статус</span><b>{{request_status_label(case.status)}}</b></div>
@@ -34,7 +35,7 @@
   </section>
 
   <section class="card">
-    <div class="section-title"><div><h2>⚙️ Опрацювання</h2><p class="muted">Учасник автоматично отримує Telegram-повідомлення про зміни статусу, строку та відповідального.</p></div></div>
+    <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('settings') }}</span> Опрацювання</h2><p class="muted">Учасник автоматично отримує Telegram-повідомлення про зміни статусу, строку та відповідального.</p></div></div>
     <form method="post" action="/admin/requests/{{case.id}}/update" class="form-grid case-update-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Статус<select name="status">{% for st in statuses %}<option value="{{st}}" {% if case.status==st %}selected{% endif %}>{{request_status_label(st)}}</option>{% endfor %}</select></label>
       <label>Пріоритет<select name="priority">{% for p in priorities %}<option value="{{p}}" {% if case.priority==p %}selected{% endif %}>{{label(p)}}</option>{% endfor %}</select></label>
@@ -42,19 +43,19 @@
       <label>Дедлайн відповіді<input type="datetime-local" name="response_deadline" value="{{case.response_deadline.strftime('%Y-%m-%dT%H:%M') if case.response_deadline else ''}}"></label>
       <label class="span2">Відповідальний<select name="assigned_user_id"><option value="">Не призначено</option>{% for u in team %}<option value="{{u.id}}" {% if case.assigned_user_id==u.id %}selected{% endif %}>{{u.full_name}} — {{label(u.role)}}</option>{% endfor %}</select><small>Можна призначити лише Суперадміна, Адміна, Координатора або АМПасадора.</small></label>
       <label class="span2">Внутрішня примітка<textarea name="internal_note" placeholder="Не показується учаснику">{{case.internal_note or ''}}</textarea></label>
-      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти кейс</button></div>
+      <div class="span2 form-actions-row"><button class="primary"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти кейс</button></div>
     </form>
   </section>
 </div>
 
 <section class="card case-thread-card">
-  <div class="section-title"><div><h2>💬 Історія переписки</h2><p class="muted">Повідомлення та вкладення зберігаються хронологічно в одному кейсі.</p></div><span>{{messages|length}}</span></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('message') }}</span> Історія переписки</h2><p class="muted">Повідомлення та вкладення зберігаються хронологічно в одному кейсі.</p></div><span>{{messages|length}}</span></div>
   <div class="case-thread">
     {% for msg,sender in messages %}
       <article class="case-message {{msg.sender_type}}">
-        <div class="case-message-head"><b>{% if msg.sender_type=='participant' %}👤 {{sender.full_name if sender else author.full_name}}{% elif msg.sender_type=='admin' %}🛠 Команда АМП{% else %}⚙️ Система{% endif %}</b><span>{{msg.created_at.strftime('%d.%m.%Y %H:%M')}}</span></div>
+        <div class="case-message-head"><b>{% if msg.sender_type=='participant' %}<span class="icon ui-inline-icon">{{ icon('user') }}</span> {{sender.full_name if sender else author.full_name}}{% elif msg.sender_type=='admin' %}<span class="icon ui-inline-icon">{{ icon('settings') }}</span> Команда АМП{% else %}<span class="icon ui-inline-icon">{{ icon('settings') }}</span> Система{% endif %}</b><span>{{msg.created_at.strftime('%d.%m.%Y %H:%M')}}</span></div>
         {% if msg.body %}<p class="preline">{{msg.body}}</p>{% endif %}
-        {% if msg.image_path %}<a class="case-attachment" href="{{msg.image_path}}" target="_blank"><img src="{{msg.image_path}}" alt="Вкладення"><span>📎 Відкрити вкладення</span></a>{% endif %}
+        {% if msg.image_path %}<a class="case-attachment" href="{{msg.image_path}}" target="_blank"><img src="{{msg.image_path}}" alt="Вкладення"><span><span class="icon ui-inline-icon">{{ icon('attachment') }}</span> Відкрити вкладення</span></a>{% endif %}
       </article>
     {% else %}<p class="muted">Історія переписки поки порожня.</p>{% endfor %}
   </div>
@@ -63,7 +64,7 @@
   <form method="post" action="/admin/requests/{{case.id}}/message" enctype="multipart/form-data" class="case-reply-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label>Повідомлення учаснику<textarea name="body" placeholder="Напишіть відповідь, уточнення або наступний крок..."></textarea></label>
     <label class="upload-field">Вкладення<input name="photo" type="file" accept="image/*"><small>Фото до 20 МБ.</small></label>
-    <button class="primary">📤 Надіслати повідомлення</button>
+    <button class="primary"><span class="icon ui-inline-icon">{{ icon('share') }}</span> Надіслати повідомлення</button>
   </form>
   {% else %}<div class="project-locked-note"><b>Кейс закрито</b><span>Щоб продовжити переписку, змініть статус кейсу.</span></div>{% endif %}
 </section>

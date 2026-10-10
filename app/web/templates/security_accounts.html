@@ -20,11 +20,14 @@
       </div>
       <form method="post" action="/admin/security/accounts/{{ item.id }}/profile-link" class="security-account-profile-link">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>Пов’язаний participant-профіль
-          <input name="linked_user_id" inputmode="numeric" value="{{ item.linked_user_id or '' }}" placeholder="AMP ID, наприклад 42">
-          <small>{{ linked_user_names.get(item.id, 'Не пов’язано') }}</small>
-        </label>
-        <button class="soft-button" type="submit">Зберегти зв’язок</button>
+        <div class="participant-combobox" data-participant-combobox>
+          <label for="participant-search-{{ item.id }}">Пов’язаний participant-профіль</label>
+          <input type="hidden" name="linked_user_id" value="{{ item.linked_user_id or '' }}">
+          <div class="participant-combobox-input"><span class="icon">{{ icon('search') }}</span><input id="participant-search-{{ item.id }}" type="search" data-combobox-input role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="participant-options-{{ item.id }}" autocomplete="off" placeholder="Пошук за ПІБ, АМП-кодом або username" value="{{ linked_user_names.get(item.id, '') }}"></div>
+          <div class="combobox-list" id="participant-options-{{ item.id }}" role="listbox" data-combobox-list hidden></div>
+          <div class="combobox-selected" data-combobox-selected>{% if linked_user_names.get(item.id) %}<strong>{{ linked_user_names.get(item.id) }}</strong><span>Поточний зв’язок</span>{% else %}<span>Participant-профіль не пов’язано</span>{% endif %}</div>
+        </div>
+        <button class="soft-button" type="submit"><span class="icon">{{ icon('check') }}</span><span>Зберегти зв’язок</span></button>
       </form>
       <details class="permission-editor">
         <summary>Права доступу · {{ current|length }}</summary>

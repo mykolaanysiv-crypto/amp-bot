@@ -180,6 +180,7 @@ def ctx(request: Request, **kwargs):
         "request": request,
         "settings": settings,
         "admin_name": request.session.get("admin_name", ""),
+        "admin_avatar_path": request.session.get("admin_avatar_path"),
         "admin_role": web_role(request),
         "is_superadmin": is_superadmin(request),
         "admin_permissions": web_permissions(request),

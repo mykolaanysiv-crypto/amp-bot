@@ -20,7 +20,7 @@ def test_event_detail_has_manual_feedback_resend_action():
     overview = read("app/web/event_routes/overview.py")
     assert 'id="event-feedback"' in template
     assert 'action="/admin/events/{{event.id}}/feedback/resend"' in template
-    assert "🔁 Повторно надіслати відгук" in template
+    assert "Повторно надіслати відгук" in template
     assert "feedback_stats.pending" in template
     assert 'feedback_stats["pending"]' in overview
 

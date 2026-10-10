@@ -38,17 +38,18 @@ def test_scanner_is_telegram_miniapp_and_continuous():
     admin = "\n".join((ROOT / "app/handlers" / name).read_text(encoding="utf-8") for name in ['admin.py', 'admin_common.py', 'admin_core.py', 'admin_events.py', 'admin_quests_rewards.py', 'admin_activities_tasks.py', 'admin_opportunities.py', 'admin_moderation.py'])
     routes = event_routes_source()
     template = (ROOT / "app/web/templates/telegram_event_scanner.html").read_text(encoding="utf-8")
+    scanner_js = (ROOT / "app/web/static/telegram_event_scanner.js").read_text(encoding="utf-8")
     assert "WebAppInfo" in admin
     assert 'web_app=WebAppInfo(url=f"{base}/tg/event-scanner/{event.id}")' in admin
     assert '@router.get("/tg/event-scanner/{event_id}"' in routes
     assert '@router.post("/tg/event-scanner/{event_id}/scan")' in routes
-    assert "showScanQrPopup" in template
-    assert "/tg/event-scanner/{{ event.id }}/scan" in template
+    assert "showScanQrPopup" in scanner_js
+    assert 'data-scan-endpoint="/tg/event-scanner/{{ event.id }}/scan"' in template
     assert "/tg/event-сканер/" not in template
-    assert "Код скановано успішно" in template
-    assert "return true" in template
-    assert "scheduleNextScan" in template
-    assert "window.addEventListener('load'" in template
+    assert "Код скановано успішно" in scanner_js
+    assert "return true" in scanner_js
+    assert "scheduleNextScan" in scanner_js
+    assert "window.addEventListener('load'" in scanner_js
     assert "miniapp_scan:" in routes
     assert "Бейдж відскановано" in routes
 

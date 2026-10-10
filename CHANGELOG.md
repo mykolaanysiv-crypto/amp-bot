@@ -1,3 +1,11 @@
+## 1.20.2 — UI Polish, Navigation & Interaction 3.0
+- Real semantic account tabs with query-state persistence and keyboard navigation; anchor-scroll tab UX removed.
+- Added interaction.js/interaction.css: account dropdown, participant combobox, avatar preview, toasts, motion/hover/contrast polish.
+- Removed duplicate account navigation/sidebar identity and stabilized avatar/logo layout.
+- System-authored web emoji icons replaced by the unified SVG icon system; Telegram/user-generated emoji unchanged.
+- Help Center category navigation and responsive interaction improvements.
+- No database migration; Alembic head remains 20261010_0018.
+
 # AMP XP v1.20.1 — Visual Experience & User Profiles (2026-10-10)
 
 - Deepened the v1.20.0 design system beyond navigation: richer page headers, cards, metrics, forms, internal surfaces, responsive limits, gradients and restrained motion.
@@ -998,3 +1006,9 @@
 - Grace-aware missed event reminders, grouped XP-wallet anomaly query, transactional issue auto-reopen/auto-resolution with append-only audit.
 - Strict positive and increasing league thresholds; version-aware historical league transitions without re-awarding XP.
 - Fixed Linux/macOS and Windows local launch scripts; updated test and deployment documentation. Database head unchanged (`20260921_0014`).
+
+### v1.20.2 final interaction/CSP hardening
+- Moved remaining executable inline JavaScript and HTML event handlers to external CSP-safe static modules.
+- Added CSP externalization source/JS smoke gates to CI and release consistency/preflight.
+- Completed unified SVG web icon pass for pending/download/return/refresh/start/stop/external-link actions.
+- Kept Telegram/user-generated emoji semantics unchanged.

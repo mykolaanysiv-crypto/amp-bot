@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Можливості • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Можливості</b></nav>
 <div class="page-head">
   <div>
     <span class="eyebrow">РОЗУМНІ МОЖЛИВОСТІ</span>
-    <h1>🌍 Каталог можливостей</h1>
+    <h1><span class="icon ui-inline-icon">{{ icon('globe') }}</span> Каталог можливостей</h1>
     <p>На дошці показуємо лише ключове. Повний опис, аналітика, поширення та керування відкриваються через «Детально».</p>
   </div>
 </div>
@@ -20,7 +21,7 @@
 </form>
 
 <section class="card opportunity-create-card">
-  <div class="section-title"><div><h2>➕ Додати можливість</h2><p class="muted">Після створення відкриється окрема картка можливості з керуванням та аналітикою.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Додати можливість</h2><p class="muted">Після створення відкриється окрема картка можливості з керуванням та аналітикою.</p></div></div>
   <form class="form-grid" method="post" action="/admin/opportunities/create" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="span2">Назва<input name="title" required></label>
@@ -35,7 +36,7 @@
     <label class="span2">Опис<textarea name="description"></textarea></label>
     <label class="span2">Фото можливості<input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP.</small></label>
     <label class="check-line"><input name="active" type="checkbox" value="1" checked> Опубліковано</label>
-    <div class="span2 form-actions-row"><button class="primary">🌍 Створити можливість</button></div>
+    <div class="span2 form-actions-row"><button class="primary"><span class="icon ui-inline-icon">{{ icon('globe') }}</span> Створити можливість</button></div>
   </form>
 </section>
 
@@ -43,22 +44,22 @@
 {% for item in items %}
 <article class="card opportunity-card {% if opportunity_states.get(item.id, {}).get('urgent') %}opportunity-urgent{% elif opportunity_states.get(item.id, {}).get('expired') or not item.active %}opportunity-inactive{% endif %}">
   <div class="opportunity-card-media">
-    {% if item.image_path %}<img class="opportunity-cover" src="{{item.image_path}}" alt="Фото: {{item.title}}">{% else %}<div class="opportunity-cover opportunity-cover-placeholder">🌍</div>{% endif %}
+    {% if item.image_path %}<img class="opportunity-cover" src="{{item.image_path}}" alt="Фото: {{item.title}}">{% else %}<div class="opportunity-cover opportunity-cover-placeholder"><span class="icon ui-inline-icon">{{ icon('globe') }}</span></div>{% endif %}
   </div>
   <div class="entity-card-topline opportunity-card-topline">
     <div><span class="tag">{{item.kind}}</span> <span class="tag {% if item.active %}good{% endif %}">{{'Активна' if item.active else 'Неактивна'}}</span></div>
     <span class="event-date-badge">{{item.deadline.strftime('%d.%m.%Y') if item.deadline else 'Без дедлайну'}}</span>
   </div>
   <h3 class="opportunity-card-title">{{item.title}}</h3>
-  {% if opportunity_states.get(item.id, {}).get('urgent') %}<div class="opportunity-deadline-alert compact">🔥 Останні 3 дні для подачі</div>{% endif %}
+  {% if opportunity_states.get(item.id, {}).get('urgent') %}<div class="opportunity-deadline-alert compact"><span class="icon ui-inline-icon">{{ icon('trend') }}</span> Останні 3 дні для подачі</div>{% endif %}
   <div class="opportunity-card-facts">
-    <span>🧭 {{item.direction or 'Інше'}}</span>
-    <span>💻 {{item.format or '—'}}</span>
-    <span>✨ {{match_counts.get(item.id,0)}} збігів</span>
-    <span>💙 {{interest_counts.get(item.id,0)}} зацікавлених</span>
-    <span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span>
+    <span><span class="icon ui-inline-icon">{{ icon('compass') }}</span> {{item.direction or 'Інше'}}</span>
+    <span><span class="icon ui-inline-icon">{{ icon('monitor') }}</span> {{item.format or '—'}}</span>
+    <span><span class="icon ui-inline-icon">{{ icon('sparkle') }}</span> {{match_counts.get(item.id,0)}} збігів</span>
+    <span><span class="icon ui-inline-icon">{{ icon('heart') }}</span> {{interest_counts.get(item.id,0)}} зацікавлених</span>
+    <span><span class="icon ui-inline-icon">{{ icon('eye') }}</span> {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span>
   </div>
-  <div class="opportunity-card-actions"><a class="primary link-button" href="/admin/opportunities/{{item.id}}">👁 Детально</a></div>
+  <div class="opportunity-card-actions"><a class="primary link-button" href="/admin/opportunities/{{item.id}}"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Детально</a></div>
 </article>
 {% else %}
 <section class="card"><p class="empty">Можливостей ще немає.</p></section>

@@ -98,19 +98,19 @@ async def global_search(request: Request, q: str = ""):
             activity_results: list[dict] = []
             if can_quests:
                 quests = (await session.scalars(select(Quest).where(or_(Quest.title.ilike(like), Quest.description.ilike(like))).order_by(Quest.starts_at.desc()).limit(8))).all()
-                activity_results.extend({"title": qst.title, "meta": "🎯 Квест", "url": f"/admin/quests/{qst.id}"} for qst in quests)
+                activity_results.extend({"title": qst.title, "meta": "Квест", "url": f"/admin/quests/{qst.id}"} for qst in quests)
             if can_tasks:
                 tasks = (await session.scalars(select(VolunteerTask).where(or_(VolunteerTask.title.ilike(like), VolunteerTask.description.ilike(like))).order_by(VolunteerTask.created_at.desc()).limit(8))).all()
-                activity_results.extend({"title": t.title, "meta": "✅ Волонтерська задача", "url": f"/admin/tasks/{t.id}"} for t in tasks)
+                activity_results.extend({"title": t.title, "meta": "Волонтерська задача", "url": f"/admin/tasks/{t.id}"} for t in tasks)
             if can_activities:
                 activity_types = (await session.scalars(select(ActivityType).where(or_(ActivityType.title.ilike(like), ActivityType.description.ilike(like))).order_by(ActivityType.title.asc()).limit(8))).all()
-                activity_results.extend({"title": a.title, "meta": "⚡ Активність", "url": f"/admin/activities?type={a.id}"} for a in activity_types)
+                activity_results.extend({"title": a.title, "meta": "Активність", "url": f"/admin/activities?type={a.id}"} for a in activity_types)
             if can_opportunities:
                 opportunities = (await session.scalars(select(Opportunity).where(or_(Opportunity.title.ilike(like), Opportunity.description.ilike(like))).order_by(Opportunity.created_at.desc()).limit(8))).all()
-                activity_results.extend({"title": o.title, "meta": f"🌍 {o.kind}", "url": "/admin/opportunities?q=" + quote(o.title)} for o in opportunities)
+                activity_results.extend({"title": o.title, "meta": f"{o.kind}", "url": "/admin/opportunities?q=" + quote(o.title)} for o in opportunities)
             if can_surveys:
                 surveys = (await session.scalars(select(Survey).where(or_(Survey.title.ilike(like), Survey.description.ilike(like))).order_by(Survey.created_at.desc()).limit(8))).all()
-                activity_results.extend({"title": s.title, "meta": "📋 Опитування", "url": f"/admin/surveys/{s.id}"} for s in surveys)
+                activity_results.extend({"title": s.title, "meta": "Опитування", "url": f"/admin/surveys/{s.id}"} for s in surveys)
             groups["Активності"] = activity_results[:24]
 
     return templates.TemplateResponse(
@@ -186,31 +186,31 @@ async def calendar_page(request: Request, view: str = "month", date_value: str =
         )).all()
 
     for e in events:
-        add_item(e.starts_at, "📅", e.title, "Подія", "event", f"/admin/events/{e.id}", lifecycle_status_label(e.status))
+        add_item(e.starts_at, "calendar", e.title, "Подія", "event", f"/admin/events/{e.id}", lifecycle_status_label(e.status))
     for q in quests:
         if q.starts_at and start_dt <= q.starts_at <= end_dt:
-            add_item(q.starts_at, "🎯", q.title, "Старт квесту", "quest", f"/admin/quests/{q.id}", lifecycle_status_label(q.status))
+            add_item(q.starts_at, "target", q.title, "Старт квесту", "quest", f"/admin/quests/{q.id}", lifecycle_status_label(q.status))
         if q.ends_at and start_dt <= q.ends_at <= end_dt:
-            add_item(q.ends_at, "🎯", q.title, "Дедлайн квесту", "quest", f"/admin/quests/{q.id}", lifecycle_status_label(q.status))
+            add_item(q.ends_at, "target", q.title, "Дедлайн квесту", "quest", f"/admin/quests/{q.id}", lifecycle_status_label(q.status))
     for t in tasks:
-        add_item(t.deadline, "✅", t.title, "Дедлайн задачі", "task", f"/admin/tasks/{t.id}", lifecycle_status_label(t.status))
+        add_item(t.deadline, "check", t.title, "Дедлайн задачі", "task", f"/admin/tasks/{t.id}", lifecycle_status_label(t.status))
     for srow in surveys:
         if srow.starts_at and start_dt <= srow.starts_at <= end_dt:
-            add_item(srow.starts_at, "📋", srow.title, "Старт опитування", "survey", f"/admin/surveys/{srow.id}", label(srow.status))
+            add_item(srow.starts_at, "survey", srow.title, "Старт опитування", "survey", f"/admin/surveys/{srow.id}", label(srow.status))
         if srow.ends_at and start_dt <= srow.ends_at <= end_dt:
-            add_item(srow.ends_at, "📋", srow.title, "Дедлайн опитування", "survey", f"/admin/surveys/{srow.id}", label(srow.status))
+            add_item(srow.ends_at, "survey", srow.title, "Дедлайн опитування", "survey", f"/admin/surveys/{srow.id}", label(srow.status))
     for o in opportunities:
-        add_item(o.deadline, "🌍", o.title, "Дедлайн можливості", "opportunity", "/admin/opportunities?q=" + quote(o.title), o.kind)
+        add_item(o.deadline, "globe", o.title, "Дедлайн можливості", "opportunity", "/admin/opportunities?q=" + quote(o.title), o.kind)
     for c in cases:
-        add_item(c.response_deadline, "🆘", c.title, "Дедлайн кейсу", "case", f"/admin/requests/{c.id}", c.case_number or f"AMP-{c.id:04d}")
+        add_item(c.response_deadline, "lifebuoy", c.title, "Дедлайн кейсу", "case", f"/admin/requests/{c.id}", c.case_number or f"AMP-{c.id:04d}")
     for i in ideas:
-        add_item(i.implementation_deadline, "💡", i.title, "Дедлайн ідеї / мініпроєкту", "idea", f"/admin/ideas/{i.id}", idea_status_label(i.status))
+        add_item(i.implementation_deadline, "idea", i.title, "Дедлайн ідеї / мініпроєкту", "idea", f"/admin/ideas/{i.id}", idea_status_label(i.status))
     for freeze, user in freezes:
         freeze_day = max(freeze.starts_at.date(), period_start)
         freeze_end_day = min(freeze.ends_at.date(), period_end)
         while freeze_day <= freeze_end_day:
             add_item(
-                datetime.combine(freeze_day, datetime.min.time()), "❄️", f"{user.full_name} — заморозка серії", "Заморозка серії",
+                datetime.combine(freeze_day, datetime.min.time()), "activity", f"{user.full_name} — заморозка серії", "Заморозка серії",
                 "freeze", f"/admin/streaks/{user.id}",
                 f"{freeze.starts_at.strftime('%d.%m')}–{freeze.ends_at.strftime('%d.%m')} • {freeze.days} дн.",
             )

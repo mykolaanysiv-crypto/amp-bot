@@ -190,22 +190,22 @@ async def user_detail(request: Request, user_id: int):
         }
         timeline=[]
         for tx in txs:
-            timeline.append({"at":tx.created_at,"icon":"⚡","title":f"{int(tx.amount):+d} XP — {label(tx.category)}","detail":tx.description or ""})
+            timeline.append({"at":tx.created_at,"icon":"bolt","title":f"{int(tx.amount):+d} XP — {label(tx.category)}","detail":tx.description or ""})
         for r in event_regs:
             if r.status=="attended":
-                timeline.append({"at":r.confirmed_at or r.checkin_at or r.registered_at,"icon":"📅","title":"Відвідав/ла подію","detail":r.event.title if r.event else f"Подія #{r.event_id}"})
+                timeline.append({"at":r.confirmed_at or r.checkin_at or r.registered_at,"icon":"calendar","title":"Відвідав/ла подію","detail":r.event.title if r.event else f"Подія #{r.event_id}"})
         for row in quest_rows:
-            if row.status == "approved": timeline.append({"at":row.approved_at or row.completed_at or row.joined_at,"icon":"🎯","title":"Виконано квест","detail":row.quest.title if row.quest else f"Квест #{row.quest_id}"})
+            if row.status == "approved": timeline.append({"at":row.approved_at or row.completed_at or row.joined_at,"icon":"target","title":"Виконано квест","detail":row.quest.title if row.quest else f"Квест #{row.quest_id}"})
         for row in task_rows:
-            if row.status == "approved": timeline.append({"at":row.approved_at or row.submitted_at or row.joined_at,"icon":"✅","title":"Виконано волонтерську задачу","detail":row.task.title if row.task else f"Задача #{row.task_id}"})
+            if row.status == "approved": timeline.append({"at":row.approved_at or row.submitted_at or row.joined_at,"icon":"check","title":"Виконано волонтерську задачу","detail":row.task.title if row.task else f"Задача #{row.task_id}"})
         for row in activity_rows:
-            if row.status == "activity_completed": timeline.append({"at":row.completed_at or row.submitted_at or row.requested_at,"icon":"⚡","title":"Підтверджено активність","detail":row.activity_type.title if row.activity_type else f"Активність #{row.activity_type_id}"})
-        for row in idea_rows: timeline.append({"at":row.created_at,"icon":"💡","title":"Подано ідею","detail":row.title})
-        for row in survey_rows: timeline.append({"at":row.completed_at,"icon":"📋","title":"Пройдено опитування","detail":row.survey.title if row.survey else f"Опитування #{row.survey_id}"})
+            if row.status == "activity_completed": timeline.append({"at":row.completed_at or row.submitted_at or row.requested_at,"icon":"bolt","title":"Підтверджено активність","detail":row.activity_type.title if row.activity_type else f"Активність #{row.activity_type_id}"})
+        for row in idea_rows: timeline.append({"at":row.created_at,"icon":"idea","title":"Подано ідею","detail":row.title})
+        for row in survey_rows: timeline.append({"at":row.completed_at,"icon":"survey","title":"Пройдено опитування","detail":row.survey.title if row.survey else f"Опитування #{row.survey_id}"})
         badge_rows = list((await session.scalars(select(UserBadge).where(UserBadge.user_id==user.id).order_by(UserBadge.awarded_at.desc()))).all())
         for ub in badge_rows:
             badge=await session.get(Badge,ub.badge_id)
-            timeline.append({"at":ub.awarded_at,"icon":"🏅","title":"Отримано бейдж","detail":badge.name if badge else f"Бейдж #{ub.badge_id}"})
+            timeline.append({"at":ub.awarded_at,"icon":"badge","title":"Отримано бейдж","detail":badge.name if badge else f"Бейдж #{ub.badge_id}"})
         timeline=sorted([x for x in timeline if x.get("at")],key=lambda x:x["at"],reverse=True)[:100]
         try: restoration_answers=json.loads(user.restoration_answers_json or "{}")
         except Exception: restoration_answers={}

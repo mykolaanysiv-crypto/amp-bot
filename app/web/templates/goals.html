@@ -1,19 +1,20 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Цілі & місії • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Цілі & місії</b></nav>
 <div class="page-head">
-  <div><span class="eyebrow">ЖИВА ГЕЙМІФІКАЦІЯ</span><h1>🏁 Цілі & місії</h1><p>Адміністратор сам задає умову, спосіб вимірювання, дедлайн і нагороду. Прогрес рахується автоматично, XP за виконання видаються один раз.</p></div>
+  <div><span class="eyebrow">ЖИВА ГЕЙМІФІКАЦІЯ</span><h1><span class="icon ui-inline-icon">{{ icon('flag') }}</span> Цілі & місії</h1><p>Адміністратор сам задає умову, спосіб вимірювання, дедлайн і нагороду. Прогрес рахується автоматично, XP за виконання видаються один раз.</p></div>
 </div>
 
 <section class="card goal-builder-card">
-  <div class="section-title"><div><h2>➕ Нова ціль або місія</h2><p class="muted">Сформулюйте конкретне завдання і оберіть, за яким показником система має рахувати прогрес.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Нова ціль або місія</h2><p class="muted">Сформулюйте конкретне завдання і оберіть, за яким показником система має рахувати прогрес.</p></div></div>
   <form class="form-grid goal-form" method="post" action="/admin/goals/create" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label>Тип
-      <select name="scope" id="goalScope" onchange="toggleGoalUser()">
-        <option value="season">🌟 Сезонна місія — кожен виконує особисто</option>
-        <option value="personal">🎯 Персональна ціль</option>
-        <option value="team">👥 Командна ціль АМПасадорів</option>
+      <select name="scope" id="goalScope">
+        <option value="season"> Сезонна місія — кожен виконує особисто</option>
+        <option value="personal"> Персональна ціль</option>
+        <option value="team"> Командна ціль АМПасадорів</option>
       </select>
     </label>
     <label>Спосіб вимірювання
@@ -28,7 +29,7 @@
     <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
     <label>Фото<input name="photo" type="file" accept="image/*"><small>До 20 МБ. Показується учасникам разом із місією.</small></label>
     <label class="span2">Опис<textarea name="description" placeholder="Контекст, правила, підказки або додаткові умови"></textarea></label>
-    <div class="span2 form-actions-row"><button class="primary">🏁 Створити ціль</button></div>
+    <div class="span2 form-actions-row"><button class="primary"><span class="icon ui-inline-icon">{{ icon('flag') }}</span> Створити ціль</button></div>
   </form>
 </section>
 
@@ -38,7 +39,7 @@
   <article class="card goal-card {% if not g.active %}goal-paused{% endif %}">
     {% if g.image_path %}<img class="goal-cover" src="{{g.image_path}}" alt="Фото цілі">{% endif %}
     <div class="entity-card-topline">
-      <span class="tag">{{'🎯 Персональна' if g.scope=='personal' else ('👥 Командна' if g.scope=='team' else '🌟 Сезонна')}}</span>
+      <span class="tag">{{' Персональна' if g.scope=='personal' else (' Командна' if g.scope=='team' else ' Сезонна')}}</span>
       <span class="tag {% if g.active %}good{% endif %}">{{'Активна' if g.active else 'Призупинена'}}</span>
     </div>
     <h3>{{g.title}}</h3>
@@ -52,9 +53,9 @@
     </div>
     <div class="goal-progress-value"><b>{{progress|round(1)}} / {{g.target_value|round(1)}}</b><span>{{metric_labels.get(g.metric,g.metric)}} • {{pct|round(0)|int}}%</span></div>
     <div class="progress"><i style="width:{{pct}}%"></i></div>
-    <p class="muted goal-reward-count">🎁 Нагороду вже отримали: <b>{{reward_count}}</b></p>
+    <p class="muted goal-reward-count"><span class="icon ui-inline-icon">{{ icon('gift') }}</span> Нагороду вже отримали: <b>{{reward_count}}</b></p>
 
-    <details class="goal-editor"><summary class="soft-button edit-action-button">✏️ Редагувати</summary>
+    <details class="goal-editor"><summary class="soft-button edit-action-button"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</summary>
       <form class="form-grid goal-edit-form" method="post" action="/admin/goals/{{g.id}}/update" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label>Тип<select name="scope" class="goal-scope-edit"><option value="season" {% if g.scope=='season' %}selected{% endif %}>Сезонна</option><option value="personal" {% if g.scope=='personal' %}selected{% endif %}>Персональна</option><option value="team" {% if g.scope=='team' %}selected{% endif %}>Командна</option></select></label>
         <label>Вимірювання<select name="metric">{% for key,val in metric_labels.items() %}<option value="{{key}}" {% if g.metric==key %}selected{% endif %}>{{val}}</option>{% endfor %}</select></label>
@@ -67,18 +68,14 @@
         <label>Дедлайн<input name="ends_at" type="datetime-local" value="{{g.ends_at.strftime('%Y-%m-%dT%H:%M') if g.ends_at else ''}}"></label>
         <label>Нове фото<input name="photo" type="file" accept="image/*">{% if g.image_path %}<span class="check-chip"><input type="checkbox" name="remove_photo" value="1"><span>Прибрати поточне фото</span></span>{% endif %}</label>
         <label class="span2">Опис<textarea name="description">{{g.description}}</textarea></label>
-        <div class="span2 form-actions-row"><button class="primary">💾 Зберегти</button></div>
+        <div class="span2 form-actions-row"><button class="primary"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти</button></div>
       </form>
     </details>
     <div class="goal-actions">
-      <form method="post" action="/admin/goals/{{g.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{{'⏸ Призупинити' if g.active else '▶️ Увімкнути'}}</button></form>
-      <form method="post" action="/admin/goals/{{g.id}}/delete" data-confirm-message="Видалити цю ціль? Історія її автоматичних нагород теж буде видалена."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>
+      <form method="post" action="/admin/goals/{{g.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{% if g.active %}<span class="icon ui-inline-icon">{{ icon('ban') }}</span> Призупинити{% else %}<span class="icon ui-inline-icon">{{ icon('check') }}</span> Увімкнути{% endif %}</button></form>
+      <form method="post" action="/admin/goals/{{g.id}}/delete" data-confirm-message="Видалити цю ціль? Історія її автоматичних нагород теж буде видалена."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn"><span class="icon ui-inline-icon">{{ icon('trash') }}</span> Видалити</button></form>
     </div>
   </article>
 {% else %}<section class="card"><p class="empty">Цілей ще немає.</p></section>{% endfor %}
 </div>
-<script nonce="{{ request.state.csp_nonce }}">
-function toggleGoalUser(){document.getElementById('goalUserField').style.display=document.getElementById('goalScope').value==='personal'?'flex':'none';}
-toggleGoalUser();
-</script>
 {% endblock %}
