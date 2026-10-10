@@ -30,25 +30,14 @@ def test_qr_scanner_is_on_event_page_and_camera_is_allowed_for_self():
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
     scanner_js = (ROOT / "app/web/static/event_detail.js").read_text(encoding="utf-8")
     middleware = (ROOT / "app/web/security_middleware.py").read_text(encoding="utf-8")
-
     assert '@router.post("/admin/events/{event_id}/scanner")' in route
-
-    # v1.20.2 intentionally externalizes scanner JavaScript instead of
-    # putting executable scanner logic inside the Jinja template.
+    # v1.20.x keeps executable scanner code outside Jinja for CSP.
     assert 'src="/static/event_detail.js?v=' in template
-
-    # Camera QR capability itself must still exist.
     assert "BarcodeDetector" in scanner_js
     assert "getUserMedia" in scanner_js
-
-    # User-visible scanner entry points remain on the event page.
     assert "Відкрити QR-сканер у Telegram" in template
     assert "Сканувати камерою браузера" in template
-
-    # This action is rendered dynamically by the external scanner module.
     assert "Зареєструвати та підтвердити" in scanner_js
-
-    # Browser camera permission policy must remain enabled only for self.
     assert "camera=(self)" in middleware
 
 

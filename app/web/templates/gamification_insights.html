@@ -7,7 +7,7 @@
   <div class="page-heading-row"><div><h1><span class="icon ui-inline-icon">{{ icon('brain') }}</span> Гейміфікація 2.0</h1><p class="muted">Аналітика без автоматичного підкручування XP: ліги, утримання, винагороди, розумні можливості та запрошення.</p></div><a class="soft-button" href="/admin/gamification/insights"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Оновити</a></div>
 
   <section class="panel">
-    <div class="panel-heading"><div><h2>Готовність даних</h2><p>{{ insights.readiness_label }}</p></div><span class="status-pill {{ 'status-open' if insights.readiness == 'ready' else 'status-muted' }}">{{ insights.observation_days }} дн.</span></div>
+    <div class="panel-heading"><div><h2><span class="icon ui-inline-icon">{{ icon('database') }}</span> Готовність даних</h2><p>{{ insights.readiness_label }}</p></div><span class="status-pill {{ 'status-open' if insights.readiness == 'ready' else 'status-muted' }}">{{ insights.observation_days }} дн.</span></div>
     <div class="health-kpi-grid">
       <div class="health-kpi"><span>Початок чистої бази</span><b>{{ insights.baseline.strftime('%d.%m.%Y') }}</b><small>Фіксується з v1.12.0</small></div>
       <div class="health-kpi"><span>Активних профілів</span><b>{{ insights.active_users }}</b><small>Поточний стан</small></div>
@@ -16,12 +16,12 @@
     </div>
   </section>
 
-  <section class="panel"><div class="panel-heading"><div><h2>Переходи між лігами</h2><p>Фактичні перетини XP-порогів у поточному сезоні.</p></div></div>
+  <section class="panel"><div class="panel-heading"><div><h2><span class="icon ui-inline-icon">{{ icon('trend') }}</span> Переходи між лігами</h2><p>Фактичні перетини XP-порогів у поточному сезоні.</p></div></div>
     <div class="health-kpi-grid">{% for row in insights.league_rows %}<div class="health-kpi"><span>{{ row.icon }} {{ row.title }}</span><b>{{ row.count }}</b><small>учасників зараз</small></div>{% endfor %}</div>
     <div class="table-wrap"><table class="admin-table"><thead><tr><th>Перехід</th><th>Учасників</th><th>Медіана днів</th></tr></thead><tbody>{% for row in insights.transitions %}<tr><td>{{ row.from }} → {{ row.to }}</td><td>{{ row.count }}</td><td>{{ row.median_days if row.median_days is not none else '—' }}</td></tr>{% endfor %}</tbody></table></div>
   </section>
 
-  <section class="panel"><div class="panel-heading"><div><h2>Ефективність XP та винагород</h2><p>Показує, звідки приходить XP і чи використовується XP-гаманець.</p></div></div>
+  <section class="panel"><div class="panel-heading"><div><h2><span class="icon ui-inline-icon">{{ icon('reward') }}</span> Ефективність XP та винагород</h2><p>Показує, звідки приходить XP і чи використовується XP-гаманець.</p></div></div>
     <div class="health-kpi-grid">
       <div class="health-kpi"><span>Позитивного XP</span><b>{{ insights.xp.positive_xp }}</b><small>{{ insights.xp.actions }} дій</small></div>
       <div class="health-kpi"><span>Середній XP / дія</span><b>{{ insights.xp.avg_per_action }}</b><small>без штрафів/списань</small></div>
@@ -31,7 +31,7 @@
     {% if insights.xp.categories %}<div class="table-wrap"><table class="admin-table"><thead><tr><th>Категорія</th><th>XP</th><th>Дій</th><th>Частка XP</th><th>XP / дія</th></tr></thead><tbody>{% for row in insights.xp.categories %}<tr><td>{{ label(row.category) }}</td><td>{{ row.xp }}</td><td>{{ row.actions }}</td><td>{{ row.share }}%</td><td>{{ row.avg_xp }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
   </section>
 
-  <section class="panel"><div class="panel-heading"><div><h2>Розумні функції</h2><p>Конверсії розумних можливостей та запрошень без автоматичної зміни ваг.</p></div></div>
+  <section class="panel"><div class="panel-heading"><div><h2><span class="icon ui-inline-icon">{{ icon('brain') }}</span> Розумні функції</h2><p>Конверсії розумних можливостей та запрошень без автоматичної зміни ваг.</p></div></div>
     <div class="health-kpi-grid">
       <div class="health-kpi"><span>Збігів можливостей</span><b>{{ insights.opportunities.matches }}</b><small>{{ insights.opportunities.notified }} повідомлено</small></div>
       <div class="health-kpi"><span>Сповіщення → інтерес</span><b>{{ insights.opportunities.notify_to_interest_rate }}%</b><small>{{ insights.opportunities.interests }} зафіксованих інтересів</small></div>
@@ -40,7 +40,7 @@
     </div>
   </section>
 
-  <section class="panel"><div class="panel-heading"><div><h2>Рекомендації системи</h2><p>Це аналітичні сигнали. v1.12.0 <b>ніколи не змінює XP, пороги ліг чи винагороди автоматично</b>.</p></div></div>
+  <section class="panel"><div class="panel-heading"><div><h2><span class="icon ui-inline-icon">{{ icon('sparkle') }}</span> Рекомендації системи</h2><p>Це аналітичні сигнали. v1.12.0 <b>ніколи не змінює XP, пороги ліг чи винагороди автоматично</b>.</p></div></div>
     <div class="attention-list">{% for item in insights.recommendations %}<div class="attention-item"><div><b>{{ item.title }}</b><span>{{ item.text }}</span></div></div>{% endfor %}</div>
   </section>
 </div>

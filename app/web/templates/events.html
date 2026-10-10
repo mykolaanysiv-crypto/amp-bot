@@ -4,7 +4,7 @@
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Події</b></nav>
 <div class="page-head">
-  <div><span class="eyebrow">АКТИВНОСТІ</span><h1>Події</h1><p>Створення, перегляд і редагування подій АМП.</p></div>
+  <div><span class="eyebrow">АКТИВНОСТІ</span><h1><span class="icon ui-inline-icon">{{ icon('event') }}</span> Події</h1><p>Створення, перегляд і редагування подій АМП.</p></div>
   <span class="upload-note">Фото: до 20 МБ • без обрізання • автоматичне масштабування</span>
 </div>
 
@@ -22,7 +22,7 @@
   <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Нова подія</h2><p class="muted">Дата вводиться окремими полями, щоб уникнути помилок формату.</p></div></div>
   <form method="post" action="/admin/events/create" enctype="multipart/form-data" class="form-grid event-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="event-title-field">Назва події<input name="title" required placeholder="Наприклад: Толока АМП"></label>
-    <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('check') }}</span> Початок події</b></div>
+    <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('calendar-start') }}</span> Початок події</b></div>
     <div class="event-date-fields span2">
       <label>День<input name="day" type="number" min="1" max="31" required value="{{today.day}}"></label>
       <label>Місяць<select name="month" required>
@@ -33,7 +33,7 @@
       <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{today.year}}" required></label>
       <label class="time-field">Час<input name="event_time" type="time" required></label>
     </div>
-    <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('warning') }}</span> Завершення події</b></div>
+    <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('calendar-end') }}</span> Завершення події</b></div>
     <div class="event-date-fields span2">
       <label>День<input name="end_day" type="number" min="1" max="31" required value="{{today.day}}"></label>
       <label>Місяць<select name="end_month" required>
@@ -86,7 +86,7 @@
           <summary class="soft-button edit-action-button event-edit-trigger"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</summary>
           <form method="post" action="/admin/events/{{e.id}}/update" enctype="multipart/form-data" class="form-grid event-edit-form-v2"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label class="span2">Назва<input name="title" value="{{e.title}}" required></label>
-            <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('check') }}</span> Початок події</b></div>
+            <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('calendar-start') }}</span> Початок події</b></div>
             <div class="event-date-fields span2">
               <label>День<input name="day" type="number" min="1" max="31" value="{{e.starts_at.day}}" required></label>
               <label>Місяць<select name="month" required>
@@ -100,7 +100,7 @@
               <label>Рік<input name="year" type="number" min="2026" max="2100" value="{{e.starts_at.year}}" required></label>
               <label class="time-field">Час<input name="event_time" type="time" value="{{e.starts_at.strftime('%H:%M')}}" required></label>
             </div>
-            <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('warning') }}</span> Завершення події</b></div>
+            <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('calendar-end') }}</span> Завершення події</b></div>
             <div class="event-date-fields span2">
               <label>День<input name="end_day" type="number" min="1" max="31" value="{{event_end.day}}" required></label>
               <label>Місяць<select name="end_month" required>

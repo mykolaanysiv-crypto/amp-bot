@@ -1,0 +1,32 @@
+AMP XP v1.20.3 — test report
+
+Actually executed in the build environment:
+- python -m scripts.dependency_lock_check: PASS
+- python -m scripts.build_admin_css: PASS
+- python -m scripts.release_consistency_check: PASS
+- python -m compileall -q app scripts migrations tests: PASS
+- python -m scripts.production_preflight: PASS
+- targeted historical + v1.20.3 UI regressions: PASS (9 tests)
+- tests/js/test_admin_forms.js: PASS
+- tests/js/test_app_shell.js: PASS
+- tests/js/test_experience.js: PASS
+- tests/js/test_interaction.js: PASS
+- tests/js/test_csp_externalization.js: PASS
+- node --check app/web/static/refinement.js: PASS
+- Jinja parsing: PASS (65 templates)
+
+Full non-integration pytest was attempted but cannot be claimed PASS in this build environment:
+- collection/runtime dependencies `aiogram` and `aiosqlite` are not installed here;
+- the two historical implementation-coupled regressions for emoji tabs and inline QR scanner were updated to the current SVG/CSP architecture and then passed in targeted execution.
+
+Not executed here and still mandatory before production:
+- Ruff (module unavailable in build environment)
+- pip-audit (module unavailable in build environment)
+- full non-integration pytest with locked dev dependencies installed
+- PostgreSQL 18 integration
+- schema drift
+- backup capture + restore verification
+- Heroku deploy + /health/live + /health/ready
+- manual UI_VISUAL_CHECKLIST_V1203.md
+
+No unexecuted gate is claimed PASS.

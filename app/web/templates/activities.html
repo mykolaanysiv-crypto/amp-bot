@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <span class="eyebrow">ГЕЙМІФІКАЦІЯ</span>
-    <h1>Активності та XP</h1>
+    <h1><span class="icon ui-inline-icon">{{ icon('activity') }}</span> Активності та XP</h1>
     <p>Каталог зрозумілих способів заробити XP: учасник подає заявку, адміністратор погоджує виконання, а після підтвердженого результату система автоматично нараховує XP та волонтерські години.</p>
   </div>
 </div>
@@ -21,7 +21,7 @@
 </form>
 
 <section class="card xp-flow-card">
-  <div class="section-title"><h2>Як працює заявка на активність</h2><span>4 кроки</span></div>
+  <div class="section-title"><h2><span class="icon ui-inline-icon">{{ icon('journey') }}</span> Як працює заявка на активність</h2><span>4 кроки</span></div>
   <div class="flow-steps">
     <div><b>1</b><span>Учасник обирає активність і описує план.</span></div>
     <div><b>2</b><span>Адміністратор погоджує або відхиляє заявку.</span></div>
@@ -31,7 +31,7 @@
 </section>
 
 <section class="card">
-  <div class="section-title"><h2>Автоматичні способи отримання XP</h2><span>без окремої заявки</span></div>
+  <div class="section-title"><h2><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> Автоматичні способи отримання XP</h2><span>без окремої заявки</span></div>
   <div class="xp-auto-grid">
     {% for title, xp, note in automatic_guide %}
     <div class="xp-auto-item"><b>{{title}}</b><strong>{{xp}}</strong><small>{{note}}</small></div>
@@ -40,7 +40,7 @@
 </section>
 
 <section class="card">
-  <div class="section-title"><h2>Каталог активностей за заявкою</h2><span>{{catalog|length}}</span></div>
+  <div class="section-title"><h2><span class="icon ui-inline-icon">{{ icon('catalog') }}</span> Каталог активностей за заявкою</h2><span>{{catalog|length}}</span></div>
   <div class="activity-catalog-grid">
     {% for a in catalog %}
     <article class="activity-catalog-card {% if not a.active %}is-inactive{% endif %}">

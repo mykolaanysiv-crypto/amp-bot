@@ -23,8 +23,8 @@ def read(path: str) -> str:
 
 
 def test_v1191_release_contract():
-    assert read("VERSION.txt").strip() == "1.20.2"
-    assert read("VERSION_CHECK.txt").strip() == "1.20.2"
+    assert read("VERSION.txt").strip() == "1.20.3"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.3"
     migration = read("migrations/versions/20261008_0017_media_storage_lifecycle.py")
     assert 'revision: str = "20261008_0017"' in migration
     assert 'down_revision: Union[str, None] = "20261007_0016"' in migration

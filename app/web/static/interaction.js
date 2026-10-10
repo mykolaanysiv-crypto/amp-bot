@@ -1,4 +1,4 @@
-/* AMP XP v1.20.2 — tabs, account menu, combobox, avatar preview and motion feedback. */
+/* AMP XP v1.20.3 — tabs, account menu, combobox, avatar preview and motion feedback. */
 (function () {
   'use strict';
 

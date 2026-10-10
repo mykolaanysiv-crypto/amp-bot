@@ -1,8 +1,8 @@
-# AMP XP / «АМПасадори» v1.20.2
+# AMP XP / «АМПасадори» v1.20.3
 
 Production-oriented Telegram + FastAPI + PostgreSQL system for the AMP participant programme.
 
-Current release: **UI Polish, Navigation & Interaction 3.0**. v1.20.2 turns the v1.20.x visual redesign into a more coherent interactive product: real tabs, dialogs, unified SVG icons, stable account/sidebar identity, participant combobox, motion/toasts and stronger responsive/contrast behavior.
+Current release: **UI Polish, Navigation & Interaction 3.0**. v1.20.3 turns the v1.20.x visual redesign into a more coherent interactive product: real tabs, dialogs, unified SVG icons, stable account/sidebar identity, participant combobox, motion/toasts and stronger responsive/contrast behavior.
 
 ## Runtime
 - Python 3.13
@@ -11,7 +11,7 @@ Current release: **UI Polish, Navigation & Interaction 3.0**. v1.20.2 turns the 
 - SQLAlchemy async
 - PostgreSQL 18 baseline for CI/local/restore verification
 - Alembic head: `20261010_0018`
-- **No new database migration in v1.20.2**
+- **No new database migration in v1.20.3**
 
 ## Interaction architecture
 - `app/web/static/app_shell.js` — shell/sidebar/mobile/theme behavior;
@@ -31,11 +31,11 @@ Current release: **UI Polish, Navigation & Interaction 3.0**. v1.20.2 turns the 
 - existing backend URLs/forms/security/domain semantics remain intact.
 
 ## Security & data guarantees
-v1.20.2 does not weaken CSRF, CSP, permission checks, 2FA, WebAuthn, privacy suppression, audit trail, media lifecycle, dependency audit, backup restore verification or schema drift gates.
+v1.20.3 does not weaken CSRF, CSP, permission checks, 2FA, WebAuthn, privacy suppression, audit trail, media lifecycle, dependency audit, backup restore verification or schema drift gates.
 
 ## Database
-Current Alembic head remains `20261010_0018` from v1.20.1 web profiles. A v1.20.2 code rollback therefore does not require a schema downgrade.
+Current Alembic head remains `20261010_0018` from v1.20.1 web profiles. A v1.20.3 code rollback therefore does not require a schema downgrade.
 
 See `RELEASE_V1202_UA.md`, `AUDIT_UI_V1202_UA.md`, `DESIGN_SYSTEM_V1202.md`, `INTERACTION_SYSTEM_V1202.md`, `ACCESSIBILITY_V1202.md`, `UI_VISUAL_CHECKLIST_V1202.md`, `BUILD_MANIFEST_V1202.txt`, `TEST_REPORT_V1202.txt`, `COMMANDS_V1202.txt` and `HEROKU_DEPLOY.md`.
 
-A ZIP or local test result is not proof of production. v1.20.2 becomes production only after green GitHub gates, restore-verified backup, successful Heroku release, health/version verification and manual critical-page visual QA.
+A ZIP or local test result is not proof of production. v1.20.3 becomes production only after green GitHub gates, restore-verified backup, successful Heroku release, health/version verification and manual critical-page visual QA.

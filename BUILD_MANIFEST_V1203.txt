@@ -1,0 +1,69 @@
+AMP XP v1.20.3 — Build Manifest
+Version: 1.20.3
+Alembic head: 20261010_0018
+Python: 3.13
+PostgreSQL: 18
+requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+
+Critical runtime files:
+- run.py
+- run_web.py
+- app/main.py
+- app/bot_runtime.py
+- app/web/factory.py
+- app/web/lifespan.py
+- app/web/auth_routes.py
+- app/web/security_middleware.py
+- app/web/routes/security_center.py
+- app/web/routes/media_integrity.py
+- app/web/static/passkeys.js
+- app/web/static/admin_forms.js
+- app/web/static/app_shell.js
+- app/web/static/experience.js
+- app/web/static/experience.css
+- app/web/static/interaction.js
+- app/web/static/page_behaviors.js
+- app/web/static/event_detail.js
+- app/web/static/telegram_event_scanner.js
+- app/web/static/analytics.js
+- app/web/static/analytics_detail.js
+- app/web/static/interaction.css
+- app/web/static/refinement.css
+- app/web/static/refinement.js
+- app/web/static/reward-placeholder.svg
+- app/web/static/admin.css
+- app/web/static/tokens.css
+- app/web/static/base.css
+- app/web/static/layout.css
+- app/web/static/components.css
+- app/web/static/utilities.css
+- app/web/templates/base.html
+- app/web/templates/_ui_macros.html
+- app/passkeys.py
+- app/rate_limit.py
+- app/metrics.py
+- app/observability_snapshot.py
+- app/security_center.py
+- app/domain_services/quest_auto.py
+- migrations/versions/20261007_0016_security_observability.py
+- migrations/versions/20261008_0017_media_storage_lifecycle.py
+- migrations/versions/20261010_0018_web_user_profiles.py
+- app/media_storage.py
+- app/media_integrity.py
+- scripts/migrate_media_storage.py
+- scripts/build_admin_css.py
+- scripts/heroku_release.py
+- scripts/startup_smoke.py
+- scripts/schema_drift_check.py
+- scripts/verify_backup_restore.sh
+- tests/test_v1200_design_accessibility.py
+- tests/test_v1201_visual_experience_profiles.py
+- tests/test_v1202_ui_polish_interaction.py
+- tests/test_v1203_design_refinement.py
+- tests/js/test_app_shell.js
+- tests/js/test_experience.js
+- tests/js/test_interaction.js
+- tests/js/test_csp_externalization.js
+- .github/workflows/ci.yml
+- .github/workflows/backup.yml

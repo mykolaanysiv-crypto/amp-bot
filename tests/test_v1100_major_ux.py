@@ -42,10 +42,8 @@ def test_my_amp_today_dashboard_exists():
 
 def test_participant_360_tabs_all_have_icons():
     tpl = text("app/web/templates/user_detail.html")
-
-    # v1.20.2 intentionally replaced system emoji with the unified AMP SVG
-    # icon macro. Preserve the actual production requirement: every 360°
-    # tab must still have its expected icon and readable text label.
+    # Unified SVG icons replaced historical emoji in v1.20.x. Keep the real
+    # production invariant: every tab has a semantic icon and readable label.
     expected = {
         "overview": ("home", "Огляд"),
         "quests": ("target", "Квести"),
@@ -59,15 +57,12 @@ def test_participant_360_tabs_all_have_icons():
         "seasons": ("trophy", "Сезони"),
         "documents": ("file", "Документи"),
     }
-
     for tab_name, (icon_name, label) in expected.items():
         marker = f'data-tab="{tab_name}"'
         assert marker in tpl
-
         start = tpl.index(marker)
         end = tpl.index("</button>", start)
         button = tpl[start:end]
-
         assert f"icon('{icon_name}')" in button
         assert label in button
 

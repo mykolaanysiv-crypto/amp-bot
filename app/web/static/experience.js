@@ -1,4 +1,4 @@
-/* AMP XP v1.20.2 — progressive visual experience, dialogs and Help Center. */
+/* AMP XP v1.20.3 — progressive visual experience, dialogs and Help Center. */
 (function () {
   'use strict';
 

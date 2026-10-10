@@ -1,11 +1,11 @@
 {% extends "base.html" %}{% block title %}Реєстрації • АМПасадори{% endblock %}{% block content %}
 {% from "_ui_macros.html" import icon %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Реєстрації</b></nav>
-<div class="page-head"><div><span class="eyebrow">ВХІДНА ЧЕРГА</span><h1><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Реєстрації</h1><p>Перевірка та підтвердження нових учасників АМП. Після схвалення людина автоматично переходить до бази «Учасники».</p></div></div>
+<div class="page-head"><div><span class="eyebrow">ВХІДНА ЧЕРГА</span><h1><span class="icon ui-inline-icon">{{ icon('registration') }}</span> Реєстрації</h1><p>Перевірка та підтвердження нових учасників АМП. Після схвалення людина автоматично переходить до бази «Учасники».</p></div></div>
 <div class="kpis registration-kpis"><div class="kpi"><span>Очікують</span><b>{{pending_count}}</b><small>нових заявок</small></div><div class="kpi"><span>Схвалено сьогодні</span><b>{{approved_today}}</b><small>активовано профілів</small></div><div class="kpi"><span>Відхилено</span><b>{{rejected_count}}</b><small>заявок у журналі</small></div></div>
 
 <section class="card">
-  <div class="section-title"><div><h2>Очікують перевірки</h2><p class="muted">Схвалення активує АМП-код, відкриває функції учасника, надсилає повідомлення в Telegram і записує дію в аудит.</p></div><span class="count-badge">{{pending_count}}</span></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('user-check') }}</span> Очікують перевірки</h2><p class="muted">Схвалення активує АМП-код, відкриває функції учасника, надсилає повідомлення в Telegram і записує дію в аудит.</p></div><span class="count-badge">{{pending_count}}</span></div>
   <div class="table-wrap"><table><thead><tr><th>Дата</th><th>ПІБ</th><th>Вік</th><th>Населений пункт</th><th>Telegram</th><th>Телефон</th><th>Статус</th><th>Дії</th></tr></thead><tbody>
   {% for item in rows %}{% set u=item.user %}<tr>
     <td>{{u.created_at.strftime('%d.%m.%Y %H:%M')}}</td>

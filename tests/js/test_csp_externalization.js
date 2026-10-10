@@ -1,4 +1,4 @@
-/* AMP XP v1.20.2 CSP source contract; dependency-free Node smoke. */
+/* AMP XP v1.20.3 CSP source contract; dependency-free Node smoke. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,10 +21,10 @@ assert.deepEqual(offenders, [], `CSP inline-JS offenders: ${offenders.join(', ')
 
 const base = fs.readFileSync('app/web/templates/base.html', 'utf8');
 for (const token of [
-  '/static/page_behaviors.js?v=1.20.2',
-  '/static/app_shell.js?v=1.20.2',
-  '/static/experience.js?v=1.20.2',
-  '/static/interaction.js?v=1.20.2',
+  '/static/page_behaviors.js?v=1.20.3',
+  '/static/app_shell.js?v=1.20.3',
+  '/static/experience.js?v=1.20.3',
+  '/static/interaction.js?v=1.20.3',
 ]) assert.ok(base.includes(token), `missing external runtime bundle: ${token}`);
 
 for (const file of [
@@ -35,4 +35,4 @@ for (const file of [
   'app/web/static/analytics_detail.js',
 ]) assert.ok(fs.existsSync(file), `missing external page script: ${file}`);
 
-console.log('AMP v1.20.2 CSP externalization: no inline executable JS or HTML event handlers PASS');
+console.log('AMP v1.20.3 CSP externalization: no inline executable JS or HTML event handlers PASS');
