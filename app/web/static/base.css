@@ -1,4 +1,4 @@
-/* AMP XP v1.20.0 — global base and accessibility. */
+/* AMP XP v1.20.1 — global base and accessibility. */
 *{box-sizing:border-box}
 html{min-width:320px;background:var(--color-background);scroll-behavior:smooth}
 body{margin:0;min-height:100vh;background:var(--color-background);color:var(--color-text);font:500 var(--font-size-base)/var(--line-height-base) var(--font-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}

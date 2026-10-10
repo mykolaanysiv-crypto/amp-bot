@@ -1,86 +1,202 @@
 {% extends "base.html" %}
-{% block title %}Мій доступ • АМПасадори{% endblock %}
+{% from "_ui_macros.html" import icon %}
+{% block title %}Мій кабінет • АМПасадори{% endblock %}
+{% block topbar_context %}Мій кабінет{% endblock %}
+{% block topbar_hint %}Профіль, досягнення та безпека акаунта{% endblock %}
 {% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Мій доступ</b></nav>
-<div class="page-head security-page-head">
-  <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h1>🔐 Мій доступ</h1><p>Пароль, passkeys, резервний Telegram 2FA та активні вебсесії.</p></div>
-</div>
-{% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи вебпанелі недоступні.</div>{% endif %}
-{% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
-{% if success %}<div class="alert success">{{ success }}</div>{% endif %}
+<div class="account-cabinet" id="profile">
+  <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Мій кабінет</b></nav>
 
-<div class="security-grid">
-  <section class="card security-card">
-    <div class="section-title"><div><span class="eyebrow">ПРОФІЛЬ ДОСТУПУ</span><h2>{{ account.display_name if account else admin_name }}</h2></div><span class="status-pill">{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></div>
-    <div class="security-facts">
-      <div><span>Логін</span><b>{{ account.username if account else '—' }}</b></div>
-      <div><span>Останній вхід</span><b>{{ account.last_login_at.strftime('%d.%m.%Y %H:%M') if account and account.last_login_at else '—' }}</b></div>
-      <div><span>Пароль змінено</span><b>{{ account.password_changed_at.strftime('%d.%m.%Y %H:%M') if account and account.password_changed_at else '—' }}</b></div>
-      <div><span>Двоетапний вхід</span><b>{{ '✅ Увімкнено' if account and (account.two_factor_enabled or account.role=='superadmin' or passkeys) else '— Вимкнено' }}</b></div>
-      <div><span>Passkeys</span><b>{{ passkeys|length }}</b></div>
+  {% if password_required %}<div class="alert warning"><b>Потрібно змінити тимчасовий пароль.</b> До зміни пароля інші розділи вебпанелі недоступні.</div>{% endif %}
+  {% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert success">{{ success }}</div>{% endif %}
+
+  <section class="profile-hero" aria-labelledby="profile-title">
+    <div class="profile-avatar">
+      {% if account and account.avatar_path %}<img src="{{ account.avatar_path }}" alt="Аватар {{ account.display_name }}">{% else %}{{ (account.display_name if account else admin_name or 'А')[:1]|upper }}{% endif %}
+      <span class="profile-avatar-badge" aria-hidden="true">{{ icon('sparkle') }}</span>
+    </div>
+    <div class="profile-hero-copy">
+      <span class="eyebrow">ОСОБИСТИЙ КАБІНЕТ AMP XP</span>
+      <h1 id="profile-title">{{ account.display_name if account else admin_name }}</h1>
+      {% if account and account.profile_title %}<span class="profile-title">{{ account.profile_title }}</span>{% endif %}
+      <p>{{ account.profile_bio if account and account.profile_bio else 'Додайте кілька слів про себе, щоб профіль виглядав персонально та допомагав команді краще орієнтуватися у ролях.' }}</p>
+      <div class="profile-hero-meta">
+        <span class="pill">{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span>
+        <span class="pill">@{{ account.username if account else '—' }}</span>
+        {% if linked_user %}<span class="pill">АМП-{{ '%04d'|format(linked_user.id) }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="profile-hero-actions">
+      <button class="primary edit-launcher" type="button" data-modal-open="profileEditDialog"><span class="icon">{{ icon('edit') }}</span><span>Редагувати профіль</span></button>
+      <button class="soft-button edit-launcher" type="button" data-modal-open="avatarDialog"><span class="icon">{{ icon('camera') }}</span><span>Фото</span></button>
     </div>
   </section>
 
-  <section class="card security-card" id="password">
-    <div class="section-title"><div><span class="eyebrow">ПАРОЛЬ</span><h2>Змінити пароль</h2></div></div>
-    <p class="muted">Не менше 12 символів: велика і мала літера, цифра та спецсимвол. Після зміни всі інші сесії буде завершено.</p>
-    <form method="post" action="/admin/account/password" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      <label>Поточний пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
-      <label>Новий пароль<input type="password" name="new_password" autocomplete="new-password" minlength="12" required></label>
-      <label>Повторіть новий пароль<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label>
-      <div class="form-actions"><button class="primary" type="submit">🔑 Змінити пароль</button></div>
-    </form>
-  </section>
+  <nav class="profile-nav" aria-label="Розділи кабінету">
+    <a class="active" href="#profile"><span class="icon">{{ icon('user') }}</span>Профіль</a>
+    <a href="#achievements"><span class="icon">{{ icon('badge') }}</span>Досягнення</a>
+    <a href="#security"><span class="icon">{{ icon('shield') }}</span>Безпека</a>
+    <a href="#sessions"><span class="icon">{{ icon('activity') }}</span>Сесії</a>
+  </nav>
 
-  <section class="card security-card" id="two-factor">
-    <div class="section-title"><div><span class="eyebrow">ЗАХИСТ ВХОДУ</span><h2>Двоетапний вхід</h2></div></div>
-    {% if account and account.role == 'superadmin' %}<div class="alert info">Для суперадміністратора двоетапний вхід обов'язковий і не може бути вимкнений.</div>{% endif %}
-    <form method="post" action="/admin/account/2fa" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-      {% if not is_superadmin %}<label class="check-row"><input type="checkbox" name="enabled" value="1" {% if account and account.two_factor_enabled %}checked{% endif %}><span>Увімкнути двоетапний вхід для мого акаунта</span></label>{% else %}<input type="hidden" name="enabled" value="1">{% endif %}
-      <label>Ідентифікатор Telegram для одноразових кодів<input name="telegram_id" inputmode="numeric" value="{{ account.two_factor_tg_id or '' if account else '' }}" placeholder="Наприклад 123456789"></label>
-      <div class="form-actions"><button class="primary" type="submit">💾 Зберегти захист входу</button></div>
-    </form>
-  </section>
-</div>
-
-<section class="card security-card" id="passkeys" {% if passkeys_enabled %}data-passkey-enroll data-csrf="{{ csrf_token }}"{% endif %}>
-  <div class="section-title"><div><span class="eyebrow">WEBAUTHN</span><h2>🔑 Passkeys</h2><p>Touch ID, Face ID, Windows Hello або фізичний ключ безпеки. Telegram OTP залишається резервним способом входу.</p></div><span class="count-badge">{{ passkeys|length }}</span></div>
-  {% if passkeys_enabled %}
-  <div class="form-grid security-form">
-    <label>Назва нового ключа<input data-passkey-label maxlength="120" value="Мій пристрій" placeholder="Наприклад MacBook Touch ID"></label>
-    <label>Поточний пароль<input data-passkey-password type="password" autocomplete="current-password" required placeholder="Потрібен для безпечного додавання ключа"></label>
-    <div class="form-actions"><button class="primary" type="button" data-passkey-create>➕ Додати passkey</button></div>
+  {% if linked_user %}
+  <div class="profile-stat-grid" aria-label="Моя активність AMP">
+    <div class="profile-stat"><span>Баланс XP</span><strong>{{ profile_stats.xp }}</strong></div>
+    <div class="profile-stat"><span>Бейджі</span><strong>{{ profile_stats.badges }}</strong></div>
+    <div class="profile-stat"><span>Відвідані події</span><strong>{{ profile_stats.events }}</strong></div>
+    <div class="profile-stat"><span>Виконані квести</span><strong>{{ profile_stats.quests }}</strong></div>
+    <div class="profile-stat"><span>Заявки на винагороди</span><strong>{{ profile_stats.rewards }}</strong></div>
   </div>
-  <p class="muted" data-passkey-status>Passkey зберігає в системі тільки публічний ключ. Біометричні дані залишаються на вашому пристрої.</p>
   {% else %}
-  <div class="alert info">Passkeys ще не активовані для цього deployment. Потрібен HTTPS <code>WEBAUTHN_ORIGIN</code> (або коректний <code>PUBLIC_BASE_URL</code>).</div>
+  <div class="profile-stat-grid" aria-label="Стан вебакаунта">
+    <div class="profile-stat"><span>Passkeys</span><strong>{{ passkeys|length }}</strong></div>
+    <div class="profile-stat"><span>Активні сесії</span><strong>{{ web_sessions|length }}</strong></div>
+    <div class="profile-stat"><span>2FA</span><strong>{{ 'ON' if account and (account.two_factor_enabled or account.role=='superadmin' or passkeys) else 'OFF' }}</strong></div>
+    <div class="profile-stat"><span>Роль</span><strong>{{ 'SUPER' if is_superadmin else 'ADMIN' }}</strong></div>
+    <div class="profile-stat"><span>Останній вхід</span><strong>{{ account.last_login_at.strftime('%d.%m') if account and account.last_login_at else '—' }}</strong></div>
+  </div>
   {% endif %}
-  {% if passkeys %}
-  <div class="session-list">
-    {% for item in passkeys %}
-    <div class="session-row">
-      <div class="session-icon">🔑</div>
-      <div class="session-main"><b>{{ item.label }}</b><span>Додано: {{ item.created_at.strftime('%d.%m.%Y %H:%M') }} • останнє використання: {{ item.last_used_at.strftime('%d.%m.%Y %H:%M') if item.last_used_at else 'ще не використовувався' }}</span><small>{{ item.device_type or 'authenticator' }}{% if item.backed_up %} • синхронізований passkey{% endif %}</small></div>
-      <form method="post" action="/admin/account/passkeys/{{ item.id }}/revoke" onsubmit="return confirm('Відкликати цей passkey?')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Відкликати</button></form>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}<div class="empty-state">Passkey ще не додано. Для суперадміна після додавання він стане основним другим фактором.</div>{% endif %}
-</section>
 
-<section class="card security-card sessions-card">
-  <div class="section-title"><div><span class="eyebrow">СЕСІЇ</span><h2>Активні сесії</h2><p>Завершуйте доступ на пристроях, якими більше не користуєтесь.</p></div><span class="count-badge">{{ web_sessions|length }}</span></div>
-  {% if web_sessions %}
-  <div class="session-list">
-    {% for item in web_sessions %}
-    <div class="session-row {% if item.token_hash == current_session_hash %}current{% endif %}">
-      <div class="session-icon">💻</div>
-      <div class="session-main"><b>{{ browser_label(item.user_agent) }}</b><span>Вхід: {{ item.created_at.strftime('%d.%m.%Y %H:%M') }} • остання активність: {{ item.last_seen_at.strftime('%d.%m.%Y %H:%M') }}</span><small>{% if item.token_hash == current_session_hash %}Цей пристрій{% else %}Інша активна сесія{% endif %}</small></div>
-      <form method="post" action="/admin/account/sessions/{{ item.id }}/revoke"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Завершити</button></form>
-    </div>
-    {% endfor %}
+  <div class="profile-about-grid">
+    <section class="card profile-about">
+      <div class="section-title"><div><span class="eyebrow">ПРО МЕНЕ</span><h2>Профіль у платформі</h2></div><button class="soft-button edit-launcher" type="button" data-modal-open="profileEditDialog"><span class="icon">{{ icon('edit') }}</span><span>Змінити</span></button></div>
+      <p>{{ account.profile_bio if account and account.profile_bio else 'Розкажіть коротко про свою роль, напрям роботи або те, за що відповідаєте в AMP.' }}</p>
+      <div class="profile-contact-list">
+        <div class="profile-contact-row"><span class="icon">{{ icon('mail') }}</span><span>{{ account.profile_email if account and account.profile_email else 'Email не додано' }}</span></div>
+        <div class="profile-contact-row"><span class="icon">{{ icon('phone') }}</span><span>{{ account.profile_phone if account and account.profile_phone else 'Телефон не додано' }}</span></div>
+        <div class="profile-contact-row"><span class="icon">{{ icon('key') }}</span><span>Логін: @{{ account.username if account else '—' }}</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><span class="eyebrow">ВИГЛЯД</span><h2>Тема інтерфейсу</h2></div></div>
+      <p class="muted">Налаштування зберігається у вашому браузері та не впливає на інших користувачів.</p>
+      <div class="button-row">
+        <button class="soft-button" type="button" data-profile-theme="light">Світла</button>
+        <button class="soft-button" type="button" data-profile-theme="dark">Темна</button>
+        <button class="soft-button" type="button" data-profile-theme="system">Як у системі</button>
+      </div>
+    </section>
   </div>
-  {% else %}<div class="empty-state">Активних сесій не знайдено.</div>{% endif %}
-</section>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.0"></script>
+
+  <section class="card" id="achievements">
+    <div class="section-title"><div><span class="eyebrow">ДОСЯГНЕННЯ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('badge') }}</span><span>Мої бейджі</span></h2><p class="muted">Особисті досягнення з participant-профілю, пов'язаного з вебакаунтом.</p></div><span class="count-badge">{{ profile_badges|length }}</span></div>
+    {% if linked_user and profile_badges %}
+      <div class="badge-gallery">
+      {% for badge in profile_badges %}
+        <article class="badge-tile">
+          {% if badge.image_path %}<img src="{{ badge.image_path }}" alt="Бейдж {{ badge.name }}">{% else %}<div class="badge-fallback"><span class="icon">{{ icon('badge') }}</span></div>{% endif %}
+          <div><b>{{ badge.name }}</b><small>{{ badge.description or 'Досягнення AMP' }}</small></div>
+        </article>
+      {% endfor %}
+      </div>
+    {% elif linked_user %}
+      <div class="empty-state">Бейджів поки немає. Вони з’являться тут після отримання у системі AMP XP.</div>
+    {% else %}
+      <div class="empty-state"><b>Participant-профіль ще не пов’язано.</b><br>Суперадміністратор може пов’язати вебакаунт з АМП-профілем у розділі «Права доступу». Після цього тут з’являться ваші бейджі та показники участі.</div>
+    {% endif %}
+  </section>
+
+  <section id="security">
+    <div class="page-head">
+      <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h2>Захист входу</h2><p>Пароль, Telegram 2FA та passkeys. Ці налаштування не змінюють ваші права в системі.</p></div>
+      <span class="pill">{{ 'Захищено 2FA' if account and (account.two_factor_enabled or account.role=='superadmin' or passkeys) else 'Рекомендуємо 2FA' }}</span>
+    </div>
+
+    <div class="security-grid">
+      <section class="card security-card" id="password">
+        <div class="section-title"><div><span class="eyebrow">ПАРОЛЬ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('lock') }}</span><span>Змінити пароль</span></h2></div></div>
+        <p class="muted">Не менше 12 символів: велика і мала літера, цифра та спецсимвол. Після зміни всі інші сесії буде завершено.</p>
+        <form method="post" action="/admin/account/password" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <label>Поточний пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
+          <label>Новий пароль<input type="password" name="new_password" autocomplete="new-password" minlength="12" required></label>
+          <label>Повторіть новий пароль<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label>
+          <div class="form-actions"><button class="primary" type="submit">Змінити пароль</button></div>
+        </form>
+      </section>
+
+      <section class="card security-card" id="two-factor">
+        <div class="section-title"><div><span class="eyebrow">ЗАХИСТ ВХОДУ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('shield') }}</span><span>Двоетапний вхід</span></h2></div></div>
+        {% if account and account.role == 'superadmin' %}<div class="alert info">Для суперадміністратора двоетапний вхід обов'язковий і не може бути вимкнений.</div>{% endif %}
+        <form method="post" action="/admin/account/2fa" class="form-grid security-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          {% if not is_superadmin %}<label class="check-row"><input type="checkbox" name="enabled" value="1" {% if account and account.two_factor_enabled %}checked{% endif %}><span>Увімкнути двоетапний вхід для мого акаунта</span></label>{% else %}<input type="hidden" name="enabled" value="1">{% endif %}
+          <label>Telegram ID для одноразових кодів<input name="telegram_id" inputmode="numeric" value="{{ account.two_factor_tg_id or '' if account else '' }}" placeholder="Наприклад 123456789"></label>
+          <div class="form-actions"><button class="primary" type="submit">Зберегти захист входу</button></div>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <section class="card security-card" id="passkeys" {% if passkeys_enabled %}data-passkey-enroll data-csrf="{{ csrf_token }}"{% endif %}>
+    <div class="section-title"><div><span class="eyebrow">WEBAUTHN</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('key') }}</span><span>Passkeys</span></h2><p>Touch ID, Face ID, Windows Hello або фізичний ключ безпеки. Telegram OTP залишається резервним способом входу.</p></div><span class="count-badge">{{ passkeys|length }}</span></div>
+    {% if passkeys_enabled %}
+    <div class="form-grid security-form">
+      <label>Назва нового ключа<input data-passkey-label maxlength="120" value="Мій пристрій" placeholder="Наприклад MacBook Touch ID"></label>
+      <label>Поточний пароль<input data-passkey-password type="password" autocomplete="current-password" required placeholder="Потрібен для безпечного додавання ключа"></label>
+      <div class="form-actions"><button class="primary" type="button" data-passkey-create>Додати passkey</button></div>
+    </div>
+    <p class="muted" data-passkey-status>Passkey зберігає в системі тільки публічний ключ. Біометричні дані залишаються на вашому пристрої.</p>
+    {% else %}
+    <div class="alert info">Passkeys ще не активовані для цього deployment. Потрібен HTTPS <code>WEBAUTHN_ORIGIN</code> (або коректний <code>PUBLIC_BASE_URL</code>).</div>
+    {% endif %}
+    {% if passkeys %}
+    <div class="session-list">
+      {% for item in passkeys %}
+      <div class="session-row">
+        <div class="session-icon"><span class="icon">{{ icon('key') }}</span></div>
+        <div class="session-main"><b>{{ item.label }}</b><span>Додано: {{ item.created_at.strftime('%d.%m.%Y %H:%M') }} • останнє використання: {{ item.last_used_at.strftime('%d.%m.%Y %H:%M') if item.last_used_at else 'ще не використовувався' }}</span><small>{{ item.device_type or 'authenticator' }}{% if item.backed_up %} • синхронізований passkey{% endif %}</small></div>
+        <form method="post" action="/admin/account/passkeys/{{ item.id }}/revoke" data-confirm-message="Відкликати цей passkey? На цьому пристрої він більше не зможе використовуватись для входу."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Відкликати</button></form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty-state">Passkey ще не додано. Для суперадміна після додавання він стане основним другим фактором.</div>{% endif %}
+  </section>
+
+  <section class="card security-card sessions-card" id="sessions">
+    <div class="section-title"><div><span class="eyebrow">СЕСІЇ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('activity') }}</span><span>Активні сесії</span></h2><p>Завершуйте доступ на пристроях, якими більше не користуєтесь.</p></div><span class="count-badge">{{ web_sessions|length }}</span></div>
+    {% if web_sessions %}
+    <div class="session-list">
+      {% for item in web_sessions %}
+      <div class="session-row {% if item.token_hash == current_session_hash %}current{% endif %}">
+        <div class="session-icon"><span class="icon">{{ icon('activity') }}</span></div>
+        <div class="session-main"><b>{{ browser_label(item.user_agent) }}</b><span>Вхід: {{ item.created_at.strftime('%d.%m.%Y %H:%M') }} • остання активність: {{ item.last_seen_at.strftime('%d.%m.%Y %H:%M') }}</span><small>{% if item.token_hash == current_session_hash %}Цей пристрій{% else %}Інша активна сесія{% endif %}</small></div>
+        <form method="post" action="/admin/account/sessions/{{ item.id }}/revoke" data-confirm-message="Завершити цю активну сесію? Якщо це поточний пристрій, вас буде перенаправлено на сторінку входу."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button danger-soft" type="submit">Завершити</button></form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty-state">Активних сесій не знайдено.</div>{% endif %}
+  </section>
+</div>
+
+<dialog class="amp-modal" id="profileEditDialog" aria-labelledby="profileEditTitle">
+  <div class="amp-modal-shell">
+    <div class="amp-modal-header"><div><span class="eyebrow">МІЙ ПРОФІЛЬ</span><h2 id="profileEditTitle">Редагувати профіль</h2><p>Ці дані описують вас як користувача вебплатформи й не змінюють participant-профіль у Telegram.</p></div><button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button></div>
+    <div class="amp-modal-body">
+      <form id="profileEditForm" method="post" action="/admin/account/profile" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>Ім’я / ПІБ<input name="display_name" value="{{ account.display_name if account else admin_name }}" maxlength="160" required autocomplete="name"></label>
+        <label>Роль або підпис<input name="profile_title" value="{{ account.profile_title or '' if account else '' }}" maxlength="120" placeholder="Наприклад: координатор молодіжного простору"></label>
+        <label>Електронна пошта<input name="profile_email" type="email" value="{{ account.profile_email or '' if account else '' }}" maxlength="160" autocomplete="email"></label>
+        <label>Телефон<input name="profile_phone" value="{{ account.profile_phone or '' if account else '' }}" maxlength="32" autocomplete="tel"></label>
+        <label class="span2">Про себе<textarea name="profile_bio" maxlength="1200" placeholder="Коротко про ваш напрям роботи, відповідальність або інтереси">{{ account.profile_bio or '' if account else '' }}</textarea></label>
+        <div class="span2 form-actions"><button class="soft-button" type="button" data-modal-close>Скасувати</button><button class="primary" type="submit">Зберегти профіль</button></div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="amp-modal" id="avatarDialog" aria-labelledby="avatarDialogTitle">
+  <div class="amp-modal-shell">
+    <div class="amp-modal-header"><div><span class="eyebrow">ФОТО ПРОФІЛЮ</span><h2 id="avatarDialogTitle">Змінити аватар</h2><p>Фото доступне тільки всередині staff-частини платформи та зберігається як приватне медіа.</p></div><button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button></div>
+    <div class="amp-modal-body">
+      <form method="post" action="/admin/account/avatar" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="span2">Нове фото<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG або WebP до 20 МБ. Система автоматично оптимізує зображення.</small></label>
+        <div class="span2 form-actions"><button class="soft-button" type="button" data-modal-close>Скасувати</button><button class="primary" type="submit">Завантажити фото</button></div>
+      </form>
+      {% if account and account.avatar_path %}<form method="post" action="/admin/account/avatar/remove" data-confirm-message="Прибрати поточний аватар? Файл буде переведено у безпечний карантин медіа." class="button-row"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">Прибрати аватар</button></form>{% endif %}
+    </div>
+  </div>
+</dialog>
+
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.1"></script>
 {% endblock %}

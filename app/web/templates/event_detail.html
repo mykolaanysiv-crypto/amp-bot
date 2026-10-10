@@ -117,13 +117,13 @@
         <button class="soft-button event-ops-full" type="submit">🔄 Оновити чергу та резерви</button>
       </form>
       {% if counts.checked_in > 0 and (attendance_window.state == 'open' or is_superadmin) %}
-      <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}>
+      <form method="post" action="/admin/events/{{event.id}}/confirm-attendance"{% if attendance_window.state != 'open' %} data-attendance-override="1"{% endif %}>
         <input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value="">
         <button class="primary event-ops-full" type="submit">✅ Підтвердити всіх відмічених ({{counts.checked_in}})</button>
       </form>
       {% endif %}
       {% if (attendance_window.state == 'closed' or is_superadmin) and (counts.registered + counts.reserved) > 0 %}
-      <form method="post" action="/admin/events/{{event.id}}/operations/mark-no-show" onsubmit="return confirm('Позначити всіх зареєстрованих без відмітки як «Не прийшов»?');">
+      <form method="post" action="/admin/events/{{event.id}}/operations/mark-no-show" data-confirm-message="Позначити всіх зареєстрованих без відмітки як «Не прийшов»?">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button class="soft-button event-ops-full" type="submit">🚫 Позначити «Не прийшов» ({{counts.registered + counts.reserved}})</button>
       </form>
@@ -203,7 +203,7 @@
   <p class="muted"><b>Конверсія відгуків:</b> {{ feedback_stats.responses }} завершено з {{ feedback_stats.invited }} запрошених — <b>{{ feedback_stats.response_rate }}%</b>.</p>
   <div class="event-ops-inline-actions">
     {% if feedback_stats.pending > 0 and not event.cancelled_at and event.status != 'cancelled' %}
-    <form method="post" action="/admin/events/{{event.id}}/feedback/resend" onsubmit="return confirm('Повторно надіслати запит відгуку всім підтвердженим учасникам, які ще не завершили анкету?');">
+    <form method="post" action="/admin/events/{{event.id}}/feedback/resend" data-confirm-message="Повторно надіслати запит відгуку всім підтвердженим учасникам, які ще не завершили анкету?">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button class="soft-button" type="submit">🔁 Повторно надіслати відгук ({{ feedback_stats.pending }})</button>
     </form>
@@ -226,7 +226,7 @@
   <div class="section-title"><div><h2>⚙️ Керування подією</h2><p class="muted">Для скасування або видалення обов’язково вкажіть причину. Зареєстровані учасники автоматично отримають повідомлення в Telegram.</p></div></div>
   <div class="entity-danger-grid">
     {% if not event.cancelled_at and event.status not in ['cancelled','completed'] %}
-    <form method="post" action="/admin/events/{{event.id}}/postpone" class="entity-action-form postpone-form" onsubmit="return confirm('Перенести подію та повідомити всіх зареєстрованих учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <form method="post" action="/admin/events/{{event.id}}/postpone" class="entity-action-form postpone-form" data-confirm-message="Перенести подію та повідомити всіх зареєстрованих учасників?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <h3>📅 Перенести подію</h3><label>Причина перенесення<textarea name="reason" maxlength="700" required placeholder="Чому змінюється дата або час"></textarea></label>
       <div class="compact-date-grid"><label>День<input name="day" type="number" min="1" max="31" value="{{event.starts_at.day}}" required></label><label>Місяць<input name="month" type="number" min="1" max="12" value="{{event.starts_at.month}}" required></label><label>Рік<input name="year" type="number" min="2026" max="2100" value="{{event.starts_at.year}}" required></label><label>Час<input name="event_time" type="time" value="{{event.starts_at.strftime('%H:%M')}}" required></label></div>
       <button class="soft-button postpone-action" type="submit">📅 Перенести й повідомити</button>
@@ -234,7 +234,7 @@
     {% endif %}
 
     {% if not event.cancelled_at and event.status not in ['cancelled','completed'] %}
-    <form method="post" action="/admin/events/{{event.id}}/cancel" class="entity-action-form" onsubmit="return confirm('Скасувати подію та автоматично повідомити всіх зареєстрованих учасників?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <form method="post" action="/admin/events/{{event.id}}/cancel" class="entity-action-form" data-confirm-message="Скасувати подію та автоматично повідомити всіх зареєстрованих учасників?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Причина скасування<textarea name="reason" maxlength="700" required placeholder="Наприклад: через безпекову ситуацію / зміну планів / технічні причини"></textarea></label>
       <button class="soft-button cancellation-action" type="submit">⚠️ Скасувати подію</button>
     </form>
@@ -243,7 +243,7 @@
     {% endif %}
 
     {% if is_superadmin %}
-    <form method="post" action="/admin/events/{{event.id}}/delete" class="entity-action-form destructive-form" onsubmit="return confirm('ОСТАТОЧНО видалити подію? Учасники отримають повідомлення. Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <form method="post" action="/admin/events/{{event.id}}/delete" class="entity-action-form destructive-form" data-confirm-message="ОСТАТОЧНО видалити подію? Учасники отримають повідомлення. Цю дію не можна скасувати."><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Причина видалення<textarea name="reason" maxlength="700" required placeholder="Обов’язково вкажіть, чому подію видаляють"></textarea></label>
       <button class="danger-btn" type="submit">🗑 Видалити подію</button>
       <small>Видалення доступне лише суперадміністратору. Уже нарахований XP учасників не скасовується.</small>
@@ -258,7 +258,7 @@
     <div>
       {% if event.registration_template_path %}
         <p><b>Поточний шаблон:</b> {{event.registration_template_name or 'Форма донора'}}</p>
-        <form method="post" action="/admin/events/{{event.id}}/registration-template/remove" onsubmit="return confirm('Прибрати форму донора з цієї події?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🗑 Прибрати шаблон</button></form>
+        <form method="post" action="/admin/events/{{event.id}}/registration-template/remove" data-confirm-message="Прибрати форму донора з цієї події?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🗑 Прибрати шаблон</button></form>
       {% else %}
         <p><b>Поточна форма:</b> стандартна форма АМПасадорів.</p>
       {% endif %}
@@ -304,14 +304,14 @@
           {% else %}
           <div class="attendance-actions">
             {% if reg.status in ['registered','reserved'] %}
-              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити вручну{% else %}📍 Відмітити присутність{% endif %}</button></form>{% endif %}
-              {% if attendance_window.state == 'closed' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" onsubmit="return confirm('Позначити учасника як такого, що не прийшов? Буде застосовано налаштований штраф XP.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>{% endif %}
-              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати реєстрацію цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
+              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/mark-present"{% if attendance_window.state != 'open' %} data-attendance-override="1"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button type="submit">{% if attendance_window.state != 'open' %}⚠️ Відмітити вручну{% else %}📍 Відмітити присутність{% endif %}</button></form>{% endif %}
+              {% if attendance_window.state == 'closed' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/no-show" data-confirm-message="Позначити учасника як такого, що не прийшов? Буде застосовано налаштований штраф XP."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🚫 Не прийшов</button></form>{% endif %}
+              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" data-confirm-message="Скасувати реєстрацію цього учасника?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
             {% elif reg.status == 'waitlisted' %}
-              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Прибрати учасника з черги?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Прибрати з черги</button></form>
+              <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" data-confirm-message="Прибрати учасника з черги?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Прибрати з черги</button></form>
             {% elif reg.status == 'checked_in' %}
-              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} onsubmit="return requireAttendanceOverride(this);"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити вручну{% else %}✅ Підтвердити участь{% endif %}</button></form>{% endif %}
-              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" onsubmit="return confirm('Скасувати участь цього учасника?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
+              {% if attendance_window.state == 'open' or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/confirm"{% if attendance_window.state != 'open' %} data-attendance-override="1"{% endif %}><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="override_reason" value=""><button class="primary" type="submit">{% if attendance_window.state != 'open' %}⚠️ Підтвердити вручну{% else %}✅ Підтвердити участь{% endif %}</button></form>{% endif %}
+              {% if not event_started or is_superadmin %}<form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/cancel" data-confirm-message="Скасувати участь цього учасника?"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">✕ Скасувати участь</button></form>{% endif %}
             {% elif reg.status == 'attended' %}
               <span class="tag active">✅ Був присутній</span>
             {% elif reg.status == 'no_show' %}
@@ -319,13 +319,13 @@
             {% elif reg.status == 'cancelled' %}
               <div class="cancelled-registration-actions">
                 <span class="muted">Реєстрацію скасовано</span>
-                <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/delete" onsubmit="return confirm('Видалити скасовану реєстрацію цього учасника? Цю дію не можна скасувати.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action" type="submit">🗑 Видалити</button></form>
+                <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/delete" data-confirm-message="Видалити скасовану реєстрацію цього учасника? Цю дію не можна скасувати."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn compact-action" type="submit">🗑 Видалити</button></form>
               </div>
             {% endif %}
           </div>
           {% endif %}
           {% if is_superadmin %}
-          <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/status" class="superadmin-status-override" onsubmit="return confirm('Змінити статус вручну? XP та години будуть автоматично перераховані відповідно до нового статусу.');">
+          <form method="post" action="/admin/events/{{event.id}}/registrations/{{reg.id}}/status" class="superadmin-status-override" data-confirm-message="Змінити статус вручну? XP та години будуть автоматично перераховані відповідно до нового статусу.">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <select name="status" aria-label="Новий статус участі">
               <option value="registered" {% if reg.status == 'registered' %}selected{% endif %}>Зареєстрований</option>
@@ -350,17 +350,52 @@
   </table>
 </section>
 
+<dialog class="amp-modal" id="attendanceOverrideDialog" aria-labelledby="attendanceOverrideTitle">
+  <div class="amp-modal-shell">
+    <div class="amp-modal-header">
+      <div><span class="eyebrow">РУЧНИЙ ВИНЯТОК</span><h2 id="attendanceOverrideTitle">Підтвердити дію поза часовим вікном</h2><p>Причина обов’язкова, буде збережена в аудиті та має містити щонайменше 5 символів.</p></div>
+      <button class="amp-modal-close" type="button" data-override-cancel aria-label="Закрити"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span></button>
+    </div>
+    <div class="amp-modal-body">
+      <label>Причина ручного винятку<textarea id="attendanceOverrideReason" minlength="5" maxlength="300" placeholder="Коротко поясніть, чому дію потрібно виконати поза дозволеним вікном"></textarea><small id="attendanceOverrideError" class="field-error" role="alert" hidden>Вкажіть причину щонайменше з 5 символів.</small></label>
+    </div>
+    <div class="amp-modal-footer"><button class="soft-button" type="button" data-override-cancel>Скасувати</button><button class="primary" type="button" id="attendanceOverrideConfirm">Підтвердити виняток</button></div>
+  </div>
+</dialog>
+
 <script nonce="{{ request.state.csp_nonce }}">
-function requireAttendanceOverride(form) {
-  const reason = window.prompt('Вкажіть причину ручного винятку (мінімум 5 символів). Дія буде записана в аудит:');
-  if (!reason || reason.trim().length < 5) {
-    window.alert('Причина обов’язкова і має містити щонайменше 5 символів.');
-    return false;
-  }
-  const input = form.querySelector('input[name="override_reason"]');
-  if (input) input.value = reason.trim();
-  return window.confirm('Підтвердити ручний виняток поза дозволеним вікном підтвердження участі?');
-}
+(() => {
+  const dialog = document.getElementById('attendanceOverrideDialog');
+  const reason = document.getElementById('attendanceOverrideReason');
+  const error = document.getElementById('attendanceOverrideError');
+  const confirmButton = document.getElementById('attendanceOverrideConfirm');
+  let pendingForm = null;
+
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.dataset.attendanceOverride !== '1' || form.dataset.overrideConfirmed === '1') return;
+    event.preventDefault();
+    pendingForm = form;
+    reason.value = '';
+    error.hidden = true;
+    dialog.showModal();
+    requestAnimationFrame(() => reason.focus({preventScroll:true}));
+  }, true);
+
+  document.querySelectorAll('[data-override-cancel]').forEach(button => button.addEventListener('click', () => dialog.close()));
+  confirmButton.addEventListener('click', () => {
+    const value = reason.value.trim();
+    if (value.length < 5) { error.hidden = false; reason.focus(); return; }
+    if (!pendingForm) { dialog.close(); return; }
+    const form = pendingForm; pendingForm = null;
+    const input = form.querySelector('input[name="override_reason"]');
+    if (input) input.value = value;
+    form.dataset.overrideConfirmed = '1';
+    dialog.close();
+    requestAnimationFrame(() => form.requestSubmit());
+  });
+  dialog.addEventListener('close', () => { pendingForm = null; error.hidden = true; });
+})();
 
 (() => {
   const startBtn = document.getElementById('event-scanner-start');

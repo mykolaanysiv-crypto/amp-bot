@@ -1,3 +1,13 @@
+# AMP XP v1.20.1 — Visual Experience & User Profiles (2026-10-10)
+
+- Deepened the v1.20.0 design system beyond navigation: richer page headers, cards, metrics, forms, internal surfaces, responsive limits, gradients and restrained motion.
+- Added branded accessible dialogs and progressive edit-flow enhancement; generic destructive confirmations use a reusable modal instead of browser `confirm()`.
+- Added searchable in-product Help Center covering events, attendance, quests, badges, rewards, profiles, media, Security Center, 2FA/passkeys and common troubleshooting.
+- Added a web user cabinet with avatar, bio/contact metadata, theme preference, security/session controls and optional participant-profile achievements/statistics.
+- Added additive Alembic `20261010_0018` for optional web-profile fields and optional linked AMP participant ID. Profile avatars are stored as `staff_profiles` private media.
+- Added a superadmin-only web-account → participant-profile link; no participant identity is inferred automatically.
+- Preserved XP, attendance, QR, quests, rewards, permissions, privacy, CSP/CSRF, audit, backup and media lifecycle semantics.
+
 # AMP XP v1.20.0 — Design System & Accessibility 2.0 (2026-10-09)
 
 - New accessible app shell with collapsible desktop sidebar and mobile drawer.

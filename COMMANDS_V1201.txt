@@ -1,0 +1,39 @@
+AMP XP v1.20.1 — Visual Experience & User Profiles — deployment outline
+
+SOURCE OF TRUTH: complete amp_bot_v1201 artifact based on production v1.20.0.
+
+1. git switch main && git pull --ff-only origin main
+2. verify VERSION.txt == 1.20.0 and clean working tree
+3. git switch -c release/v1.20.1
+4. sync complete v1.20.1 build preserving .git/.env/.venv
+5. python -m pip install -r requirements-dev.lock
+6. python -m pip check
+7. python -m scripts.dependency_lock_check
+8. python -m scripts.build_admin_css
+9. python -m scripts.release_consistency_check
+10. python -m compileall -q app scripts migrations tests
+11. python -m scripts.production_preflight
+12. python -m ruff check --select E9,F63,F7,F82 app scripts tests
+13. node tests/js/test_admin_forms.js
+14. node tests/js/test_app_shell.js
+15. node tests/js/test_experience.js
+16. python -m pip_audit -r requirements.lock --progress-spinner=off
+17. python -m pytest -q --ignore=tests/integration
+18. GitHub CI: PostgreSQL 18 integration, Alembic 0017→0018, downgrade/upgrade, schema drift.
+19. GitHub deploy gate: fresh PGBackup → real restore verification → deploy → health/version smoke → verified marker.
+20. git add -A && git diff --cached --check
+21. git commit -m "AMP XP v1.20.1 visual experience and user profiles"
+22. git push -u origin release/v1.20.1
+23. Merge PR only after all blocking checks pass.
+24. After production: verify /health/live and /health/ready version=1.20.1.
+25. heroku run -a amp-bot-ver-1-5-0 -- alembic current
+    Expected: 20261010_0018
+26. heroku run -a amp-bot-ver-1-5-0 -- python -m scripts.verify_backup_marker
+27. Complete UI_VISUAL_CHECKLIST_V1201.md.
+28. Tag v1.20.1 only after production confirmation.
+
+ROLLBACK
+Preferred: rollback application release and retain additive schema 0018. Nullable profile columns are backward-compatible with v1.20.0 code.
+Only downgrade schema after a fresh verified backup and a deliberate decision about profile data:
+  heroku run -a amp-bot-ver-1-5-0 -- alembic downgrade 20261008_0017
+Do not weaken backup/schema/security gates to force rollback or deploy.

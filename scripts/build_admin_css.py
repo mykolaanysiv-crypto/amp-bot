@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "web" / "static"
-PARTS = ("legacy.css", "tokens.css", "base.css", "layout.css", "components.css", "utilities.css")
+PARTS = ("legacy.css", "tokens.css", "base.css", "layout.css", "components.css", "experience.css", "utilities.css")
 
 
 def build() -> str:

@@ -538,8 +538,8 @@ def main() -> None:
 
     # v1.19.0 Security & Observability 2.0 release guards. These stay source-level
     # so a broken security composition fails before Heroku deployment.
-    if APP_VERSION != "1.20.0":
-        raise SystemExit(f"v1.20.0 preflight failed: APP_VERSION={APP_VERSION}")
+    if APP_VERSION != "1.20.1":
+        raise SystemExit(f"v1.20.1 preflight failed: APP_VERSION={APP_VERSION}")
     passkeys_source = (root / "app" / "passkeys.py").read_text(encoding="utf-8")
     auth_source = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
     rate_limit_source = (root / "app" / "rate_limit.py").read_text(encoding="utf-8")
@@ -597,24 +597,62 @@ def main() -> None:
         if token not in media_tool_source:
             raise SystemExit(f"v1.19.1 migration tooling preflight failed: {token} missing")
 
-    # v1.20.0 Design System & Accessibility 2.0 guards.
+    # v1.20.1 Design System & Accessibility 2.0 guards.
     base_ui_source = (root / "app" / "web" / "templates" / "base.html").read_text(encoding="utf-8")
     shell_js_source = (root / "app" / "web" / "static" / "app_shell.js").read_text(encoding="utf-8")
     tokens_ui_source = (root / "app" / "web" / "static" / "tokens.css").read_text(encoding="utf-8")
     base_css_source = (root / "app" / "web" / "static" / "base.css").read_text(encoding="utf-8")
     for token in ("skip-link", "data-sidebar-collapse", "data-mobile-menu", 'id="main-content"'):
         if token not in base_ui_source:
-            raise SystemExit(f"v1.20.0 app-shell preflight failed: {token} missing")
+            raise SystemExit(f"v1.20.1 app-shell preflight failed: {token} missing")
     if "onclick=" in base_ui_source:
-        raise SystemExit("v1.20.0 app-shell preflight failed: inline onclick remains")
+        raise SystemExit("v1.20.1 app-shell preflight failed: inline onclick remains")
     for token in ("amp-sidebar-collapsed", "trapSidebarFocus", "mobileReturnFocus", "localStorage"):
         if token not in shell_js_source:
-            raise SystemExit(f"v1.20.0 sidebar accessibility preflight failed: {token} missing")
+            raise SystemExit(f"v1.20.1 sidebar accessibility preflight failed: {token} missing")
     for token in ("--color-primary", "--color-focus", "--space-4", "--radius-lg"):
         if token not in tokens_ui_source:
-            raise SystemExit(f"v1.20.0 design-token preflight failed: {token} missing")
+            raise SystemExit(f"v1.20.1 design-token preflight failed: {token} missing")
     if "prefers-reduced-motion" not in base_css_source or ":focus-visible" not in base_css_source:
-        raise SystemExit("v1.20.0 accessibility preflight failed: focus/reduced-motion guards missing")
+        raise SystemExit("v1.20.1 accessibility preflight failed: focus/reduced-motion guards missing")
+
+    # v1.20.1 Visual Experience & User Profiles guards.
+    profile_migration_source = (root / "migrations" / "versions" / "20261010_0018_web_user_profiles.py").read_text(encoding="utf-8")
+    identity_source = (root / "app" / "model_domains" / "identity.py").read_text(encoding="utf-8")
+    experience_js_source = (root / "app" / "web" / "static" / "experience.js").read_text(encoding="utf-8")
+    experience_css_source = (root / "app" / "web" / "static" / "experience.css").read_text(encoding="utf-8")
+    account_template_source = (root / "app" / "web" / "templates" / "account_security.html").read_text(encoding="utf-8")
+    help_template_source = (root / "app" / "web" / "templates" / "help.html").read_text(encoding="utf-8")
+    for token in ("profile_title", "profile_bio", "avatar_path", "linked_user_id", 'down_revision: Union[str, None] = "20261008_0017"'):
+        if token not in profile_migration_source:
+            raise SystemExit(f"v1.20.1 profile migration preflight failed: {token} missing")
+    for token in ("profile_title", "profile_bio", "avatar_path", "linked_user_id"):
+        if token not in identity_source:
+            raise SystemExit(f"v1.20.1 profile model preflight failed: {token} missing")
+    for token in (
+        "profile_bio: Mapped[str | None] = mapped_column(EncryptedText()",
+        "profile_email: Mapped[str | None] = mapped_column(EncryptedText()",
+        "profile_phone: Mapped[str | None] = mapped_column(EncryptedText()",
+    ):
+        if token not in identity_source:
+            raise SystemExit(f"v1.20.1 encrypted-profile preflight failed: {token} missing")
+    for token in ("/admin/account/profile", "/admin/account/avatar", "web_profile_updated", "web_profile_avatar_updated", "profile-link"):
+        if token not in auth_source:
+            raise SystemExit(f"v1.20.1 profile route preflight failed: {token} missing")
+    for token in ("data-modal-open", "confirmMessage", "showModal", "data-help-search", "edit-action-button"):
+        if token not in experience_js_source:
+            raise SystemExit(f"v1.20.1 experience JS preflight failed: {token} missing")
+    for token in (".amp-modal", ".profile-hero", ".help-hero", ".dashboard-experience-hero"):
+        if token not in experience_css_source:
+            raise SystemExit(f"v1.20.1 visual layer preflight failed: {token} missing")
+    for token in ("profileEditDialog", "avatarDialog", "Мій кабінет", "badge-gallery"):
+        if token not in account_template_source:
+            raise SystemExit(f"v1.20.1 cabinet preflight failed: {token} missing")
+    for token in ("Центр допомоги", "data-help-search", "2FA", "Media Integrity", "ЩО НОВОГО"):
+        if token not in help_template_source:
+            raise SystemExit(f"v1.20.1 Help Center preflight failed: {token} missing")
+    if '"staff_profiles"' not in (root / "app" / "security.py").read_text(encoding="utf-8"):
+        raise SystemExit("v1.20.1 profile-avatar privacy preflight failed")
 
     # v1.18.7 reproducibility/documentation gates are stdlib-only and must
     # fail the release before application dependencies or deployment can drift.

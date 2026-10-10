@@ -143,7 +143,7 @@
           <label class="check-line"><input type="checkbox" name="active" {% if item.active %}checked{% endif %}> Активний шаблон</label>
           <button class="primary" type="submit">💾 Зберегти</button>
         </form>
-        <form method="post" action="/admin/broadcasts/templates/{{item.id}}/delete" class="custom-template-delete" onsubmit="return confirm('Видалити цей шаблон?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <form method="post" action="/admin/broadcasts/templates/{{item.id}}/delete" class="custom-template-delete" data-confirm-message="Видалити цей шаблон?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <button class="danger-btn" type="submit">🗑 Видалити шаблон</button>
         </form>
       </details>
@@ -183,7 +183,7 @@
   </div>
 
   {% if preview.count %}
-  <form action="/admin/broadcasts/send" method="post" class="broadcast-send-form" onsubmit="return confirm('Надіслати повідомлення {{ preview.count }} одержувачам через Telegram?');"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <form action="/admin/broadcasts/send" method="post" class="broadcast-send-form" data-confirm-message="Надіслати повідомлення {{ preview.count }} одержувачам через Telegram?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <input type="hidden" name="audience_type" value="{{ form_data.get('audience_type','') }}">
     <input type="hidden" name="audience_value" value="{{ form_data.get('audience_value','') }}">
     <input type="hidden" name="age_min" value="{{ form_data.get('age_min','') }}">

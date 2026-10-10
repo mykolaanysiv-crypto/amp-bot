@@ -72,7 +72,7 @@
     </details>
     <div class="goal-actions">
       <form method="post" action="/admin/goals/{{g.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{{'⏸ Призупинити' if g.active else '▶️ Увімкнути'}}</button></form>
-      <form method="post" action="/admin/goals/{{g.id}}/delete" onsubmit="return confirm('Видалити цю ціль? Історія її автоматичних нагород теж буде видалена.');"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>
+      <form method="post" action="/admin/goals/{{g.id}}/delete" data-confirm-message="Видалити цю ціль? Історія її автоматичних нагород теж буде видалена."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити</button></form>
     </div>
   </article>
 {% else %}<section class="card"><p class="empty">Цілей ще немає.</p></section>{% endfor %}

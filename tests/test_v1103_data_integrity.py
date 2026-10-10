@@ -218,4 +218,7 @@ def test_web_manual_override_requires_reason_and_writes_audit():
     assert 'web_event_attendance_override' in source
     assert 'override_reason: str = Form("")' in source
     assert 'name="override_reason"' in template
-    assert 'requireAttendanceOverride' in template
+    # v1.20.1 keeps the mandatory reason/audit rule but uses an accessible dialog instead of browser prompt/confirm.
+    assert 'data-attendance-override="1"' in template
+    assert 'id="attendanceOverrideDialog"' in template
+    assert 'id="attendanceOverrideReason"' in template

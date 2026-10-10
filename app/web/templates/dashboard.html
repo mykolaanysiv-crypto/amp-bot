@@ -1,21 +1,22 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Огляд • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><b>Огляд</b></nav>
-<div class="hero">
-  <div><span class="eyebrow">АМП • СИСТЕМА АКТИВНОСТІ</span><h1>Огляд простору</h1><p>Ключові показники, найближчі події та дії, які потребують уваги.</p></div>
-  {% if season %}<span class="pill">📈 {{ season.name }}</span>{% endif %}
-</div>
+<section class="dashboard-experience-hero">
+  <div><span class="eyebrow" style="color:#fff">AMP XP • РОБОЧИЙ ПРОСТІР</span><h1>Огляд простору</h1><p>Ключові показники, найближчі події та дії, які потребують уваги. Усе важливе — без зайвого шуму.</p><div class="button-row">{% if season %}<span class="pill">{{ season.name }}</span>{% endif %}<a class="soft-button" href="/admin/help">Центр допомоги</a></div></div>
+  <div class="dashboard-hero-mark" aria-hidden="true">{{ icon('sparkle') }}</div>
+</section>
 
 {% if is_superadmin %}
 <section class="card" id="operational-intelligence" data-live-region>
-  <div class="section-title"><div><h2>🧭 Конкретні операційні задачі</h2><p class="muted">Автоматично знайдені сигнали. Система не виправляє їх сама.</p></div><a href="/admin/operations">Усі задачі →</a></div>
-  {% if operational_tasks %}<div class="attention-grid">{% for item in operational_tasks %}<a class="attention-item" href="{{item.action_url}}"><span class="attention-count">{{ {'critical':'🔴','high':'🟠','medium':'🟡','low':'🔵'}.get(item.severity,'•') }}</span><span><b>{{item.title}}</b><small>{{item.details}}</small></span><span class="attention-action">Відкрити →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">✅ Відкритих операційних задач немає.</div>{% endif %}
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('compass') }}</span><span>Конкретні операційні задачі</span></h2><p class="muted">Автоматично знайдені сигнали. Система не виправляє їх сама.</p></div><a href="/admin/operations">Усі задачі →</a></div>
+  {% if operational_tasks %}<div class="attention-grid">{% for item in operational_tasks %}<a class="attention-item" href="{{item.action_url}}"><span class="attention-count severity-dot severity-{{ item.severity }}" aria-label="{{ item.severity }}"></span><span><b>{{item.title}}</b><small>{{item.details}}</small></span><span class="attention-action">Відкрити →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">Відкритих операційних задач немає.</div>{% endif %}
 </section>
 {% endif %}
 
 <section class="card" id="operations-today">
-  <div class="section-title"><div><h2>🗓 Сьогодні</h2><p class="muted">Операційна картина простору на поточний день.</p></div><span class="tag">{{ operations.today_events }} подій</span></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('calendar') }}</span><span>Сьогодні</span></h2><p class="muted">Операційна картина простору на поточний день.</p></div><span class="tag">{{ operations.today_events }} подій</span></div>
   <div class="kpis four">
     <div class="kpi"><span>Події сьогодні</span><strong>{{ operations.today_events }}</strong></div>
     <div class="kpi"><span>Відмічено / підтверджено</span><strong>{{ operations.today_attended }}</strong></div>
@@ -26,7 +27,7 @@
 </section>
 
 <section class="card" id="operations">
-  <div class="section-title"><div><h2>🚦 Операційний стан</h2><p class="muted">Ключові сигнали, які допомагають команді не пропустити важливе.</p></div></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('health') }}</span><span>Операційний стан</span></h2><p class="muted">Ключові сигнали, які допомагають команді не пропустити важливе.</p></div></div>
   <div class="kpis four">
     <div class="kpi"><span>Реєстрації очікують</span><strong>{{ operations.pending_registrations }}</strong><small><a href="/admin/registrations">відкрити чергу →</a></small></div>
     <div class="kpi"><span>Невдалі повідомлення</span><strong>{{ operations.failed_notifications }}</strong><small>Telegram-центр</small></div>
@@ -37,13 +38,13 @@
 
 <div class="grid2 dashboard-duo">
 <section class="card">
-  <div class="section-title"><div><h2>📝 Шлях залучення до участі</h2><p class="muted">Від першого запуску до першої підтвердженої активності.</p></div></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('trend') }}</span><span>Шлях залучення до участі</span></h2><p class="muted">Від першого запуску до першої підтвердженої активності.</p></div></div>
   <div class="table-wrap"><table><thead><tr><th>Етап</th><th>Кількість</th><th>До попереднього</th><th>Від старту</th></tr></thead><tbody>
   {% for step in registration_funnel %}<tr><td><b>{{step.label}}</b></td><td>{{step.count}}</td><td>{{step.step_rate}}%</td><td>{{step.total_rate}}%</td></tr>{% endfor %}
   </tbody></table></div>
 </section>
 <section class="card">
-  <div class="section-title"><div><h2>⭐ Конверсія відгуків</h2><p class="muted">За останні 30 днів: запрошення → завершений мікровідгук.</p></div><span class="tag">{{ feedback_conversion.rate }}%</span></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('survey') }}</span><span>Конверсія відгуків</span></h2><p class="muted">За останні 30 днів: запрошення → завершений мікровідгук.</p></div><span class="tag">{{ feedback_conversion.rate }}%</span></div>
   <div class="kpis three"><div class="kpi"><span>Запрошено</span><strong>{{ feedback_conversion.invited }}</strong></div><div class="kpi"><span>Завершено</span><strong>{{ feedback_conversion.completed }}</strong></div><div class="kpi"><span>Відгукнулися</span><strong>{{ feedback_conversion.rate }}%</strong></div></div>
   {% if feedback_by_event %}<div class="table-wrap"><table><thead><tr><th>Подія</th><th>Відповіді</th><th>Конверсія</th></tr></thead><tbody>{% for row in feedback_by_event %}<tr><td><a href="/admin/events/{{row.id}}">{{row.title}}</a></td><td>{{row.completed}} / {{row.invited}}</td><td><b>{{row.rate}}%</b></td></tr>{% endfor %}</tbody></table></div>{% endif %}
 </section>
@@ -61,26 +62,26 @@
 </div>
 
 <section class="card attention-card" id="attention">
-  <div class="section-title"><div><h2>🔔 Потребує уваги</h2><p class="muted">Тільки те, що зараз вимагає дії команди.</p></div><span class="tag">{{ attention|length }}</span></div>
-  {% if attention %}<div class="attention-grid">{% for item in attention %}<a class="attention-item" href="{{item.url}}"><span class="attention-count">{{item.count}}</span><span><b>{{item.icon}} {{item.title}}</b><small>Перейти до відфільтрованого списку</small></span><span class="attention-action">{{item.action}} →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">✅ Зараз немає термінових пунктів.</div>{% endif %}
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('bell') }}</span><span>Потребує уваги</span></h2><p class="muted">Тільки те, що зараз вимагає дії команди.</p></div><span class="tag">{{ attention|length }}</span></div>
+  {% if attention %}<div class="attention-grid">{% for item in attention %}<a class="attention-item" href="{{item.url}}"><span class="attention-count">{{item.count}}</span><span><b>{{item.icon}} {{item.title}}</b><small>Перейти до відфільтрованого списку</small></span><span class="attention-action">{{item.action}} →</span></a>{% endfor %}</div>{% else %}<div class="attention-empty">Зараз немає термінових пунктів.</div>{% endif %}
 </section>
 
 
 <section class="card" id="data-quality">
-  <div class="section-title"><div><h2>🧹 Якість даних</h2><p class="muted">Канонічний довідник населених пунктів і контроль дублів у профілях.</p></div><span class="tag">{{ data_quality.directory_count }} значень</span></div>
+  <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('integrity') }}</span><span>Якість даних</span></h2><p class="muted">Канонічний довідник населених пунктів і контроль дублів у профілях.</p></div><span class="tag">{{ data_quality.directory_count }} значень</span></div>
   <div class="kpis four">
     <div class="kpi"><span>Профілі з населеним пунктом</span><strong>{{ data_quality.profiles_with_settlement }}</strong></div>
     <div class="kpi"><span>Групи дублів</span><strong>{{ data_quality.duplicate_count }}</strong></div>
     <div class="kpi"><span>Неканонічні значення</span><strong>{{ data_quality.noncanonical_count }}</strong></div>
-    <div class="kpi"><span>Стан</span><strong>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}⚠️{% else %}✅{% endif %}</strong><small>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}потрібна перевірка{% else %}дані узгоджені{% endif %}</small></div>
+    <div class="kpi"><span>Стан</span><strong>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}Увага{% else %}OK{% endif %}</strong><small>{% if data_quality.duplicate_count or data_quality.noncanonical_count %}потрібна перевірка{% else %}дані узгоджені{% endif %}</small></div>
   </div>
   {% if data_quality.duplicate_groups %}<p><b>Знайдені варіанти:</b> {% for group in data_quality.duplicate_groups %}<code>{{ group|join(' / ') }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
   {% if data_quality.noncanonical_values %}<p><b>Поза довідником:</b> {{ data_quality.noncanonical_values|join(', ') }}</p>{% endif %}
-  {% if has_permission("participants.edit") %}<form method="post" action="/admin/data-quality/settlements/normalize"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">🧹 Перевірити й нормалізувати</button></form>{% endif %}
+  {% if has_permission("participants.edit") %}<form method="post" action="/admin/data-quality/settlements/normalize"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">Перевірити й нормалізувати</button></form>{% endif %}
 </section>
 
 <section class="card">
-  <div class="section-title"><h2>📅 Найближчі події</h2><a href="/admin/events">Усі події →</a></div>
+  <div class="section-title"><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('calendar') }}</span><span>Найближчі події</span></h2><a href="/admin/events">Усі події →</a></div>
   {% if upcoming %}
     <div class="upcoming-list">
     {% for e in upcoming %}
@@ -97,7 +98,7 @@
 {% if is_superadmin %}
 <div class="grid2 dashboard-duo">
 <section class="card dashboard-card dashboard-ranking-card">
-  <div class="section-title"><h2>🏆 Найактивніші</h2><span>ТОП-10</span></div>
+  <div class="section-title"><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('trophy') }}</span><span>Найактивніші</span></h2><span>ТОП-10</span></div>
   <div class="dashboard-ranking-wrap">
     <table class="dashboard-ranking-table">
       <thead><tr><th>Місце</th><th>Учасник</th><th>Досвід</th></tr></thead>
@@ -112,7 +113,7 @@
   </div>
 </section>
 <section class="card dashboard-card dashboard-audit-card">
-  <div class="section-title"><h2>🧾 Останні дії</h2><a href="/admin/audit">Усі записи →</a></div>
+  <div class="section-title"><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('audit') }}</span><span>Останні дії</span></h2><a href="/admin/audit">Усі записи →</a></div>
   {% if recent %}
     <div class="timeline dashboard-timeline">
       {% for row in recent %}
@@ -125,7 +126,7 @@
 {% else %}
 <div class="dashboard-single">
 <section class="card dashboard-card dashboard-ranking-card">
-  <div class="section-title"><h2>🏆 Найактивніші</h2><span>ТОП-10</span></div>
+  <div class="section-title"><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('trophy') }}</span><span>Найактивніші</span></h2><span>ТОП-10</span></div>
   <div class="dashboard-ranking-wrap">
     <table class="dashboard-ranking-table">
       <thead><tr><th>Місце</th><th>Учасник</th><th>Досвід</th></tr></thead>

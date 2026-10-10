@@ -1,0 +1,107 @@
+AMP XP v1.20.1 — TEST REPORT
+Generated: 2026-10-10
+Status: Release Candidate
+Production status: NOT confirmed. Release becomes production only after mandatory GitHub/Heroku gates and manual visual/accessibility QA.
+
+SOURCE BASELINE
+- Input artifact: amp_bot_v1200(1).zip
+- Input version: 1.20.0
+- Input ZIP SHA256: 6072c42a113d9f0f334d8efa9e21ad711a578eb77f3dd0a64c17eb6720f77d2e
+- No production database or production media were modified while building this artifact.
+
+ACTUALLY EXECUTED — PASS
+1. python scripts/build_admin_css.py
+   PASS — deterministic admin.css bundle rebuilt with experience.css.
+2. python -m scripts.dependency_lock_check
+   PASS.
+   requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+   requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
+3. python -m scripts.release_consistency_check
+   PASS — AMP v1.20.1; Alembic head=20261010_0018.
+4. python -m compileall -q app scripts migrations tests
+   PASS.
+5. python -m scripts.production_preflight
+   PASS — Production preflight OK for AMP v1.20.1.
+6. node tests/js/test_admin_forms.js
+   PASS.
+7. node tests/js/test_app_shell.js
+   PASS.
+8. node tests/js/test_experience.js
+   PASS — dialog/confirm/help/edit/theme source contract.
+9. node --check app/web/static/app_shell.js
+   PASS.
+10. node --check app/web/static/experience.js
+    PASS.
+11. node --check app/web/static/admin_forms.js
+    PASS.
+12. bash -n scripts/verify_backup_restore.sh
+    PASS.
+13. Jinja parser over app/web/templates/**/*.html
+    PASS — 65 templates.
+14. YAML parse:
+    .github/workflows/ci.yml — PASS
+    .github/workflows/backup.yml — PASS
+15. alembic heads
+    PASS — single head 20261010_0018.
+16. tests/test_v1201_visual_experience_profiles.py
+    PASS — 9 tests.
+17. Targeted historical regressions for externalized live polling, unified SVG nav, Notification Center and attendance override dialog
+    PASS — 4 tests.
+18. Broad synchronous/source/UI compatibility suite (all test modules without async test functions)
+    PASS — 312 tests.
+
+ROOT-CAUSE / REGRESSION NOTES
+- Historical v1.17 realtime gate was updated to verify the same 5-second live-region polling in CSP-safe app_shell.js rather than requiring old inline base.html JavaScript. Runtime requirement is unchanged.
+- Historical health/notification source gates now verify permission + route + label + unified SVG icon identifiers rather than requiring emoji labels. Access requirements are unchanged.
+- Historical manual attendance override still requires >=5-character reason and audit logging. UI moved from browser prompt/confirm to an accessible branded dialog; backend validation was not weakened.
+- Profile bio/email/phone use EncryptedText / FIELD_ENCRYPTION_KEY. Avatar media category staff_profiles is staff-private.
+
+ATTEMPTED BUT NOT COMPLETED IN THIS BUILD SANDBOX
+1. python -m pytest -q --ignore=tests/integration
+   NOT PASS / NOT FAIL OF PRODUCT LOGIC: test collection stopped because sandbox lacks aiogram in three modules.
+   Error: ModuleNotFoundError: No module named 'aiogram'.
+2. Broader runtime/async suite after excluding aiogram-dependent collection modules
+   NOT PASS / NOT FAIL OF PRODUCT LOGIC: async DB tests require aiosqlite, which is absent in the sandbox.
+   Error: ModuleNotFoundError: No module named 'aiosqlite'.
+3. Ruff
+   DEFERRED — ruff module is not installed in the sandbox.
+4. pip-audit
+   DEFERRED — pip_audit module is not installed in the sandbox.
+5. python -m pip check
+   SHARED-ENV RESULT IS NOT A PROJECT RESULT: unrelated global moviepy requires pillow<12 while shared environment has Pillow 12.3.0. moviepy is not part of AMP XP locks. Clean venv/CI pip check remains mandatory.
+6. Clean install from requirements-dev.lock
+   DEFERRED because external package-index/network access is unavailable in this build environment.
+7. PostgreSQL 18 integration / schema drift / real Alembic 0017→0018 and downgrade/upgrade
+   DEFERRED to blocking GitHub CI.
+8. Fresh production PGBackup capture + actual restore verification, Heroku deploy, health/version checks
+   DEFERRED to blocking GitHub/Heroku deployment workflow.
+9. Real browser/device/VoiceOver/NVDA visual QA
+   DEFERRED to UI_VISUAL_CHECKLIST_V1201.md.
+
+MANDATORY GATES STILL REQUIRED BEFORE MERGE / PRODUCTION
+- clean Python 3.13 venv install from requirements-dev.lock;
+- python -m pip check;
+- python -m ruff check --select E9,F63,F7,F82 app scripts tests;
+- python -m pip_audit -r requirements.lock --progress-spinner=off;
+- python -m pytest -q --ignore=tests/integration;
+- PostgreSQL 18 integration tests;
+- Alembic 0017→0018 and downgrade/upgrade roundtrip;
+- schema drift check;
+- backup capture + actual restore verification;
+- Heroku production deployment;
+- /health/live and /health/ready with version=1.20.1;
+- alembic current=20261010_0018;
+- verified backup marker;
+- manual UI_VISUAL_CHECKLIST_V1201.md.
+
+KNOWN / INTENTIONAL LIMITATIONS
+- This release does not create a new participant web-authentication system. The cabinet belongs to existing authenticated web accounts; a superadmin may explicitly link one to an existing AMP participant profile to surface achievements/stats.
+- Legacy templates still contain historical content emoji in labels/text in some modules. New app shell, Help Center, profile, major section headings and new controls use the unified SVG system; the release does not risk a blind global copy rewrite.
+- Existing edit <details> are progressively modalized only when marked edit-action-button; no-JS fallback remains available.
+- v1.20.1 does not automatically migrate media or delete old media bytes.
+
+ARTIFACT / PATCH VERIFICATION
+- Portable patch generated as AMP_XP_v1.20.1_from_v1.20.0.patch.
+- Patch applied to a clean v1.20.0 source tree with `patch -p1` — PASS.
+- Patched tree compared byte-for-byte against v1.20.1 release tree (excluding cache artifacts) — PASS.
+- `git diff --no-index --check` reported no whitespace errors — PASS.
