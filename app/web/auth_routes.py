@@ -109,6 +109,7 @@ async def _establish_web_session(request: Request, db_session, account: WebStaff
     request.session["admin_auth"] = True
     request.session["admin_account_id"] = account.id
     request.session["admin_name"] = account.display_name
+    request.session["admin_avatar_path"] = account.avatar_path
     request.session["admin_login"] = account.username
     request.session["admin_role"] = account.role
     request.session["admin_permissions"] = sorted(effective_permissions(account.role, account.permissions_json))
@@ -380,7 +381,7 @@ async def logout(request: Request):
     return RedirectResponse("/admin/login", status_code=303)
 
 
-async def _account_security_context(request: Request, *, error: str | None = None, success: str | None = None, required: bool = False):
+async def _account_security_context(request: Request, *, error: str | None = None, success: str | None = None, required: bool = False, active_tab: str = "profile"):
     account_id = request.session.get("admin_account_id")
     async with db.session_factory() as session:
         account = await session.get(WebStaffAccount, int(account_id)) if account_id else None
@@ -390,6 +391,8 @@ async def _account_security_context(request: Request, *, error: str | None = Non
         profile_badges: list[Badge] = []
         profile_stats = {"xp": 0, "badges": 0, "events": 0, "quests": 0, "rewards": 0}
         if account:
+            request.session["admin_avatar_path"] = account.avatar_path
+            request.session["admin_name"] = account.display_name
             sessions = list((await session.scalars(
                 select(WebAdminSession).where(
                     WebAdminSession.account_id == account.id,
@@ -440,13 +443,14 @@ async def _account_security_context(request: Request, *, error: str | None = Non
         error=error,
         success=success,
         password_required=required,
+        active_tab=active_tab if active_tab in {"profile", "achievements", "security", "sessions"} else "profile",
     )
 
 
 @router.get("/admin/account", response_class=HTMLResponse)
-async def account_security(request: Request):
+async def account_security(request: Request, tab: str = "profile"):
     if r := guard(request): return r
-    context = await _account_security_context(request)
+    context = await _account_security_context(request, active_tab=tab)
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
@@ -517,6 +521,7 @@ async def account_avatar_update(request: Request, avatar: UploadFile = File(...)
             return RedirectResponse("/admin/login", 303)
         old_path = account.avatar_path
         account.avatar_path = new_path
+        request.session["admin_avatar_path"] = new_path
         account.updated_at = clock.storage_utc()
         await log_audit(
             session, "web_profile_avatar_updated", actor_label=account.display_name,
@@ -525,7 +530,7 @@ async def account_avatar_update(request: Request, avatar: UploadFile = File(...)
         await session.commit()
     if old_path and old_path != new_path:
         await delete_stored_image(db, old_path)
-    return RedirectResponse("/admin/account#profile", status_code=303)
+    return RedirectResponse("/admin/account?tab=profile", status_code=303)
 
 
 @router.post("/admin/account/avatar/remove")
@@ -539,6 +544,7 @@ async def account_avatar_remove(request: Request):
             return RedirectResponse("/admin/login", 303)
         old_path = account.avatar_path
         account.avatar_path = None
+        request.session["admin_avatar_path"] = None
         account.updated_at = clock.storage_utc()
         await log_audit(
             session, "web_profile_avatar_removed", actor_label=account.display_name,
@@ -547,13 +553,13 @@ async def account_avatar_remove(request: Request):
         await session.commit()
     if old_path:
         await delete_stored_image(db, old_path)
-    return RedirectResponse("/admin/account#profile", status_code=303)
+    return RedirectResponse("/admin/account?tab=profile", status_code=303)
 
 
 @router.get("/admin/account/password", response_class=HTMLResponse)
 async def account_password_page(request: Request, required: int = 0):
     if r := guard(request): return r
-    context = await _account_security_context(request, required=bool(required))
+    context = await _account_security_context(request, required=bool(required), active_tab="security")
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
@@ -575,17 +581,17 @@ async def account_password_change(
         if not verify_password(current_password, account.password_hash):
             await log_audit(session, "web_password_change_failed", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details="Невірний поточний пароль")
             await session.commit()
-            context = await _account_security_context(request, error="Поточний пароль введено неправильно.", required=account.must_change_password)
+            context = await _account_security_context(request, error="Поточний пароль введено неправильно.", required=account.must_change_password, active_tab="security")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         if new_password != confirm_password:
-            context = await _account_security_context(request, error="Новий пароль і підтвердження не збігаються.", required=account.must_change_password)
+            context = await _account_security_context(request, error="Новий пароль і підтвердження не збігаються.", required=account.must_change_password, active_tab="security")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         errors = password_errors(new_password, username=account.username)
         if errors:
-            context = await _account_security_context(request, error="Пароль не відповідає вимогам: " + ", ".join(errors) + ".", required=account.must_change_password)
+            context = await _account_security_context(request, error="Пароль не відповідає вимогам: " + ", ".join(errors) + ".", required=account.must_change_password, active_tab="security")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         if verify_password(new_password, account.password_hash):
-            context = await _account_security_context(request, error="Новий пароль має відрізнятися від поточного.", required=account.must_change_password)
+            context = await _account_security_context(request, error="Новий пароль має відрізнятися від поточного.", required=account.must_change_password, active_tab="security")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         account.password_hash = hash_password(new_password)
         account.must_change_password = False
@@ -602,7 +608,7 @@ async def account_password_change(
             row.revoked_at = clock.storage_utc()
         await log_audit(session, "web_password_changed", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=f"Пароль змінено; завершено інших сесій: {len(other_sessions)}")
         await session.commit()
-    context = await _account_security_context(request, success="Пароль успішно змінено. Інші активні сесії завершено.")
+    context = await _account_security_context(request, success="Пароль успішно змінено. Інші активні сесії завершено.", active_tab="security")
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
@@ -620,19 +626,19 @@ async def account_2fa_update(request: Request, enabled: str = Form(""), telegram
             try:
                 tg_id = int(telegram_id.strip())
             except ValueError:
-                context = await _account_security_context(request, error="Telegram ID має бути числом.")
+                context = await _account_security_context(request, error="Telegram ID має бути числом.", active_tab="security")
                 return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         if want_enabled and not tg_id:
             tg_id = account.two_factor_tg_id or (min(settings.superadmin_ids) if account.role == "superadmin" and settings.superadmin_ids else None)
         if want_enabled and not tg_id:
-            context = await _account_security_context(request, error="Для двоетапного входу потрібно вказати ідентифікатор Telegram.")
+            context = await _account_security_context(request, error="Для двоетапного входу потрібно вказати ідентифікатор Telegram.", active_tab="security")
             return templates.TemplateResponse(request=request, name="account_security.html", context=context, status_code=400)
         account.two_factor_enabled = want_enabled
         account.two_factor_tg_id = tg_id if want_enabled else None
         account.updated_at = clock.storage_utc()
         await log_audit(session, "web_2fa_settings", actor_label=account.display_name, entity_type="web_staff_account", entity_id=account.id, details=f"enabled={account.two_factor_enabled}; telegram_id={'set' if account.two_factor_tg_id else 'none'}")
         await session.commit()
-    context = await _account_security_context(request, success="Налаштування двоетапного входу збережено.")
+    context = await _account_security_context(request, success="Налаштування двоетапного входу збережено.", active_tab="security")
     return templates.TemplateResponse(request=request, name="account_security.html", context=context)
 
 
@@ -757,7 +763,7 @@ async def account_passkey_revoke(request: Request, credential_id: int):
             entity_type="web_authn_credential", entity_id=row.id, details=f"label={row.label}",
         )
         await session.commit()
-    return RedirectResponse("/admin/account#passkeys", status_code=303)
+    return RedirectResponse("/admin/account?tab=security", status_code=303)
 
 
 @router.post("/admin/account/sessions/{session_id}/revoke")
@@ -776,7 +782,7 @@ async def account_session_revoke(request: Request, session_id: int):
     if is_current:
         request.session.clear(); request.session["csrf_token"] = generate_csrf_token()
         return RedirectResponse("/admin/login", 303)
-    return RedirectResponse("/admin/account", 303)
+    return RedirectResponse("/admin/account?tab=sessions", 303)
 
 
 async def _security_accounts_context(request: Request, *, temp_password: str | None = None, temp_username: str | None = None, success: str | None = None):
@@ -813,6 +819,25 @@ async def _security_accounts_context(request: Request, *, temp_password: str | N
 async def security_accounts(request: Request):
     if r := guard_superadmin(request): return r
     return templates.TemplateResponse(request=request, name="security_accounts.html", context=await _security_accounts_context(request))
+
+
+@router.get("/admin/security/participant-search")
+async def security_participant_search(request: Request, q: str = ""):
+    if r := guard_superadmin(request):
+        return r
+    term = (q or "").strip()
+    if len(term) < 2:
+        return JSONResponse({"items": []})
+    like = f"%{term}%"
+    filters = [User.full_name.ilike(like), User.username.ilike(like)]
+    normalized = term.upper().replace("AMP-", "").replace("АМП-", "")
+    if normalized.isdigit():
+        filters.append(User.id == int(normalized))
+    async with db.session_factory() as session:
+        rows = list((await session.scalars(
+            select(User).where(User.permanent_deleted_at.is_(None), or_(*filters)).order_by(User.full_name.asc()).limit(12)
+        )).all())
+    return JSONResponse({"items": [{"id": row.id, "amp_id": f"АМП-{row.id:04d}", "name": row.full_name, "username": row.username or ""} for row in rows]})
 
 
 @router.post("/admin/security/accounts/{account_id}/profile-link")

@@ -1,4 +1,4 @@
-/* AMP XP v1.20.1 — Visual Experience & User Profiles. */
+/* AMP XP v1.20.2 — Visual Experience & User Profiles. */
 body{background:
   radial-gradient(circle at 88% 4%,color-mix(in srgb,var(--color-primary-soft) 52%,transparent),transparent 26rem),
   radial-gradient(circle at 18% 72%,color-mix(in srgb,var(--color-secondary) 6%,transparent),transparent 32rem),
@@ -75,7 +75,7 @@ body.sidebar-collapsed .content::before{left:var(--sidebar-collapsed)}
 .severity-dot{width:14px!important;height:14px!important;min-width:14px!important;padding:0!important;border-radius:999px!important;background:var(--color-info)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-info) 13%,transparent)}
 .severity-critical{background:var(--color-danger)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-danger) 13%,transparent)}.severity-high{background:var(--color-accent-coral)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-accent-coral) 13%,transparent)}.severity-medium{background:var(--color-warning)!important;box-shadow:0 0 0 5px color-mix(in srgb,var(--color-warning) 13%,transparent)}.severity-low{background:var(--color-info)!important}
 
-/* v1.20.1 layout polish: readable maximums, predictable wrapping and media center balance. */
+/* v1.20.2 layout polish: readable maximums, predictable wrapping and media center balance. */
 .page-shell{width:min(100%,1480px)!important;margin-inline:auto}
 .page-head h1,.page-header h1,.hero h1{max-width:100%;font-size:clamp(1.65rem,2.15vw,2.25rem)!important;line-height:1.08!important;overflow-wrap:anywhere;text-wrap:balance}
 .page-head>div:first-child,.page-header>div:first-child{min-width:0;max-width:920px}

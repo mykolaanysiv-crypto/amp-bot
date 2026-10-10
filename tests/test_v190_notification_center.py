@@ -28,7 +28,7 @@ def test_notification_center_web_and_retry():
     assert '"/admin/notifications"' in route
     assert '"/admin/notifications/retry-failed"' in route
     assert 'Notification.status == "failed"' in route
-    assert "🔁 Повторити невдалі" in tpl
+    assert "Повторити невдалі" in tpl
     assert "В черзі" in tpl and "Надіслано" in tpl and "Помилки" in tpl
     for label in ["Системні", "Події", "Розсилки", "Кейси", "Серії участі", "Опитування"]:
         assert label in route

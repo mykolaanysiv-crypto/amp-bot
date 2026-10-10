@@ -13,8 +13,8 @@ def test_v182_version_and_css_cache_buster():
 
 def test_participant360_quests_and_activities_are_separate_tabs():
     template = (ROOT / "app/web/templates/user_detail.html").read_text(encoding="utf-8")
-    assert 'data-tab="quests">🎯 Квести' in template
-    assert 'data-tab="activities">⚡ Активності' in template
+    assert 'data-tab="quests"' in template and "icon('target')" in template and "Квести" in template
+    assert 'data-tab="activities"' in template and "icon('bolt')" in template and "Активності" in template
     assert 'data-panel="quests"' in template
     assert 'data-panel="activities"' in template
     assert 'data-tab="activity">Активність' not in template
@@ -44,5 +44,5 @@ def test_duplicate_xp_history_block_removed_but_xp_tools_remain():
     template = (ROOT / "app/web/templates/user_detail.html").read_text(encoding="utf-8")
     assert "🧾 Останні операції з досвідом" not in template
     assert 'data-panel="xp"' in template
-    assert "⚡ Нарахувати досвід" in template
+    assert "Нарахувати досвід" in template
     assert 'action="/admin/users/{{ user.id }}/xp"' in template

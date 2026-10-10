@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Цілісність даних — АМПасадори{% endblock %}
 {% block content %}
 <div class="page-shell data-integrity-page">
   <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Цілісність даних</b></div>
   <div class="page-heading-row">
     <div>
-      <h1>🧹 Центр цілісності даних</h1>
+      <h1><span class="icon ui-inline-icon">{{ icon('integrity') }}</span> Центр цілісності даних</h1>
       <p class="muted">Безпечна діагностика профілів, XP, подій, винагород, зв’язків БД і медіа. Система не зливає профілі й не видаляє історичні дані автоматично.</p>
     </div>
-    <a class="soft-button" href="/admin/data-integrity">↻ Пересканувати</a>
+    <a class="soft-button" href="/admin/data-integrity"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Пересканувати</a>
   </div>
 
   {% if notice %}
@@ -23,17 +24,17 @@
   {% endif %}
 
   <section class="health-grid integrity-summary-grid">
-    <article class="health-card {{ 'health-bad' if report.totals.critical else 'health-ok' }}"><div class="health-icon">🛑</div><div><span>Критичні</span><strong>{{ report.totals.critical }}</strong><small>потребують першочергової перевірки</small></div></article>
-    <article class="health-card {{ 'health-warn' if report.totals.high else 'health-ok' }}"><div class="health-icon">⚠️</div><div><span>Високий ризик</span><strong>{{ report.totals.high }}</strong><small>профілі / XP / статуси</small></div></article>
-    <article class="health-card {{ 'health-warn' if report.totals.medium else 'health-ok' }}"><div class="health-icon">🔎</div><div><span>Перевірити</span><strong>{{ report.totals.medium }}</strong><small>операційні аномалії</small></div></article>
-    <article class="health-card health-ok"><div class="health-icon">📦</div><div><span>Груп проблем</span><strong>{{ report.issue_groups }}</strong><small>усього сигналів</small></div></article>
+    <article class="health-card {{ 'health-bad' if report.totals.critical else 'health-ok' }}"><div class="health-icon"><span class="icon ui-inline-icon">{{ icon('ban') }}</span></div><div><span>Критичні</span><strong>{{ report.totals.critical }}</strong><small>потребують першочергової перевірки</small></div></article>
+    <article class="health-card {{ 'health-warn' if report.totals.high else 'health-ok' }}"><div class="health-icon"><span class="icon ui-inline-icon">{{ icon('warning') }}</span></div><div><span>Високий ризик</span><strong>{{ report.totals.high }}</strong><small>профілі / XP / статуси</small></div></article>
+    <article class="health-card {{ 'health-warn' if report.totals.medium else 'health-ok' }}"><div class="health-icon"><span class="icon ui-inline-icon">{{ icon('search') }}</span></div><div><span>Перевірити</span><strong>{{ report.totals.medium }}</strong><small>операційні аномалії</small></div></article>
+    <article class="health-card health-ok"><div class="health-icon"><span class="icon ui-inline-icon">{{ icon('box') }}</span></div><div><span>Груп проблем</span><strong>{{ report.issue_groups }}</strong><small>усього сигналів</small></div></article>
   </section>
 
   {% if report.duplicate_groups %}
   <section class="panel duplicate-management-panel">
     <div class="panel-heading">
       <div>
-        <h2>👥 Керування дублікатами учасників</h2>
+        <h2><span class="icon ui-inline-icon">{{ icon('users') }}</span> Керування дублікатами учасників</h2>
         <p>Суперадміністратор сам обирає, який профіль залишити основним. Якщо дублікат не має історичних зв’язків — запис видаляється фізично. Якщо має XP, attendance, документи чи інші FK-зв’язки — профіль архівується назавжди, а історія зберігається.</p>
       </div>
       <span class="status-pill status-warning">{{ report.duplicate_groups|length }} груп</span>
@@ -56,7 +57,7 @@
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <input type="hidden" name="return_to" value="/admin/data-integrity">
                     <select name="status">{% for st in ['pending','active','inactive'] %}<option value="{{st}}" {% if member.status==st %}selected{% endif %}>{{label(st)}}</option>{% endfor %}</select>
-                    <button class="soft-button compact-action" type="submit">↻ Змінити</button>
+                    <button class="soft-button compact-action" type="submit"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Змінити</button>
                   </form>
                   {% else %}<span class="tag {{member.status}}">{{label(member.status)}}</span>{% endif %}
                 </td>
@@ -64,7 +65,7 @@
                 <td>
                   {% if member.role in ['participant','ambassador'] %}
                   <details class="duplicate-delete-details">
-                    <summary class="danger-link">🗑 Видалити як дублікат</summary>
+                    <summary class="danger-link"><span class="icon ui-inline-icon">{{ icon('trash') }}</span> Видалити як дублікат</summary>
                     <form method="post" action="/admin/data-integrity/duplicate-delete" class="duplicate-delete-form" data-confirm-message="Ви впевнені? Профіль буде фізично видалено лише якщо він не має історичних зв’язків; інакше — архівовано назавжди.">
                       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                       <input type="hidden" name="duplicate_user_id" value="{{member.id}}">
@@ -94,7 +95,7 @@
   <section class="panel">
     <div class="panel-heading"><div><h2>Політика зберігання даних</h2><p>Ручний запуск тих самих консервативних правил, які раз на добу виконує планувальник політики зберігання даних.</p></div></div>
     <form method="post" action="/admin/data-integrity/retention-cleanup" data-confirm-message="Запустити очищення прострочених чернеток, старих сесій, завершених службових записів доставки і тимчасових файлів? Історія XP, відвідувань, аудиту та профілі не видаляється.">
-      <button class="soft-button" type="submit">🧹 Запустити очищення за політикою зберігання</button>
+      <button class="soft-button" type="submit"><span class="icon ui-inline-icon">{{ icon('integrity') }}</span> Запустити очищення за політикою зберігання</button>
     </form>
   </section>
 
@@ -119,7 +120,7 @@
     {% endfor %}
     </div>
   {% else %}
-    <section class="panel"><div class="empty-state"><b>✅ Критичних проблем не виявлено</b><span>Повторюйте скан після імпортів, міграцій і великих адміністративних змін.</span></div></section>
+    <section class="panel"><div class="empty-state"><b><span class="icon ui-inline-icon">{{ icon('check') }}</span> Критичних проблем не виявлено</b><span>Повторюйте скан після імпортів, міграцій і великих адміністративних змін.</span></div></section>
   {% endif %}
 </div>
 {% endblock %}

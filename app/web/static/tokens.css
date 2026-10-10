@@ -1,4 +1,4 @@
-/* AMP XP v1.20.1 — design tokens. Keep semantic names stable across modules. */
+/* AMP XP v1.20.2 — design tokens. Keep semantic names stable across modules. */
 :root{
   --color-primary:#057E8B;
   --color-primary-hover:#046B76;
@@ -95,7 +95,7 @@ body[data-theme="dark"]{
   color-scheme:dark;
 }
 
-/* AMP XP v1.20.1 — expressive brand layer. */
+/* AMP XP v1.20.2 — expressive brand layer. */
 :root{
   --color-accent-cyan:#19C5D1;
   --color-accent-lime:#B8D93D;

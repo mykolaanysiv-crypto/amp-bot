@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Гейміфікація 2.0 — АМПасадори{% endblock %}
 {% block content %}
 <div class="page-shell">
   <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Гейміфікація 2.0</b></div>
-  <div class="page-heading-row"><div><h1>🧠 Гейміфікація 2.0</h1><p class="muted">Аналітика без автоматичного підкручування XP: ліги, утримання, винагороди, розумні можливості та запрошення.</p></div><a class="soft-button" href="/admin/gamification/insights">↻ Оновити</a></div>
+  <div class="page-heading-row"><div><h1><span class="icon ui-inline-icon">{{ icon('brain') }}</span> Гейміфікація 2.0</h1><p class="muted">Аналітика без автоматичного підкручування XP: ліги, утримання, винагороди, розумні можливості та запрошення.</p></div><a class="soft-button" href="/admin/gamification/insights"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Оновити</a></div>
 
   <section class="panel">
     <div class="panel-heading"><div><h2>Готовність даних</h2><p>{{ insights.readiness_label }}</p></div><span class="status-pill {{ 'status-open' if insights.readiness == 'ready' else 'status-muted' }}">{{ insights.observation_days }} дн.</span></div>

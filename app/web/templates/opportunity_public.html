@@ -1,3 +1,4 @@
+{% from "_ui_macros.html" import icon %}
 <!doctype html>
 <html lang="uk">
 <head>
@@ -14,22 +15,22 @@
 <body class="public-event-body">
   <main class="public-event-shell">
     <section class="card public-event-card">
-      <div class="public-event-cover">{% if item.image_path %}<img src="{{item.image_path}}" alt="Фото можливості">{% else %}🌍{% endif %}</div>
+      <div class="public-event-cover">{% if item.image_path %}<img src="{{item.image_path}}" alt="Фото можливості">{% else %}<span class="icon ui-inline-icon">{{ icon('globe') }}</span>{% endif %}</div>
       <div class="public-event-content">
         <div class="public-event-brand"><img src="/static/amp_logo.png" alt="АМП"> АМПасадори / АМП XP</div>
         {% if state.expired %}<span class="tag inactive">Дедлайн минув</span>{% else %}<span class="tag good">Актуальна можливість</span>{% endif %}
-        {% if state.urgent %}<span class="tag postponed">🔥 Останні 3 дні</span>{% endif %}
+        {% if state.urgent %}<span class="tag postponed"><span class="icon ui-inline-icon">{{ icon('trend') }}</span> Останні 3 дні</span>{% endif %}
         <h1>{{item.title}}</h1>
         <div class="public-event-meta">
-          <span class="tag">🏷 {{item.kind}}</span><span class="tag">🧭 {{item.direction}}</span><span class="tag">💻 {{item.format}}</span>
-          <span class="tag">📆 {{item.deadline.strftime('%d.%m.%Y %H:%M') if item.deadline else 'Без дедлайну'}}</span>
-          {% if item.age_min or item.age_max %}<span class="tag">🎂 {{item.age_min or '—'}}–{{item.age_max or '—'}}</span>{% endif %}
-          {% if item.target_settlements %}<span class="tag">📍 {{item.target_settlements}}</span>{% endif %}
+          <span class="tag"><span class="icon ui-inline-icon">{{ icon('badge') }}</span> {{item.kind}}</span><span class="tag"><span class="icon ui-inline-icon">{{ icon('compass') }}</span> {{item.direction}}</span><span class="tag"><span class="icon ui-inline-icon">{{ icon('monitor') }}</span> {{item.format}}</span>
+          <span class="tag"><span class="icon ui-inline-icon">{{ icon('calendar') }}</span> {{item.deadline.strftime('%d.%m.%Y %H:%M') if item.deadline else 'Без дедлайну'}}</span>
+          {% if item.age_min or item.age_max %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('gift') }}</span> {{item.age_min or '—'}}–{{item.age_max or '—'}}</span>{% endif %}
+          {% if item.target_settlements %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('pin') }}</span> {{item.target_settlements}}</span>{% endif %}
         </div>
         <p class="preline">{{item.description or 'Деталі можливості уточнюйте в команді АМП.'}}</p>
         <div class="public-event-actions">
-          {% if item.url and not state.expired %}<a class="primary" href="{{item.url}}" target="_blank" rel="noopener">🔗 Долучитися / дізнатися більше</a>{% endif %}
-          <a class="soft-button" href="https://t.me/share/url?url={{share_url|urlencode}}&text={{('Можливість: ' ~ item.title)|urlencode}}">📤 Поділитися в Telegram</a>
+          {% if item.url and not state.expired %}<a class="primary" href="{{item.url}}" target="_blank" rel="noopener"><span class="icon ui-inline-icon">{{ icon('link') }}</span> Долучитися / дізнатися більше</a>{% endif %}
+          <a class="soft-button" href="https://t.me/share/url?url={{share_url|urlencode}}&text={{('Можливість: ' ~ item.title)|urlencode}}"><span class="icon ui-inline-icon">{{ icon('share') }}</span> Поділитися в Telegram</a>
         </div>
       </div>
     </section>

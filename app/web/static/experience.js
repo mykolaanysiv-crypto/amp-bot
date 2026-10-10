@@ -1,4 +1,4 @@
-/* AMP XP v1.20.1 — progressive visual experience, dialogs and Help Center. */
+/* AMP XP v1.20.2 — progressive visual experience, dialogs and Help Center. */
 (function () {
   'use strict';
 
@@ -92,14 +92,17 @@
   const helpInput = document.querySelector('[data-help-search]');
   const helpCards = Array.from(document.querySelectorAll('[data-help-card]'));
   const helpEmpty = document.querySelector('[data-help-empty]');
+  const helpRoot = helpInput?.closest('.help-center');
   if (helpInput && helpCards.length) {
     const normalize = value => String(value || '').toLocaleLowerCase('uk-UA').normalize('NFKD');
     const filter = () => {
       const query = normalize(helpInput.value).trim();
+      const category = helpRoot?.dataset.helpCategory || 'all';
       let visible = 0;
       helpCards.forEach(card => {
         const haystack = normalize(`${card.dataset.helpKeywords || ''} ${card.textContent || ''}`);
-        const show = !query || haystack.includes(query);
+        const categoryMatch = category === 'all' || card.dataset.helpCategory === category || card.dataset.helpCategory === 'all';
+        const show = query ? haystack.includes(query) : categoryMatch;
         card.hidden = !show;
         if (show) visible += 1;
       });

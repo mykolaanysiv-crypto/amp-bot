@@ -19,9 +19,9 @@ def read(rel: str) -> str:
 
 
 def test_v1190_release_version_schema_and_dependency_contract():
-    assert read("VERSION.txt").strip() == "1.20.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.20.1"
-    assert '"1.20.1"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.20.2"
+    assert read("VERSION_CHECK.txt").strip() == "1.20.2"
+    assert '"1.20.2"' in read("app/version.py")
     migration = read("migrations/versions/20261007_0016_security_observability.py")
     assert 'revision: str = "20261007_0016"' in migration
     assert 'down_revision: Union[str, None] = "20260925_0015"' in migration

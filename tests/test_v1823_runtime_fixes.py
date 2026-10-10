@@ -46,10 +46,15 @@ def test_web_scanner_has_cross_browser_telegram_path_and_no_duplicate_title_scri
     template = (ROOT / "app/web/templates/event_detail.html").read_text(encoding="utf-8")
     assert '@router.get("/admin/events/{event_id}/scanner/telegram")' in route
     assert "adminscan_" in route
-    assert "📲 Відкрити QR-сканер у Telegram" in template
-    assert "🌐 Сканувати камерою браузера" in template
-    assert template.startswith('{% extends "base.html" %}\n{% block title %}{{event.title}} • Подія{% endblock %}')
-    assert template.count("const startBtn = document.getElementById('event-scanner-start');") == 1
+    assert "Відкрити QR-сканер у Telegram" in template
+    assert "Сканувати камерою браузера" in template
+    assert template.startswith('{% extends "base.html" %}\n')
+    assert '{% from "_ui_macros.html" import icon %}' in template
+    assert '{% block title %}{{event.title}} • Подія{% endblock %}' in template
+    scanner_js = (ROOT / "app/web/static/event_detail.js").read_text(encoding="utf-8")
+    assert '/static/event_detail.js?v=' in template
+    assert scanner_js.count("document.getElementById('event-scanner-start')") == 1
+    assert '<script nonce="{{ request.state.csp_nonce }}">' not in template
 
 
 def test_v1823_version():

@@ -12,11 +12,44 @@ from app.web.broadcast_runtime import (
 
 router = APIRouter()
 
+ANALYTICS_WEB_ICONS = {
+    "new_participants": "users",
+    "cohort_funnel": "trend",
+    "retention": "refresh",
+    "engagement_score": "trend",
+    "activity_heatmap": "activity",
+    "activity": "bolt",
+    "visits": "calendar",
+    "avg_attendance": "users",
+    "event_outcomes": "check",
+    "volunteer_hours": "clock",
+    "age": "users",
+    "gender": "users",
+    "settlement": "pin",
+    "xp_sources": "bolt",
+    "ideas": "idea",
+    "surveys_weekly": "survey",
+    "badges_weekly": "badge",
+    "leagues": "trophy",
+    "streaks": "trend",
+    "lifecycle": "refresh",
+    "restoration": "refresh",
+    "participation_mix": "compass",
+    "vulnerability": "shield",
+}
+
+def _decorate_web_metric_icons(data: dict) -> dict:
+    for key, metric in (data.get("metrics") or {}).items():
+        if isinstance(metric, dict):
+            metric["web_icon"] = ANALYTICS_WEB_ICONS.get(key, "analytics")
+    return data
+
+
 @router.get("/admin/analytics", response_class=HTMLResponse)
 async def analytics_dashboard(request: Request):
     if r := guard(request): return r
     async with db.session_factory() as session:
-        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
+        data = _decorate_web_metric_icons(await build_analytics(session, reveal_sensitive_counts=is_superadmin(request)))
     return templates.TemplateResponse(
         request=request, name="analytics.html",
         context=ctx(request, analytics=data, metric_meta=METRIC_META)
@@ -63,7 +96,7 @@ async def analytics_detail(request: Request, metric_key: str):
     if metric_key not in METRIC_META:
         raise HTTPException(status_code=404, detail="Аналітичний показник не знайдено")
     async with db.session_factory() as session:
-        data = await build_analytics(session, reveal_sensitive_counts=is_superadmin(request))
+        data = _decorate_web_metric_icons(await build_analytics(session, reveal_sensitive_counts=is_superadmin(request)))
     metric = data["metrics"][metric_key]
     scope_groups = {"age", "gender", "settlement", "vulnerability", "leagues", "lifecycle", "restoration"}
     scope_answers = {"event_outcomes", "surveys_weekly"}

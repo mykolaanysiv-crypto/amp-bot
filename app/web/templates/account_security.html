@@ -33,13 +33,17 @@
     </div>
   </section>
 
-  <nav class="profile-nav" aria-label="Розділи кабінету">
-    <a class="active" href="#profile"><span class="icon">{{ icon('user') }}</span>Профіль</a>
-    <a href="#achievements"><span class="icon">{{ icon('badge') }}</span>Досягнення</a>
-    <a href="#security"><span class="icon">{{ icon('shield') }}</span>Безпека</a>
-    <a href="#sessions"><span class="icon">{{ icon('activity') }}</span>Сесії</a>
-  </nav>
+  <div class="amp-tabs account-tabs" data-tabs data-tabs-key="tab" data-tabs-default="{{ active_tab or 'profile' }}">
+    <div class="amp-tablist" role="tablist" aria-label="Розділи кабінету">
+      <button class="amp-tab" id="account-tab-profile" type="button" role="tab" aria-controls="account-panel-profile" aria-selected="false" data-tab="profile"><span class="icon">{{ icon('user') }}</span><span>Профіль</span></button>
+      <button class="amp-tab" id="account-tab-achievements" type="button" role="tab" aria-controls="account-panel-achievements" aria-selected="false" data-tab="achievements"><span class="icon">{{ icon('badge') }}</span><span>Досягнення</span></button>
+      <button class="amp-tab" id="account-tab-security" type="button" role="tab" aria-controls="account-panel-security" aria-selected="false" data-tab="security"><span class="icon">{{ icon('shield') }}</span><span>Безпека</span></button>
+      <button class="amp-tab" id="account-tab-sessions" type="button" role="tab" aria-controls="account-panel-sessions" aria-selected="false" data-tab="sessions"><span class="icon">{{ icon('activity') }}</span><span>Сесії</span></button>
+      <span class="amp-tab-indicator" aria-hidden="true"></span>
+    </div>
+  </div>
 
+  <section class="amp-tab-panel" id="account-panel-profile" role="tabpanel" aria-labelledby="account-tab-profile" data-tab-panel="profile">
   {% if linked_user %}
   <div class="profile-stat-grid" aria-label="Моя активність AMP">
     <div class="profile-stat"><span>Баланс XP</span><strong>{{ profile_stats.xp }}</strong></div>
@@ -80,7 +84,10 @@
     </section>
   </div>
 
-  <section class="card" id="achievements">
+  </section>
+
+  <section class="amp-tab-panel" id="account-panel-achievements" role="tabpanel" aria-labelledby="account-tab-achievements" data-tab-panel="achievements" hidden>
+  <section class="card">
     <div class="section-title"><div><span class="eyebrow">ДОСЯГНЕННЯ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('badge') }}</span><span>Мої бейджі</span></h2><p class="muted">Особисті досягнення з participant-профілю, пов'язаного з вебакаунтом.</p></div><span class="count-badge">{{ profile_badges|length }}</span></div>
     {% if linked_user and profile_badges %}
       <div class="badge-gallery">
@@ -98,7 +105,10 @@
     {% endif %}
   </section>
 
-  <section id="security">
+  </section>
+
+  <section class="amp-tab-panel" id="account-panel-security" role="tabpanel" aria-labelledby="account-tab-security" data-tab-panel="security" hidden>
+  <section id="security-overview">
     <div class="page-head">
       <div><span class="eyebrow">БЕЗПЕКА АКАУНТА</span><h2>Захист входу</h2><p>Пароль, Telegram 2FA та passkeys. Ці налаштування не змінюють ваші права в системі.</p></div>
       <span class="pill">{{ 'Захищено 2FA' if account and (account.two_factor_enabled or account.role=='superadmin' or passkeys) else 'Рекомендуємо 2FA' }}</span>
@@ -153,7 +163,10 @@
     {% else %}<div class="empty-state">Passkey ще не додано. Для суперадміна після додавання він стане основним другим фактором.</div>{% endif %}
   </section>
 
-  <section class="card security-card sessions-card" id="sessions">
+  </section>
+
+  <section class="amp-tab-panel" id="account-panel-sessions" role="tabpanel" aria-labelledby="account-tab-sessions" data-tab-panel="sessions" hidden>
+  <section class="card security-card sessions-card" id="sessions-list">
     <div class="section-title"><div><span class="eyebrow">СЕСІЇ</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('activity') }}</span><span>Активні сесії</span></h2><p>Завершуйте доступ на пристроях, якими більше не користуєтесь.</p></div><span class="count-badge">{{ web_sessions|length }}</span></div>
     {% if web_sessions %}
     <div class="session-list">
@@ -166,6 +179,7 @@
       {% endfor %}
     </div>
     {% else %}<div class="empty-state">Активних сесій не знайдено.</div>{% endif %}
+  </section>
   </section>
 </div>
 
@@ -185,18 +199,26 @@
   </div>
 </dialog>
 
-<dialog class="amp-modal" id="avatarDialog" aria-labelledby="avatarDialogTitle">
+<dialog class="amp-modal avatar-modal" id="avatarDialog" aria-labelledby="avatarDialogTitle">
   <div class="amp-modal-shell">
-    <div class="amp-modal-header"><div><span class="eyebrow">ФОТО ПРОФІЛЮ</span><h2 id="avatarDialogTitle">Змінити аватар</h2><p>Фото доступне тільки всередині staff-частини платформи та зберігається як приватне медіа.</p></div><button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button></div>
+    <div class="amp-modal-header"><div><span class="eyebrow">ФОТО ПРОФІЛЮ</span><h2 id="avatarDialogTitle">Фото профілю</h2><p>Оберіть чітке фото. Воно використовується у кабінеті та компактних елементах акаунта.</p></div><button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button></div>
     <div class="amp-modal-body">
-      <form method="post" action="/admin/account/avatar" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label class="span2">Нове фото<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG або WebP до 20 МБ. Система автоматично оптимізує зображення.</small></label>
-        <div class="span2 form-actions"><button class="soft-button" type="button" data-modal-close>Скасувати</button><button class="primary" type="submit">Завантажити фото</button></div>
+      <div class="avatar-editor-preview" data-avatar-preview>
+        {% if account and account.avatar_path %}<img src="{{ account.avatar_path }}" alt="Поточний аватар">{% else %}<span>{{ (account.display_name if account else admin_name or 'А')[:1]|upper }}</span>{% endif %}
+      </div>
+      <form method="post" action="/admin/account/avatar" enctype="multipart/form-data" class="avatar-upload-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="avatar-dropzone">
+          <span class="icon">{{ icon('upload') }}</span>
+          <strong>Виберіть нове фото</strong>
+          <span>JPEG, PNG або WebP · до 20 МБ</span>
+          <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" required data-avatar-input>
+        </label>
+        <div class="amp-modal-footer avatar-modal-actions"><button class="soft-button" type="button" data-modal-close>Скасувати</button><button class="primary" type="submit"><span class="icon">{{ icon('upload') }}</span><span>Зберегти фото</span></button></div>
       </form>
-      {% if account and account.avatar_path %}<form method="post" action="/admin/account/avatar/remove" data-confirm-message="Прибрати поточний аватар? Файл буде переведено у безпечний карантин медіа." class="button-row"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit">Прибрати аватар</button></form>{% endif %}
+      {% if account and account.avatar_path %}<div class="avatar-danger-zone"><div><b>Прибрати фото</b><span>Профіль повернеться до ініціала. Файл буде оброблений чинним media lifecycle.</span></div><form method="post" action="/admin/account/avatar/remove" data-confirm-message="Прибрати поточний аватар? Файл буде переведено у безпечний карантин медіа."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn" type="submit"><span class="icon">{{ icon('trash') }}</span><span>Прибрати фото</span></button></form></div>{% endif %}
     </div>
   </div>
 </dialog>
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/passkeys.js?v=1.20.2"></script>
 {% endblock %}

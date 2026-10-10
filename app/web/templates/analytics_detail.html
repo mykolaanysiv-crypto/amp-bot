@@ -1,17 +1,18 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}{{ metric.short }} • Аналітика{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/analytics">Аналітика</a><span>›</span><b>{{ metric.short }}</b></nav>
 <div class="hero analytics-detail-hero">
   <div>
-    <span class="eyebrow"><a href="/admin/analytics">📊 Аналітика</a> • детальний показник</span>
-    <h1>{{ metric.icon }} {{ metric.title }}</h1>
+    <span class="eyebrow"><a href="/admin/analytics"><span class="icon ui-inline-icon">{{ icon('analytics') }}</span> Аналітика</a> • детальний показник</span>
+    <h1><span class="icon ui-inline-icon">{{ icon(metric.web_icon or 'analytics') }}</span> {{ metric.title }}</h1>
     <p>{{ metric.description }}</p>
   </div>
   <div class="analytics-hero-actions">
-    <a class="soft-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.xlsx">📥 Excel</a>
-    <a class="primary link-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.pdf">📄 PDF</a>
-    <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.png">🖼 PNG</a>
+    <a class="soft-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.xlsx"><span class="icon ui-inline-icon">{{ icon('download') }}</span> Excel</a>
+    <a class="primary link-button analytics-export-button" href="/admin/analytics/{{ metric.key }}/export.pdf"><span class="icon ui-inline-icon">{{ icon('file') }}</span> PDF</a>
+    <a class="soft-button" href="/admin/analytics/{{ metric.key }}/export.png"><span class="icon ui-inline-icon">{{ icon('media') }}</span> PNG</a>
   </div>
 </div>
 
@@ -33,7 +34,7 @@
 
 {% if is_superadmin %}
 <section class="card analytics-superadmin-drill" id="analyticsDrillPanel">
-  <div class="section-title"><h2>🔎 Деталізація вибраного значення</h2><span>тільки суперадміністратор</span></div>
+  <div class="section-title"><h2><span class="icon ui-inline-icon">{{ icon('search') }}</span> Деталізація вибраного значення</h2><span>тільки суперадміністратор</span></div>
   <p class="muted">Натисніть на точку/стовпчик графіка або рядок таблиці. Тут показуються лише агреговані метадані без ПІБ і контактів.</p>
   <div class="analytics-drill-grid">
     <div><span>Вид даних</span><b id="drillScope">{{ analytics_data_scope }}</b></div>
@@ -60,27 +61,10 @@
   </div>
 </section>
 
-<div class="analytics-privacy-note analytics-detail-note"><span>🔐</span><div><b>{{ 'Повна агрегована статистика' if analytics.sensitive_counts_visible else 'Агрегована аналітика' }}</b><p>{{ analytics.privacy_note }}</p></div></div>
+<div class="analytics-privacy-note analytics-detail-note"><span><span class="icon ui-inline-icon">{{ icon('lock') }}</span></span><div><b>{{ 'Повна агрегована статистика' if analytics.sensitive_counts_visible else 'Агрегована аналітика' }}</b><p>{{ analytics.privacy_note }}</p></div></div>
 <p class="analytics-generated">Сформовано: {{ analytics.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
 <script nonce="{{ request.state.csp_nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script nonce="{{ request.state.csp_nonce }}">
-const metric={{ metric|tojson }};
-if(metric.kind!=='heatmap'){
-  const palette=['#06AEBB','#6C63FF','#2FAE75','#F3A63A','#E86C8D','#5C86D9','#8C6CCF','#42A5A5','#D47B45','#6D8C75','#A0A7B4'];
-  const isDoughnut=metric.kind==='doughnut';
-  const detailChart=new Chart(document.getElementById('detailChart'),{type:metric.kind,data:{labels:metric.labels,datasets:[{label:metric.value_label,data:metric.values,borderWidth:2,tension:.28,fill:false,borderColor:isDoughnut?palette:'#06AEBB',backgroundColor:isDoughnut?palette:'rgba(6,174,187,.22)',pointBackgroundColor:'#06AEBB'}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:(metric.kind==='bar' && (metric.labels.length>7 || metric.labels.some(x=>String(x).length>20)))?'y':'x',plugins:{legend:{display:isDoughnut,position:'bottom'},tooltip:{displayColors:false}},scales:isDoughnut?{}:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:35,minRotation:0}},y:{beginAtZero:true,ticks:{precision:0}}},onClick:(event,elements)=>{if(elements.length) showDrill(elements[0].index);}}});
-}
-function setDrill(label,value,secondary){
-  const l=document.getElementById('drillLabel'); if(!l) return;
-  l.textContent=label??'—'; document.getElementById('drillValue').textContent=value??'—'; document.getElementById('drillSecondary').textContent=secondary||'—';
-}
-function showDrill(index){
-  const row=(metric.rows||[])[index];
-  if(row) setDrill(row.label, row.display_value!==undefined?row.display_value:row.value, row.secondary);
-}
-document.querySelectorAll('.analytics-drill-row').forEach((row)=>{
-  const show=()=>setDrill(row.dataset.label,row.dataset.value,row.dataset.secondary);
-  row.addEventListener('click',show); row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show();}});
-});
-</script>
+
+<template id="analytics-metric-data">{{ metric|tojson }}</template>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/analytics_detail.js?v=1.20.2"></script>
 {% endblock %}

@@ -49,7 +49,9 @@ def test_private_team_events_have_no_public_share_page():
 def test_opportunity_share_button_does_not_embed_json_inside_html_attribute():
     template = read("app/web/templates/opportunity_detail.html")
     assert 'data-share-title="{{item.title|e}}"' in template
-    assert 'onclick="shareOpportunity(this)"' in template
+    assert 'data-share-source="opportunity-share-link"' in template
+    assert 'onclick=' not in template
+    assert 'navigator.share' in read("app/web/static/page_behaviors.js")
     assert 'title:{{item.title|tojson}}' not in template
 
 

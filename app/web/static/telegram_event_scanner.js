@@ -1,0 +1,17 @@
+/* AMP XP v1.20.2 — Telegram Mini App continuous QR scanner. */
+(function () {
+  'use strict';
+  const tg=window.Telegram&&window.Telegram.WebApp;
+  const statusEl=document.getElementById('status'),scanCountEl=document.getElementById('scan-count'),okCountEl=document.getElementById('ok-count');
+  const endpoint=document.body.dataset.scanEndpoint||'';
+  let scanCount=0,okCount=0,busy=false,lastCode='',lastAt=0,manualStop=false,autoCycle=false;
+  function setStatus(text,error=false){if(!statusEl)return;statusEl.textContent=text;statusEl.className='status'+(error?' error':'');}
+  function scanId(){return(window.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;}
+  function scheduleNextScan(delay=1150){if(manualStop)return;window.setTimeout(()=>{autoCycle=false;openNativeScanner();},delay);}
+  async function processScan(text){const now=Date.now();if(!text||busy||(text===lastCode&&now-lastAt<2200))return false;busy=true;lastCode=text;lastAt=now;scanCount++;if(scanCountEl)scanCountEl.textContent=String(scanCount);setStatus('Код зчитано. Перевіряємо учасника…');let reopenDelay=1150;try{const response=await fetch(endpoint,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({init_data:tg?tg.initData:'',code:text,scan_id:scanId()})});const data=await response.json().catch(()=>({}));if(response.ok&&data.ok){if(data.attended){okCount++;if(okCountEl)okCountEl.textContent=String(okCount);const suffix=data.state==='already_attended'?'Участь уже була підтверджена.':'Учасника відмічено на події.';setStatus(`Код скановано успішно. ${data.name||'Учасник'} — ${suffix}`);try{tg?.HapticFeedback.notificationOccurred('success');}catch(_err){}}else{reopenDelay=1700;setStatus(`Код скановано. ${data.name||'Учасник'} не зареєстрований на подію. Кнопку підтвердження надіслано в чат.`);try{tg?.HapticFeedback.notificationOccurred('warning');}catch(_err){}}}else{reopenDelay=1700;setStatus(data.error||'Не вдалося обробити QR.',true);try{tg?.HapticFeedback.notificationOccurred('error');}catch(_err){}}}catch(_err){reopenDelay=1700;setStatus('Помилка мережі. Спробуйте ще раз.',true);try{tg?.HapticFeedback.notificationOccurred('error');}catch(_e){}}finally{busy=false;scheduleNextScan(reopenDelay);}return true;}
+  function openNativeScanner(){if(manualStop)return;if(!tg){setStatus('Відкрийте сканер саме з Telegram-бота.',true);return;}tg.ready();tg.expand();if(typeof tg.showScanQrPopup!=='function'){setStatus('Ця версія Telegram не підтримує вбудований QR-сканер. Оновіть Telegram.',true);return;}setStatus('Камера активна. Скануйте персональний QR-бейдж.');try{tg.showScanQrPopup({text:'Скануйте персональний QR-бейдж АМП'},text=>{const now=Date.now();if(!text||busy||(text===lastCode&&now-lastAt<2200))return false;autoCycle=true;processScan(text);return true;});}catch(_err){autoCycle=false;setStatus('Не вдалося відкрити камеру. Натисніть «Відкрити камеру».',true);}}
+  document.getElementById('open-сканер')?.addEventListener('click',()=>{manualStop=false;openNativeScanner();});
+  document.getElementById('close-app')?.addEventListener('click',()=>{manualStop=true;autoCycle=false;try{tg?.closeScanQrPopup();}catch(_err){}if(tg)tg.close();});
+  if(tg){try{tg.onEvent('scanQrPopupClosed',()=>{if(!autoCycle&&!manualStop)setStatus('Камеру закрито. Натисніть «Відкрити камеру», щоб продовжити.');});}catch(_err){}}
+  window.addEventListener('load',()=>window.setTimeout(openNativeScanner,120));
+})();

@@ -1,4 +1,4 @@
-/* AMP XP v1.20.1 — accessible app shell and progressive UI helpers. */
+/* AMP XP v1.20.2 — accessible app shell and progressive UI helpers. */
 (function () {
   'use strict';
 
@@ -122,7 +122,7 @@
   });
 
   (function installCsrfProtection(){
-    const token=(window.AMP_UI && window.AMP_UI.csrfToken) || '';
+    const token=(document.body && document.body.dataset.csrfToken) || '';
     function ensure(form){if(!form || String(form.method||'get').toLowerCase()!=='post') return;let input=form.querySelector('input[name="_csrf"]');if(!input){input=document.createElement('input');input.type='hidden';input.name='_csrf';form.appendChild(input);}input.value=token;}
     document.querySelectorAll('form').forEach(ensure); document.addEventListener('submit',event=>ensure(event.target),true);
   })();

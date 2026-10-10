@@ -131,23 +131,23 @@ async def dashboard(request: Request):
         attention = []
         if has_web_permission(request, "participants.approve"):
             attention.extend([
-                {"count": pending_registrations, "icon": "📝", "title": "Нові реєстрації", "action": "Перевірити", "url": "/admin/registrations"},
-                {"count": int(await session.scalar(select(func.count(User.id)).where(User.parental_consent_required == True, User.parental_consent_confirmed == False, User.status.in_([UserStatus.PENDING.value, UserStatus.ACTIVE.value]))) or 0), "icon": "👪", "title": "Батьківські згоди очікуються", "action": "Переглянути", "url": "/admin/users?consent=pending"},
-                {"count": int(await session.scalar(select(func.count(User.id)).where(User.status == UserStatus.DELETED.value, User.restoration_request_status == "pending")) or 0), "icon": "♻️", "title": "Запити на відновлення акаунтів", "action": "Розглянути", "url": "/admin/users?status=deleted"},
+                {"count": pending_registrations, "icon": "clipboard", "title": "Нові реєстрації", "action": "Перевірити", "url": "/admin/registrations"},
+                {"count": int(await session.scalar(select(func.count(User.id)).where(User.parental_consent_required == True, User.parental_consent_confirmed == False, User.status.in_([UserStatus.PENDING.value, UserStatus.ACTIVE.value]))) or 0), "icon": "users", "title": "Батьківські згоди очікуються", "action": "Переглянути", "url": "/admin/users?consent=pending"},
+                {"count": int(await session.scalar(select(func.count(User.id)).where(User.status == UserStatus.DELETED.value, User.restoration_request_status == "pending")) or 0), "icon": "refresh", "title": "Запити на відновлення акаунтів", "action": "Розглянути", "url": "/admin/users?status=deleted"},
             ])
         if has_web_permission(request, "quests.manage"):
-            attention.append({"count": int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.status == "completed")) or 0), "icon": "🎯", "title": "Квести очікують перевірки", "action": "Перевірити", "url": "/admin/quests?review=completed"})
+            attention.append({"count": int(await session.scalar(select(func.count(QuestParticipation.id)).where(QuestParticipation.status == "completed")) or 0), "icon": "target", "title": "Квести очікують перевірки", "action": "Перевірити", "url": "/admin/quests?review=completed"})
         if has_web_permission(request, "activities.manage"):
-            attention.append({"count": int(await session.scalar(select(func.count(ActivityApplication.id)).where(ActivityApplication.status.in_(["activity_requested", "activity_submitted"]))) or 0), "icon": "⚡", "title": "Активності очікують підтвердження", "action": "Опрацювати", "url": "/admin/activities?status=attention"})
+            attention.append({"count": int(await session.scalar(select(func.count(ActivityApplication.id)).where(ActivityApplication.status.in_(["activity_requested", "activity_submitted"]))) or 0), "icon": "bolt", "title": "Активності очікують підтвердження", "action": "Опрацювати", "url": "/admin/activities?status=attention"})
         if has_web_permission(request, "cases.manage"):
             attention.extend([
-                {"count": sla_overdue, "icon": "🆘", "title": "Прострочені звернення", "action": "Відкрити", "url": "/admin/requests?overdue=1"},
-                {"count": sla_due_soon, "icon": "⏱", "title": "SLA звернень спливає за 24 год", "action": "Перевірити", "url": "/admin/requests"},
+                {"count": sla_overdue, "icon": "lifebuoy", "title": "Прострочені звернення", "action": "Відкрити", "url": "/admin/requests?overdue=1"},
+                {"count": sla_due_soon, "icon": "clock", "title": "SLA звернень спливає за 24 год", "action": "Перевірити", "url": "/admin/requests"},
             ])
         if has_web_permission(request, "ideas.manage"):
-            attention.append({"count": int(await session.scalar(select(func.count(Idea.id)).where(Idea.status == "new")) or 0), "icon": "💡", "title": "Нові ідеї", "action": "Розглянути", "url": "/admin/ideas?status=new"})
+            attention.append({"count": int(await session.scalar(select(func.count(Idea.id)).where(Idea.status == "new")) or 0), "icon": "idea", "title": "Нові ідеї", "action": "Розглянути", "url": "/admin/ideas?status=new"})
         if has_web_permission(request, "notifications.manage"):
-            attention.append({"count": failed_notifications, "icon": "📨", "title": "Невдалі Telegram-повідомлення", "action": "Повторити", "url": "/admin/notifications?status=failed"})
+            attention.append({"count": failed_notifications, "icon": "bell", "title": "Невдалі Telegram-повідомлення", "action": "Повторити", "url": "/admin/notifications?status=failed"})
         attention = [item for item in attention if item["count"] > 0]
         if is_superadmin(request):
             operational_tasks = list((await session.scalars(

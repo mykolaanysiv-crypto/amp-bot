@@ -34,77 +34,89 @@
     <button class="help-chip" type="button" data-help-query="Telegram">Telegram</button>
   </div>
 
+  <div class="help-category-tabs amp-tabs" data-help-tabs>
+    <div class="amp-tablist" role="tablist" aria-label="Категорії довідки">
+      <button class="amp-tab active" type="button" role="tab" aria-selected="true" data-help-category-filter="all"><span class="icon">{{ icon('home') }}</span><span>Усе</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="events"><span class="icon">{{ icon('calendar') }}</span><span>Події</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="people"><span class="icon">{{ icon('users') }}</span><span>Учасники</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="gamification"><span class="icon">{{ icon('trophy') }}</span><span>Гейміфікація</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="security"><span class="icon">{{ icon('shield') }}</span><span>Безпека</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="media"><span class="icon">{{ icon('media') }}</span><span>Медіа</span></button>
+      <button class="amp-tab" type="button" role="tab" aria-selected="false" data-help-category-filter="faq"><span class="icon">{{ icon('help') }}</span><span>FAQ</span></button>
+    </div>
+  </div>
+
   <div class="help-topic-grid" data-help-results>
-    <article class="help-topic-card" data-help-card data-help-keywords="початок навігація меню користувач кабінет профіль">
+    <article class="help-topic-card" data-help-card data-help-category="all" data-help-keywords="початок навігація меню користувач кабінет профіль">
       <h2><span class="icon">{{ icon('home') }}</span>Початок роботи</h2>
       <p>Після входу починайте з «Огляду»: він показує операційні сигнали, найближчі події та задачі, які потребують дії.</p>
       <ol><li>Використовуйте бокове меню для основних модулів.</li><li>Глобальний пошук у верхній панелі знаходить учасників, події та кейси.</li><li>«Мій кабінет» містить ваш профіль, досягнення, пароль, 2FA, passkeys і сесії.</li><li>На мобільному відкривайте меню через hamburger; клавіша Esc закриває drawer і діалоги.</li></ol>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="події event QR реєстрація checkin attendance відмітка">
+    <article class="help-topic-card" data-help-card data-help-category="events" data-help-keywords="події event QR реєстрація checkin attendance відмітка">
       <h2><span class="icon">{{ icon('calendar') }}</span>Події та QR-відмітка</h2>
       <ol><li>Створіть подію у «Події» та заповніть дату, час, локацію, XP і параметри реєстрації.</li><li>QR події використовується для фактичної відмітки присутності. Персональний QR учасника лише ідентифікує людину.</li><li>Після сканування присутність ще не є фінальним нарахуванням XP — координатор підтверджує участь.</li><li>Після завершення події перевірте no-show, підтвердження та відгуки.</li><li>Якщо подію переносите або скасовуєте, система використовує відповідні workflow і сповіщення.</li></ol>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="учасник users профіль 360 контакти згода персональні дані">
+    <article class="help-topic-card" data-help-card data-help-category="people" data-help-keywords="учасник users профіль 360 контакти згода персональні дані">
       <h2><span class="icon">{{ icon('users') }}</span>Учасники та профіль 360°</h2>
       <p>Картка учасника об’єднує XP, події, квести, волонтерство, ідеї, опитування, бейджі та документи.</p>
       <ul><li>Базові операційні дані редагуйте лише з permission <code>participants.edit</code>.</li><li>Чутливі поля та документи доступні лише відповідно до ролей і privacy rules.</li><li>Не копіюйте персональні дані у сторонні таблиці без робочої потреби.</li><li>Зміни згод і доступу журналюються.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="кабінет web профіль аватар про себе бейджі тема">
+    <article class="help-topic-card" data-help-card data-help-category="people" data-help-keywords="кабінет web профіль аватар про себе бейджі тема">
       <h2><span class="icon">{{ icon('user') }}</span>Мій кабінет</h2>
       <p>Це профіль саме користувача вебплатформи, а не окрема форма Telegram-бота.</p>
       <ul><li>Додайте аватар, роль/підпис, контакти та короткий блок «Про себе».</li><li>Фото профілю зберігається як приватне staff-медіа.</li><li>Якщо суперадміністратор пов’яже вебакаунт із participant-профілем, у кабінеті з’являться власні бейджі та показники участі.</li><li>Світла/темна тема зберігається локально у вашому браузері.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="квести quests XP швидкі XP цілі гейміфікація">
+    <article class="help-topic-card" data-help-card data-help-category="gamification" data-help-keywords="квести quests XP швидкі XP цілі гейміфікація">
       <h2><span class="icon">{{ icon('target') }}</span>Квести, XP і цілі</h2>
       <ul><li>Не нараховуйте XP вручну, якщо для активності вже існує автоматичний workflow.</li><li>Квест має чітко пояснювати умову виконання, доказ і винагороду.</li><li>Автоматичні QR-квести та інші нарахування захищені від повторного дублювання.</li><li>Для зміни правил гейміфікації використовуйте відповідні адміністративні модулі — не редагуйте історичні XP-транзакції напряму.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="бейдж badge нагорода reward streak рейтинг">
+    <article class="help-topic-card" data-help-card data-help-category="gamification" data-help-keywords="бейдж badge нагорода reward streak рейтинг">
       <h2><span class="icon">{{ icon('badge') }}</span>Бейджі, серії та винагороди</h2>
       <ul><li>Бейджі можуть бути автоматичними або адміністративними залежно від правила.</li><li>Серії та ліги формуються з історичних даних і не повинні коригуватися шляхом стирання XP.</li><li>Винагороди мають вартість у XP та можуть мати обмежений залишок.</li><li>Профіль користувача показує отримані бейджі як окрему галерею.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="опитування survey feedback відгуки">
+    <article class="help-topic-card" data-help-card data-help-category="events" data-help-keywords="опитування survey feedback відгуки">
       <h2><span class="icon">{{ icon('survey') }}</span>Опитування та відгуки</h2>
       <ul><li>Створіть опитування, налаштуйте аудиторію і питання.</li><li>Для подій використовуйте мікровідгуки та стежте за конверсією завершення.</li><li>Не включайте чутливі поля у звичайні експорти без відповідного permission.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="звіти analytics excel pdf png export аналітика">
+    <article class="help-topic-card" data-help-card data-help-category="all" data-help-keywords="звіти analytics excel pdf png export аналітика">
       <h2><span class="icon">{{ icon('report') }}</span>Аналітика, звіти та експорт</h2>
       <ul><li>«Аналітика» рахується з актуальної бази та показує агреговані показники.</li><li>«Звіти» формують Excel/PDF за вибраний період.</li><li>Базовий експорт мінімізує персональні дані; sensitive export доступний лише з окремим permission.</li><li>Великі вибірки перевіряйте на дату/період перед передаванням донору або партнеру.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="media медіа файли integrity quarantine S3 фото документи">
+    <article class="help-topic-card" data-help-card data-help-category="media" data-help-keywords="media медіа файли integrity quarantine S3 фото документи">
       <h2><span class="icon">{{ icon('media') }}</span>Медіа та файли</h2>
       <ul><li>Media Integrity Center показує missing, orphan, duplicate, MIME, checksum та quarantine-кандидатів.</li><li>Невідома категорія медіа за замовчуванням приватна.</li><li>Quarantine — це не hard-delete. Підозрілий файл спочатку проходить review.</li><li>Міграція database → S3 виконується окремо через dry-run → copy → verify → switch. Deploy самостійно файли не переносить.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="security безпека пароль 2FA Telegram passkey session">
+    <article class="help-topic-card" data-help-card data-help-category="security" data-help-keywords="security безпека пароль 2FA Telegram passkey session">
       <h2><span class="icon">{{ icon('shield') }}</span>Безпека акаунта</h2>
       <ul><li>Використовуйте унікальний пароль і не передавайте його в чатах.</li><li>Telegram 2FA залишається резервним фактором; passkey може використовувати Touch ID, Face ID, Windows Hello або security key.</li><li>У «Моєму кабінеті» переглядайте активні сесії та завершуйте невідомі.</li><li>Security Center показує невдалі входи, сесії, 2FA, passkeys, sensitive operations та audit events.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="permissions права доступу superadmin admin staff аудит">
+    <article class="help-topic-card" data-help-card data-help-category="security" data-help-keywords="permissions права доступу superadmin admin staff аудит">
       <h2><span class="icon">{{ icon('key') }}</span>Права доступу</h2>
       <p>Прихований пункт меню не є механізмом безпеки — backend permission checks залишаються обов’язковими.</p>
       <ul><li>Суперадміністратор має повний доступ.</li><li>Для інших вебакаунтів можна використовувати права за роллю або індивідуальний набір.</li><li>Зміни permissions і reset пароля фіксуються в аудиті.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="Telegram bot команди start menu help myqr invite cancel">
+    <article class="help-topic-card" data-help-card data-help-category="all" data-help-keywords="Telegram bot команди start menu help myqr invite cancel">
       <h2><span class="icon">{{ icon('megaphone') }}</span>Telegram-бот</h2>
       <div class="table-wrap"><table><tbody><tr><td><code>/start</code></td><td>Запуск, реєстрація та відкриття спеціальних посилань.</td></tr><tr><td><code>/menu</code></td><td>Головне меню.</td></tr><tr><td><code>/help</code></td><td>Коротка довідка.</td></tr><tr><td><code>/myqr</code></td><td>Персональний QR-бейдж.</td></tr><tr><td><code>/invite</code></td><td>Персональне реферальне посилання.</td></tr><tr><td><code>/cancel</code></td><td>Скасувати незавершену форму.</td></tr></tbody></table></div>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="операції operational system health backup scheduler notification">
+    <article class="help-topic-card" data-help-card data-help-category="security" data-help-keywords="операції operational system health backup scheduler notification">
       <h2><span class="icon">{{ icon('health') }}</span>Стан системи та операційні задачі</h2>
       <ul><li>«Стан системи» показує health, scheduler, worker, backup та інші технічні сигнали.</li><li>Operational Intelligence створює advisory issues, але не виконує destructive actions автоматично.</li><li>Після production deploy перевіряйте health/live, health/ready та verified backup marker.</li></ul>
     </article>
 
-    <article class="help-topic-card" data-help-card data-help-keywords="help FAQ помилка не бачу кнопку доступ">
+    <article class="help-topic-card" data-help-card data-help-category="faq" data-help-keywords="help FAQ помилка не бачу кнопку доступ">
       <h2><span class="icon">{{ icon('help') }}</span>Якщо щось не працює</h2>
       <ol><li>Оновіть сторінку та перевірте, чи проблема повторюється.</li><li>Якщо не бачите кнопку або розділ — перевірте роль/permissions.</li><li>Не повторюйте destructive дію кілька разів, якщо сервер відповідає повільно.</li><li>Зафіксуйте сторінку, час і дію, після якої виникла помилка; не надсилайте паролі, OTP або encryption keys.</li></ol>
     </article>
@@ -112,7 +124,7 @@
 
   <div class="help-empty-search" data-help-empty hidden><b>Нічого не знайдено.</b><br>Спробуйте коротший запит: «QR», «профіль», «XP», «passkey», «медіа» або «звіт».</div>
 
-  <section class="card help-faq" data-help-card data-help-keywords="FAQ часті питання">
+  <section class="card help-faq" data-help-card data-help-category="faq" data-help-keywords="FAQ часті питання">
     <div class="section-title"><div><span class="eyebrow">FAQ</span><h2>Часті питання</h2></div></div>
     <details><summary>Чим персональний QR відрізняється від QR події?</summary><div>Персональний QR ідентифікує учасника. QR конкретної події використовується для check-in саме на цій події.</div></details>
     <details><summary>Чи нараховується XP одразу після QR?</summary><div>Не завжди. Для подій фактичну участь підтверджує відповідальний workflow; це захищає систему від помилкових нарахувань.</div></details>
@@ -120,8 +132,8 @@
     <details><summary>Навіщо пов’язувати вебакаунт із participant-профілем?</summary><div>Це дозволяє показувати у власному кабінеті особисті бейджі та показники участі. Пов’язання виконує суперадміністратор.</div></details>
   </section>
 
-  <section class="card" data-help-card data-help-keywords="нове реліз 1.20.1 visual experience profile help modal">
-    <div class="section-title"><div><span class="eyebrow">ЩО НОВОГО</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('sparkle') }}</span><span>AMP XP v1.20.1</span></h2></div></div>
+  <section class="card" data-help-card data-help-category="all" data-help-keywords="нове реліз 1.20.2 visual experience profile help modal">
+    <div class="section-title"><div><span class="eyebrow">ЩО НОВОГО</span><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('sparkle') }}</span><span>AMP XP v1.20.2</span></h2></div></div>
     <ul><li>Новий особистий кабінет вебкористувача з аватаром, описом, контактами, бейджами та показниками.</li><li>Єдина modal/dialog система для редагування та підтвердження небезпечних дій.</li><li>Більш виразні внутрішні блоки, градієнти, surfaces, анімації та кольорові акценти.</li><li>Повністю перебудований Help Center із пошуком і короткими інструкціями для основних workflow.</li></ul>
   </section>
 </div>

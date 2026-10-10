@@ -1,0 +1,46 @@
+AMP XP v1.20.2 — TEST REPORT
+
+STATUS: RELEASE CANDIDATE
+APP VERSION: 1.20.2
+ALEMBIC HEAD: 20261010_0018
+NEW v1.20.2 DB MIGRATION: none
+
+BUILD-SANDBOX EXECUTED PASS:
+- python -m scripts.dependency_lock_check
+- python -m scripts.build_admin_css
+- python -m scripts.release_consistency_check
+- python -m scripts.production_preflight
+- python -m compileall -q app scripts migrations tests
+- alembic heads => 20261010_0018 (single head)
+- Jinja parse: 65 templates
+- node tests/js/test_admin_forms.js
+- node tests/js/test_app_shell.js
+- node tests/js/test_experience.js
+- node tests/js/test_interaction.js
+- node tests/js/test_csp_externalization.js
+- node --check for page_behaviors.js, event_detail.js, telegram_event_scanner.js, analytics.js, analytics_detail.js, interaction.js, experience.js, app_shell.js
+- CSP template scan: 0 HTML event-handler attributes; 0 executable inline scripts
+- pytest targeted CSP/UI historical group: 27 tests PASS
+- broader UI/source regression selection: runnable tests PASS, 1 skip; 2 DB-backed tests blocked by missing aiosqlite in sandbox
+- web-template system-icon scan: no remaining product emoji/glyph icons; only content symbols №, °, ©
+- patch apply to clean v1.20.1 baseline + byte-level tree equivalence: PASS (471 files compared)
+
+ATTEMPTED BUT NOT CLAIMED PASS:
+- python -m pytest -q --ignore=tests/integration
+  Result: collection interrupted because aiogram is not installed in build sandbox (tests/test_reliability.py, test_v11721_duplicate_management.py, test_v1181_operational_integrity.py).
+- two DB-backed targeted tests from v1.19.x could not start because aiosqlite is not installed in build sandbox.
+- Ruff: Python module unavailable in build environment.
+- pip-audit: Python module unavailable in build environment.
+- pip check: global build environment has unrelated moviepy 2.2.1 / Pillow 12.3.0 conflict.
+- PostgreSQL 18 integration: deferred to local/GitHub environment.
+- schema drift: deferred to PostgreSQL 18 CI.
+- backup capture + restore verification: deferred to production workflow.
+- Heroku deploy + health/version smoke: deferred.
+
+INTENTIONAL REGRESSION-TEST UPDATES:
+- Web icon source tests now verify the unified SVG icon system instead of literal system emoji.
+- Tests that previously expected inline JS now verify equivalent behavior in external CSP-safe modules.
+- Functional requirements were preserved; tests were not weakened to bypass security/permissions/CSRF/CSP.
+
+MANDATORY BEFORE PRODUCTION:
+Run all blocking local/GitHub gates from COMMANDS_V1202.txt. Do not bypass failed security, backup, schema, permission, privacy, CSRF, CSP, idempotency or audit checks.

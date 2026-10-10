@@ -1,35 +1,36 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Стан системи — АМПасадори{% endblock %}
 {% block content %}
 <div class="page-shell system-health-page">
   <div class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Стан системи</b></div>
   <div class="page-heading-row">
     <div>
-      <h1>🩺 Стан системи</h1>
+      <h1><span class="icon ui-inline-icon">{{ icon('health') }}</span> Стан системи</h1>
       <p class="muted">Технічний огляд АМП XP: бот, база даних, планувальники, черги повідомлень, резервні копії та сховище.</p>
     </div>
-    <a class="soft-button system-action" href="/admin/system-health">↻ Оновити</a>
+    <a class="soft-button system-action" href="/admin/system-health"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Оновити</a>
   </div>
 
   <section class="health-grid">
     <article class="health-card {{ 'health-ok' if bot_ok else 'health-bad' }}">
-      <div class="health-icon">🤖</div>
+      <div class="health-icon"><span class="icon ui-inline-icon">{{ icon('settings') }}</span></div>
       <div><span>Telegram-бот</span><strong>{{ 'Працює' if bot_ok else 'Проблема' }}</strong><small>{{ bot_label }}</small></div>
     </article>
     <article class="health-card {{ 'health-ok' if db_ok else 'health-bad' }}">
-      <div class="health-icon">🗄️</div>
+      <div class="health-icon"><span class="icon ui-inline-icon">{{ icon('database') }}</span></div>
       <div><span>База даних</span><strong>{{ 'Працює' if db_ok else 'Проблема' }}</strong><small>{{ db_error or 'З’єднання успішне' }}</small></div>
     </article>
     <article class="health-card {{ 'health-ok' if scheduler_ok else 'health-warn' }}">
-      <div class="health-icon">⏱️</div>
+      <div class="health-icon"><span class="icon">{{ icon('clock') }}</span></div>
       <div><span>Планувальник</span><strong>{{ scheduler_label }}</strong><small>Активних блокувань: {{ active_locks }}</small></div>
     </article>
     <article id="telegram-delivery" class="health-card {{ 'health-ok' if failed_notifications == 0 else 'health-warn' }}">
-      <div class="health-icon">📨</div>
+      <div class="health-icon"><span class="icon ui-inline-icon">{{ icon('mail') }}</span></div>
       <div><span>Повторна доставка Telegram</span><strong>{{ pending_notifications }} в черзі</strong><small>Невдалих остаточно: {{ failed_notifications }}</small></div>
     </article>
   </section>
-  {% if failed_notifications %}<form method="post" action="/admin/system-health/retry-failed-notifications" class="system-health-actions"><button class="soft-button system-action" type="submit">↻ Повторити невдалі Telegram-повідомлення</button></form>{% endif %}
+  {% if failed_notifications %}<form method="post" action="/admin/system-health/retry-failed-notifications" class="system-health-actions"><button class="soft-button system-action" type="submit"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Повторити невдалі Telegram-повідомлення</button></form>{% endif %}
 
   <section class="panel health-summary-panel">
     <div class="panel-heading"><div><h2>Поточний стан</h2><p>Ключові показники для швидкої діагностики.</p></div></div>

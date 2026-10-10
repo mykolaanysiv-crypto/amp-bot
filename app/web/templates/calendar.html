@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Календар • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Календар</b></nav>
 <div class="page-head calendar-head">
-  <div><span class="eyebrow">ЄДИНИЙ КАЛЕНДАР</span><h1>📆 Календар</h1><p>Події, дедлайни та службові періоди в одному місці.</p></div>
+  <div><span class="eyebrow">ЄДИНИЙ КАЛЕНДАР</span><h1><span class="icon ui-inline-icon">{{ icon('calendar') }}</span> Календар</h1><p>Події, дедлайни та службові періоди в одному місці.</p></div>
 </div>
 
 <section class="card calendar-toolbar">
@@ -14,21 +15,21 @@
   </div>
   <div class="calendar-nav">
     <a class="soft-button" href="/admin/calendar?view={{view}}&date={{prev_date.isoformat()}}">←</a>
-    <a class="soft-button" href="/admin/calendar?view={{view}}&date={{today.isoformat() if today is defined else ''}}" onclick="this.href='/admin/calendar?view={{view}}&date='+new Date().toISOString().slice(0,10)">Сьогодні</a>
+    <a class="soft-button" href="/admin/calendar?view={{view}}&date={{today.isoformat() if today is defined else ''}}">Сьогодні</a>
     <strong>{{title}}</strong>
     <a class="soft-button" href="/admin/calendar?view={{view}}&date={{next_date.isoformat()}}">→</a>
   </div>
 </section>
 
 <div class="calendar-legend" aria-label="Легенда календаря">
-  <span class="calendar-legend-item event">📅 Подія</span>
-  <span class="calendar-legend-item quest">🎯 Квест</span>
-  <span class="calendar-legend-item task">✅ Задача</span>
-  <span class="calendar-legend-item survey">📋 Опитування</span>
-  <span class="calendar-legend-item opportunity">🌍 Можливість</span>
-  <span class="calendar-legend-item case">🆘 Кейс</span>
-  <span class="calendar-legend-item idea">💡 Ідея</span>
-  <span class="calendar-legend-item freeze">❄️ Заморозка серії</span>
+  <span class="calendar-legend-item event"><span class="icon ui-inline-icon">{{ icon('calendar') }}</span> Подія</span>
+  <span class="calendar-legend-item quest"><span class="icon ui-inline-icon">{{ icon('target') }}</span> Квест</span>
+  <span class="calendar-legend-item task"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Задача</span>
+  <span class="calendar-legend-item survey"><span class="icon ui-inline-icon">{{ icon('clipboard') }}</span> Опитування</span>
+  <span class="calendar-legend-item opportunity"><span class="icon ui-inline-icon">{{ icon('globe') }}</span> Можливість</span>
+  <span class="calendar-legend-item case"><span class="icon ui-inline-icon">{{ icon('lifebuoy') }}</span> Кейс</span>
+  <span class="calendar-legend-item idea"><span class="icon ui-inline-icon">{{ icon('idea') }}</span> Ідея</span>
+  <span class="calendar-legend-item freeze"><span class="icon ui-inline-icon">{{ icon('freeze') }}</span> Заморозка серії</span>
 </div>
 
 {% if view == 'day' %}
@@ -37,7 +38,7 @@
   {% for item in items %}
     <a class="calendar-agenda-item {{item.css}}" href="{{item.url}}">
       <time>{{item.when.strftime('%H:%M')}}</time>
-      <span class="calendar-item-icon">{{item.icon}}</span>
+      <span class="calendar-item-icon icon">{{ icon(item.icon) }}</span>
       <span class="calendar-item-body"><b>{{item.title}}</b><small>{{item.type}}{% if item.meta %} • {{item.meta}}{% endif %}</small></span>
       <span>→</span>
     </a>
@@ -52,7 +53,7 @@
       <a class="calendar-day-label" href="/admin/calendar?view=day&date={{day.key}}"><b>{{day.date.strftime('%d.%m')}}</b><small>{{['Пн','Вт','Ср','Чт','Пт','Сб','Нд'][day.date.weekday()]}}</small></a>
       <div class="calendar-day-items">
       {% for item in day.entries %}
-        <a class="calendar-chip {{item.css}}" href="{{item.url}}" title="{{item.type}} — {{item.title}}"><span>{{item.icon}}</span><b>{{item.when.strftime('%H:%M')}} {{item.title}}</b><small>{{item.type}}</small></a>
+        <a class="calendar-chip {{item.css}}" href="{{item.url}}" title="{{item.type}} — {{item.title}}"><span class="icon">{{ icon(item.icon) }}</span><b>{{item.when.strftime('%H:%M')}} {{item.title}}</b><small>{{item.type}}</small></a>
       {% else %}<span class="calendar-empty">—</span>{% endfor %}
       </div>
     </div>
@@ -68,7 +69,7 @@
       <a class="calendar-month-date" href="/admin/calendar?view=day&date={{day.key}}">{{day.date.day}}</a>
       <div class="calendar-month-items">
       {% for item in day.entries[:4] %}
-        <a class="calendar-chip {{item.css}}" href="{{item.url}}" title="{{item.type}} — {{item.title}}"><span>{{item.icon}}</span><b>{{item.when.strftime('%H:%M')}} {{item.title}}</b></a>
+        <a class="calendar-chip {{item.css}}" href="{{item.url}}" title="{{item.type}} — {{item.title}}"><span class="icon">{{ icon(item.icon) }}</span><b>{{item.when.strftime('%H:%M')}} {{item.title}}</b></a>
       {% endfor %}
       {% if day.entries|length > 4 %}<a class="calendar-more" href="/admin/calendar?view=day&date={{day.key}}">+{{day.entries|length - 4}} ще</a>{% endif %}
       </div>

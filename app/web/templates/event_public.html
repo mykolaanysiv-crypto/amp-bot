@@ -1,3 +1,4 @@
+{% from "_ui_macros.html" import icon %}
 <!doctype html>
 <html lang="uk">
 <head>
@@ -24,26 +25,26 @@
   <main class="public-event-shell">
     <section class="card public-event-card">
       <div class="public-event-cover">
-        {% if event.image_path %}<img src="{{event.image_path}}" alt="Фото події">{% else %}📅{% endif %}
+        {% if event.image_path %}<img src="{{event.image_path}}" alt="Фото події">{% else %}<span class="icon ui-inline-icon">{{ icon('calendar') }}</span>{% endif %}
       </div>
       <div class="public-event-content">
         <div class="public-event-brand"><img src="/static/amp_logo.png" alt="АМП"> АМПасадори / АМП XP</div>
         <span class="tag {{event.status}}">{{lifecycle_status_label(event.status)}}</span>
         <h1>{{event.title}}</h1>
         <div class="public-event-meta">
-          <span class="tag">🕒 {{event.starts_at.strftime('%d.%m.%Y %H:%M')}} — {{(event.ends_at or event.starts_at).strftime('%d.%m.%Y %H:%M')}}</span>
-          <span class="tag">📍 {{event.location or 'АМП'}}</span>
-          <span class="tag">⚡ +{{event.xp_reward}} XP за участь</span>
-          {% if event.preregistration_bonus_xp %}<span class="tag">🎟 +{{event.preregistration_bonus_xp}} XP за попередню реєстрацію</span>{% endif %}
-          {% if event.no_show_penalty_xp %}<span class="tag">🚫 -{{event.no_show_penalty_xp}} XP за неявку</span>{% endif %}
-          {% if event.volunteer_hours %}<span class="tag">⏱ {{event.volunteer_hours}} год.</span>{% endif %}
-          {% if event.capacity %}<span class="tag">👥 {{registered}} / {{event.capacity}}</span>{% else %}<span class="tag">👥 {{registered}} зареєстровано</span>{% endif %}
+          <span class="tag"><span class="icon ui-inline-icon">{{ icon('clock') }}</span> {{event.starts_at.strftime('%d.%m.%Y %H:%M')}} — {{(event.ends_at or event.starts_at).strftime('%d.%m.%Y %H:%M')}}</span>
+          <span class="tag"><span class="icon ui-inline-icon">{{ icon('pin') }}</span> {{event.location or 'АМП'}}</span>
+          <span class="tag"><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> +{{event.xp_reward}} XP за участь</span>
+          {% if event.preregistration_bonus_xp %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('ticket') }}</span> +{{event.preregistration_bonus_xp}} XP за попередню реєстрацію</span>{% endif %}
+          {% if event.no_show_penalty_xp %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('ban') }}</span> -{{event.no_show_penalty_xp}} XP за неявку</span>{% endif %}
+          {% if event.volunteer_hours %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('clock') }}</span> {{event.volunteer_hours}} год.</span>{% endif %}
+          {% if event.capacity %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('users') }}</span> {{registered}} / {{event.capacity}}</span>{% else %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('users') }}</span> {{registered}} зареєстровано</span>{% endif %}
         </div>
         <p class="preline">{{event.description or 'Деталі події уточнюйте в команді АМП.'}}</p>
         <p class="muted"><b>Правило участі:</b> бонус за попередню реєстрацію нараховується лише після фактичного відвідування. Якщо плани зміняться, скасуйте реєстрацію до початку події — інакше статус «Не прийшов» передбачає списання XP.</p>
         <div class="public-event-actions">
-          {% if event.status in ['open','postponed'] %}<a class="primary" href="/event/{{event.share_token}}/register">🙋 Зареєструватися через Telegram</a>{% endif %}
-          <a class="soft-button" href="https://t.me/share/url?url={{share_url|urlencode}}&text={{('Подія АМП: ' ~ event.title)|urlencode}}">📤 Поділитися в Telegram</a>
+          {% if event.status in ['open','postponed'] %}<a class="primary" href="/event/{{event.share_token}}/register"><span class="icon ui-inline-icon">{{ icon('user') }}</span> Зареєструватися через Telegram</a>{% endif %}
+          <a class="soft-button" href="https://t.me/share/url?url={{share_url|urlencode}}&text={{('Подія АМП: ' ~ event.title)|urlencode}}"><span class="icon ui-inline-icon">{{ icon('share') }}</span> Поділитися в Telegram</a>
         </div>
         <p class="muted" style="margin-top:18px">Посилання веде лише на публічну картку події. QR-код для відмітки присутності тут не публікується.</p>
       </div>

@@ -1,38 +1,21 @@
 {% extends "base.html" %}
-{% block title %}{{item.title}} • Можливість<script nonce="{{ request.state.csp_nonce }}">
-function copyOpportunityLink(button){
-  const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
-  navigator.clipboard.writeText(url).then(()=>{
-    const old=button.textContent; button.textContent='✅ Скопійовано';
-    setTimeout(()=>{button.textContent=old;},1800);
-  });
-}
-function shareOpportunity(button){
-  const url=button.dataset.shareUrl||document.getElementById('opportunity-share-link').value;
-  const title=button.dataset.shareTitle||'Можливість АМП';
-  if(navigator.share){navigator.share({title:title,url:url}).catch(()=>{});return;}
-  navigator.clipboard.writeText(url).then(()=>{
-    const old=button.textContent; button.textContent='✅ Скопійовано';
-    setTimeout(()=>{button.textContent=old;},1800);
-  });
-}
-</script>
-{% endblock %}
+{% from "_ui_macros.html" import icon %}
+{% block title %}{{item.title}} • Можливість{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><a href="/admin/opportunities">Можливості</a><span>›</span><b>{{item.title}}</b></nav>
 <div class="page-head opportunity-detail-head">
   <div><span class="eyebrow">ДЕТАЛІ МОЖЛИВОСТІ</span><h1>{{item.title}}</h1><p>{{item.kind}} • {{item.direction or 'Інше'}}</p></div>
   <div class="opportunity-detail-statuses">
     {% if state.expired %}<span class="tag inactive">Дедлайн минув</span>{% elif item.active %}<span class="tag good">Активна</span>{% else %}<span class="tag inactive">Неактивна</span>{% endif %}
-    {% if state.urgent %}<span class="tag postponed">🔥 Останні 3 дні</span>{% endif %}
+    {% if state.urgent %}<span class="tag postponed"><span class="icon ui-inline-icon">{{ icon('trend') }}</span> Останні 3 дні</span>{% endif %}
   </div>
 </div>
 
-{% if state.urgent %}<section class="card opportunity-deadline-alert opportunity-detail-alert">🔥 <b>У вас є остання можливість долучитись до «{{item.title}}»</b> — до дедлайну залишилося менше 3 днів.</section>{% endif %}
+{% if state.urgent %}<section class="card opportunity-deadline-alert opportunity-detail-alert"><span class="icon ui-inline-icon">{{ icon('trend') }}</span> <b>У вас є остання можливість долучитись до «{{item.title}}»</b> — до дедлайну залишилося менше 3 днів.</section>{% endif %}
 
 <div class="event-detail-grid opportunity-detail-grid">
   <section class="card event-hero">
-    {% if item.image_path %}<div class="event-photo-frame"><img src="{{item.image_path}}" alt="Фото можливості"></div>{% else %}<div class="event-no-image">🌍</div>{% endif %}
+    {% if item.image_path %}<div class="event-photo-frame"><img src="{{item.image_path}}" alt="Фото можливості"></div>{% else %}<div class="event-no-image"><span class="icon ui-inline-icon">{{ icon('globe') }}</span></div>{% endif %}
   </section>
   <section class="card">
     <h2>Основне</h2>
@@ -46,12 +29,12 @@ function shareOpportunity(button){
     </div>
     <hr>
     <h3>Опис</h3><p class="preline">{{item.description or 'Опис не додано.'}}</p>
-    {% if item.url %}<p><a class="primary link-button" href="{{item.url}}" target="_blank" rel="noopener">🔗 Відкрити офіційне посилання</a></p>{% endif %}
+    {% if item.url %}<p><a class="primary link-button" href="{{item.url}}" target="_blank" rel="noopener"><span class="icon ui-inline-icon">{{ icon('link') }}</span> Відкрити офіційне посилання</a></p>{% endif %}
   </section>
 </div>
 
 <section class="card opportunity-analytics-card">
-  <div class="section-title"><div><h2>📊 Аналітика можливості</h2><p class="muted">Перегляди, персональні збіги та фактичний інтерес учасників.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('analytics') }}</span> Аналітика можливості</h2><p class="muted">Перегляди, персональні збіги та фактичний інтерес учасників.</p></div></div>
   <div class="kpis five opportunity-analytics-kpis">
     <div class="kpi"><span>Переглядів</span><strong>{{analytics.views}}</strong><small>{{analytics.unique_views}} унікальних</small></div>
     <div class="kpi"><span>Зацікавлені</span><strong>{{analytics.interested}}</strong><small>{{analytics.interest_rate}}% від унікальних переглядів</small></div>
@@ -62,19 +45,19 @@ function shareOpportunity(button){
 </section>
 
 <section class="card event-share-card">
-  <div class="section-title"><div><h2>📤 Поділитися можливістю</h2><p class="muted">Публічна картка містить опис, дедлайн та офіційне посилання без персональних даних учасників.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('share') }}</span> Поділитися можливістю</h2><p class="muted">Публічна картка містить опис, дедлайн та офіційне посилання без персональних даних учасників.</p></div></div>
   <div class="share-link-row">
     <input id="opportunity-share-link" type="text" value="{{share_url}}" readonly aria-label="Публічне посилання на можливість">
-    <button type="button" class="primary" data-share-url="{{share_url|e}}" data-share-title="{{item.title|e}}" onclick="shareOpportunity(this)">📤 Поділитися</button>
-    <button type="button" class="soft-button" data-copy-url="{{share_url|e}}" onclick="copyOpportunityLink(this)">🔗 Копіювати</button>
-    <a class="soft-button" href="{{share_url}}" target="_blank" rel="noopener">👁 Відкрити</a>
+    <button type="button" class="primary" data-share-url="{{share_url|e}}" data-share-title="{{item.title|e}}" data-share-source="opportunity-share-link"><span class="icon ui-inline-icon">{{ icon('share') }}</span> Поділитися</button>
+    <button type="button" class="soft-button" data-copy-url="{{share_url|e}}" data-copy-source="opportunity-share-link"><span class="icon ui-inline-icon">{{ icon('link') }}</span> Копіювати</button>
+    <a class="soft-button" href="{{share_url}}" target="_blank" rel="noopener"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Відкрити</a>
   </div>
 </section>
 
 <section class="card opportunity-management-card">
-  <div class="section-title"><div><span class="eyebrow">КЕРУВАННЯ МОЖЛИВІСТЮ</span><h2>🎛 Редагування та статус</h2><p class="muted">Тут зібрані всі адміністративні дії, щоб основна дошка залишалась компактною.</p></div></div>
+  <div class="section-title"><div><span class="eyebrow">КЕРУВАННЯ МОЖЛИВІСТЮ</span><h2><span class="icon ui-inline-icon">{{ icon('settings') }}</span> Редагування та статус</h2><p class="muted">Тут зібрані всі адміністративні дії, щоб основна дошка залишалась компактною.</p></div></div>
   <details class="opportunity-edit-details" open>
-    <summary class="soft-button edit-action-button">✏️ Редагувати</summary>
+    <summary class="soft-button edit-action-button"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</summary>
     <form method="post" action="/admin/opportunities/{{item.id}}/update" class="form-grid entity-edit-form opportunity-detail-edit-form" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label class="span2">Назва<input name="title" value="{{item.title}}" required></label>
@@ -90,42 +73,24 @@ function shareOpportunity(button){
       <label class="span2">Нове фото<input type="file" name="photo" accept="image/*"></label>
       {% if item.image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}
       <label class="check-line"><input name="active" type="checkbox" value="1" {% if item.active %}checked{% endif %}> Опубліковано</label>
-      <div class="span2 form-actions-row"><button class="primary">💾 Зберегти зміни</button></div>
+      <div class="span2 form-actions-row"><button class="primary"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти зміни</button></div>
     </form>
   </details>
   <div class="opportunity-management-actions">
-    <form method="post" action="/admin/opportunities/{{item.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{% if item.active %}🙈 Приховати можливість{% else %}🌍 Опублікувати знову{% endif %}</button></form>
-    <form method="post" action="/admin/opportunities/{{item.id}}/refresh-matches"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">🔄 Оновити персональні збіги</button></form>
-    <form method="post" action="/admin/opportunities/{{item.id}}/delete" data-confirm-message="Видалити можливість, записи інтересу та підбору? Цю дію не можна скасувати."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn">🗑 Видалити можливість</button></form>
+    <form method="post" action="/admin/opportunities/{{item.id}}/toggle"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button">{% if item.active %}<span class="icon ui-inline-icon">{{ icon('eye') }}</span> Приховати можливість{% else %}<span class="icon ui-inline-icon">{{ icon('globe') }}</span> Опублікувати знову{% endif %}</button></form>
+    <form method="post" action="/admin/opportunities/{{item.id}}/refresh-matches"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Оновити персональні збіги</button></form>
+    <form method="post" action="/admin/opportunities/{{item.id}}/delete" data-confirm-message="Видалити можливість, записи інтересу та підбору? Цю дію не можна скасувати."><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-btn"><span class="icon ui-inline-icon">{{ icon('trash') }}</span> Видалити можливість</button></form>
   </div>
 </section>
 
 <div class="grid2 opportunity-people-grid">
   <section class="card">
-    <div class="section-title"><div><h2>💙 Зацікавлені учасники</h2><p class="muted">Лише внутрішній список для команди.</p></div><span>{{analytics.interested}}</span></div>
+    <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('heart') }}</span> Зацікавлені учасники</h2><p class="muted">Лише внутрішній список для команди.</p></div><span>{{analytics.interested}}</span></div>
     <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for row,u in interest_rows if row.status=='interested' %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a><small>АМП-{{'%04d'|format(u.id)}}</small></td><td><span class="tag good">Зацікавлений</span></td><td>{{row.updated_at.strftime('%d.%m.%Y %H:%M')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Ще ніхто не позначив інтерес.</td></tr>{% endfor %}</tbody></table></div>
   </section>
   <section class="card">
-    <div class="section-title"><div><h2>✨ Персональні збіги</h2><p class="muted">Найрелевантніші учасники за їхніми налаштуваннями.</p></div><span>{{analytics.matches}}</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Збіг</th><th>Сповіщення</th></tr></thead><tbody>{% for row,u in match_rows if row.status in ['matched','notified'] %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><b>{{row.score}}%</b></td><td>{{'✅ Надіслано' if row.notified_at or row.status=='notified' else 'Очікує'}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Персональних збігів поки немає.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('sparkle') }}</span> Персональні збіги</h2><p class="muted">Найрелевантніші учасники за їхніми налаштуваннями.</p></div><span>{{analytics.matches}}</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Учасник</th><th>Збіг</th><th>Сповіщення</th></tr></thead><tbody>{% for row,u in match_rows if row.status in ['matched','notified'] %}<tr><td><a href="/admin/users/{{u.id}}"><b>{{u.full_name}}</b></a></td><td><b>{{row.score}}%</b></td><td>{{' Надіслано' if row.notified_at or row.status=='notified' else 'Очікує'}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Персональних збігів поки немає.</td></tr>{% endfor %}</tbody></table></div>
   </section>
 </div>
-<script nonce="{{ request.state.csp_nonce }}">
-function copyOpportunityLink(button){
-  const url=button.dataset.copyUrl||document.getElementById('opportunity-share-link').value;
-  navigator.clipboard.writeText(url).then(()=>{
-    const old=button.textContent; button.textContent='✅ Скопійовано';
-    setTimeout(()=>{button.textContent=old;},1800);
-  });
-}
-function shareOpportunity(button){
-  const url=button.dataset.shareUrl||document.getElementById('opportunity-share-link').value;
-  const title=button.dataset.shareTitle||'Можливість АМП';
-  if(navigator.share){navigator.share({title:title,url:url}).catch(()=>{});return;}
-  navigator.clipboard.writeText(url).then(()=>{
-    const old=button.textContent; button.textContent='✅ Скопійовано';
-    setTimeout(()=>{button.textContent=old;},1800);
-  });
-}
-</script>
 {% endblock %}

@@ -1,15 +1,16 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Налаштування • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Налаштування</b></nav>
 <div class="page-head">
   <div>
     <span class="eyebrow">СИСТЕМА</span>
-    <h1>⚙️ Налаштування</h1>
+    <h1><span class="icon ui-inline-icon">{{ icon('settings') }}</span> Налаштування</h1>
     <p>Операційні правила, які можна змінювати без нового релізу коду.</p>
   </div>
 </div>
-{% if request.query_params.get('saved') %}<div class="notice success">✅ Налаштування збережено й застосовуються до нових автоматичних операцій.</div>{% endif %}
+{% if request.query_params.get('saved') %}<div class="notice success"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Налаштування збережено й застосовуються до нових автоматичних операцій.</div>{% endif %}
 <form method="post" action="/admin/settings" class="settings-form">
   <input type="hidden" name="_csrf" value="{{ csrf_token }}">
   <div class="settings-grid">
@@ -29,10 +30,10 @@
   {% endfor %}
   </div>
   {% if is_superadmin %}
-  <div class="card"><label><b>Причина зміни правил</b><textarea name="change_reason" required placeholder="Наприклад: корекція балансу після аналізу 4 тижнів"></textarea></label></div><div class="settings-savebar"><button class="primary" type="submit">💾 Зберегти правила</button><span class="muted">Зміни створять нову версію правил і запис аудиту.</span></div>
+  <div class="card"><label><b>Причина зміни правил</b><textarea name="change_reason" required placeholder="Наприклад: корекція балансу після аналізу 4 тижнів"></textarea></label></div><div class="settings-savebar"><button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти правила</button><span class="muted">Зміни створять нову версію правил і запис аудиту.</span></div>
   {% else %}
-  <div class="notice">🔐 Перегляд доступний. Змінювати системні правила може лише суперадміністратор.</div>
+  <div class="notice"><span class="icon ui-inline-icon">{{ icon('lock') }}</span> Перегляд доступний. Змінювати системні правила може лише суперадміністратор.</div>
   {% endif %}
 </form>
-<section class="card"><h2>💤 Неактивність і зберігання даних</h2><p>Механізм 55/59/60 днів неактивності та 14-денний випробувальний строк після відновлення залишається окремою політикою життєвого циклу профілю.</p><p class="muted">Строк зберігання даних = 0 означає, що історичні зв’язки та записи аудиту не видаляються фізично автоматично. Значення зберігається як керована політика для майбутніх процесів очищення даних.</p></section>
+<section class="card"><h2><span class="icon ui-inline-icon">{{ icon('activity') }}</span> Неактивність і зберігання даних</h2><p>Механізм 55/59/60 днів неактивності та 14-денний випробувальний строк після відновлення залишається окремою політикою життєвого циклу профілю.</p><p class="muted">Строк зберігання даних = 0 означає, що історичні зв’язки та записи аудиту не видаляються фізично автоматично. Значення зберігається як керована політика для майбутніх процесів очищення даних.</p></section>
 {% endblock %}

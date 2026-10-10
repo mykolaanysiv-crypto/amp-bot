@@ -38,7 +38,7 @@
       <div><span>Завершення</span><b>{{ campaign.completed_at.strftime('%d.%m.%Y %H:%M') if campaign.completed_at else '—' }}</b></div>
     </div>
     {% if campaign.status in ['queued','sending'] %}
-    <p class="broadcast-live-note">⏳ Розсилка виконується у фоні. Оновіть сторінку через кілька секунд, щоб побачити актуальні результати.</p>
+    <p class="broadcast-live-note"><span class="icon ui-inline-icon">{{ icon('clock') }}</span> Розсилка виконується у фоні. Оновіть сторінку через кілька секунд, щоб побачити актуальні результати.</p>
     {% endif %}
   </article>
 </section>

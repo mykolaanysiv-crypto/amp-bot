@@ -1,15 +1,16 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Модерація • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Модерація</b></nav>
 <div class="page-head">
   <div><span class="eyebrow">БЕЗПЕКА СПІЛЬНОТИ</span><h1>Модерація та тимчасові блокування</h1><p>Окремий журнал банів учасників: причина, строк, історія, скорочення або дострокове зняття.</p></div>
-  <span class="tag blocked">🛡 Рівень суперадміністратора</span>
+  <span class="tag blocked"><span class="icon ui-inline-icon">{{ icon('shield') }}</span> Рівень суперадміністратора</span>
 </div>
 
 <div class="moderation-overview-grid">
   <section class="card moderation-create-card">
-    <div class="section-title"><div><h2>⛔ Видати тимчасовий бан</h2><p class="muted">Блокування застосовується до профілю людини, а не до окремої ідеї, події чи звернення.</p></div></div>
+    <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('ban') }}</span> Видати тимчасовий бан</h2><p class="muted">Блокування застосовується до профілю людини, а не до окремої ідеї, події чи звернення.</p></div></div>
     <form method="post" action="/admin/moderation/ban" class="form-grid moderation-ban-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label class="span2">Учасник
         <select name="user_id" required>
@@ -24,7 +25,7 @@
         </select>
       </label>
       <label class="span2">Причина<input name="reason" required placeholder="Коротко та конкретно: яке правило порушено"></label>
-      <div class="span2 form-actions-row"><button class="danger-btn" type="submit">⛔ Видати бан</button></div>
+      <div class="span2 form-actions-row"><button class="danger-btn" type="submit"><span class="icon ui-inline-icon">{{ icon('ban') }}</span> Видати бан</button></div>
     </form>
   </section>
 
@@ -40,7 +41,7 @@
 </div>
 
 <section class="card">
-  <div class="section-title"><div><h2>🔴 Активні блокування</h2><p class="muted">Звідси можна скоротити строк або достроково повернути доступ.</p></div><span class="pill">{{active|length}}</span></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('warning') }}</span> Активні блокування</h2><p class="muted">Звідси можна скоротити строк або достроково повернути доступ.</p></div><span class="pill">{{active|length}}</span></div>
   <div class="active-ban-grid">
     {% for ban in active %}
       {% set u = people.get(ban.user_id) %}
@@ -54,11 +55,11 @@
         <div class="ban-actions">
           <form method="post" action="/admin/moderation/{{ban.id}}/shorten" class="ban-shorten-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label>Новий строк від сьогодні<select name="remaining_days"><option value="1">1 день</option><option value="3">3 дні</option><option value="7">7 днів</option><option value="14">14 днів</option></select></label>
-            <button class="soft-button" type="submit">⏳ Скоротити</button>
+            <button class="soft-button" type="submit"><span class="icon ui-inline-icon">{{ icon('clock') }}</span> Скоротити</button>
           </form>
           <form method="post" action="/admin/moderation/{{ban.id}}/unban" data-confirm-message="Зняти блокування з цього учасника?"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <input type="hidden" name="lift_reason" value="Блокування знято суперадміністратором">
-            <button class="primary" type="submit">✅ Зняти бан</button>
+            <button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Зняти бан</button>
           </form>
         </div>
       </article>
@@ -69,7 +70,7 @@
 </section>
 
 <section class="card table-wrap">
-  <div class="section-title"><div><h2>🕘 Історія блокувань</h2><p class="muted">Останні 300 рішень модерації.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('clock') }}</span> Історія блокувань</h2><p class="muted">Останні 300 рішень модерації.</p></div></div>
   <table class="moderation-history-table">
     <thead><tr><th>Учасник</th><th>Причина</th><th>Хто видав</th><th>Видано</th><th>Початковий строк</th><th>Фактичний строк</th><th>Статус / завершення</th></tr></thead>
     <tbody>

@@ -73,7 +73,7 @@ def test_registrations_are_separate_intake_queue():
     assert 'web_user_registration_approved' in route
     assert 'web_user_registration_rejected' in route
     assert "nav_link('/admin/registrations','Реєстрації','clipboard'" in base
-    for label in ("Очікують", "Схвалено сьогодні", "Відхилено", "Дата", "ПІБ", "Вік", "Населений пункт", "Telegram", "Телефон", "Статус", "Дії", "👁 Переглянути", "✅ Схвалити", "❌ Відхилити"):
+    for label in ("Очікують", "Схвалено сьогодні", "Відхилено", "Дата", "ПІБ", "Вік", "Населений пункт", "Telegram", "Телефон", "Статус", "Дії", "Переглянути", "Схвалити", "Відхилити"):
         assert label in tpl
 
 

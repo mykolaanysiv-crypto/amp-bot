@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Активності • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Активності</b></nav>
@@ -48,9 +49,9 @@
         <div class="activity-points"><strong>{{a.xp_reward}}</strong><span>XP</span></div>
       </div>
       <p>{{a.description}}</p>
-      <div class="activity-meta"><span>⏱ {{a.hours_reward}} год.</span><span>👁 {{view_stats.get(a.id, {}).get('views', 0)}} перегл.</span><span>{% if a.active %}🟢 Доступна{% else %}⚪ Вимкнена{% endif %}</span></div>
+      <div class="activity-meta"><span><span class="icon ui-inline-icon">{{ icon('clock') }}</span> {{a.hours_reward}} год.</span><span><span class="icon ui-inline-icon">{{ icon('eye') }}</span> {{view_stats.get(a.id, {}).get('views', 0)}} перегл.</span><span>{% if a.active %}<span class="icon ui-inline-icon">{{ icon('check') }}</span> Доступна{% else %}<span class="icon ui-inline-icon">{{ icon('ban') }}</span> Вимкнена{% endif %}</span></div>
       <details>
-        <summary class="soft-button edit-action-button">✏️ Редагувати</summary>
+        <summary class="soft-button edit-action-button"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</summary>
         <form method="post" action="/admin/activities/{{a.id}}/update" class="form-grid activity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <label>Назва<input name="title" value="{{a.title}}" required></label>
           <label>Категорія<select name="category">{% for value, title in activity_category_options %}<option value="{{value}}" {% if a.category==value %}selected{% endif %}>{{title}}</option>{% endfor %}</select></label>
@@ -69,7 +70,7 @@
 
 <section class="card">
   <details>
-    <summary class="create-summary">➕ Додати власний вид активності</summary>
+    <summary class="create-summary"><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Додати власний вид активності</summary>
     <form method="post" action="/admin/activities/create" class="form-grid three create-activity-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <label>Назва<input name="title" required></label>
       <label>Категорія<select name="category">{% for value, title in activity_category_options %}<option value="{{value}}" {% if value=='other' %}selected{% endif %}>{{title}}</option>{% endfor %}</select></label>
@@ -105,18 +106,18 @@
     </div>
     <div class="activity-app-actions">
       {% if app.status=='activity_requested' %}
-      <form method="post" action="/admin/activity-applications/{{app.id}}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">✅ Дозволити</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Дозволити</button></form>
       <form method="post" action="/admin/activity-applications/{{app.id}}/reject" class="action-note-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" placeholder="Коментар (необов'язково)"><button class="danger-btn">Відхилити</button></form>
       {% elif app.status=='activity_submitted' %}
-      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">🏁 Виконано + нарахувати XP</button></form>
-      <form method="post" action="/admin/activity-applications/{{app.id}}/return" class="action-note-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" placeholder="Що потрібно уточнити"><button>↩ Повернути</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary"><span class="icon ui-inline-icon">{{ icon('flag') }}</span> Виконано + нарахувати XP</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/return" class="action-note-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" placeholder="Що потрібно уточнити"><button><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Повернути</button></form>
       {% elif app.status=='activity_approved' %}
-      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary">🏁 Підтвердити виконання</button></form>
+      <form method="post" action="/admin/activity-applications/{{app.id}}/complete"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input name="admin_note" type="hidden" value=""><button class="primary"><span class="icon ui-inline-icon">{{ icon('flag') }}</span> Підтвердити виконання</button></form>
       <span class="muted">Учасник ще не подав результат.</span>
       {% else %}
       <span class="muted">Додаткових дій не потрібно.</span>
       {% endif %}
-      <details class="activity-evidence-editor"><summary class="soft-button">📷 Фото підтвердження</summary><form method="post" action="/admin/activity-applications/{{app.id}}/evidence" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP, до 20 МБ.</small>{% if app.result_image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}<button class="soft-button" type="submit">Зберегти фото</button></form></details>
+      <details class="activity-evidence-editor"><summary class="soft-button"><span class="icon ui-inline-icon">{{ icon('camera') }}</span> Фото підтвердження</summary><form method="post" action="/admin/activity-applications/{{app.id}}/evidence" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="file" name="photo" accept="image/*"><small>JPG, PNG або WebP, до 20 МБ.</small>{% if app.result_image_path %}<label class="check-line"><input type="checkbox" name="remove_image" value="1"> Видалити поточне фото</label>{% endif %}<button class="soft-button" type="submit">Зберегти фото</button></form></details>
       {% if app.admin_note %}<div class="admin-note"><b>Коментар:</b> {{app.admin_note}}</div>{% endif %}
     </div>
   </article>

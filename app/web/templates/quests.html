@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% from "_date_fields.html" import optional_datetime_fields %}
 {% block title %}Квести • АМПасадори{% endblock %}
 {% block content %}
@@ -18,7 +19,7 @@
 </form>
 
 <section class="card entity-create-card">
-  <div class="section-title"><div><h2>➕ Новий квест</h2><p class="muted form-section-note">Дедлайн, як і в подіях, вводиться окремо: день, місяць, рік і час.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Новий квест</h2><p class="muted form-section-note">Дедлайн, як і в подіях, вводиться окремо: день, місяць, рік і час.</p></div></div>
   <form method="post" action="/admin/quests/create" enctype="multipart/form-data" class="form-grid entity-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="span2">Назва<input name="title" required></label>
     <label>Тип<select name="quest_type"><option value="individual">Індивідуальний</option><option value="team">Командний</option></select></label>
@@ -39,7 +40,7 @@
 {% for q in rows %}
   <article class="card entity-card-v2 quest-card-v2">
     <div class="entity-card-media">
-      {% if q.image_path %}<img src="{{q.image_path}}" alt="Фото квесту">{% else %}<div class="entity-placeholder">🎯</div>{% endif %}
+      {% if q.image_path %}<img src="{{q.image_path}}" alt="Фото квесту">{% else %}<div class="entity-placeholder"><span class="icon ui-inline-icon">{{ icon('target') }}</span></div>{% endif %}
     </div>
     <div class="entity-card-body">
       <div class="entity-card-topline">
@@ -48,15 +49,15 @@
       </div>
       <h3>{{q.title}}</h3>
       <div class="entity-card-info">
-        <span>⚡ {{q.xp_reward}} XP</span><span>👥 {{participant_counts.get(q.id,0)}} уч.</span><span>✅ {{completed_counts.get(q.id,0)}} виконали</span><span>👁 {{view_stats.get(q.id, {}).get('views', 0)}} перегл.</span>
-        {% if q.quest_type=='team' %}<span>🎯 {{q.progress_value}} / {{q.target_value}}</span>{% elif q.completion_mode=='qr_on_time' %}<span>⏱️ Автоматично за QR</span>{% endif %}
+        <span><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> {{q.xp_reward}} XP</span><span><span class="icon ui-inline-icon">{{ icon('users') }}</span> {{participant_counts.get(q.id,0)}} уч.</span><span><span class="icon ui-inline-icon">{{ icon('check') }}</span> {{completed_counts.get(q.id,0)}} виконали</span><span><span class="icon ui-inline-icon">{{ icon('eye') }}</span> {{view_stats.get(q.id, {}).get('views', 0)}} перегл.</span>
+        {% if q.quest_type=='team' %}<span><span class="icon ui-inline-icon">{{ icon('target') }}</span> {{q.progress_value}} / {{q.target_value}}</span>{% elif q.completion_mode=='qr_on_time' %}<span><span class="icon ui-inline-icon">{{ icon('clock') }}</span> Автоматично за QR</span>{% endif %}
       </div>
       {% if q.cancelled_at %}<p class="entity-cancel-reason"><b>Причина скасування:</b> {{q.cancellation_reason or 'не зазначено'}}</p>{% elif q.description %}<p class="entity-card-description">{{q.description[:180]}}{{'…' if q.description|length > 180 else ''}}</p>{% endif %}
       {% if q.quest_type=='team' %}<div class="progress"><i style="width:{{ [100,(q.progress_value*100/q.target_value)|int]|min }}%"></i></div>{% endif %}
       <div class="unified-card-actions">
-        <a class="primary link-button unified-action-button" href="/admin/quests/{{q.id}}">👁 Детально</a>
+        <a class="primary link-button unified-action-button" href="/admin/quests/{{q.id}}"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Детально</a>
         <details class="event-edit-details unified-edit-details">
-          <summary class="soft-button edit-action-button event-edit-trigger unified-action-button">✏️ Редагувати</summary>
+          <summary class="soft-button edit-action-button event-edit-trigger unified-action-button"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</summary>
           <form method="post" action="/admin/quests/{{q.id}}/update" enctype="multipart/form-data" class="form-grid entity-edit-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label class="span2">Назва<input name="title" value="{{q.title}}" required></label>
             <label>Тип<select name="quest_type"><option value="individual" {% if q.quest_type=='individual' %}selected{% endif %}>Індивідуальний</option><option value="team" {% if q.quest_type=='team' %}selected{% endif %}>Командний</option></select></label>
@@ -70,7 +71,7 @@
             <label class="span2 upload-field">Нове фото<input name="photo" type="file" accept="image/*"></label>
             <label class="check-line span2 remove-photo-line"><input type="checkbox" name="remove_image" value="1"> Видалити фото</label>
             <label class="span2">Опис<textarea name="description">{{q.description}}</textarea></label>
-            <div class="span2 form-actions-row"><button class="primary" type="submit">💾 Зберегти зміни</button></div>
+            <div class="span2 form-actions-row"><button class="primary" type="submit"><span class="icon ui-inline-icon">{{ icon('save') }}</span> Зберегти зміни</button></div>
           </form>
         </details>
       </div>
@@ -80,22 +81,4 @@
   <section class="card"><p class="empty">Квестів ще немає.</p></section>
 {% endfor %}
 </div>
-<script nonce="{{ request.state.csp_nonce }}">
-(function(){
-  function toggle(form){
-    const type=form.querySelector('[name="quest_type"]'), mode=form.querySelector('[name="completion_mode"]');
-    if(!type||!mode)return;
-    const team=type.value==='team';
-    if(team)mode.value='manual';
-    for(const el of form.querySelectorAll('.quest-team-target'))el.hidden=!team;
-    for(const el of form.querySelectorAll('.quest-automatic-mode'))el.hidden=team;
-    for(const el of form.querySelectorAll('.quest-auto-field'))el.hidden=team||mode.value!=='qr_on_time';
-    const ev=form.querySelector('[name="event_id"]');if(ev)ev.required=!team&&mode.value==='qr_on_time';
-  }
-  for(const form of document.querySelectorAll('form[action$="/create"],form[action$="/update"]')){
-    if(!form.querySelector('[name="quest_type"]'))continue;
-    form.addEventListener('change',()=>toggle(form));toggle(form);
-  }
-})();
-</script>
 {% endblock %}

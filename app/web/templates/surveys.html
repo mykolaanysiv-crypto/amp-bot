@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
 {% block title %}Опитування • АМПасадори{% endblock %}
 {% block content %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Опитування</b></nav>
-<div class="page-head"><div><span class="eyebrow">ЗВОРОТНИЙ ЗВ’ЯЗОК</span><h1>📋 Опитування</h1><p>Створюйте опитування, нараховуйте XP за проходження та автоматично повідомляйте учасників у Telegram.</p></div></div>
+<div class="page-head"><div><span class="eyebrow">ЗВОРОТНИЙ ЗВ’ЯЗОК</span><h1><span class="icon ui-inline-icon">{{ icon('clipboard') }}</span> Опитування</h1><p>Створюйте опитування, нараховуйте XP за проходження та автоматично повідомляйте учасників у Telegram.</p></div></div>
 
 <form class="smart-filters card" method="get">
   <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва або опис"></label>
@@ -14,25 +15,25 @@
 </form>
 
 <section class="card survey-create-card">
-  <div class="section-title"><div><h2>➕ Нове опитування</h2><p class="muted">Спочатку створіть картку, потім додайте питання й опублікуйте.</p></div></div>
+  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Нове опитування</h2><p class="muted">Спочатку створіть картку, потім додайте питання й опублікуйте.</p></div></div>
   <form method="post" action="/admin/surveys/create" class="form-grid survey-create-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="span2">Назва<input name="title" maxlength="180" required placeholder="Наприклад: Що покращити в АМП?"></label>
     <label>XP за проходження<input name="xp_reward" type="number" min="0" max="40" value="5"></label>
     <label>Дедлайн<input name="ends_at" type="datetime-local"></label>
     <label class="span2">Опис<textarea name="description" placeholder="Навіщо проводимо опитування та скільки часу воно займе"></textarea></label>
-    <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceCreate" onchange="toggleSurveyAudience('Create')"><option value="all">Усім активним учасникам</option><option value="users">Обраним учасникам</option><option value="event">Учасникам певної події</option></select></label>
+    <label class="span2 survey-audience-mode">Кому доступне<select name="audience_type" id="surveyAudienceCreate"><option value="all">Усім активним учасникам</option><option value="users">Обраним учасникам</option><option value="event">Учасникам певної події</option></select></label>
     <div class="span2 survey-audience-panel survey-audience-event" id="surveyAudienceEventCreate" style="display:none">
-      <div class="survey-audience-panel-head"><div><b>🎫 Оберіть подію</b><small>Опитування автоматично буде доступне її учасникам.</small></div></div>
+      <div class="survey-audience-panel-head"><div><b><span class="icon ui-inline-icon">{{ icon('ticket') }}</span> Оберіть подію</b><small>Опитування автоматично буде доступне її учасникам.</small></div></div>
       <label class="survey-event-picker">Подія<select name="audience_event_id"><option value="">Оберіть подію зі списку</option>{% for e in audience_events %}<option value="{{e.id}}">{{e.starts_at.strftime('%d.%m.%Y')}} · {{e.title}}</option>{% endfor %}</select></label>
     </div>
     <div class="span2 survey-audience-panel survey-audience-users" id="surveyAudienceUsersCreate" style="display:none">
-      <div class="survey-audience-panel-head"><div><b>👥 Оберіть учасників</b><small>Пошук працює за ПІБ, АМП-кодом і роллю.</small></div><span class="tag"><b id="surveyAudienceCountCreate">0</b> обрано</span></div>
+      <div class="survey-audience-panel-head"><div><b><span class="icon ui-inline-icon">{{ icon('users') }}</span> Оберіть учасників</b><small>Пошук працює за ПІБ, АМП-кодом і роллю.</small></div><span class="tag"><b id="surveyAudienceCountCreate">0</b> обрано</span></div>
       <div class="survey-audience-toolbar">
-        <input type="search" id="surveyAudienceSearchCreate" placeholder="🔎 Пошук учасника…" oninput="filterSurveyAudience('Create')">
-        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceVisible('Create',true)">Обрати показаних</button>
-        <button type="button" class="soft-button compact-action" onclick="setSurveyAudienceAll('Create',false)">Очистити</button>
+        <input type="search" id="surveyAudienceSearchCreate" placeholder=" Пошук учасника…">
+        <button type="button" class="soft-button compact-action" data-survey-select-visible="Create">Обрати показаних</button>
+        <button type="button" class="soft-button compact-action" data-survey-clear="Create">Очистити</button>
       </div>
-      <div class="survey-user-picker" id="surveyUserPickerCreate">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}" onchange="updateSurveyAudienceCount('Create')"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div>
+      <div class="survey-user-picker" id="surveyUserPickerCreate">{% for u in audience_users %}<label class="survey-user-option" data-search="амп-{{'%04d'|format(u.id)}} {{u.full_name|lower}} {{label(u.role)|lower}}"><input type="checkbox" name="audience_user_ids" value="{{u.id}}"><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}} · {{label(u.role)}}</small></span></label>{% endfor %}</div>
     </div>
     <div class="span2 form-actions-row"><button class="primary">Створити опитування</button></div>
   </form>
@@ -43,18 +44,9 @@
   <article class="card survey-card">
     <div class="survey-card-head"><span class="tag survey-{{item.status}}">{% if item.status=='draft' %}Чернетка{% elif item.status=='published' %}Опубліковано{% else %}Закрито{% endif %}</span><span class="event-date-badge">{{ item.ends_at.strftime('%d.%m.%Y %H:%M') if item.ends_at else 'Без дедлайну' }}</span></div>
     <h2>{{item.title}}</h2><p class="muted">{{item.description or 'Без опису'}}</p>
-    <div class="survey-stats"><span>❓ {{qcounts.get(item.id,0)}} питань</span><span>👥 {{counts.get(item.id,0)}} відповідей</span><span>👁 {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span><span>🎁 {{item.xp_reward}} XP</span><span>🎯 {{audience_meta.get(item.id, ('Усі активні учасники',0))[0]}} · {{audience_meta.get(item.id, ('',0))[1]}}</span></div>
-    <div class="unified-card-actions survey-card-actions"><a class="primary link-button unified-action-button" href="/admin/surveys/{{item.id}}">👁 Детально</a><a class="soft-button edit-action-button unified-action-button" href="/admin/surveys/{{item.id}}#survey-identity">✏️ Редагувати</a></div>
+    <div class="survey-stats"><span><span class="icon ui-inline-icon">{{ icon('help') }}</span> {{qcounts.get(item.id,0)}} питань</span><span><span class="icon ui-inline-icon">{{ icon('users') }}</span> {{counts.get(item.id,0)}} відповідей</span><span><span class="icon ui-inline-icon">{{ icon('eye') }}</span> {{view_stats.get(item.id, {}).get('views', 0)}} перегл.</span><span><span class="icon ui-inline-icon">{{ icon('gift') }}</span> {{item.xp_reward}} XP</span><span><span class="icon ui-inline-icon">{{ icon('target') }}</span> {{audience_meta.get(item.id, ('Усі активні учасники',0))[0]}} · {{audience_meta.get(item.id, ('',0))[1]}}</span></div>
+    <div class="unified-card-actions survey-card-actions"><a class="primary link-button unified-action-button" href="/admin/surveys/{{item.id}}"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Детально</a><a class="soft-button edit-action-button unified-action-button" href="/admin/surveys/{{item.id}}#survey-identity"><span class="icon ui-inline-icon">{{ icon('edit') }}</span> Редагувати</a></div>
   </article>
 {% else %}<section class="card"><p class="muted">Опитувань ще немає.</p></section>{% endfor %}
 </div>
-<script nonce="{{ request.state.csp_nonce }}">
-function surveyAudienceChecks(suffix){return Array.from(document.querySelectorAll('#surveyUserPicker'+suffix+' input[name="audience_user_ids"]'));}
-function updateSurveyAudienceCount(suffix){const el=document.getElementById('surveyAudienceCount'+suffix);if(el)el.textContent=surveyAudienceChecks(suffix).filter(x=>x.checked).length;}
-function filterSurveyAudience(suffix){const q=(document.getElementById('surveyAudienceSearch'+suffix)?.value||'').trim().toLowerCase();document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{row.hidden=q&&!row.dataset.search.includes(q);});}
-function setSurveyAudienceVisible(suffix,value){document.querySelectorAll('#surveyUserPicker'+suffix+' .survey-user-option').forEach(row=>{if(!row.hidden)row.querySelector('input').checked=value;});updateSurveyAudienceCount(suffix);}
-function setSurveyAudienceAll(suffix,value){surveyAudienceChecks(suffix).forEach(x=>x.checked=value);updateSurveyAudienceCount(suffix);}
-function toggleSurveyAudience(suffix){const sel=document.getElementById('surveyAudience'+suffix);if(!sel)return;const eventBox=document.getElementById('surveyAudienceEvent'+suffix);const usersBox=document.getElementById('surveyAudienceUsers'+suffix);if(eventBox)eventBox.style.display=sel.value==='event'?'grid':'none';if(usersBox)usersBox.style.display=sel.value==='users'?'grid':'none';updateSurveyAudienceCount(suffix);}
-toggleSurveyAudience('Create');
-</script>
 {% endblock %}
