@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — layout, motion and Help Center refinement. */
+/* AMP XP v1.20.3.1 — layout, motion and Help Center refinement. */
 (function () {
   'use strict';
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

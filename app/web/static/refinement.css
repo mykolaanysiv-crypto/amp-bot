@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — Design System Refinement & Module UX. */
+/* AMP XP v1.20.3.1 — Design System Refinement & Module UX. */
 :root{
   --content-wide:1720px;
   --content-standard:1560px;
@@ -22,8 +22,8 @@ body{overflow-x:hidden;text-rendering:optimizeLegibility}
 .content{max-width:none!important;overflow-x:clip!important}
 .content>*{width:min(100%,var(--content-wide))!important;max-width:none!important}
 .content>:where(.breadcrumb,.page-head,.page-header,.hero,.card,.cards,.grid2,.kpis,.work-cards-grid,.event-cards-grid,.analytics-grid,.dashboard-duo,.help-center){margin-inline:auto!important}
-.content :where(h1,h2,h3,h4,p,li,td,th,label,b,strong,small,a,button,.tag,.pill,.status-pill,.event-date-badge,.nav-label){word-break:normal!important;overflow-wrap:break-word!important;hyphens:auto}
-.content :where(button,.primary,.soft-button,.danger-btn,.success-button,.tag,.pill,.status-pill,.event-date-badge,.amp-tab,.help-chip,.nav-item){white-space:normal!important;text-wrap:pretty}
+.content :where(h1,h2,h3,h4,p,li,td,th,label,b,strong,small,a,button,.tag,.pill,.status-pill,.event-date-badge,.nav-label){word-break:normal!important;overflow-wrap:normal!important;hyphens:none}
+.content :where(button,.primary,.soft-button,.danger-btn,.success-button,.tag,.pill,.status-pill,.event-date-badge,.amp-tab,.help-chip,.nav-item){white-space:nowrap!important;text-wrap:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;hyphens:none!important}
 .content :where(input,select,textarea,button,a,summary){min-width:0}
 
 /* Page composition: use the viewport, but keep prose readable. */

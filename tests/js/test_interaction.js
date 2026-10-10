@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 interaction source contract; dependency-free Node smoke. */
+/* AMP XP v1.20.3.1 interaction source contract; dependency-free Node smoke. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const src = fs.readFileSync('app/web/static/interaction.js', 'utf8');
@@ -15,4 +15,4 @@ for (const forbidden of ['href="#profile"','href="#achievements"','href="#securi
   assert.equal(account.includes(forbidden), false, `anchor-as-tab regression: ${forbidden}`);
 assert.equal(src.includes('eval('), false, 'unsafe eval detected');
 assert.equal(src.includes('new Function'), false, 'unsafe dynamic function detected');
-console.log('AMP v1.20.3 interaction: real tabs, account menu, combobox, avatar preview and toast contracts PASS');
+console.log('AMP v1.20.3.1 interaction: real tabs, account menu, combobox, avatar preview and toast contracts PASS');

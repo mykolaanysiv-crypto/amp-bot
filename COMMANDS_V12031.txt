@@ -1,0 +1,24 @@
+AMP XP v1.20.3.1 — local release gates
+
+python -m pip install -r requirements-dev.lock
+python -m pip check
+python -m scripts.dependency_lock_check
+python -m scripts.build_admin_css
+python -m scripts.release_consistency_check
+python -m compileall -q app scripts migrations tests
+python -m scripts.production_preflight
+python -m ruff check --select E9,F63,F7,F82 app scripts tests
+node tests/js/test_admin_forms.js
+node tests/js/test_app_shell.js
+node tests/js/test_experience.js
+node tests/js/test_interaction.js
+node tests/js/test_csp_externalization.js
+node tests/js/test_polish.js
+node --check app/web/static/refinement.js
+node --check app/web/static/polish.js
+python -m pip_audit -r requirements.lock --progress-spinner=off
+python -m pip check
+python -m pytest -q --ignore=tests/integration
+
+Expected Alembic head: 20261010_0018
+No new migration in v1.20.3.1.

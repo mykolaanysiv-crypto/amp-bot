@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — Telegram Mini App continuous QR scanner. */
+/* AMP XP v1.20.3.1 — Telegram Mini App continuous QR scanner. */
 (function () {
   'use strict';
   const tg=window.Telegram&&window.Telegram.WebApp;

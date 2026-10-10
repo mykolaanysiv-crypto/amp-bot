@@ -18,10 +18,10 @@
 <section class="card" id="operations-today">
   <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('calendar') }}</span><span>Сьогодні</span></h2><p class="muted">Операційна картина простору на поточний день.</p></div><span class="tag">{{ operations.today_events }} подій</span></div>
   <div class="kpis four">
-    <div class="kpi"><span>Події сьогодні</span><strong>{{ operations.today_events }}</strong></div>
-    <div class="kpi"><span>Відмічено / підтверджено</span><strong>{{ operations.today_attended }}</strong></div>
-    <div class="kpi"><span>Не прийшли</span><strong>{{ operations.today_no_show }}</strong></div>
-    <div class="kpi"><span>Відмітка відкриється ≤24 год</span><strong>{{ operations.upcoming_checkins }}</strong></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('event') }}</div><span>Події сьогодні</span><strong>{{ operations.today_events }}</strong></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('user-check') }}</div><span>Відмічено / підтверджено</span><strong>{{ operations.today_attended }}</strong></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('warning') }}</div><span>Не прийшли</span><strong>{{ operations.today_no_show }}</strong></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('clock') }}</div><span>Відмітка відкриється ≤24 год</span><strong>{{ operations.upcoming_checkins }}</strong></div>
   </div>
   {% if today_events %}<div class="upcoming-list">{% for e in today_events %}<div class="upcoming-item"><div class="upcoming-date">{{e.starts_at.strftime('%H:%M')}}</div><div><h3>{{e.title}}</h3><p>{{e.location or 'Локацію не зазначено'}} · {{ lifecycle_status_label(e.status) }}</p></div><a class="soft-button" href="/admin/events/{{e.id}}">Відкрити</a></div>{% endfor %}</div>{% else %}<p class="muted">Подій на сьогодні немає.</p>{% endif %}
 </section>
@@ -29,10 +29,10 @@
 <section class="card" id="operations">
   <div class="section-title"><div><h2 class="section-heading-with-icon"><span class="section-icon">{{ icon('health') }}</span><span>Операційний стан</span></h2><p class="muted">Ключові сигнали, які допомагають команді не пропустити важливе.</p></div></div>
   <div class="kpis four">
-    <div class="kpi"><span>Реєстрації очікують</span><strong>{{ operations.pending_registrations }}</strong><small><a href="/admin/registrations">відкрити чергу →</a></small></div>
-    <div class="kpi"><span>Невдалі повідомлення</span><strong>{{ operations.failed_notifications }}</strong><small>Telegram-центр</small></div>
-    <div class="kpi"><span>Прострочено строк реагування</span><strong>{{ operations.sla_overdue }}</strong><small>ще {{ operations.sla_due_soon }} спливають ≤24 год</small></div>
-    <div class="kpi"><span>Проблеми якості даних</span><strong>{{ operations.data_quality_issues }}</strong><small><a href="#data-quality">перевірити →</a></small></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('registration') }}</div><span>Реєстрації очікують</span><strong>{{ operations.pending_registrations }}</strong><small><a href="/admin/registrations">відкрити чергу →</a></small></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('notification') }}</div><span>Невдалі повідомлення</span><strong>{{ operations.failed_notifications }}</strong><small>Telegram-центр</small></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('clock') }}</div><span>Прострочено строк реагування</span><strong>{{ operations.sla_overdue }}</strong><small>ще {{ operations.sla_due_soon }} спливають ≤24 год</small></div>
+    <div class="kpi"><div class="kpi-icon">{{ icon('integrity') }}</div><span>Проблеми якості даних</span><strong>{{ operations.data_quality_issues }}</strong><small><a href="#data-quality">перевірити →</a></small></div>
   </div>
 </section>
 
@@ -51,14 +51,14 @@
 </div>
 
 <div class="kpis">
-  <div class="kpi"><span>Активні учасники</span><strong>{{ stats.users }}</strong></div>
-  <div class="kpi"><span>АМПасадори й координатори</span><strong>{{ stats.ambassadors }}</strong></div>
-  <div class="kpi"><span>Події</span><strong>{{ stats.events }}</strong></div>
-  <div class="kpi"><span>Нараховано досвіду</span><strong>{{ stats.xp }}</strong><small>XP</small></div>
-  <div class="kpi"><span>Заявки на винагороди</span><strong>{{ stats.rewards }}</strong></div>
-  <div class="kpi"><span>Задачі на підтвердженні</span><strong>{{ stats.tasks }}</strong></div>
-  <div class="kpi"><span>Заявки на активності</span><strong>{{ stats.activities }}</strong><small>потребують уваги</small></div>
-  <div class="kpi"><span>Відкриті звернення</span><strong>{{ stats.requests }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('users') }}</div><span>Активні учасники</span><strong>{{ stats.users }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('team') }}</div><span>АМПасадори й координатори</span><strong>{{ stats.ambassadors }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('event') }}</div><span>Події</span><strong>{{ stats.events }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('xp') }}</div><span>Нараховано досвіду</span><strong>{{ stats.xp }}</strong><small>XP</small></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('reward') }}</div><span>Заявки на винагороди</span><strong>{{ stats.rewards }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('tasks') }}</div><span>Задачі на підтвердженні</span><strong>{{ stats.tasks }}</strong></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('activity') }}</div><span>Заявки на активності</span><strong>{{ stats.activities }}</strong><small>потребують уваги</small></div>
+  <div class="kpi"><div class="kpi-icon">{{ icon('lifebuoy') }}</div><span>Відкриті звернення</span><strong>{{ stats.requests }}</strong></div>
 </div>
 
 <section class="card attention-card" id="attention">

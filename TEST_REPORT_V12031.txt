@@ -1,0 +1,38 @@
+AMP XP v1.20.3.1 — Test Report
+
+Status: RELEASE CANDIDATE until all local/GitHub/production gates pass.
+
+ACTUALLY EXECUTED IN BUILD ENVIRONMENT — PASS
+- python -m scripts.dependency_lock_check
+- python -m scripts.build_admin_css
+- python -m scripts.release_consistency_check
+- python -m compileall -q app scripts migrations tests
+- python -m scripts.production_preflight
+- Jinja parse: 65 templates
+- node tests/js/test_admin_forms.js
+- node tests/js/test_app_shell.js
+- node tests/js/test_experience.js
+- node tests/js/test_interaction.js
+- node tests/js/test_csp_externalization.js
+- node tests/js/test_polish.js
+- node --check app/web/static/refinement.js
+- node --check app/web/static/polish.js
+- targeted UI/release regression set: PASS
+
+FULL NON-INTEGRATION PYTEST — NOT PASS IN BUILD ENVIRONMENT
+The full suite was attempted and collection/runtime was blocked by missing build-sandbox dependencies:
+- aiogram
+- aiosqlite
+These are environment limitations; they are not marked PASS.
+
+NOT AVAILABLE IN BUILD ENVIRONMENT — NOT CLAIMED PASS
+- Ruff (module not installed)
+- pip-audit (module not installed)
+- full pytest with runtime dependencies
+- PostgreSQL 18 integration
+- schema drift
+- backup capture/restore verification
+- Heroku deployment
+- live /health/live and /health/ready smoke
+
+Required Alembic head: 20261010_0018. No new migration in v1.20.3.1.

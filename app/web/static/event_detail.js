@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3 — event attendance override and browser QR scanner. */
+/* AMP XP v1.20.3.1 — event attendance override and browser QR scanner. */
 (function () {
   'use strict';
   const dialog=document.getElementById('attendanceOverrideDialog');
