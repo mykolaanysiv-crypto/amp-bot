@@ -10,7 +10,7 @@ def read(path: str) -> str:
 def test_v1210_version_and_schema_baseline():
     assert read("VERSION.txt").strip() == "1.22.0"
     assert read("VERSION_CHECK.txt").strip() == "1.22.0"
-    assert '"1.21.0"' in read("app/version.py")
+    assert '"1.22.0"' in read("app/version.py")
     migrations = read("scripts/release_consistency_check.py")
     assert 'EXPECTED_ALEMBIC_HEAD = "20261010_0018"' in migrations
 

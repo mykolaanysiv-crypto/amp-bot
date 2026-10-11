@@ -8,11 +8,11 @@ def read(path: str) -> str:
 
 
 def test_v12031_version_and_polish_assets_are_wired():
-    assert read("VERSION.txt").strip() == "1.21.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
+    assert read("VERSION.txt").strip() == "1.22.0"
+    assert read("VERSION_CHECK.txt").strip() == "1.22.0"
     base = read("app/web/templates/base.html")
-    assert '/static/admin.css?v=1.21.0' in base
-    assert '/static/polish.js?v=1.21.0' in base
+    assert '/static/admin.css?v=1.22.0' in base
+    assert '/static/polish.js?v=1.22.0' in base
     assert 'desktop-sidebar-toggle' not in base
     build = read("scripts/build_admin_css.py")
     assert '"polish.css"' in build
