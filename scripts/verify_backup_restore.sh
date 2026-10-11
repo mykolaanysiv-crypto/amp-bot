@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP="${1:-${HEROKU_APP_NAME:-${HEROKU_APP:-amp-bot-ver-1-5-0}}}"
+APP="${1:-${HEROKU_APP_NAME:-${HEROKU_APP:-}}}"
+if [[ -z "$APP" ]]; then echo "HEROKU_APP_NAME is required" >&2; exit 2; fi
 TARGET_URL="${RESTORE_DATABASE_URL:-}"
 
 if [[ "${AMP_ALLOW_TEMP_RESTORE:-0}" != "1" ]]; then
@@ -29,7 +30,13 @@ curl -fL --retry 3 --retry-delay 2 "$BACKUP_URL" -o "$DUMP"
 test -s "$DUMP"
 
 echo "[3/5] Restoring into isolated PostgreSQL verification database..."
-docker run --rm --network host --volume "$DUMP:/backup.dump:ro" public.ecr.aws/docker/library/postgres:18 pg_restore --no-owner --no-acl --clean --if-exists --exit-on-error -d "$TARGET_URL" /backup.dump
+# PostgreSQL 18 CLI in a container talks to the isolated GitHub runner database.
+# Guard above refuses hosted targets. On Linux GitHub-hosted runners `--network host`
+# makes 127.0.0.1 refer to the runner's local ephemeral PostgreSQL service.
+docker run --rm --network host --volume "$DUMP:/backup.dump:ro" \
+  public.ecr.aws/docker/library/postgres:18 \
+  pg_restore --no-owner --no-acl --clean --if-exists --exit-on-error \
+  -d "$TARGET_URL" /backup.dump
 
 echo "[4/5] Validating restored schema and core tables..."
 TABLE_COUNT="$(psql "$TARGET_URL" -Atc "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE';")"

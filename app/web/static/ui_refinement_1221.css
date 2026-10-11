@@ -46,3 +46,12 @@ body[data-theme=dark] .account-menu{background:#173741!important;color:#e8f5f6!i
 body[data-theme=dark] .account-menu a{color:#e8f5f6!important}
 body[data-theme=dark] .account-menu a:hover{background:#27515a!important}
 body[data-theme=dark] .account-menu button{background:#1e434b!important;color:#e8f5f6!important}
+
+/* v1.22.3: scoped accessible inbox and theme consistency improvements */
+.web-inbox-bell{position:relative}
+.web-inbox-badge:not([hidden]){display:flex;align-items:center;justify-content:center;position:absolute;top:-6px;right:-7px;min-width:19px;height:19px;border-radius:999px;padding:0 4px;background:#C52131;color:#fff;font-size:10px;line-height:1;font-weight:800;border:2px solid var(--color-surface)}
+.web-inbox-list{display:grid;gap:14px}.web-inbox-item{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;min-width:0}.web-inbox-item>div{min-width:0;overflow-wrap:anywhere}.web-inbox-item p{white-space:pre-wrap;overflow-wrap:anywhere}.web-inbox-item form{flex:0 0 auto}
+body[data-theme="dark"] .web-inbox-item,body[data-theme="dark"] .account-menu,body[data-theme="dark"] dialog,body[data-theme="dark"] .amp-modal-shell{background:var(--color-surface);color:var(--color-text);border-color:var(--color-border)}
+body[data-theme="dark"] input,body[data-theme="dark"] select,body[data-theme="dark"] textarea{background:var(--color-surface-secondary);color:var(--color-text);border-color:var(--color-border-strong)}
+body[data-theme="dark"] .soft-button,body[data-theme="dark"] .ghost{background:var(--color-surface-secondary);color:var(--color-text);border-color:var(--color-border)}
+@media(max-width:650px){.web-inbox-item{flex-direction:column}.web-inbox-item form,.web-inbox-item form button{width:100%}}

@@ -31,3 +31,5 @@ Montserrat — display headings; Manrope — UI/body. Buttons, tabs, chips, nav 
 
 
 AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.
+
+AMP XP v1.22.2 CI hotfix candidate; see RELEASE_V1222_UA.md for status.

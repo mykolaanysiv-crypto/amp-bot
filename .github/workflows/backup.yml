@@ -59,7 +59,7 @@ jobs:
 
       - name: Restore latest backup into isolated PostgreSQL 18 and validate
         shell: bash
-        run: ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
+        run: bash ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
 
       - name: Record restore-verified AMP backup marker
         shell: bash

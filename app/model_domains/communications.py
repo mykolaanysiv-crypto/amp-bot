@@ -142,3 +142,14 @@ class Notification(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now)
 
     recipient: Mapped[User | None] = relationship(foreign_keys=[recipient_user_id])
+
+
+class WebNotificationRead(Base):
+    """Per-web-account read receipts for existing user-targeted notifications."""
+    __tablename__ = "web_notification_reads"
+    __table_args__ = (UniqueConstraint("account_id", "notification_id", name="uq_web_notification_read"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("web_staff_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    notification_id: Mapped[int] = mapped_column(ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False, index=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime, default=utc_storage_now, nullable=False)

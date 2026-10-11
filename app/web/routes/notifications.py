@@ -2,15 +2,71 @@ from __future__ import annotations
 
 from app.time_utils import clock
 
-from fastapi import APIRouter, Form
-from fastapi.responses import RedirectResponse
-from sqlalchemy import func, or_, select
+from fastapi import APIRouter, Form, HTTPException
+from fastapi.responses import RedirectResponse, JSONResponse
+from sqlalchemy import func, or_, select, exists
 
 from app.web.dependencies import (
-    HTMLResponse, Notification, Request, User, ctx, db, guard, log_audit, templates
+    HTMLResponse, Notification, Request, User, ctx, db, guard, log_audit, templates, WebStaffAccount
+
 )
 
+from app.model_domains import WebNotificationRead
+
 router = APIRouter()
+
+
+async def _web_inbox_query(session, request):
+    """Only records addressed to the staff account's linked participant identity."""
+    account_id = request.session.get("admin_account_id")
+    if not account_id:
+        raise HTTPException(status_code=403)
+    account = await session.get(WebStaffAccount, int(account_id))
+    if account is None or not account.active:
+        raise HTTPException(status_code=403)
+    if not account.linked_user_id:
+        return account.id, None
+    read = exists(select(WebNotificationRead.id).where(
+        WebNotificationRead.account_id == account.id,
+        WebNotificationRead.notification_id == Notification.id,
+    ))
+    return account.id, select(Notification).where(Notification.recipient_user_id == account.linked_user_id, ~read)
+
+
+@router.get("/admin/web-inbox/count")
+async def web_inbox_count(request: Request):
+    if response := guard(request):
+        return response
+    async with db.session_factory() as session:
+        _, query = await _web_inbox_query(session, request)
+        count = int(await session.scalar(select(func.count()).select_from(query.subquery())) or 0) if query is not None else 0
+    return JSONResponse({"unread": count}, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/admin/web-inbox", response_class=HTMLResponse)
+async def web_inbox(request: Request):
+    if response := guard(request):
+        return response
+    async with db.session_factory() as session:
+        account_id, query = await _web_inbox_query(session, request)
+        rows = list((await session.scalars(query.order_by(Notification.created_at.desc()).limit(100))).all()) if query is not None else []
+    return templates.TemplateResponse(request=request, name="web_inbox.html", context=ctx(request, rows=rows, linked=query is not None))
+
+
+@router.post("/admin/web-inbox/{notification_id}/read")
+async def web_inbox_mark_read(request: Request, notification_id: int):
+    if response := guard(request):
+        return response
+    if notification_id <= 0:
+        raise HTTPException(status_code=404)
+    async with db.session_factory() as session:
+        account_id, query = await _web_inbox_query(session, request)
+        if query is None or not await session.scalar(query.where(Notification.id == notification_id)):
+            raise HTTPException(status_code=404)
+        session.add(WebNotificationRead(account_id=account_id, notification_id=notification_id))
+        await session.commit()
+    return RedirectResponse("/admin/web-inbox", status_code=303)
+
 
 NOTIFICATION_FILTERS = [
     ("system", "Системні"),
