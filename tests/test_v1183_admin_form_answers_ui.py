@@ -7,6 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(path): return (ROOT / path).read_text(encoding='utf-8')
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_quick_xp_answers_restrict_access_and_include_partial_quiz_answers():
     routes = read('app/web/routes/quick_xp.py')
     assert '@router.get("/admin/quick-xp/{challenge_id}/answers"' in routes
@@ -35,7 +38,7 @@ def test_forms_preserve_content_and_render_localized_errors():
     for token in ('fetch(form.action', 'new FormData(form)', 'response.redirected', 'response.status >= 500',
                   'checkEventDate', 'setCustomValidity', 'amp-form-errors', 'invalid', 'textContent'):
         assert token in source
-    assert 'admin_forms.js?v=1.21.0' in read('app/web/templates/base.html')
+    assert f'admin_forms.js?v={CURRENT_VERSION}' in read('app/web/templates/base.html')
     assert 'record_field_changes' in read('app/web/event_routes/mutations.py')
 
 

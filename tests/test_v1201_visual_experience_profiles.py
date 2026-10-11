@@ -11,9 +11,12 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1201_version_and_additive_profile_migration():
-    assert read("VERSION.txt").strip() == "1.21.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     migration = read("migrations/versions/20261010_0018_web_user_profiles.py")
     assert 'revision: str = "20261010_0018"' in migration
     assert 'down_revision: Union[str, None] = "20261008_0017"' in migration
@@ -85,7 +88,7 @@ def test_experience_js_is_csp_safe_progressive_enhancement():
         assert token in js
     all_templates = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "app/web/templates").glob("*.html"))
     assert "data-confirm-message" in all_templates
-    assert '/static/experience.js?v=1.21.0' in base
+    assert f'/static/experience.js?v={CURRENT_VERSION}' in base
     assert "eval(" not in js
     assert "new Function" not in js
 

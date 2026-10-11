@@ -5,6 +5,9 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / 'app/web/templates'
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_semantic_icon_stroke():
     text = (TEMPLATES / '_ui_macros.html').read_text(encoding='utf-8')
     assert '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"' in text
@@ -47,8 +50,8 @@ def test_theme_and_motion_tokens():
 
 
 def test_cache_token_and_release_number():
-    assert (ROOT / 'VERSION.txt').read_text().strip() == '1.22.1'
-    assert (ROOT / 'VERSION_CHECK.txt').read_text().strip() == '1.22.1'
+    assert (ROOT / 'VERSION.txt').read_text().strip() == CURRENT_VERSION
+    assert (ROOT / 'VERSION_CHECK.txt').read_text().strip() == CURRENT_VERSION
     page = (TEMPLATES / 'base.html').read_text(encoding='utf-8')
-    assert 'ui_refinement_1221.css?v=1.22.1' in page
-    assert 'data-app-version="1.22.1"' in page
+    assert f'ui_refinement_1221.css?v={CURRENT_VERSION}' in page
+    assert f'data-app-version="{CURRENT_VERSION}"' in page

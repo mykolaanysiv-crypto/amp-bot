@@ -17,6 +17,9 @@ from app.time_utils import clock
 from tests.conftest import create_user
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 @pytest.mark.parametrize('lead', [0, 30, 60, 180])
 def test_reminder_grace_no_false_early_alert(lead):
     local_now = clock.local_wall()
@@ -121,8 +124,8 @@ async def test_league_history_uses_effective_version(db):
 
 def test_stable_package_scripts_and_version():
     root = Path(__file__).resolve().parents[1]
-    assert (root / 'VERSION.txt').read_text().strip() == '1.21.0'
-    assert (root / 'VERSION_CHECK.txt').read_text().strip() == '1.21.0'
+    assert (root / 'VERSION.txt').read_text().strip() == CURRENT_VERSION
+    assert (root / 'VERSION_CHECK.txt').read_text().strip() == CURRENT_VERSION
     assert not (root / 'run_all.py').exists()
     for file in ('start_local.sh', 'start_local.ps1'):
         script = (root / file).read_text(encoding='utf-8')

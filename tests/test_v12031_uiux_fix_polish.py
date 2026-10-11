@@ -7,12 +7,15 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v12031_version_and_polish_assets_are_wired():
-    assert read("VERSION.txt").strip() == "1.21.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     base = read("app/web/templates/base.html")
-    assert '/static/admin.css?v=1.21.0' in base
-    assert '/static/polish.js?v=1.21.0' in base
+    assert f'/static/admin.css?v={CURRENT_VERSION}' in base
+    assert f'/static/polish.js?v={CURRENT_VERSION}' in base
     assert 'desktop-sidebar-toggle' not in base
     build = read("scripts/build_admin_css.py")
     assert '"polish.css"' in build

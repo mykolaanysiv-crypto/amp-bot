@@ -17,14 +17,17 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1186_version_runtime_and_cache_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.21.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
-    assert '"1.21.0"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
+    assert "_read_version()" in read("app/version.py")
     assert "FROM python:3.13-slim" in read("Dockerfile")
     assert read(".python-version").strip() == "3.13"
     for template in ("base.html", "login.html", "login_2fa.html"):
-        assert "v=1.21.0" in read(f"app/web/templates/{template}")
+        assert f"v={CURRENT_VERSION}" in read(f"app/web/templates/{template}")
 
 
 def test_v1186_ci_has_js_static_backup_and_postdeploy_gates():

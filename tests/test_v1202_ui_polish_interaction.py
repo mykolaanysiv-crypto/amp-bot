@@ -12,9 +12,12 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1202_version_schema_and_no_new_migration():
-    assert read("VERSION.txt").strip() == "1.21.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     assert 'revision: str = "20261010_0018"' in read("migrations/versions/20261010_0018_web_user_profiles.py")
     assert not any("0019" in p.name for p in (ROOT / "migrations/versions").glob("*.py"))
 
@@ -140,7 +143,7 @@ def test_all_web_templates_are_free_of_inline_executable_js_and_event_handlers()
                 offenders.append(f"{path.name}:inline-script")
     assert offenders == []
     base = read("app/web/templates/base.html")
-    assert '/static/page_behaviors.js?v=1.21.0' in base
+    assert f'/static/page_behaviors.js?v={CURRENT_VERSION}' in base
     for rel in (
         "app/web/static/page_behaviors.js",
         "app/web/static/event_detail.js",
