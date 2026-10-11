@@ -87,7 +87,9 @@ def test_event_forms_collect_start_and_end_and_web_has_live_regions():
     # Since v1.20.0 live polling is intentionally externalized into the CSP-safe app shell.
     assert 'src="/static/app_shell.js?v=' in base
     assert "window.setInterval(sync,POLL_MS)" in shell
-    assert "POLL_MS=5000" in shell.replace(" ", "")
+    assert "POLL_MS=60000" in shell.replace(" ", "")
+    assert "document.hidden" in shell
+    assert "inFlight" in shell
     assert "fetch(location.href" in shell
 
 
