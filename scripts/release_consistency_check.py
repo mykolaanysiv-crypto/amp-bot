@@ -6,7 +6,7 @@ import re
 from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "1.20.3.1"
+EXPECTED_VERSION = "1.21.0"
 EXPECTED_ALEMBIC_HEAD = "20261010_0018"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"
@@ -38,6 +38,7 @@ CRITICAL_RUNTIME_FILES = (
     "app/web/static/refinement.js",
     "app/web/static/polish.css",
     "app/web/static/polish.js",
+    "app/web/static/product_experience.css",
     "app/web/static/reward-placeholder.svg",
     "app/web/static/admin.css",
     "app/web/static/tokens.css",
@@ -69,6 +70,7 @@ CRITICAL_RUNTIME_FILES = (
     "tests/test_v1202_ui_polish_interaction.py",
     "tests/test_v1203_design_refinement.py",
     "tests/test_v12031_uiux_fix_polish.py",
+    "tests/test_v1210_product_experience.py",
     "tests/js/test_app_shell.js",
     "tests/js/test_experience.js",
     "tests/js/test_interaction.js",
@@ -116,15 +118,16 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "BUILD_MANIFEST_V12031.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "RELEASE_V12031_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "AUDIT_UI_V12031_UA.md": (EXPECTED_VERSION,),
-        "DESIGN_SYSTEM_V12031.md": (EXPECTED_VERSION,),
-        "INTERACTION_SYSTEM_V12031.md": (EXPECTED_VERSION,),
-        "ACCESSIBILITY_V12031.md": ("WCAG 2.2 AA", EXPECTED_VERSION),
-        "UI_VISUAL_CHECKLIST_V12031.md": (EXPECTED_VERSION,),
-        "COMMANDS_V12031.txt": (EXPECTED_VERSION,),
-        "TEST_REPORT_V12031.txt": (EXPECTED_VERSION,),
+        "BUILD_MANIFEST_V1210.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
+        "RELEASE_V1210_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "AUDIT_UI_V1210_UA.md": (EXPECTED_VERSION,),
+        "DESIGN_SYSTEM_V1210.md": (EXPECTED_VERSION,),
+        "INTERACTION_SYSTEM_V1210.md": (EXPECTED_VERSION,),
+        "ACCESSIBILITY_V1210.md": ("WCAG 2.2 AA", EXPECTED_VERSION),
+        "ARCHITECTURE_V1210.md": (EXPECTED_VERSION,),
+        "UI_VISUAL_CHECKLIST_V1210.md": (EXPECTED_VERSION,),
+        "COMMANDS_V1210.txt": (EXPECTED_VERSION,),
+        "TEST_REPORT_V1210.txt": (EXPECTED_VERSION,),
     }
     for name, tokens in docs.items():
         path = root / name
@@ -135,7 +138,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         if missing:
             raise SystemExit(f"{name} is not synchronized; missing {missing}")
 
-    manifest = (root / "BUILD_MANIFEST_V12031.txt").read_text(encoding="utf-8")
+    manifest = (root / "BUILD_MANIFEST_V1210.txt").read_text(encoding="utf-8")
     for lock_name, digest in hashes.items():
         token = f"{lock_name} SHA256: {digest}"
         if token not in manifest:
@@ -208,15 +211,15 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     base_template = (root / "app" / "web" / "templates" / "base.html").read_text(encoding="utf-8")
     for token in ("skip-link", "data-sidebar-collapse", "data-mobile-menu", 'id="main-content"', "_ui_macros.html"):
         if token not in base_template:
-            raise SystemExit(f"v1.20.3.1 app-shell gate missing: {token}")
+            raise SystemExit(f"v1.21.0 app-shell gate missing: {token}")
     if "onclick=" in base_template:
-        raise SystemExit("v1.20.3.1 app shell must use CSP-safe event listeners, not inline onclick")
+        raise SystemExit("v1.21.0 app shell must use CSP-safe event listeners, not inline onclick")
     if "window.AMP_UI" in base_template or "<script nonce=\"{{ request.state.csp_nonce }}\">" in base_template:
-        raise SystemExit("v1.20.3.1 app shell must not embed inline JavaScript configuration")
+        raise SystemExit("v1.21.0 app shell must not embed inline JavaScript configuration")
     if 'data-csrf-token="{{ csrf_token }}"' not in base_template:
-        raise SystemExit("v1.20.3.1 CSP-safe CSRF dataset gate missing")
+        raise SystemExit("v1.21.0 CSP-safe CSRF dataset gate missing")
 
-    # v1.20.3.1 CSP architecture: every executable script is external and no HTML event handler attributes remain.
+    # v1.21.0 CSP architecture: every executable script is external and no HTML event handler attributes remain.
     inline_handler_re = re.compile(r"\s(?:onclick|onchange|oninput|onsubmit|onload|onkeydown|onkeyup)=", re.I)
     inline_script_re = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", re.I | re.S)
     csp_offenders: list[str] = []
@@ -228,39 +231,39 @@ def validate_release_consistency(root: Path = ROOT) -> None:
             if "src=" not in match.group("attrs"):
                 csp_offenders.append(f"{template_path.name}:inline-script")
     if csp_offenders:
-        raise SystemExit("v1.20.3.1 CSP externalization gate failed: " + ", ".join(csp_offenders))
+        raise SystemExit("v1.21.0 CSP externalization gate failed: " + ", ".join(csp_offenders))
 
     app_shell = (root / "app" / "web" / "static" / "app_shell.js").read_text(encoding="utf-8")
     for token in ("amp-sidebar-collapsed", "trapSidebarFocus", "mobileReturnFocus", "localStorage", "prefers-color-scheme"):
         if token not in app_shell:
-            raise SystemExit(f"v1.20.3.1 app-shell behavior gate missing: {token}")
+            raise SystemExit(f"v1.21.0 app-shell behavior gate missing: {token}")
 
     tokens_css = (root / "app" / "web" / "static" / "tokens.css").read_text(encoding="utf-8")
     for token in ("--color-primary", "--color-focus", "--space-4", "--radius-lg", "--sidebar-expanded", "--gradient-brand", "--color-accent-cyan", "--color-accent-lime"):
         if token not in tokens_css:
-            raise SystemExit(f"v1.20.3.1 design token gate missing: {token}")
+            raise SystemExit(f"v1.21.0 design token gate missing: {token}")
     if "prefers-reduced-motion" not in (root / "app" / "web" / "static" / "base.css").read_text(encoding="utf-8"):
-        raise SystemExit("v1.20.3.1 reduced-motion accessibility gate missing")
+        raise SystemExit("v1.21.0 reduced-motion accessibility gate missing")
 
     experience_js = (root / "app" / "web" / "static" / "experience.js").read_text(encoding="utf-8")
     for token in ("data-modal-open", "confirmMessage", "showModal", "amp-theme", "data-help-search", "edit-action-button"):
         if token not in experience_js:
-            raise SystemExit(f"v1.20.3.1 experience behavior gate missing: {token}")
+            raise SystemExit(f"v1.21.0 experience behavior gate missing: {token}")
     experience_css = (root / "app" / "web" / "static" / "experience.css").read_text(encoding="utf-8")
     for token in (".amp-modal", ".profile-hero", ".help-hero", ".dashboard-experience-hero", ".page-shell{width:min(100%,1480px)"):
         if token not in experience_css:
-            raise SystemExit(f"v1.20.3.1 visual-experience gate missing: {token}")
+            raise SystemExit(f"v1.21.0 visual-experience gate missing: {token}")
     account_template = (root / "app" / "web" / "templates" / "account_security.html").read_text(encoding="utf-8")
     for token in ("profileEditDialog", "avatarDialog", "Мій кабінет", "badge-gallery"):
         if token not in account_template:
-            raise SystemExit(f"v1.20.3.1 web-cabinet gate missing: {token}")
+            raise SystemExit(f"v1.21.0 web-cabinet gate missing: {token}")
     help_template = (root / "app" / "web" / "templates" / "help.html").read_text(encoding="utf-8")
     for token in ("Центр допомоги", "data-help-search", "2FA", "Media Integrity", "ЩО НОВОГО"):
         if token not in help_template:
-            raise SystemExit(f"v1.20.3.1 Help Center gate missing: {token}")
+            raise SystemExit(f"v1.21.0 Help Center gate missing: {token}")
     security_source = (root / "app" / "security.py").read_text(encoding="utf-8")
     if '"staff_profiles"' not in security_source:
-        raise SystemExit("v1.20.3.1 profile avatars must remain staff-private")
+        raise SystemExit("v1.21.0 profile avatars must remain staff-private")
     identity_source = (root / "app" / "model_domains" / "identity.py").read_text(encoding="utf-8")
     for token in (
         "profile_bio: Mapped[str | None] = mapped_column(EncryptedText()",
@@ -268,38 +271,38 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         "profile_phone: Mapped[str | None] = mapped_column(EncryptedText()",
     ):
         if token not in identity_source:
-            raise SystemExit(f"v1.20.3.1 profile privacy gate missing: {token}")
+            raise SystemExit(f"v1.21.0 profile privacy gate missing: {token}")
 
-    # v1.20.3.1 UI Polish, Navigation & Interaction 3.0 guards.
+    # v1.21.0 UI Polish, Navigation & Interaction 3.0 guards.
     interaction_js = (root / "app" / "web" / "static" / "interaction.js").read_text(encoding="utf-8")
     interaction_css = (root / "app" / "web" / "static" / "interaction.css").read_text(encoding="utf-8")
     security_accounts_template = (root / "app" / "web" / "templates" / "security_accounts.html").read_text(encoding="utf-8")
     auth_routes = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
     for token in ("URLSearchParams", "history.replaceState", "ArrowRight", "ArrowLeft", "data-account-menu-button", "participant-search", "data-avatar-input", "data-help-category-filter"):
         if token not in interaction_js and token not in base_template:
-            raise SystemExit(f"v1.20.3.1 interaction behavior gate missing: {token}")
+            raise SystemExit(f"v1.21.0 interaction behavior gate missing: {token}")
     for token in ('role="tablist"', 'role="tabpanel"', 'data-tabs-key="tab"', 'data-tab-panel="profile"', 'data-tab-panel="security"', 'data-tab-panel="sessions"'):
         if token not in account_template:
-            raise SystemExit(f"v1.20.3.1 real-tabs gate missing: {token}")
+            raise SystemExit(f"v1.21.0 real-tabs gate missing: {token}")
     for forbidden in ('href="#profile"', 'href="#achievements"', 'href="#security"', 'href="#sessions"'):
         if forbidden in account_template:
-            raise SystemExit(f"v1.20.3.1 account tabs must not use anchor scrolling: {forbidden}")
+            raise SystemExit(f"v1.21.0 account tabs must not use anchor scrolling: {forbidden}")
     for token in ('@router.get("/admin/security/participant-search")', "guard_superadmin(request)"):
         if token not in auth_routes:
-            raise SystemExit(f"v1.20.3.1 participant picker security gate missing: {token}")
+            raise SystemExit(f"v1.21.0 participant picker security gate missing: {token}")
     for token in ('data-participant-combobox', 'data-combobox-input', 'name="linked_user_id"'):
         if token not in security_accounts_template:
-            raise SystemExit(f"v1.20.3.1 participant combobox gate missing: {token}")
+            raise SystemExit(f"v1.21.0 participant combobox gate missing: {token}")
     for token in ("--motion-base", ".amp-tab-indicator", ".account-menu", ".amp-toast", "prefers-reduced-motion"):
         if token not in interaction_css:
-            raise SystemExit(f"v1.20.3.1 interaction style gate missing: {token}")
+            raise SystemExit(f"v1.21.0 interaction style gate missing: {token}")
     if "nav_link('/admin/account','Мій кабінет'" in base_template:
-        raise SystemExit("v1.20.3.1 sidebar must not duplicate the account navigation entry")
+        raise SystemExit("v1.21.0 sidebar must not duplicate the account navigation entry")
     if "admin_avatar_path" not in base_template:
-        raise SystemExit("v1.20.3.1 global avatar rendering gate missing")
+        raise SystemExit("v1.21.0 global avatar rendering gate missing")
     build_css_source = (root / "scripts" / "build_admin_css.py").read_text(encoding="utf-8")
-    if '"interaction.css"' not in build_css_source or '"polish.css"' not in build_css_source:
-        raise SystemExit("v1.20.3.1 interaction/polish CSS is not included in the deterministic CSS bundle")
+    if '"interaction.css"' not in build_css_source or '"polish.css"' not in build_css_source or '"product_experience.css"' not in build_css_source:
+        raise SystemExit("v1.21.0 interaction/polish CSS is not included in the deterministic CSS bundle")
 
     # admin.css is a reproducible bundle from modular sources and compatibility CSS.
     from scripts.build_admin_css import build
@@ -323,32 +326,60 @@ def main() -> None:
     refinement_css = (ROOT / "app" / "web" / "static" / "refinement.css").read_text(encoding="utf-8")
     for token in ("--content-wide:1720px", ".report-feature-grid>span", ".amp-modal.amp-editor-modal", "reward-placeholder.svg", "[data-ui-reveal]"):
         if token not in refinement_css:
-            raise SystemExit(f"v1.20.3.1 refinement style gate missing: {token}")
+            raise SystemExit(f"v1.21.0 refinement style gate missing: {token}")
     refinement_js = (ROOT / "app" / "web" / "static" / "refinement.js").read_text(encoding="utf-8")
     for token in ("data-help-category-target", "IntersectionObserver", "amp-modal-wide"):
         if token not in refinement_js:
-            raise SystemExit(f"v1.20.3.1 refinement behavior gate missing: {token}")
+            raise SystemExit(f"v1.21.0 refinement behavior gate missing: {token}")
     help_tpl = (ROOT / "app" / "web" / "templates" / "help.html").read_text(encoding="utf-8")
     if "data-help-category-target" not in help_tpl:
-        raise SystemExit("v1.20.3.1 Help quick navigation must switch categories directly")
+        raise SystemExit("v1.21.0 Help quick navigation must switch categories directly")
     reports_tpl = (ROOT / "app" / "web" / "templates" / "reports.html").read_text(encoding="utf-8")
     if "report-feature-grid" not in reports_tpl or "icon('report')" not in reports_tpl:
-        raise SystemExit("v1.20.3.1 reports visual hierarchy gate missing")
+        raise SystemExit("v1.21.0 reports visual hierarchy gate missing")
     rewards_tpl = (ROOT / "app" / "web" / "templates" / "rewards.html").read_text(encoding="utf-8")
     if "reward-placeholder.svg" not in rewards_tpl:
-        raise SystemExit("v1.20.3.1 reward placeholder gate missing")
+        raise SystemExit("v1.21.0 reward placeholder gate missing")
 
     polish_css = (ROOT / "app" / "web" / "static" / "polish.css").read_text(encoding="utf-8")
     for token in ("hyphens:none", "white-space:nowrap", ".amp-toast-region", ".ops-card.severity-high", "dialog.amp-modal", ".kpi-icon"):
         if token not in polish_css:
-            raise SystemExit(f"v1.20.3.1 polish style gate missing: {token}")
+            raise SystemExit(f"v1.21.0 polish style gate missing: {token}")
     polish_js = (ROOT / "app" / "web" / "static" / "polish.js").read_text(encoding="utf-8")
     for token in ("window.AMPToast", "data-toast-source", "amp-toast-close", "amp-editor-modal"):
         if token not in polish_js:
-            raise SystemExit(f"v1.20.3.1 polish behavior gate missing: {token}")
+            raise SystemExit(f"v1.21.0 polish behavior gate missing: {token}")
     base_template = (ROOT / "app" / "web" / "templates" / "base.html").read_text(encoding="utf-8")
     if "desktop-sidebar-toggle" in base_template:
-        raise SystemExit("v1.20.3.1 topbar must not duplicate the desktop sidebar collapse control")
+        raise SystemExit("v1.21.0 topbar must not duplicate the desktop sidebar collapse control")
+
+    # v1.21.0 Product Experience Redesign gates.
+    product_css = (ROOT / "app" / "web" / "static" / "product_experience.css").read_text(encoding="utf-8")
+    dashboard_tpl = (ROOT / "app" / "web" / "templates" / "dashboard.html").read_text(encoding="utf-8")
+    registrations_tpl = (ROOT / "app" / "web" / "templates" / "registrations.html").read_text(encoding="utf-8")
+    events_tpl = (ROOT / "app" / "web" / "templates" / "events.html").read_text(encoding="utf-8")
+    ideas_tpl = (ROOT / "app" / "web" / "templates" / "ideas.html").read_text(encoding="utf-8")
+    dependencies_source = (ROOT / "app" / "web" / "dependencies.py").read_text(encoding="utf-8")
+    for token in (".product-hero", ".product-kpi-grid", ".product-admin-zone", ".product-system-zone", "word-break:normal", "hyphens:none"):
+        if token not in product_css:
+            raise SystemExit(f"v1.21.0 product CSS gate missing: {token}")
+    for token in ("Робочий простір", "Адміністрування", "Система", "data-role-navigation"):
+        if token not in base_template:
+            raise SystemExit(f"v1.21.0 role-aware navigation gate missing: {token}")
+    for token in ("Огляд простору", "Сповіщення та важливе", "Робота команди", "Стан платформи", "Конверсія відгуків", "Канонічний довідник"):
+        if token not in dashboard_tpl:
+            raise SystemExit(f"v1.21.0 dashboard gate missing: {token}")
+    if 'id="createEventDialog"' not in events_tpl or 'data-modal-open="createEventDialog"' not in events_tpl:
+        raise SystemExit("v1.21.0 event creation must use the centered dialog flow")
+    for token in ("product-table", "product-row-actions", "Очікують підтвердження"):
+        if token not in registrations_tpl:
+            raise SystemExit(f"v1.21.0 registrations workspace gate missing: {token}")
+    for token in ("discovery-grid", "Ідеї, що стають діями", "/admin/opportunities"):
+        if token not in ideas_tpl:
+            raise SystemExit(f"v1.21.0 ideas discovery gate missing: {token}")
+    for token in ("is_management_ui", "is_participant_ui", "is_system_ui"):
+        if token not in dependencies_source:
+            raise SystemExit(f"v1.21.0 role context gate missing: {token}")
 
     print(f"Release consistency PASS for AMP v{EXPECTED_VERSION}; Alembic head={EXPECTED_ALEMBIC_HEAD}")
 

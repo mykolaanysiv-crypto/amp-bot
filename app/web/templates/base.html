@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/admin.css?v=1.20.3.1">
+  <link rel="stylesheet" href="/static/admin.css?v=1.21.0">
 </head>
-<body data-csrf-token="{{ csrf_token }}" data-app-version="1.20.3.1">
+<body data-csrf-token="{{ csrf_token }}" data-app-version="1.21.0">
 <a class="skip-link" href="#main-content">Перейти до основного вмісту</a>
 
 <header class="mobile-topbar" aria-label="Мобільна навігація">
@@ -20,7 +20,7 @@
     <span class="icon">{{ icon('menu') }}</span>
   </button>
   <a class="mobile-brand" href="/admin/dashboard">
-    <img src="/static/amp_logo.png?v=1.20.3.1" alt="" width="34" height="34">
+    <img src="/static/amp_logo.png?v=1.21.0" alt="" width="34" height="34">
     <span><b>АМПасадори</b><small>панель керування</small></span>
   </a>
   <button class="mobile-theme-button" type="button" aria-label="Змінити тему" data-theme-toggle title="Змінити тему">
@@ -33,7 +33,7 @@
 <aside class="sidebar" id="adminSidebar" aria-label="Основна навігація">
   <div class="sidebar-header">
     <a class="brand" href="/admin/dashboard" title="АМПасадори — огляд">
-      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.20.3.1" alt="Логотип АМПасадорів" width="42" height="42">
+      <img class="sidebar-logo" src="/static/amp_logo.png?v=1.21.0" alt="Логотип АМПасадорів" width="42" height="42">
       <span class="brand-copy"><b>АМПасадори</b><span>панель керування</span></span>
     </a>
     <button class="sidebar-collapse" type="button" aria-label="Згорнути бокове меню" aria-controls="adminSidebar" aria-expanded="true" data-sidebar-collapse>
@@ -41,74 +41,71 @@
     </button>
   </div>
 
-  <nav class="sidebar-nav" aria-label="Розділи системи">
-    <div class="nav-section"><span class="nav-section-title">Головне</span>
+  <nav class="sidebar-nav" aria-label="Розділи системи" data-role-navigation="{{ admin_role }}">
+    <div class="nav-section nav-section-workspace">
+      <span class="nav-section-title">Робочий простір</span>
       {{ nav_link('/admin/dashboard','Огляд','dashboard',request.url.path.startswith('/admin/dashboard')) }}
-      {% if has_permission("analytics.view") %}{{ nav_link('/admin/analytics','Аналітика','analytics',request.url.path.startswith('/admin/analytics')) }}{% endif %}
-      {% if has_permission("reports.basic_export") or has_permission("reports.sensitive_export") %}{{ nav_link('/admin/reports','Звіти','report',request.url.path.startswith('/admin/reports')) }}{% endif %}
-      {% if has_permission("notifications.manage") %}{{ nav_link('/admin/notifications','Сповіщення','notification',request.url.path.startswith('/admin/notifications')) }}{% endif %}
-      {% if has_permission("events.edit") or has_permission("quests.manage") or has_permission("volunteer.manage") or has_permission("surveys.manage") %}{{ nav_link('/admin/calendar','Календар','calendar',request.url.path.startswith('/admin/calendar')) }}{% endif %}
-    </div>
-
-    <div class="nav-section"><span class="nav-section-title">Люди</span>
-      {% if has_permission("participants.view") %}{{ nav_link('/admin/users','Учасники','users',request.url.path.startswith('/admin/users')) }}{% endif %}
-      {% if has_permission("participants.approve") %}{{ nav_link('/admin/registrations','Реєстрації','clipboard',request.url.path.startswith('/admin/registrations')) }}{% endif %}
-      {% if admin_role in ['admin','superadmin'] %}{{ nav_link('/admin/ambassadors','АМПасадори','compass',request.url.path.startswith('/admin/ambassadors')) }}{% endif %}
-      {% if has_permission("moderation.manage") %}{{ nav_link('/admin/moderation','Модерація','shield',request.url.path.startswith('/admin/moderation')) }}{% endif %}
-    </div>
-
-    <div class="nav-section"><span class="nav-section-title">Залучення</span>
       {% if has_permission("events.create") or has_permission("events.edit") or has_permission("events.delete") %}{{ nav_link('/admin/events','Події','calendar',request.url.path.startswith('/admin/events')) }}{% endif %}
       {% if has_permission("quests.manage") %}{{ nav_link('/admin/quests','Квести','target',request.url.path.startswith('/admin/quests')) }}{% endif %}
       {% if has_permission("volunteer.manage") %}{{ nav_link('/admin/tasks','Волонтерство','volunteer',request.url.path.startswith('/admin/tasks')) }}{% endif %}
-      {% if has_permission("activities.manage") %}{{ nav_link('/admin/activities','Активності','bolt',request.url.path.startswith('/admin/activities')) }}{% endif %}
-      {% if has_permission("activities.manage") or has_permission("gamification.manage") %}{{ nav_link('/admin/quick-xp','Швидкі XP','xp',request.url.path.startswith('/admin/quick-xp')) }}{% endif %}
-      {% if has_permission("opportunities.manage") %}{{ nav_link('/admin/opportunities','Можливості','opportunity',request.url.path.startswith('/admin/opportunities')) }}{% endif %}
-      {% if has_permission("surveys.manage") %}{{ nav_link('/admin/surveys','Опитування','survey',request.url.path.startswith('/admin/surveys')) }}{% endif %}
-    </div>
-
-    <div class="nav-section"><span class="nav-section-title">Ініціативи</span>
       {% if has_permission("ideas.manage") %}{{ nav_link('/admin/ideas','Ідеї','idea',request.url.path.startswith('/admin/ideas')) }}{% endif %}
-      {% if has_permission("cases.manage") %}{{ nav_link('/admin/requests','Звернення','lifebuoy',request.url.path.startswith('/admin/requests')) }}{% endif %}
+      {% if has_permission("surveys.manage") %}{{ nav_link('/admin/surveys','Опитування','survey',request.url.path.startswith('/admin/surveys')) }}{% endif %}
+      {% if has_permission("opportunities.manage") %}{{ nav_link('/admin/opportunities','Можливості','opportunity',request.url.path.startswith('/admin/opportunities')) }}{% endif %}
+      {% if has_permission("gamification.manage") or has_permission("xp.award") %}{{ nav_link('/admin/leaderboard','Серії','streak',request.url.path.startswith('/admin/leaderboard') or request.url.path.startswith('/admin/streaks')) }}{% endif %}
+      {% if has_permission("gamification.manage") %}{{ nav_link('/admin/rewards','Нагороди','gift',request.url.path.startswith('/admin/rewards')) }}{% endif %}
+      {% if admin_role in ['coordinator','admin','superadmin'] %}{{ nav_link('/admin/ambassadors','Команда','team',request.url.path.startswith('/admin/ambassadors')) }}{% endif %}
     </div>
 
-    <div class="nav-section"><span class="nav-section-title">Гейміфікація</span>
-      {% if has_permission("gamification.manage") or has_permission("xp.award") %}{{ nav_link('/admin/leaderboard','Рейтинг і серії','streak',request.url.path.startswith('/admin/leaderboard') or request.url.path.startswith('/admin/streaks')) }}{% endif %}
+    {% if is_management_ui %}
+    <div class="nav-section nav-section-management">
+      <span class="nav-section-title">Адміністрування</span>
+      {% if has_permission("participants.view") %}{{ nav_link('/admin/users','Учасники','users',request.url.path.startswith('/admin/users')) }}{% endif %}
+      {% if has_permission("participants.approve") %}{{ nav_link('/admin/registrations','Реєстрації','registration',request.url.path.startswith('/admin/registrations')) }}{% endif %}
+      {% if has_permission("events.create") or has_permission("events.edit") or has_permission("quests.manage") or has_permission("volunteer.manage") or has_permission("surveys.manage") %}{{ nav_link('/admin/calendar','Календар','calendar',request.url.path.startswith('/admin/calendar')) }}{% endif %}
+      {% if has_permission("activities.manage") %}{{ nav_link('/admin/activities','Активності','activity',request.url.path.startswith('/admin/activities')) }}{% endif %}
+      {% if has_permission("activities.manage") or has_permission("gamification.manage") %}{{ nav_link('/admin/quick-xp','Швидкі XP','xp',request.url.path.startswith('/admin/quick-xp')) }}{% endif %}
+      {% if has_permission("cases.manage") %}{{ nav_link('/admin/requests','Звернення','lifebuoy',request.url.path.startswith('/admin/requests')) }}{% endif %}
+      {% if has_permission("analytics.view") %}{{ nav_link('/admin/analytics','Аналітика','analytics',request.url.path.startswith('/admin/analytics')) }}{% endif %}
+      {% if has_permission("reports.basic_export") or has_permission("reports.sensitive_export") %}{{ nav_link('/admin/reports','Звіти','report',request.url.path.startswith('/admin/reports')) }}{% endif %}
+      {% if has_permission("broadcast.send") %}{{ nav_link('/admin/broadcasts','Розсилки','megaphone',request.url.path.startswith('/admin/broadcasts')) }}{% endif %}
+      {% if has_permission("notifications.manage") %}{{ nav_link('/admin/notifications','Сповіщення','notification',request.url.path.startswith('/admin/notifications')) }}{% endif %}
+      {% if has_permission("donations.manage") %}{{ nav_link('/admin/donations','Донати','heart',request.url.path.startswith('/admin/donations')) }}{% endif %}
       {% if has_permission("gamification.manage") %}
         {{ nav_link('/admin/goals','Цілі','flag',request.url.path.startswith('/admin/goals')) }}
         {{ nav_link('/admin/badges','Бейджі','badge',request.url.path.startswith('/admin/badges')) }}
-        {{ nav_link('/admin/rewards','Винагороди','gift',request.url.path.startswith('/admin/rewards')) }}
         {{ nav_link('/admin/giveaways','Розіграші','dice',request.url.path.startswith('/admin/giveaways') or request.url.path.startswith('/admin/giveaway-')) }}
         {{ nav_link('/admin/seasons','Сезони','season',request.url.path.startswith('/admin/seasons')) }}
-        {{ nav_link('/admin/gamification/insights','Гейміфікація 2.0','gamification',request.url.path.startswith('/admin/gamification/insights')) }}
-        {% if is_superadmin %}{{ nav_link('/admin/gamification/governance','Контроль правил','audit',request.url.path.startswith('/admin/gamification/governance')) }}{% endif %}
+        {{ nav_link('/admin/gamification/insights','Гейміфікація','gamification',request.url.path.startswith('/admin/gamification/insights')) }}
       {% endif %}
+      {% if has_permission("moderation.manage") %}{{ nav_link('/admin/moderation','Модерація','shield',request.url.path.startswith('/admin/moderation')) }}{% endif %}
     </div>
+    {% endif %}
 
-    <div class="nav-section"><span class="nav-section-title">Комунікація</span>
-      {% if has_permission("broadcast.send") %}{{ nav_link('/admin/broadcasts','Розсилки','megaphone',request.url.path.startswith('/admin/broadcasts')) }}{% endif %}
-      {% if has_permission("donations.manage") %}{{ nav_link('/admin/donations','Донати','heart',request.url.path.startswith('/admin/donations')) }}{% endif %}
-    </div>
-
-    <div class="nav-section"><span class="nav-section-title">Система</span>
-      {% if has_permission("audit.view") %}{{ nav_link('/admin/audit','Аудит','audit',request.url.path.startswith('/admin/audit')) }}{% endif %}
+    {% if is_system_ui %}
+    <div class="nav-section nav-section-system">
+      <span class="nav-section-title">Система</span>
+      {% if is_superadmin %}{{ nav_link('/admin/operations','Операційні задачі','activity',request.url.path.startswith('/admin/operations')) }}{% endif %}
       {% if has_permission("system.health") %}{{ nav_link('/admin/system-health','Стан системи','health',request.url.path.startswith('/admin/system-health')) }}{% endif %}
-      {% if is_superadmin %}
-        {{ nav_link('/admin/operations','Операційні задачі','compass',request.url.path.startswith('/admin/operations')) }}
-        {{ nav_link('/admin/data-integrity','Цілісність даних','integrity',request.url.path.startswith('/admin/data-integrity')) }}
-        {{ nav_link('/admin/media-integrity','Медіа','media',request.url.path.startswith('/admin/media-integrity')) }}
-      {% endif %}
-      {% if has_permission("settings.manage") %}{{ nav_link('/admin/settings','Налаштування','settings',request.url.path.startswith('/admin/settings')) }}{% endif %}
+      {% if has_permission("audit.view") %}{{ nav_link('/admin/audit','Аудит','audit',request.url.path.startswith('/admin/audit')) }}{% endif %}
+      {% if is_superadmin %}{{ nav_link('/admin/data-integrity','Цілісність даних','integrity',request.url.path.startswith('/admin/data-integrity')) }}{% endif %}
+      {% if is_superadmin %}{{ nav_link('/admin/media-integrity','Медіа','media',request.url.path.startswith('/admin/media-integrity')) }}{% endif %}
       {% if has_permission("security.manage") %}{{ nav_link('/admin/security-center','Security Center','shield',request.url.path.startswith('/admin/security-center')) }}{% endif %}
       {% if is_superadmin %}{{ nav_link('/admin/security','Права доступу','key',request.url.path == '/admin/security') }}{% endif %}
-      {{ nav_link('/admin/help','Довідка','help',request.url.path.startswith('/admin/help')) }}
+      {% if is_superadmin %}{{ nav_link('/admin/gamification/governance','Контроль правил','audit',request.url.path.startswith('/admin/gamification/governance')) }}{% endif %}
+      {% if has_permission("settings.manage") %}{{ nav_link('/admin/settings','Налаштування','settings',request.url.path.startswith('/admin/settings')) }}{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="nav-section nav-section-support">
+      <span class="nav-section-title">Підтримка</span>
+      {{ nav_link('/admin/help','Центр допомоги','help',request.url.path.startswith('/admin/help')) }}
     </div>
   </nav>
 
   <div class="sidebar-bottom">
     <a class="sidebar-access sidebar-access-link" href="/admin/account" title="Мій кабінет і безпека">
       <span class="sidebar-avatar" aria-hidden="true">{% if admin_avatar_path %}<img src="{{ admin_avatar_path }}" alt="">{% else %}{{ (admin_name or 'А')[:1]|upper }}{% endif %}</span>
-      <span class="sidebar-access-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></span>
+      <span class="sidebar-access-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else ('Адміністратор' if admin_role == 'admin' else ('Координатор' if admin_role == 'coordinator' else 'Учасник')) }}</span></span>
     </a>
     <small class="side-copy">© АМПасадори • 2026</small>
     <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="ghost logout-button" type="submit"><span class="icon">{{ icon('logout') }}</span><span class="nav-label">Вийти</span></button></form>
@@ -131,7 +128,7 @@
     <div class="topbar-account">
       <button class="topbar-user" type="button" aria-haspopup="menu" aria-expanded="false" data-account-menu-button>
         <span class="topbar-user-avatar" aria-hidden="true">{% if admin_avatar_path %}<img src="{{ admin_avatar_path }}" alt="">{% else %}{{ (admin_name or 'А')[:1]|upper }}{% endif %}</span>
-        <span class="topbar-user-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else 'Адміністратор' }}</span></span>
+        <span class="topbar-user-copy"><b>{{ admin_name or 'Адміністратор' }}</b><span>{{ 'Суперадміністратор' if is_superadmin else ('Адміністратор' if admin_role == 'admin' else ('Координатор' if admin_role == 'coordinator' else 'Учасник')) }}</span></span>
         <span class="icon account-chevron" aria-hidden="true">{{ icon('chevron-down') }}</span>
       </button>
       <div class="account-menu" role="menu" hidden data-account-menu>
@@ -159,12 +156,12 @@
   </div>
 </dialog>
 
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/refinement.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.20.3.1"></script>
-<script nonce="{{ request.state.csp_nonce }}" defer src="/static/polish.js?v=1.20.3.1"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/app_shell.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/experience.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/interaction.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/refinement.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/page_behaviors.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/admin_forms.js?v=1.21.0"></script>
+<script nonce="{{ request.state.csp_nonce }}" defer src="/static/polish.js?v=1.21.0"></script>
 </body>
 </html>

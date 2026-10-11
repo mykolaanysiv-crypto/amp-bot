@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% from "_ui_macros.html" import icon %}
-{% block title %}Події • АМПасадори{% endblock %}
+{% block title %}Події • AMP XP{% endblock %}
+{% block topbar_context %}Події та реєстрації{% endblock %}
+{% block topbar_hint %}Події, учасники та відвідування{% endblock %}
 {% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Події</b></nav>
-<div class="page-head">
-  <div><span class="eyebrow">АКТИВНОСТІ</span><h1><span class="icon ui-inline-icon">{{ icon('event') }}</span> Події</h1><p>Створення, перегляд і редагування подій АМП.</p></div>
-  <span class="upload-note">Фото: до 20 МБ • без обрізання • автоматичне масштабування</span>
-</div>
+<div class="product-page product-events-page">
+<section class="product-page-header product-events-header">
+  <div><span class="product-eyebrow">ПОДІЇ ТА УЧАСТЬ</span><h1><span class="product-title-icon">{{ icon('calendar') }}</span><span>Події</span></h1><p>Створюйте заходи, керуйте реєстраціями та відстежуйте участь у єдиному робочому просторі.</p></div>
+  {% if has_permission('events.create') %}<button class="btn-product btn-product-primary" type="button" data-modal-open="createEventDialog"><span class="icon">{{ icon('plus') }}</span><span>Створити подію</span></button>{% endif %}
+</section>
 
-<form class="smart-filters card" method="get">
+<form class="smart-filters card product-filter-bar" method="get">
   <label><span>Пошук</span><input name="q" value="{{q}}" placeholder="Назва, локація, опис"></label>
   <label><span>Статус</span><select name="status"><option value="">Усі статуси</option>{% for st in ['draft','open','closed','postponed','completed','cancelled'] %}<option value="{{st}}" {% if status==st %}selected{% endif %}>{{lifecycle_status_label(st)}}</option>{% endfor %}</select></label>
   <label><span>Період</span><select name="period"><option value="">Увесь час</option><option value="7d" {% if period=='7d' %}selected{% endif %}>7 днів</option><option value="30d" {% if period=='30d' %}selected{% endif %}>30 днів</option><option value="90d" {% if period=='90d' %}selected{% endif %}>90 днів</option></select></label>
@@ -18,9 +20,10 @@
   <button class="primary smart-filter-submit">Застосувати</button>
 </form>
 
-<section class="card event-create-card">
-  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('plus') }}</span> Нова подія</h2><p class="muted">Дата вводиться окремими полями, щоб уникнути помилок формату.</p></div></div>
-  <form method="post" action="/admin/events/create" enctype="multipart/form-data" class="form-grid event-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+<dialog class="amp-modal amp-editor-modal event-create-dialog" id="createEventDialog" aria-labelledby="createEventDialogTitle">
+  <div class="amp-modal-shell">
+    <div class="amp-modal-header"><div><span class="product-eyebrow">НОВА ПОДІЯ</span><h2 id="createEventDialogTitle">Створити подію</h2><p>Заповніть основні параметри. Додаткові налаштування можна змінити після створення.</p></div><button class="amp-modal-close" type="button" data-modal-close aria-label="Закрити"><span class="icon">{{ icon('close') }}</span></button></div>
+    <div class="amp-modal-body"><form method="post" action="/admin/events/create" enctype="multipart/form-data" class="form-grid event-form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <label class="event-title-field">Назва події<input name="title" required placeholder="Наприклад: Толока АМП"></label>
     <div class="span2 form-subtitle"><b><span class="icon ui-inline-icon">{{ icon('calendar-start') }}</span> Початок події</b></div>
     <div class="event-date-fields span2">
@@ -55,8 +58,9 @@
     <label class="span2 upload-field">Фото<input name="photo" type="file" accept="image/*"><small>JPG, PNG або WebP до 20 МБ. Зображення не обрізається.</small></label>
     <label class="span2">Опис<textarea name="description" placeholder="Що відбудеться, для кого подія та що варто знати учаснику"></textarea></label>
     <div class="span2 form-actions-row"><button class="primary event-save-button" type="submit">Створити подію</button></div>
-  </form>
-</section>
+  </form></div>
+  </div>
+</dialog>
 
 <div class="event-cards-grid" id="event-cards-live" data-live-region="event-cards-live">
 {% for e in rows %}
@@ -139,5 +143,6 @@
 {% else %}
   <section class="card"><p class="empty">Подій ще немає.</p></section>
 {% endfor %}
+</div>
 </div>
 {% endblock %}

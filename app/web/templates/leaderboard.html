@@ -1,16 +1,14 @@
 {% extends "base.html" %}
 {% from "_ui_macros.html" import icon %}
-{% block title %}Рейтинг і серії • АМПасадори{% endblock %}
+{% block title %}Гейміфікація • AMP XP{% endblock %}
+{% block topbar_context %}Гейміфікація{% endblock %}
+{% block topbar_hint %}Серії, нагороди та сезони{% endblock %}
 {% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Рейтинг і серії</b></nav>
-<div class="page-head">
-  <div>
-    <span class="eyebrow">ГЕЙМІФІКАЦІЯ</span>
-    <h1><span class="icon ui-inline-icon">{{ icon('trophy') }}</span> Рейтинг і серії участі</h1>
-    <p>Загальний рейтинг, шість ліг учасників, тижневі серії активності та суперсерії відвідування подій.</p>
-  </div>
-  {% if season %}<span class="tag"><span class="icon ui-inline-icon">{{ icon('trend') }}</span> {{ season.name }}</span>{% endif %}
-</div>
+<div class="product-page product-gamification-page">
+<section class="product-hero product-hero-gamification">
+  <div class="product-hero-copy"><span class="product-eyebrow">ГЕЙМІФІКАЦІЯ</span><h1>Більше, ніж участь</h1><p>Збирайте серії, отримуйте нагороди та розвивайтесь у сезонах. Активність стає видимим прогресом спільноти.</p><div class="product-actions">{% if season %}<span class="product-chip product-chip-success"><span class="icon">{{ icon('season') }}</span><span>{{ season.name }}</span></span>{% endif %}<a class="btn-product btn-product-secondary" href="/admin/rewards"><span class="icon">{{ icon('gift') }}</span><span>Нагороди</span></a><a class="btn-product btn-product-secondary" href="/admin/seasons"><span class="icon">{{ icon('season') }}</span><span>Сезони</span></a></div></div>
+  <div class="product-hero-art" aria-hidden="true"><span class="hero-orb hero-orb-a"></span><span class="hero-orb hero-orb-b"></span><div class="hero-mark hero-mark-main">{{ icon('trophy') }}</div><div class="hero-doodle">СЕРІЇ<br>XP<br><strong>НАГОРОДИ</strong></div></div>
+</section>
 
 {% if not season %}
 <section class="card"><p class="empty">Активний сезон ще не налаштований.</p></section>
@@ -103,4 +101,5 @@
   </div>
 </section>
 {% endif %}
+</div>
 {% endblock %}

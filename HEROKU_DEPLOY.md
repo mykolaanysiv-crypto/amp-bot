@@ -1,37 +1,34 @@
-# Heroku deployment — AMP XP v1.20.3.1
+# Heroku deployment — AMP XP v1.21.0
 
-Production deployment is allowed only from GitHub Actions after the full Production Gate passes on `main`.
+v1.21.0 is a code/UI release based on the confirmed production schema. It adds no Alembic migration.
 
-## Required config
-Keep existing `WEB_SESSION_SECRET`, separate `FIELD_ENCRYPTION_KEY`, previous keys when rotating, secure cookies and stable WebAuthn origin/RP configuration. Do not print secret values during verification.
+Expected production baseline:
+- Python 3.13
+- PostgreSQL 18
+- Alembic head `20261010_0018`
 
-## Local/pre-merge
-```bash
-python -m pip install -r requirements-dev.lock
-python -m pip check
-python -m scripts.dependency_lock_check
-python -m scripts.build_admin_css
-python -m scripts.release_consistency_check
-python -m compileall -q app scripts migrations tests
-python -m scripts.production_preflight
-python -m ruff check --select E9,F63,F7,F82 app scripts tests
-node tests/js/test_admin_forms.js
-node tests/js/test_app_shell.js
-node tests/js/test_experience.js
-node tests/js/test_interaction.js
-node tests/js/test_polish.js
-node --check app/web/static/polish.js
-python -m pip_audit -r requirements.lock --progress-spinner=off
-python -m pytest -q --ignore=tests/integration
-```
+Deployment remains GitHub-main-workflow driven. Do not bypass a failed CI/security/backup gate with a manual Heroku push.
 
-PostgreSQL 18 integration and schema drift remain blocking in GitHub CI. Expected Alembic head is `20261010_0018`; **v1.20.3.1 adds no migration**.
+Required pre-deploy gates:
+- dependency lock consistency
+- release consistency
+- compileall
+- production preflight
+- Ruff
+- pip-audit
+- pip check
+- full pytest
+- PostgreSQL 18 integration
+- schema drift
+- backup capture + real restore verification
 
-## Automatic production sequence
-Dependency/release gates → compile/Ruff/JS/pip-audit/full tests → PostgreSQL 18/schema drift → fresh Heroku PGBackup → isolated restore verification → deploy tested commit → startup/Alembic smoke → health/live/ready/version smoke → verified backup marker.
+Post-deploy checks:
+- `/health/live`
+- `/health/ready`
+- version = `1.21.0`
+- `alembic current` = `20261010_0018`
+- verified backup marker
+- web + worker healthy
+- manual role/navigation and visual smoke
 
-## UI post-deploy smoke
-Complete `UI_VISUAL_CHECKLIST_V12031.md`, especially real account tabs, modal/profile/avatar flows, participant combobox, sidebar/logo/avatar stability, account dropdown, Help Center categories, light/dark contrast, keyboard interaction and mobile overflow.
-
-## Rollback
-Preferred rollback: application release rollback to confirmed v1.20.3. Retain Alembic schema `20261010_0018`; do not downgrade DB for this UI-only v1.20.3.1 rollback.
+Preferred rollback is a Heroku code release rollback to the last confirmed stable release. Keep schema `20261010_0018`; v1.21.0 does not require an Alembic downgrade.

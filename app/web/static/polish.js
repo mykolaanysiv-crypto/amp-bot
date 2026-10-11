@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3.1.1 — compact toast and dialog safety layer. */
+/* AMP XP v1.21.0 — compact toast and dialog safety layer. */
 (() => {
   'use strict';
 

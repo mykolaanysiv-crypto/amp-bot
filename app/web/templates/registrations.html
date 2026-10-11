@@ -1,24 +1,36 @@
-{% extends "base.html" %}{% block title %}Реєстрації • АМПасадори{% endblock %}{% block content %}
+{% extends "base.html" %}
 {% from "_ui_macros.html" import icon %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Реєстрації</b></nav>
-<div class="page-head"><div><span class="eyebrow">ВХІДНА ЧЕРГА</span><h1><span class="icon ui-inline-icon">{{ icon('registration') }}</span> Реєстрації</h1><p>Перевірка та підтвердження нових учасників АМП. Після схвалення людина автоматично переходить до бази «Учасники».</p></div></div>
-<div class="kpis registration-kpis"><div class="kpi"><span>Очікують</span><b>{{pending_count}}</b><small>нових заявок</small></div><div class="kpi"><span>Схвалено сьогодні</span><b>{{approved_today}}</b><small>активовано профілів</small></div><div class="kpi"><span>Відхилено</span><b>{{rejected_count}}</b><small>заявок у журналі</small></div></div>
+{% block title %}Реєстрації • AMP XP{% endblock %}
+{% block topbar_context %}Реєстрації{% endblock %}
+{% block topbar_hint %}Перевірка та підтвердження учасників{% endblock %}
+{% block content %}
+<div class="product-page product-registrations-page">
+  <section class="product-page-header">
+    <div><span class="product-eyebrow">ВХІДНА ЧЕРГА</span><h1><span class="product-title-icon">{{ icon('registration') }}</span><span>Реєстрації</span></h1><p>Перевіряйте нові заявки без зайвого шуму. Після схвалення учасник отримує АМП-код і доступ до функцій спільноти.</p></div>
+  </section>
 
-<section class="card">
-  <div class="section-title"><div><h2><span class="icon ui-inline-icon">{{ icon('user-check') }}</span> Очікують перевірки</h2><p class="muted">Схвалення активує АМП-код, відкриває функції учасника, надсилає повідомлення в Telegram і записує дію в аудит.</p></div><span class="count-badge">{{pending_count}}</span></div>
-  <div class="table-wrap"><table><thead><tr><th>Дата</th><th>ПІБ</th><th>Вік</th><th>Населений пункт</th><th>Telegram</th><th>Телефон</th><th>Статус</th><th>Дії</th></tr></thead><tbody>
-  {% for item in rows %}{% set u=item.user %}<tr>
-    <td>{{u.created_at.strftime('%d.%m.%Y %H:%M')}}</td>
-    <td><b>{{u.full_name}}</b><br><code>АМП-{{'%04d'|format(u.id)}}</code></td>
-    <td>{{item.age if item.age is not none else '—'}}</td>
-    <td>{{u.settlement or '—'}}</td>
-    <td>{% if u.username %}@{{u.username}}{% elif is_superadmin %}<code>{{u.tg_id}}</code>{% else %}<span class="muted">Telegram підключено</span>{% endif %}</td>
-    <td>{{u.phone if is_superadmin else mask_phone(u.phone)}}</td>
-    <td><span class="status-pill warning">Очікує</span></td>
-    <td><div class="registration-actions"><a class="soft-button compact-action" href="/admin/users/{{u.id}}"><span class="icon ui-inline-icon">{{ icon('eye') }}</span> Переглянути</a><form method="post" action="/admin/users/{{u.id}}/activate"><input type="hidden" name="_csrf" value="{{csrf_token}}"><input type="hidden" name="return_to" value="registrations"><button class="primary compact-action" type="submit"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Схвалити</button></form><details class="registration-reject"><summary class="danger-btn compact-action"><span class="icon ui-inline-icon">{{ icon('close') }}</span> Відхилити</summary><form method="post" action="/admin/registrations/{{u.id}}/reject"><input type="hidden" name="_csrf" value="{{csrf_token}}"><label><span>Причина</span><textarea name="reason" minlength="5" maxlength="700" required placeholder="Коротко поясніть причину"></textarea></label><button class="danger-btn" type="submit">Підтвердити відхилення</button></form></details></div></td>
-  </tr>{% else %}<tr><td colspan="8" class="muted">Нових заявок немає <span class="icon ui-inline-icon">{{ icon('sparkle') }}</span></td></tr>{% endfor %}
-  </tbody></table></div>
-</section>
+  <section class="product-kpi-grid product-kpi-grid-compact" aria-label="Статистика реєстрацій">
+    <div class="product-kpi product-kpi-rose"><span class="product-kpi-icon">{{ icon('clock') }}</span><span class="product-kpi-label">Очікують</span><strong>{{ pending_count }}</strong><small>нових заявок</small></div>
+    <div class="product-kpi product-kpi-mint"><span class="product-kpi-icon">{{ icon('user-check') }}</span><span class="product-kpi-label">Схвалено сьогодні</span><strong>{{ approved_today }}</strong><small>активовано профілів</small></div>
+    <div class="product-kpi product-kpi-amber"><span class="product-kpi-icon">{{ icon('history') }}</span><span class="product-kpi-label">Відхилено</span><strong>{{ rejected_count }}</strong><small>у журналі</small></div>
+  </section>
 
-{% if rejected_recent %}<section class="card"><details><summary class="soft-button"><span class="icon ui-inline-icon">{{ icon('folder') }}</span> Останні відхилені заявки · {{rejected_count}}</summary><div class="table-wrap compact-table"><table><thead><tr><th>Дата</th><th>ПІБ</th><th>АМП-код</th><th>Причина</th><th>Дія</th></tr></thead><tbody>{% for u in rejected_recent %}<tr><td>{{u.registration_reviewed_at.strftime('%d.%m.%Y %H:%M') if u.registration_reviewed_at else '—'}}</td><td>{{u.full_name}}</td><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td>{{u.registration_rejection_reason or '—'}}</td><td><a class="soft-button compact-action" href="/admin/users/{{u.id}}">Переглянути</a></td></tr>{% endfor %}</tbody></table></div></details></section>{% endif %}
+  <section class="product-panel product-table-panel">
+    <div class="product-panel-head"><div><span class="product-eyebrow">ПЕРЕВІРКА</span><h2><span class="icon">{{ icon('user-check') }}</span><span>Очікують підтвердження</span></h2><p class="product-panel-copy">Схвалення активує профіль, надсилає повідомлення в Telegram і журналюється в аудиті.</p></div><span class="product-count-badge">{{ pending_count }}</span></div>
+    <div class="table-wrap product-table-wrap"><table class="product-table"><thead><tr><th>Дата</th><th>Учасник</th><th>Вік</th><th>Населений пункт</th><th>Telegram</th><th>Телефон</th><th>Статус</th><th>Дії</th></tr></thead><tbody>
+      {% for item in rows %}{% set u=item.user %}<tr>
+        <td><span class="table-date">{{u.created_at.strftime('%d.%m.%Y')}}<small>{{u.created_at.strftime('%H:%M')}}</small></span></td>
+        <td><a class="participant-cell" href="/admin/users/{{u.id}}"><span class="participant-avatar">{{ (u.full_name or 'У')[:1]|upper }}</span><span><b>{{u.full_name}}</b><small>АМП-{{'%04d'|format(u.id)}}</small></span></a></td>
+        <td>{{item.age if item.age is not none else '—'}}</td>
+        <td>{{u.settlement or '—'}}</td>
+        <td>{% if u.username %}@{{u.username}}{% elif is_superadmin %}<code>{{u.tg_id}}</code>{% else %}<span class="muted">Підключено</span>{% endif %}</td>
+        <td>{{u.phone if is_superadmin else mask_phone(u.phone)}}</td>
+        <td><span class="status-pill warning">Очікує</span></td>
+        <td><div class="product-row-actions"><a class="row-icon-action" href="/admin/users/{{u.id}}" aria-label="Переглянути {{u.full_name}}" title="Переглянути"><span class="icon">{{ icon('eye') }}</span></a><form method="post" action="/admin/users/{{u.id}}/activate"><input type="hidden" name="_csrf" value="{{csrf_token}}"><input type="hidden" name="return_to" value="registrations"><button class="row-icon-action row-icon-success" type="submit" aria-label="Схвалити {{u.full_name}}" title="Схвалити"><span class="icon">{{ icon('check') }}</span></button></form><details class="registration-reject product-row-menu"><summary class="row-icon-action row-icon-danger" aria-label="Відхилити {{u.full_name}}" title="Відхилити"><span class="icon">{{ icon('close') }}</span></summary><form method="post" action="/admin/registrations/{{u.id}}/reject"><input type="hidden" name="_csrf" value="{{csrf_token}}"><label><span>Причина</span><textarea name="reason" minlength="5" maxlength="700" required placeholder="Коротко поясніть причину"></textarea></label><button class="danger-btn" type="submit">Підтвердити відхилення</button></form></details></div></td>
+      </tr>{% else %}<tr><td colspan="8"><div class="product-empty table-empty"><span class="icon">{{ icon('sparkle') }}</span><b>Нових заявок немає</b><span>Черга перевірки порожня.</span></div></td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  {% if rejected_recent %}<section class="product-panel product-archive-panel"><details><summary class="product-details-summary"><span class="icon">{{ icon('history') }}</span><span>Останні відхилені заявки</span><span class="product-count-badge">{{ rejected_count }}</span></summary><div class="table-wrap"><table class="product-table"><thead><tr><th>Дата</th><th>ПІБ</th><th>АМП-код</th><th>Причина</th><th>Дія</th></tr></thead><tbody>{% for u in rejected_recent %}<tr><td>{{u.registration_reviewed_at.strftime('%d.%m.%Y %H:%M') if u.registration_reviewed_at else '—'}}</td><td>{{u.full_name}}</td><td><code>АМП-{{'%04d'|format(u.id)}}</code></td><td>{{u.registration_rejection_reason or '—'}}</td><td><a class="btn-product btn-product-secondary" href="/admin/users/{{u.id}}">Переглянути</a></td></tr>{% endfor %}</tbody></table></div></details></section>{% endif %}
+</div>
 {% endblock %}

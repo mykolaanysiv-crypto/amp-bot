@@ -1,0 +1,29 @@
+# Design System — AMP XP v1.21.0
+
+## Brand
+Основна шкала: dark teal → cyan → blue → violet. Допоміжні акценти mint/amber/rose використовуються семантично, а не випадково.
+
+## Surfaces
+- background: світлий нейтральний з дуже слабкими radial accents;
+- product cards: переважно opaque white;
+- topbar/dropdowns: lightweight glass;
+- border: subtle cool-gray/teal;
+- shadows: low-elevation, без glow.
+
+## Typography
+Montserrat — display headings; Manrope — UI/body. Buttons, tabs, chips, nav labels не розбивають слова по літерах.
+
+## Components
+- `.product-hero`
+- `.product-kpi-grid`
+- `.product-panel`
+- `.product-page-header`
+- `.btn-product`
+- `.product-chip`
+- `.product-table`
+- `.discovery-card`
+- `.product-admin-zone`
+- `.product-system-zone`
+
+## Icon system
+24×24 SVG, rounded outline, consistent stroke. Emoji не є system icon.

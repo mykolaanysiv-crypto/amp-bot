@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3.1 — tabs, account menu, combobox, avatar preview and motion feedback. */
+/* AMP XP v1.21.0 — tabs, account menu, combobox, avatar preview and motion feedback. */
 (function () {
   'use strict';
 
@@ -203,6 +203,6 @@
     });
   });
 
-  // v1.20.3.1.1: transient server messages are handled centrally by polish.js.
+  // v1.21.0: transient server messages are handled centrally by polish.js.
 
 })();

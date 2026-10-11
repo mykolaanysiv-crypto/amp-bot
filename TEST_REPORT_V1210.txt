@@ -1,0 +1,56 @@
+AMP XP v1.21.0 — Test Report
+
+Version: 1.21.0
+Alembic head: 20261010_0018
+
+ACTUALLY EXECUTED IN BUILD SANDBOX
+----------------------------------
+Dependency lock consistency: PASS
+Deterministic admin.css build: PASS
+Release consistency check: PASS
+Production preflight: PASS
+compileall: PASS
+Alembic single head: PASS — 20261010_0018
+Jinja parse: PASS — 65 templates
+
+Targeted source/UI regression suite:
+- tests/test_v1210_product_experience.py
+- tests/test_v12031_uiux_fix_polish.py
+- tests/test_v1203_design_refinement.py
+- tests/test_v1202_ui_polish_interaction.py
+- tests/test_v1110_ux_conversion.py
+- tests/test_v1104_donations_registrations_ui.py
+Result: PASS — 61 tests
+
+JavaScript smoke/source contracts:
+- test_admin_forms.js: PASS
+- test_app_shell.js: PASS
+- test_experience.js: PASS
+- test_interaction.js: PASS
+- test_csp_externalization.js: PASS
+- test_polish.js: PASS
+- JS syntax checks for app_shell/experience/interaction/refinement/polish: PASS
+
+FULL TEST SUITE STATUS
+----------------------
+`python -m pytest -q --ignore=tests/integration` was started but collection stopped because the build sandbox does not contain `aiogram`. This is an environment dependency limitation, not recorded as PASS.
+
+Ruff: NOT RUN — module `ruff` is not installed in this sandbox.
+pip-audit: NOT RUN — module `pip_audit` is not installed in this sandbox.
+pip check: NOT ACCEPTED AS PROJECT PASS — the shared sandbox contains unrelated `moviepy 2.2.1` requiring Pillow <12 while the project lock pins Pillow 12.3.0. A clean project venv is required for a meaningful result.
+
+DEFERRED TO CLEAN VENV / GITHUB ACTIONS
+---------------------------------------
+- clean locked dependency install
+- Ruff
+- pip-audit
+- pip check
+- full non-integration pytest
+- PostgreSQL 18 integration
+- schema drift
+- backup capture + real restore verification
+- Heroku deploy
+- live/ready/version smoke
+- manual role-based and responsive visual QA
+
+No unexecuted check is reported as PASS.
