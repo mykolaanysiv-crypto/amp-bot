@@ -8,11 +8,11 @@ def read(path: str) -> str:
 
 
 def test_v12031_version_and_polish_assets_are_wired():
-    assert read("VERSION.txt").strip() == "1.20.3.1"
-    assert read("VERSION_CHECK.txt").strip() == "1.20.3.1"
+    assert read("VERSION.txt").strip() == "1.21.0"
+    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
     base = read("app/web/templates/base.html")
-    assert '/static/admin.css?v=1.20.3.1' in base
-    assert '/static/polish.js?v=1.20.3.1' in base
+    assert '/static/admin.css?v=1.21.0' in base
+    assert '/static/polish.js?v=1.21.0' in base
     assert 'desktop-sidebar-toggle' not in base
     build = read("scripts/build_admin_css.py")
     assert '"polish.css"' in build
@@ -62,7 +62,7 @@ def test_v12031_overview_uses_semantic_icons():
     base = read("app/web/templates/base.html")
     for name in ("dashboard", "tasks", "xp", "opportunity", "streak", "season", "gamification", "notification"):
         assert f"name == '{name}'" in macro
-    for token in ("kpi-icon", "icon('event')", "icon('user-check')", "icon('xp')", "icon('tasks')", "icon('reward')"):
+    for token in ("product-kpi-icon", "icon('calendar')", "icon('registration')", "icon('xp')", "icon('activity')", "icon('gift')"):
         assert token in dashboard
     assert "nav_link('/admin/dashboard','Огляд','dashboard'" in base
     assert "nav_link('/admin/quick-xp','Швидкі XP','xp'" in base

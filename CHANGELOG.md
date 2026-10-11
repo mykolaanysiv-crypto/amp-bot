@@ -1034,3 +1034,16 @@
 - Added compact bottom-left toast notification system with close button.
 - Centered and constrained modal dialogs; blocked empty generated editor dialogs.
 - Kept Alembic head `20261010_0018`; no domain or schema change.
+
+## 1.21.0 — Product Experience Redesign
+
+- Rebuilt the main workspace into a product-first overview with clearer hierarchy, semantic KPI cards and calmer operational attention states.
+- Reorganized sidebar navigation into **Робочий простір / Адміністрування / Система / Підтримка** while preserving the existing permission model and all protected admin/superadmin modules.
+- Added role-aware UI context so complex system tools remain limited to authorized staff and superadmins.
+- Refreshed Events into a wider workspace and moved event creation into a centered accessible dialog.
+- Rebuilt Registrations as a full-width approval workspace with compact icon actions and clearer participant rows.
+- Rebuilt Ideas into a modern discovery grid with status filters, semantic imagery/placeholders and direct link to Opportunities.
+- Refreshed Gamification presentation around streaks, rewards and seasons while keeping existing mechanics unchanged.
+- Added Product Experience design tokens, softer shadows, glass accents, no-letter-breaking UI rules and responsive page patterns.
+- Preserved CSP-safe external JavaScript, role permissions, privacy controls, audit, media lifecycle and backup/schema gates.
+- No database migration; Alembic head remains `20261010_0018`.

@@ -1,4 +1,4 @@
-/* AMP XP v1.20.3.1 — accessible app shell and progressive UI helpers. */
+/* AMP XP v1.21.0 — accessible app shell and progressive UI helpers. */
 (function () {
   'use strict';
 

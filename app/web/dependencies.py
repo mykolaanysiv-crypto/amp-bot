@@ -176,14 +176,24 @@ def _csrf_token(request: Request) -> str:
 
 
 def ctx(request: Request, **kwargs):
+    role = web_role(request)
+    permissions = web_permissions(request)
+    management_roles = {UserRole.COORDINATOR.value, UserRole.ADMIN.value, UserRole.SUPERADMIN.value}
+    is_management_ui = role in management_roles
+    is_participant_ui = bool(role) and not is_management_ui
+    system_permissions = {"system.health", "audit.view", "settings.manage", "security.manage"}
+    is_system_ui = is_superadmin(request) or bool(permissions.intersection(system_permissions))
     return {
         "request": request,
         "settings": settings,
         "admin_name": request.session.get("admin_name", ""),
         "admin_avatar_path": request.session.get("admin_avatar_path"),
-        "admin_role": web_role(request),
+        "admin_role": role,
         "is_superadmin": is_superadmin(request),
-        "admin_permissions": web_permissions(request),
+        "is_management_ui": is_management_ui,
+        "is_participant_ui": is_participant_ui,
+        "is_system_ui": is_system_ui,
+        "admin_permissions": permissions,
         "has_permission": lambda permission: has_web_permission(request, permission),
         "csrf_token": _csrf_token(request),
         "mask_phone": mask_phone,
