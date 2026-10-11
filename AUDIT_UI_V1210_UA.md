@@ -19,3 +19,6 @@ AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 - Wider table/card layouts для 1280–1920 px.
 - Glass only for shell/floating surfaces; main work cards залишаються читабельними.
 - No-letter-breaking policy для buttons/tabs/chips/navigation.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

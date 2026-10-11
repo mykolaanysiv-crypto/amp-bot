@@ -9,11 +9,11 @@ def read(path: str) -> str:
 
 
 def test_release_version_and_asset_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.22.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.22.0"
-    assert '"1.22.0"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == "1.21.0"
+    assert read("VERSION_CHECK.txt").strip() == "1.21.0"
+    assert '"1.21.0"' in read("app/version.py")
     for path in ("base.html", "login.html", "login_2fa.html"):
-        assert "v=1.22.0" in read(f"app/web/templates/{path}")
+        assert "v=1.21.0" in read(f"app/web/templates/{path}")
 
 
 def test_quick_xp_answers_are_first_class_and_include_partial_respondents():

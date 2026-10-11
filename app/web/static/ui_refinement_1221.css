@@ -1,0 +1,48 @@
+/* AMP XP 1.22.1: semantic SVG, adaptive layout and theme/motion consistency */
+:root{--ux-motion-fast:160ms;--ux-motion:230ms;--ux-motion-slow:300ms;--ux-ease:cubic-bezier(.2,0,0,1);--ux-focus:#17b6c5}
+/* SVG elements rendered directly (outside .icon containers) must remain outline glyphs. */
+.product-page svg,.topbar svg,.sidebar svg{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.product-kpi-icon svg,.season-visual svg,.product-alert-icon svg,.system-mini-card svg{fill:none!important;stroke:currentColor!important;stroke-width:1.8!important}
+.product-kpi,.product-panel,.product-admin-card,.system-mini-card{min-width:0}
+.product-kpi{transition:transform var(--ux-motion) var(--ux-ease),border-color var(--ux-motion) var(--ux-ease),box-shadow var(--ux-motion) var(--ux-ease)}
+.product-alert-row,.product-event-row,.product-admin-card,.system-mini-card{transition:background-color var(--ux-motion) var(--ux-ease),border-color var(--ux-motion) var(--ux-ease),transform var(--ux-motion) var(--ux-ease),box-shadow var(--ux-motion) var(--ux-ease)}
+:is(.btn-product,.primary,.soft-button,.danger-btn,.topbar-icon,.nav-item,.product-segmented a){transition:background-color var(--ux-motion) var(--ux-ease),color var(--ux-motion) var(--ux-ease),border-color var(--ux-motion) var(--ux-ease),box-shadow var(--ux-motion) var(--ux-ease),transform var(--ux-motion-fast) var(--ux-ease)!important}
+:is(.btn-product,.primary,.soft-button,.danger-btn):active{transform:scale(.985)!important}
+:is(.btn-product,.primary,.soft-button,.danger-btn):focus-visible{outline:3px solid var(--ux-focus)!important;outline-offset:3px}
+:is(.btn-product,.primary,.soft-button,.danger-btn){display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 12px rgba(13,91,99,.055)!important}
+:is(.btn-product,.primary,.soft-button) .icon{display:inline-flex;align-items:center;justify-content:center;margin:0!important}
+.product-panel-head,.product-zone-heading{align-items:center;flex-wrap:wrap}
+.product-panel-head>*{min-width:0}.product-panel-head h2{min-width:0;overflow-wrap:break-word}
+.product-alert-main{min-width:0}.product-alert-main b,.product-alert-main small{overflow-wrap:anywhere}
+.product-hero-art{isolation:isolate}.hero-doodle{transform:none;text-align:left;display:grid;gap:12px;max-width:255px;padding:22px;border:1px solid rgba(13,91,99,.08);border-radius:20px;background:rgba(255,255,255,.62);backdrop-filter:blur(8px)}
+.hero-doodle strong{font-size:clamp(1.15rem,1.8vw,1.75rem);line-height:1.15;color:#075b63;letter-spacing:-.025em}
+.hero-doodle span{font:600 13px/1.6 Manrope,sans-serif;color:#456c72;letter-spacing:0}
+.season-top a{grid-template-columns:36px minmax(0,1fr) auto!important;gap:12px!important;align-items:center}.season-top .leader-identity{display:grid;gap:2px;min-width:0}.season-top .leader-identity b{font-weight:750;overflow-wrap:anywhere}.season-top .leader-identity small{font-size:11px;color:var(--px-muted)}.season-top a>strong{white-space:nowrap;font-size:13px}
+/* Desktop: all six filters and the paired actions remain on one line. */
+@media(min-width:1450px){.product-filter-bar{grid-template-columns:minmax(170px,1.45fr) repeat(5,minmax(105px,.8fr)) auto!important;align-items:end!important;gap:10px!important}}
+.event-filter-actions{display:flex;align-items:center;gap:8px;white-space:nowrap;min-width:max-content}.event-filter-actions .smart-filter-submit,.event-filter-reset{min-height:42px!important;display:inline-flex;align-items:center;justify-content:center;padding:8px 13px!important;margin:0!important;box-sizing:border-box}
+@media(max-width:1449px){.event-filter-actions{grid-column:1/-1;justify-content:flex-end}}@media(max-width:760px){.event-filter-actions{grid-column:1;justify-content:stretch}.event-filter-actions>*{flex:1}}
+.event-card-v2,.event-card-body,.product-panel,.analytics-kpi-grid>*{min-width:0;height:auto}.event-card-v2 p,.event-card-v2 small,.product-panel p{overflow-wrap:break-word;line-height:1.55}.event-card-actions-v2{gap:12px!important;flex-wrap:wrap}.event-card-actions-v2>*{min-width:0}
+:is(.product-page-header,.product-panel,.product-filter-bar,.product-row-menu, .amp-modal-shell) :is(input,textarea,select){min-width:0;box-sizing:border-box}
+/* Dark: cover product shells with semantic themed surfaces rather than pale hardcoded backgrounds. */
+body[data-theme=dark]{--px-ink:#e8f5f6;--px-muted:#adc5ca;--px-line:#385861;--px-surface:#142f37;--px-surface-soft:#193b43;--px-glass:rgba(18,45,52,.94);--px-shadow:0 7px 24px rgba(0,0,0,.16)}
+body[data-theme=dark] :is(.product-kpi,.product-panel,.product-page-header,.system-mini-card,.product-admin-card,.product-filter-bar,.discovery-card,.product-segmented a,.product-status-tabs a,.product-row-menu[open]>form,.product-archive-panel,.product-table-panel){background:#142f37!important;border-color:#385861!important;color:#e8f5f6!important}
+body[data-theme=dark] :is(.product-kpi-label,.product-kpi small,.product-page-header p,.product-panel p,.product-admin-card small,.season-top .leader-identity small){color:#adc5ca!important}
+body[data-theme=dark] :is(.product-event-row:hover,.product-alert-row:hover,.system-mini-card:hover,.product-admin-card:hover){background:#204851!important}
+body[data-theme=dark] :is(.hero-doodle,.event-card-info>span,.product-event-row time){background:#20444e!important;border-color:#3b646b!important}
+body[data-theme=dark] .hero-doodle :is(strong,span){color:#e8f5f6!important}
+body[data-theme=dark] :is(.product-table thead th,.product-table tbody tr:hover td){background:#20444e!important;color:#e8f5f6!important}
+body[data-theme=dark] :is(.product-filter-bar input,.product-filter-bar select){background:#183941!important;color:#e8f5f6!important;border-color:#41616a!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Illustration uses approved neutral youth/community artwork with no mascot. */
+.amp-hero-overview-art{display:block;width:min(100%,500px);max-height:260px;object-fit:contain;margin:auto;filter:drop-shadow(0 10px 20px rgba(13,91,99,.06))}
+body[data-theme=dark] .amp-hero-overview-art{filter:brightness(.92) saturate(.92);border-radius:18px}
+@media(max-width:900px){.amp-hero-overview-art{width:min(100%,390px);max-height:210px}}
+/* Avoid soft-button collision and heavy profile popover shadows. */
+.account-menu{box-shadow:0 10px 28px rgba(13,45,53,.11)!important;transition:opacity var(--ux-motion) var(--ux-ease),transform var(--ux-motion) var(--ux-ease)}
+.account-menu a,.account-menu button{min-height:44px;padding-block:11px!important;gap:11px!important}
+body[data-theme=dark] .account-menu{background:#173741!important;color:#e8f5f6!important;border-color:#365761!important}
+body[data-theme=dark] .account-menu a{color:#e8f5f6!important}
+body[data-theme=dark] .account-menu a:hover{background:#27515a!important}
+body[data-theme=dark] .account-menu button{background:#1e434b!important;color:#e8f5f6!important}

@@ -17,7 +17,7 @@
   <label><span>Тип</span><select name="type"><option value="">Усі</option><option value="upcoming" {% if type=='upcoming' %}selected{% endif %}>Майбутні</option><option value="past" {% if type=='past' %}selected{% endif %}>Минулі</option></select></label>
   <label><span>Аудиторія</span><select name="scope"><option value="">Усі події</option><option value="general" {% if scope=='general' %}selected{% endif %}> Загальні</option><option value="team" {% if scope=='team' %}selected{% endif %}> Для АМПасадорів</option></select></label>
   <label><span>Сортування</span><select name="sort"><option value="newest" {% if sort=='newest' %}selected{% endif %}>Спочатку нові</option><option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Спочатку старі</option><option value="title" {% if sort=='title' %}selected{% endif %}>За назвою</option></select></label>
-  <button class="primary smart-filter-submit">Застосувати</button>
+  <div class="event-filter-actions"><button class="primary smart-filter-submit">Застосувати</button><a class="soft-button event-filter-reset" href="/admin/events">Скинути</a></div>
 </form>
 
 <dialog class="amp-modal amp-editor-modal event-create-dialog" id="createEventDialog" aria-labelledby="createEventDialogTitle">

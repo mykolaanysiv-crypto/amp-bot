@@ -16,3 +16,6 @@ AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 - buttons/tabs/chips do not split words.
 
 Role-based UI не замінює permission checks: прихований navigation item не є security boundary.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

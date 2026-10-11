@@ -17,9 +17,7 @@
       </div>
     </div>
     <div class="product-hero-art" aria-hidden="true">
-      <span class="hero-orb hero-orb-a"></span><span class="hero-orb hero-orb-b"></span>
-      <div class="hero-mark hero-mark-main">{{ icon('sparkle') }}</div>
-      <div class="hero-doodle">МОЛОДЬ<br>ІДЕЇ<br>МОЖЛИВОСТІ<br><strong>РЕЗУЛЬТАТИ</strong></div>
+      <img class="amp-hero-overview-art" src="/static/amp_hero_overview_1221.svg?v=1.22.1" alt="" loading="eager" decoding="async">
     </div>
   </section>
 
@@ -55,7 +53,7 @@
     <div class="product-panel-head"><div><span class="product-eyebrow">ГЕЙМІФІКАЦІЯ</span><h2><span class="icon">{{ icon('season') }}</span><span>Сезон і активність</span></h2></div>{% if has_permission('gamification.manage') %}<a class="text-link" href="/admin/seasons">Керувати сезонами</a>{% endif %}</div>
     <div class="season-overview-grid">
       <div class="season-summary"><span class="season-visual">{{ icon('trophy') }}</span><div><span class="product-chip product-chip-success">Активний сезон</span><h3>{{ season.name if season else 'Поточний сезон' }}</h3><p>XP, серії та рейтинги спільноти в одному огляді.</p></div></div>
-      <div class="season-top"><span class="muted-label">Найактивніші</span>{% for id,name,xp in top[:3] %}<a href="/admin/users/{{ id }}"><span class="rank-dot">{{ loop.index }}</span><span>{{ name }}</span><b>{{ xp|int }} XP</b></a>{% else %}<span class="muted">Даних ще немає.</span>{% endfor %}</div>
+      <div class="season-top"><span class="muted-label">Найактивніші</span>{% for id,name,xp,league_name in top_with_leagues %}<a href="/admin/users/{{ id }}"><span class="rank-dot">{{ loop.index }}</span><span class="leader-identity"><b>{{ name }}</b><small>{{ league_name }}</small></span><strong>{{ xp }} XP</strong></a>{% else %}<span class="muted">Даних ще немає.</span>{% endfor %}</div>
     </div>
   </section>
   {% endif %}

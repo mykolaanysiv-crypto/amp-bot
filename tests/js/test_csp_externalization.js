@@ -21,10 +21,10 @@ assert.deepEqual(offenders, [], `CSP inline-JS offenders: ${offenders.join(', ')
 
 const base = fs.readFileSync('app/web/templates/base.html', 'utf8');
 for (const token of [
-  '/static/page_behaviors.js?v=1.22.0',
-  '/static/app_shell.js?v=1.22.0',
-  '/static/experience.js?v=1.22.0',
-  '/static/interaction.js?v=1.22.0',
+  '/static/page_behaviors.js?v=1.22.1',
+  '/static/app_shell.js?v=1.22.1',
+  '/static/experience.js?v=1.22.1',
+  '/static/interaction.js?v=1.22.1',
 ]) assert.ok(base.includes(token), `missing external runtime bundle: ${token}`);
 
 for (const file of [

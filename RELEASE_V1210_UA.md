@@ -38,3 +38,6 @@ Alembic head: `20261010_0018`. Нова міграція не додається
 Візуальні макети покривають основні product pages, але не є повним списком модулів. Security Center, Media Integrity, Operational Issues, health, audit, permissions, reports, exports, broadcasts, settings та інші protected tools залишаються у системі й доступні лише відповідним ролям/permissions.
 
 Participant-facing архітектура передбачена як простіший рівень UX. v1.21.0 не надає звичайному participant системних/службових інструментів і не розширює permissions через presentation layer.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

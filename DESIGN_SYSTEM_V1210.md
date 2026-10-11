@@ -28,3 +28,6 @@ Montserrat — display headings; Manrope — UI/body. Buttons, tabs, chips, nav 
 
 ## Icon system
 24×24 SVG, rounded outline, consistent stroke. Emoji не є system icon.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.
