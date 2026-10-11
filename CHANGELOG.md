@@ -1047,3 +1047,7 @@
 - Added Product Experience design tokens, softer shadows, glass accents, no-letter-breaking UI rules and responsive page patterns.
 - Preserved CSP-safe external JavaScript, role permissions, privacy controls, audit, media lifecycle and backup/schema gates.
 - No database migration; Alembic head remains `20261010_0018`.
+
+## v1.22.5 — DB request frequency & notifications efficiency
+- Live-region interval 5s → 60s with coalescing; unread count fetch throttled; notification status aggregates grouped.
+- UI inbox alignment and version consistency. Not yet production-verified.

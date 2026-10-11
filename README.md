@@ -29,3 +29,5 @@ AMP XP v1.22.2 CI hotfix candidate; see RELEASE_V1222_UA.md for scope and verifi
 
 
 Current release: AMP XP 1.22.3; Alembic head 20261011_0019. Details: RELEASE_V1223_UA.md.
+
+Current release: AMP XP 1.22.5; Alembic head 20261011_0019. Details: RELEASE_V1224_UA.md.

@@ -701,7 +701,7 @@ def main() -> None:
             raise SystemExit(f"v1.21.0 refinement JS preflight failed: {_token} missing")
     if "refinement.css" not in (root / "scripts" / "build_admin_css.py").read_text(encoding="utf-8"):
         raise SystemExit("v1.21.0 CSS bundle preflight failed: refinement.css missing")
-    if 'refinement.js?v=1.22.3' not in base_ui_source:
+    if f'refinement.js?v={version}' not in base_ui_source:
         raise SystemExit("v1.21.0 base template preflight failed: refinement.js missing")
 
     # v1.21.0 CSP-safe page behavior gates: no executable inline JS or HTML event handlers.

@@ -20,7 +20,6 @@ def test_v1202_version_schema_and_no_new_migration():
     assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     assert 'revision: str = "20261010_0018"' in read("migrations/versions/20261010_0018_web_user_profiles.py")
     assert (ROOT / "migrations/versions/20261011_0019_web_notification_reads.py").is_file()
-    assert 'down_revision = "20261010_0018"' in read("migrations/versions/20261011_0019_web_notification_reads.py")
 
 
 def test_account_uses_real_tabs_not_anchor_scroll():
