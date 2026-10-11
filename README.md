@@ -23,3 +23,6 @@ v1.21.0 does not weaken CSRF, CSP, 2FA, WebAuthn/passkeys, permissions, privacy 
 ## Release status
 
 A local ZIP or passing source test is not proof of production. v1.21.0 becomes production only after the blocking GitHub gates, PostgreSQL 18 integration/schema checks, restore-verified backup, successful Heroku release, health/version checks and manual visual QA.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

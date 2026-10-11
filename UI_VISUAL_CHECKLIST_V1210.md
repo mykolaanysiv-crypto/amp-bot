@@ -22,3 +22,6 @@ AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 - no horizontal page overflow on mobile;
 - dark/system theme smoke;
 - Security Center / Media Integrity / Operations still render inside the new shell.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

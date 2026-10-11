@@ -18,10 +18,13 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1190_release_version_schema_and_dependency_contract():
-    assert read("VERSION.txt").strip() == "1.22.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.22.0"
-    assert '"1.22.0"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
+    assert "_read_version()" in read("app/version.py")
     migration = read("migrations/versions/20261007_0016_security_observability.py")
     assert 'revision: str = "20261007_0016"' in migration
     assert 'down_revision: Union[str, None] = "20260925_0015"' in migration

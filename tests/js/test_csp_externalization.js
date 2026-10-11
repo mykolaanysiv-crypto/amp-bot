@@ -1,6 +1,7 @@
 /* AMP XP v1.21.0 CSP source contract; dependency-free Node smoke. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const CURRENT_VERSION = fs.readFileSync('VERSION.txt', 'utf8').trim();
 const path = require('node:path');
 
 const templateDir = 'app/web/templates';
@@ -21,10 +22,10 @@ assert.deepEqual(offenders, [], `CSP inline-JS offenders: ${offenders.join(', ')
 
 const base = fs.readFileSync('app/web/templates/base.html', 'utf8');
 for (const token of [
-  '/static/page_behaviors.js?v=1.22.0',
-  '/static/app_shell.js?v=1.22.0',
-  '/static/experience.js?v=1.22.0',
-  '/static/interaction.js?v=1.22.0',
+  `/static/page_behaviors.js?v=${CURRENT_VERSION}`,
+  `/static/app_shell.js?v=${CURRENT_VERSION}`,
+  `/static/experience.js?v=${CURRENT_VERSION}`,
+  `/static/interaction.js?v=${CURRENT_VERSION}`,
 ]) assert.ok(base.includes(token), `missing external runtime bundle: ${token}`);
 
 for (const file of [

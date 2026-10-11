@@ -10,6 +10,7 @@ from app.settlements import ensure_settlement_directory, settlement_quality_repo
 from app.registration_ux import registration_funnel_counts
 from app.runtime_config import get_runtime_int
 from app.governance import SEVERITY_ORDER
+from app.leagues import runtime_leagues, league_for_xp
 from app.model_domains import OperationalIssue
 from app.web.dependencies import _refresh_lifecycle
 from app.web.broadcast_runtime import (
@@ -42,6 +43,8 @@ async def dashboard(request: Request):
             .order_by(func.coalesce(func.sum(XPTransaction.amount), 0).desc(), User.full_name.asc())
             .limit(10)
         )).all()
+        configured_leagues = await runtime_leagues(session)
+        top_with_leagues = [(user_id, full_name, int(xp), league_for_xp(int(xp), configured_leagues).title) for user_id, full_name, xp in top[:5]]
         recent = (await session.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(4))).all() if is_superadmin(request) else []
 
         event_now = clock.local_wall()
@@ -166,7 +169,7 @@ async def dashboard(request: Request):
         return templates.TemplateResponse(
             request=request, name="dashboard.html",
             context=ctx(
-                request, stats=stats, top=top, season=season, recent=recent, upcoming=upcoming,
+                request, stats=stats, top=top, top_with_leagues=top_with_leagues, season=season, recent=recent, upcoming=upcoming,
                 attention=attention, data_quality=data_quality, operations=operations,
                 today_events=today_events, upcoming_checkins=upcoming_checkins,
                 feedback_conversion={"invited": feedback_invited, "completed": feedback_completed, "rate": feedback_rate},

@@ -8,3 +8,6 @@ AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 - Hover: 1–2 px lift + subtle border/shadow.
 - Motion tokens: fast/base/slow; `prefers-reduced-motion` обов’язковий.
 - Sidebar collapse і mobile drawer залишаються progressive-enhancement поведінкою.
+
+
+AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.

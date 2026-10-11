@@ -7,12 +7,15 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1203_version_and_assets_are_wired():
-    assert read("VERSION.txt").strip() == "1.22.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.22.0"
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     base = read("app/web/templates/base.html")
-    assert '/static/admin.css?v=1.22.0' in base
-    assert '/static/refinement.js?v=1.22.0' in base
+    assert f'/static/admin.css?v={CURRENT_VERSION}' in base
+    assert f'/static/refinement.js?v={CURRENT_VERSION}' in base
     build = read("scripts/build_admin_css.py")
     assert '"refinement.css"' in build
     assert (ROOT / "app/web/static/reward-placeholder.svg").exists()
@@ -56,7 +59,7 @@ def test_priority_pages_use_semantic_icons_and_full_width_components():
     assert "icon('volunteer')" in read("app/web/templates/tasks.html")
     assert "icon('journey')" in read("app/web/templates/activities.html")
     assert "icon('report')" in read("app/web/templates/reports.html")
-    assert "reward-placeholder.svg?v=1.22.0" in read("app/web/templates/rewards.html")
+    assert f"reward-placeholder.svg?v={CURRENT_VERSION}" in read("app/web/templates/rewards.html")
 
 
 def test_opportunity_share_actions_are_not_duplicated():

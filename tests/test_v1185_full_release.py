@@ -8,12 +8,15 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+
+CURRENT_VERSION = (Path(__file__).resolve().parents[1] / "VERSION.txt").read_text(encoding="utf-8").strip()
+
 def test_v1185_version_and_cache_tokens_are_synchronized():
-    assert read("VERSION.txt").strip() == "1.22.0"
-    assert read("VERSION_CHECK.txt").strip() == "1.22.0"
-    assert '"1.22.0"' in read("app/version.py")
+    assert read("VERSION.txt").strip() == CURRENT_VERSION
+    assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
+    assert "_read_version()" in read("app/version.py")
     for path in ("base.html", "login.html", "login_2fa.html"):
-        assert "v=1.22.0" in read(f"app/web/templates/{path}")
+        assert f"v={CURRENT_VERSION}" in read(f"app/web/templates/{path}")
 
 
 def test_v1185_full_release_contains_qr_quest_service_and_pg18_backup_verifier():
