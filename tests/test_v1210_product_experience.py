@@ -15,7 +15,7 @@ def test_v1210_version_and_schema_baseline():
     assert read("VERSION_CHECK.txt").strip() == CURRENT_VERSION
     assert "_read_version()" in read("app/version.py")
     migrations = read("scripts/release_consistency_check.py")
-    assert 'EXPECTED_ALEMBIC_HEAD = "20261010_0018"' in migrations
+    assert 'EXPECTED_ALEMBIC_HEAD = "20261011_0019"' in migrations
 
 
 def test_role_aware_navigation_preserves_management_and_system_tools():

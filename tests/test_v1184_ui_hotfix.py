@@ -72,4 +72,8 @@ def test_backup_verification_stays_on_postgresql_18():
     workflow = read(".github/workflows/backup.yml")
     restore = read("scripts/verify_backup_restore.sh")
     assert "image: public.ecr.aws/docker/library/postgres:18" in workflow
-    assert "public.ecr.aws/docker/library/postgres:18 pg_restore" in restore
+    assert "public.ecr.aws/docker/library/postgres:18" in restore
+    assert "pg_restore --no-owner --no-acl" in restore
+    assert "--network host" in restore
+    assert "AMP_ALLOW_TEMP_RESTORE" in restore
+    assert "RESTORE_DATABASE_URL" in restore
