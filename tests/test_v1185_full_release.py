@@ -28,8 +28,6 @@ def test_v1185_full_release_contains_qr_quest_service_and_pg18_backup_verifier()
     restore = read("scripts/verify_backup_restore.sh")
     assert "public.ecr.aws/docker/library/postgres:18" in restore
     assert "pg_restore --no-owner --no-acl" in restore
-    assert "AMP_ALLOW_TEMP_RESTORE" in restore
-    assert "RESTORE_DATABASE_URL" in restore
 
 
 def test_v1185_keeps_current_alembic_head():

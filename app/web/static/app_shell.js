@@ -109,7 +109,7 @@
         try{const saved=JSON.parse(sessionStorage.getItem(key)||'{}');let changed=false;Object.entries(saved).forEach(([name,value])=>{const field=form.elements.namedItem(name);if(field && value!=='' && value!=null){field.value=value;changed=true;}});if(changed && form.dataset.autorestore!=='0') form.requestSubmit();}catch(_err){}
       }
       form.addEventListener('submit',function(){const data={};new FormData(form).forEach((value,keyName)=>{if(keyName!=='_csrf') data[keyName]=String(value);});try{sessionStorage.setItem(key,JSON.stringify(data));}catch(_err){}});
-      let reset=form.querySelector('[data-filter-reset]');
+      let reset=form.querySelector('[data-filter-reset],.filter-reset,.event-filter-reset,.filter-actions a[href]');
       if(!reset){reset=document.createElement('a');reset.href=location.pathname;reset.className='soft-button filter-reset';reset.dataset.filterReset='1';reset.textContent='Скинути';form.appendChild(reset);}
       reset.addEventListener('click',function(){try{sessionStorage.removeItem(key);}catch(_err){}});
     });
@@ -136,15 +136,17 @@
   })();
 
   (function ampLiveRegions(){
-    const POLL_MS=5000; let inFlight=false;
+    const POLL_MS=60000; let inFlight=false; let lastSync=0;
     document.addEventListener('input',event=>{const form=event.target?.closest?.('form');if(form) form.dataset.liveDirty='1';},true);
     document.addEventListener('change',event=>{const form=event.target?.closest?.('form');if(form) form.dataset.liveDirty='1';},true);
     document.addEventListener('submit',event=>{const form=event.target;if(form?.dataset) delete form.dataset.liveDirty;},true);
     async function sync(){
-      if(inFlight || document.hidden) return; const regions=[...document.querySelectorAll('[data-live-region][id]')]; if(!regions.length) return; inFlight=true;
+      if(inFlight || document.hidden || !navigator.onLine || Date.now()-lastSync<POLL_MS) return; const regions=[...document.querySelectorAll('[data-live-region][id]')]; if(!regions.length) return; inFlight=true;lastSync=Date.now();
       try{const response=await fetch(location.href,{credentials:'same-origin',headers:{'X-AMP-Live':'1','Cache-Control':'no-cache'}});if(!response.ok) return;const html=await response.text();const next=new DOMParser().parseFromString(html,'text/html');let changed=0;for(const current of regions){const active=document.activeElement;if(active&&current.contains(active)) continue;if(current.querySelector('form[data-live-dirty="1"]')) continue;const fresh=next.getElementById(current.id);if(!fresh||!fresh.hasAttribute('data-live-region')) continue;if(current.innerHTML!==fresh.innerHTML){current.innerHTML=fresh.innerHTML;changed++;}}if(changed) document.dispatchEvent(new CustomEvent('amp:live-updated',{detail:{count:changed}}));}
       catch(_err){} finally{inFlight=false;}
     }
+    // Avoid expensive full-page refreshes while idle; resume after tab activation.
     window.setInterval(sync,POLL_MS);
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) sync(); });
   })();
 })();
