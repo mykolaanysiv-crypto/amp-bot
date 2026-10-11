@@ -3,7 +3,7 @@ from pathlib import Path
 
 def _read_version() -> str:
     try:
-        return (Path(__file__).resolve().parent.parent / "VERSION.txt").read_text(encoding="utf-8").strip() or "1.21.0"
+        return (Path(__file__).resolve().parent.parent / "VERSION.txt").read_text(encoding="utf-8").strip() or "1.22.0"
     except Exception:
         return "1.21.0"
 

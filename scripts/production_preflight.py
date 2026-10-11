@@ -538,8 +538,8 @@ def main() -> None:
 
     # v1.19.0 Security & Observability 2.0 release guards. These stay source-level
     # so a broken security composition fails before Heroku deployment.
-    if APP_VERSION != "1.21.0":
-        raise SystemExit(f"v1.21.0 preflight failed: APP_VERSION={APP_VERSION}")
+    if APP_VERSION != "1.22.0":
+        raise SystemExit(f"v1.22.0 preflight failed: APP_VERSION={APP_VERSION}")
     passkeys_source = (root / "app" / "passkeys.py").read_text(encoding="utf-8")
     auth_source = (root / "app" / "web" / "auth_routes.py").read_text(encoding="utf-8")
     rate_limit_source = (root / "app" / "rate_limit.py").read_text(encoding="utf-8")
@@ -699,7 +699,7 @@ def main() -> None:
             raise SystemExit(f"v1.21.0 refinement JS preflight failed: {_token} missing")
     if "refinement.css" not in (root / "scripts" / "build_admin_css.py").read_text(encoding="utf-8"):
         raise SystemExit("v1.21.0 CSS bundle preflight failed: refinement.css missing")
-    if 'refinement.js?v=1.21.0' not in base_ui_source:
+    if 'refinement.js?v=1.22.0' not in base_ui_source:
         raise SystemExit("v1.21.0 base template preflight failed: refinement.js missing")
 
     # v1.21.0 CSP-safe page behavior gates: no executable inline JS or HTML event handlers.

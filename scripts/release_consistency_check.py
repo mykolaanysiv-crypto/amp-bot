@@ -6,7 +6,7 @@ import re
 from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "1.21.0"
+EXPECTED_VERSION = "1.22.0"
 EXPECTED_ALEMBIC_HEAD = "20261010_0018"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"

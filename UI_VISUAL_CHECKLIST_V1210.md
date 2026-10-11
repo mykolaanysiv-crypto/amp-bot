@@ -1,3 +1,4 @@
+AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 # UI Visual QA — v1.21.0
 
 Перевірити на 320 / 375 / 390 / 768 / 1024 / 1280 / 1440 / 1920 px:

@@ -1,0 +1,10 @@
+AMP XP v1.22.0-rc1 — локальні перевірки
+- Python compileall app: PASS
+- pytest UX статичні контракти Iterations 1–4: 12 passed
+- node --check app/web/static/ux22_modals.js: PASS
+- Runtime browser E2E: NOT RUN
+- PostgreSQL 18 / Alembic live migrations: NOT RUN
+- Telegram delivery/production: NOT RUN
+- Backup restore drill: NOT RUN
+- Повна регресія: NOT RUN
+Висновок: release candidate для staging, НЕ безпечний автоматичний production-deploy.

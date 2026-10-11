@@ -1,3 +1,4 @@
+AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 # Interaction System — AMP XP v1.21.0
 
 - Existing accessible real-tabs architecture зберігається.

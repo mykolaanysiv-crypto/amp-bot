@@ -8,7 +8,7 @@ for (const token of ['window.AMPToast','amp-toast-close','data-toast-source','am
   assert.ok(js.includes(token), `missing polish JS contract: ${token}`);
 for (const token of ['white-space:nowrap','hyphens:none','.amp-toast-region','dialog.amp-modal','.ops-card.severity-high','.kpi-icon'])
   assert.ok(css.includes(token), `missing polish CSS contract: ${token}`);
-assert.ok(base.includes('/static/polish.js?v=1.21.0'), 'polish.js cache token not wired');
+assert.ok(base.includes('/static/polish.js?v=1.22.0'), 'polish.js cache token not wired');
 assert.equal(base.includes('desktop-sidebar-toggle'), false, 'duplicate topbar sidebar button returned');
 assert.equal(js.includes('eval('), false, 'unsafe eval detected');
 assert.equal(js.includes('new Function'), false, 'unsafe dynamic function detected');
