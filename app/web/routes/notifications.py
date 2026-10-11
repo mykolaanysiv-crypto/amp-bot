@@ -5,6 +5,7 @@ from app.time_utils import clock
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy import func, or_, select, exists
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.web.dependencies import (
     HTMLResponse, Notification, Request, User, ctx, db, guard, log_audit, templates, WebStaffAccount
@@ -53,6 +54,31 @@ async def web_inbox(request: Request):
     return templates.TemplateResponse(request=request, name="web_inbox.html", context=ctx(request, rows=rows, linked=query is not None))
 
 
+@router.post("/admin/web-inbox/read-all")
+async def web_inbox_mark_all_read(request: Request):
+    """Bulk mark only this account's linked participant messages, never global delivery state."""
+    if response := guard(request):
+        return response
+    async with db.session_factory() as session:
+        account_id, query = await _web_inbox_query(session, request)
+        if query is not None:
+            stmt = pg_insert(WebNotificationRead).from_select(
+                ["account_id", "notification_id"],
+                select(func.cast(account_id, WebNotificationRead.account_id.type), Notification.id).where(
+                    Notification.recipient_user_id == (
+                        select(WebStaffAccount.linked_user_id).where(WebStaffAccount.id == account_id).scalar_subquery()
+                    ),
+                    ~exists(select(WebNotificationRead.id).where(
+                        WebNotificationRead.account_id == account_id,
+                        WebNotificationRead.notification_id == Notification.id,
+                    )),
+                ),
+            )
+            await session.execute(stmt.on_conflict_do_nothing(constraint="uq_web_notification_read"))
+            await session.commit()
+    return RedirectResponse("/admin/web-inbox", status_code=303)
+
+
 @router.post("/admin/web-inbox/{notification_id}/read")
 async def web_inbox_mark_read(request: Request, notification_id: int):
     if response := guard(request):
@@ -86,10 +112,15 @@ async def notifications_center(request: Request, type: str = "", status: str = "
     status = (status or "").strip()
     q = (q or "").strip()
     async with db.session_factory() as session:
+        # Single aggregation replaces three separate table scans/round trips.
+        grouped_status = (await session.execute(
+            select(Notification.status, func.count(Notification.id)).group_by(Notification.status)
+        )).all()
+        status_counts = {str(status): int(count) for status, count in grouped_status}
         kpi = {
-            "queued": int(await session.scalar(select(func.count(Notification.id)).where(Notification.status.in_(["queued", "retry"]))) or 0),
-            "sent": int(await session.scalar(select(func.count(Notification.id)).where(Notification.status == "sent")) or 0),
-            "failed": int(await session.scalar(select(func.count(Notification.id)).where(Notification.status == "failed")) or 0),
+            "queued": status_counts.get("queued", 0) + status_counts.get("retry", 0),
+            "sent": status_counts.get("sent", 0),
+            "failed": status_counts.get("failed", 0),
         }
         stmt = select(Notification).order_by(Notification.created_at.desc(), Notification.id.desc())
         if type:

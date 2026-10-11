@@ -1,0 +1,48 @@
+/* AMP XP v1.22.4 structural UX fixes. Source: screenshot defects, no business-logic overrides. */
+:root{--ux24-fast:160ms;--ux24-normal:240ms;--ux24-menu:260ms;--ux24-ease:cubic-bezier(.2,0,0,1)}
+.sidebar-collapse,.desktop-sidebar-toggle{display:grid!important;place-items:center!important;align-items:center!important;justify-items:center!important}
+.sidebar-collapse .sidebar-collapse-icon{display:grid!important;place-items:center!important;margin:0!important;width:22px;height:22px;transition:transform var(--ux24-menu) var(--ux24-ease)!important}
+body.sidebar-collapsed .sidebar-collapse .sidebar-collapse-icon{transform:rotate(180deg)}
+.sidebar .nav-item,.sidebar .nav-item .icon{align-items:center!important}
+body.sidebar-collapsed .sidebar .nav-item .icon{margin-inline:auto!important}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.web-inbox-bell{flex:0 0 auto}
+:is(.primary,.soft-button,.danger-btn,.success-button,.ghost,.topbar-icon,.sidebar-collapse,.nav-item,.product-status-tabs a,.product-segmented a){transition:background-color var(--ux24-normal) var(--ux24-ease),color var(--ux24-normal) var(--ux24-ease),border-color var(--ux24-normal) var(--ux24-ease),box-shadow var(--ux24-normal) var(--ux24-ease),transform var(--ux24-fast) var(--ux24-ease)!important}
+:is(.primary,.soft-button,.danger-btn,.success-button,.ghost):active{transform:scale(.985)}
+:is(.account-menu,.product-row-menu,.product-menu-popup){transition:opacity var(--ux24-menu) var(--ux24-ease),transform var(--ux24-menu) var(--ux24-ease)!important}
+:is(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:12px;align-items:end}
+:is(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters)>label{min-width:0;margin:0}
+:is(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters) .filter-actions{display:flex;align-items:end;gap:9px;flex-wrap:nowrap;margin:0;grid-column:auto}
+.filter-actions>*{min-width:0;white-space:nowrap}
+.web-inbox-bulk{display:flex;justify-content:flex-end;margin-block:14px}
+.web-inbox-item{width:100%;box-sizing:border-box}
+.web-inbox-item form{margin:0}
+.broadcast-security-note{display:inline-flex!important;align-items:center!important;justify-content:center;gap:8px;min-width:max-content;white-space:nowrap;flex:0 0 auto;padding:12px 16px}
+.broadcast-security-note .icon{flex-shrink:0}
+:is(.card,.product-panel,.product-page-header,.page-head){min-width:0;box-sizing:border-box}
+:is(.page-head,.product-page-header)>div{min-width:0}
+:is(.page-head,.product-page-header) p{overflow-wrap:break-word}
+:is(.product-status-tabs,.product-tab-list){display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+:is(.product-status-tabs,.product-tab-list)>*{max-width:100%;white-space:normal;box-sizing:border-box}
+:is(.table-card,.table-wrap){max-width:100%;min-width:0}
+:is(.product-table,.notification-table){width:100%;max-width:100%;table-layout:fixed}
+:is(.product-table,.notification-table) :is(th,td){overflow-wrap:anywhere;word-break:normal;min-width:0}
+:is(.card,.product-panel) :is(label:has(>input[type=checkbox]),.checkbox-row){display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+:is(.card,.product-panel) label:has(>input[type=checkbox])>input[type=checkbox]{flex:0 0 auto;margin:0;order:0}
+:is(.card,.product-panel) label:has(>input[type=checkbox])>span{order:1;min-width:0}
+:is(.primary,.soft-button,.danger-btn,.success-button,.ghost){display:inline-flex;align-items:center;justify-content:center;gap:8px}
+:is(.primary,.soft-button,.danger-btn,.success-button,.ghost) .icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+body[data-theme=dark] :is(.web-inbox-bulk,.broadcast-security-note,.card,.page-head,.table-card){border-color:var(--color-border);color:var(--color-text)}
+@media(min-width:1450px){.notification-filters{grid-template-columns:minmax(260px,2fr) repeat(2,minmax(130px,1fr)) auto}}
+@media(max-width:780px){:is(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters){grid-template-columns:1fr 1fr}.filter-actions{grid-column:1/-1!important;justify-content:stretch}.filter-actions>*{flex:1}}
+@media(max-width:480px){:is(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters){grid-template-columns:minmax(0,1fr)}.web-inbox-bulk>*{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+/* v1.22.5: finer alignment and safe full-width content on wide pages */
+.web-inbox-list{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;width:100%;min-width:0}
+.web-inbox-item{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;min-width:0}
+.web-inbox-item>div{flex:1;min-width:0;overflow-wrap:anywhere}
+.web-inbox-item>form{flex:0 0 auto}
+.web-inbox-item h2{overflow-wrap:anywhere}
+@media(max-width:700px){.web-inbox-item{flex-direction:column}.web-inbox-item>form{width:100%}.web-inbox-item>form button{width:100%}}
+@media(prefers-reduced-motion:reduce){:is(.primary,.soft-button,.danger-btn,.success-button,.ghost,.topbar-icon,.sidebar-collapse,.nav-item,.product-status-tabs a,.product-segmented a,.account-menu,.product-row-menu,.product-menu-popup){transition:none!important;animation:none!important}}

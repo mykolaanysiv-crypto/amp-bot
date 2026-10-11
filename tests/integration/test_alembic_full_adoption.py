@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
@@ -14,13 +15,17 @@ PREVIOUS_PRODUCTION_HEAD = "20260925_0015"
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-def _current_alembic_head():
-    config = Config("alembic.ini")
+
+def _expected_current_head():
+    config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
     heads = ScriptDirectory.from_config(config).get_heads()
-    assert len(heads) == 1, f"Expected one Alembic head, got {heads}"
+    assert len(heads) == 1, f"Expected exactly one Alembic head: {heads}"
     return heads[0]
 
-CURRENT_HEAD = _current_alembic_head()
+
+CURRENT_HEAD = _expected_current_head()
+
+
 def _url() -> str:
     url = os.getenv("TEST_DATABASE_URL", "").strip()
     if not url:
