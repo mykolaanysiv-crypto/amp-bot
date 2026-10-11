@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .dependencies import (
     APP_VERSION, BROADCAST_TEMPLATES, BroadcastCampaign, BroadcastRecipient, BroadcastTemplate,
-    Event, HTTPException, Request, SystemSetting, User, UserStatus, asyncio, clock, ctx, db,
+    Event, HTTPException, Request, SystemSetting, User, UserRole, UserStatus, asyncio, clock, ctx, db,
     hashlib, job_lock, log_audit, log_extra, logging, or_, personalize_message,
     queue_telegram_delivery, select, update, template_options, datetime,
 )
@@ -119,7 +119,7 @@ async def _retire_legacy_version_broadcasts() -> None:
         )
 
 async def _announce_version_update() -> None:
-    """Notify participants once per deployed APP_VERSION across concurrent dynos.
+    """Notify only active Telegram-linked superadmins once per APP_VERSION.
 
     The database lease closes the race where two startup processes both read the
     previous SystemSetting before either one commits, which used to create two
@@ -137,7 +137,7 @@ async def _announce_version_update() -> None:
         )
 
 async def _announce_version_update_locked() -> None:
-    """Queue exactly one version notice per participant and APP_VERSION.
+    """Queue exactly one version notice per superadmin and APP_VERSION.
 
     Older releases created a normal BroadcastCampaign at startup. In practice a
     campaign could be recovered/scheduled by more than one startup path, which
@@ -157,15 +157,14 @@ async def _announce_version_update_locked() -> None:
         users = list((await session.scalars(
             select(User).where(
                 User.status == UserStatus.ACTIVE.value,
+                User.role == UserRole.SUPERADMIN.value,
                 User.tg_id.is_not(None),
             ).order_by(User.id.asc())
         )).all())
 
         message = (
-            f"🔄 АМПасадори оновлено до версії v{APP_VERSION}!\n\n"
-            "Ми оновили Telegram-бот і систему АМП: додали нові можливості та виправлення. "
-            "Усі ваші XP, реєстрації та історія активності збережені.\n\n"
-            "Щоб побачити актуальне меню, натисніть /menu або /start. 💙"
+            f"🔄 <b>AMP XP — технічне оновлення</b>\nВерсія: v{APP_VERSION}\n"
+            "Бот запущений. Перевірте /health/live та deployment checks перед підтвердженням успіху релізу."
         )
         queued = 0
         for user in users:
@@ -193,7 +192,7 @@ async def _announce_version_update_locked() -> None:
             entity_type="system",
             details=(
                 f"Зафіксовано запуск версії v{APP_VERSION}; "
-                f"активних одержувачів: {len(users)}; outbox записів: {queued}."
+                f"суперадміністраторів-одержувачів: {len(users)}; outbox записів: {queued}."
             ),
         )
         await session.commit()

@@ -1,3 +1,4 @@
+AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 # Accessibility — AMP XP v1.21.0
 
 Орієнтир: **WCAG 2.2 AA**.

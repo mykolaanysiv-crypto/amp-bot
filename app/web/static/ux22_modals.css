@@ -1,0 +1,49 @@
+/* AMP XP 1.22 shared create/edit modal layout */
+.ux22-open {margin-inline-start:auto;flex-shrink:0;min-height:44px}
+.ux22-dialog {width:min(760px,calc(100vw - 32px));max-width:none;max-height:min(92dvh,940px);padding:0;border:1px solid var(--border,#DCE7E9);border-radius:22px;box-shadow:0 24px 70px rgba(7,47,60,.23);background:var(--surface,#fff);color:var(--text,#102A2E);overflow:hidden}
+.ux22-dialog:has(.quick-xp-create-card),.ux22-dialog:has(.quick-xp-edit-details){width:min(1040px,calc(100vw - 32px))}
+.ux22-dialog::backdrop{background:rgba(9,31,47,.54);backdrop-filter:blur(3px)}
+.ux22-shell{display:flex;flex-direction:column;max-height:min(92dvh,940px);min-width:0}
+.ux22-header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;border-bottom:1px solid #DCE7E9}
+.ux22-header h2{margin:4px 0 0;font-size:23px;line-height:1.3}
+.ux22-header small{color:#65777B;font-size:12px}
+.ux22-close{border:0;background:#F0F6F7;border-radius:12px;font-size:25px;width:42px;height:42px;cursor:pointer}
+.ux22-body{padding:22px 28px;overflow-y:auto;overscroll-behavior:contain;min-width:0}
+.ux22-body > section.card, .ux22-body > form {box-shadow:none!important;border:0!important;padding:0!important;margin:0!important;max-width:100%}
+.ux22-body .section-title {display:none}
+.ux22-body .form-grid{min-width:0;max-width:100%}
+.ux22-body label,.ux22-body input,.ux22-body select,.ux22-body textarea{min-width:0;max-width:100%;word-break:normal;overflow-wrap:break-word}
+.ux22-body .event-edit-details>summary{display:none}
+.ux22-body .event-edit-details{border:0!important;padding:0!important;margin:0!important}
+.ux22-body .form-actions-row{position:sticky;bottom:0;background:var(--surface,#fff);padding:12px 0 0;border-top:1px solid #DCE7E9}
+.ux22-footer{display:flex;justify-content:flex-end;padding:12px 28px;border-top:1px solid #DCE7E9}
+.ux22-dialog button,.ux22-dialog .tag{word-break:normal;overflow-wrap:normal;hyphens:none}
+@media(max-width:680px){.ux22-dialog{width:100vw!important;height:100dvh;max-height:100dvh;border:0;border-radius:0}.ux22-shell{max-height:100dvh;height:100dvh}.ux22-body{flex:1;padding:16px}.ux22-header{padding:14px 16px}.ux22-footer{padding:12px 16px}.ux22-open{width:auto;max-width:100%}}
+
+/* Prevent incidental long labels from breaking layout. */
+.ux22-dialog .form-grid > *, .ux22-dialog .form-grid label { min-width:0; }
+.ux22-dialog .quick-xp-kind-panel[hidden] {display:none!important}
+.ux22-dialog .ux22-body > details > summary {display:none!important}
+.ux22-dialog .ux22-body > details {border:0!important; padding:0!important; margin:0!important}
+.ux22-dialog input,.ux22-dialog select,.ux22-dialog textarea {box-sizing:border-box}
+.ux22-dialog [hidden], .ux22-dialog [data-kind-panel][hidden] {display:none!important}
+.entity-create-card[hidden],.quick-xp-create-card[hidden],.opportunity-create-card[hidden],.survey-create-card[hidden],.survey-question-create-card[hidden],.goal-builder-card[hidden],.reward-create-form[hidden],.badge-create-form[hidden],.create-activity-form[hidden],.team-task-create[hidden],.custom-template-form[hidden] {display:none!important}
+
+/* v1.22.0 follow-up: status and accessible focus. */
+.ux22-dialog :focus-visible{outline:3px solid #17B6C5;outline-offset:2px}
+.ux22-dialog .ux22-submitting{opacity:.72;cursor:progress;pointer-events:none}
+.ux22-dialog .ux22-header,.ux22-dialog .ux22-footer{background:var(--surface,#fff)}
+.ux22-dialog .ux22-body{scrollbar-gutter:stable}
+@media(prefers-reduced-motion:reduce){.ux22-dialog *, .ux22-dialog *::before,.ux22-dialog *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Unified hiding for direct forms and wrapper cards (including seasons / donations). */
+[data-ux22-collapsed="true"] {display:none!important}
+
+/* Iteration 4: consistent edit-question dialog and responsive, non-breaking actions. */
+.ux22-dialog:has(.survey-question-edit-details){width:min(860px,calc(100vw - 32px))}
+.ux22-dialog .survey-question-edit-details > summary{display:none!important}
+.ux22-dialog .form-actions-row{z-index:1}
+.ux22-dialog .form-actions-row button{min-height:44px}
+.ux22-dialog .ux22-body{min-height:0}
+.ux22-dialog .ux22-header h2{overflow-wrap:break-word;word-break:normal;hyphens:none}
+@media(max-width:680px){.ux22-dialog .form-actions-row{display:flex;flex-wrap:wrap;gap:8px}}

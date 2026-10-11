@@ -1,4 +1,4 @@
-# AMP XP / «АМПасадори» v1.21.0
+# AMP XP / «АМПасадори» v1.22.0
 
 Current release: **Product Experience Redesign**.
 
