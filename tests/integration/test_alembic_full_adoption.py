@@ -11,9 +11,16 @@ from scripts.alembic_bootstrap import downgrade, upgrade, upgrade_head
 from scripts.schema_drift_check import collect_schema_diffs
 
 PREVIOUS_PRODUCTION_HEAD = "20260925_0015"
-CURRENT_HEAD = "20261010_0018"
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
+def _current_alembic_head():
+    config = Config("alembic.ini")
+    heads = ScriptDirectory.from_config(config).get_heads()
+    assert len(heads) == 1, f"Expected one Alembic head, got {heads}"
+    return heads[0]
 
+CURRENT_HEAD = _current_alembic_head()
 def _url() -> str:
     url = os.getenv("TEST_DATABASE_URL", "").strip()
     if not url:

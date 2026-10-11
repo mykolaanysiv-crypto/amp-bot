@@ -36,4 +36,7 @@ Post-deploy checks:
 Preferred rollback is a Heroku code release rollback to the last confirmed stable release. Keep schema `20261010_0018`; v1.21.0 does not require an Alembic downgrade.
 
 
-AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.
+AMP XP v1.22.2 CI hotfix candidate; see RELEASE_V1222_UA.md for scope and verification.
+
+
+Current release: AMP XP 1.22.3; Alembic head 20261011_0019. Details: RELEASE_V1223_UA.md.

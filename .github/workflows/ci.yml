@@ -188,7 +188,7 @@ jobs:
 
       - name: Restore-verify fresh pre-deploy backup; defer restore-verified marker
         shell: bash
-        run: ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
+        run: bash ./scripts/verify_backup_restore.sh "$HEROKU_APP_NAME"
 
       - name: Deploy tested commit to Heroku
         shell: bash

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_ui_macros.html" import icon %}
+{% block title %}Мої сповіщення • АМПасадори{% endblock %}
+{% block content %}
+<section class="page-head"><div><span class="eyebrow">Особисті повідомлення</span><h1><span class="icon">{{ icon('bell') }}</span> Мої сповіщення</h1><p class="muted">Повідомлення, адресовані вашому пов'язаному обліковому запису учасника.</p></div></section>
+{% if not linked %}<section class="card"><p>До облікового запису не прив'язано профіль учасника. Особисті сповіщення наразі недоступні.</p></section>{% endif %}
+<div class="web-inbox-list">
+{% for item in rows %}
+<article class="card web-inbox-item"><div><span class="eyebrow">{{ item.type }}</span><h2>{{ item.title or 'Сповіщення' }}</h2><p>{{ item.body | striptags }}</p><small class="muted">{{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '' }}</small></div>
+<form action="/admin/web-inbox/{{ item.id }}/read" method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="soft-button" type="submit">Позначити прочитаним</button></form></article>
+{% else %}<section class="card empty-note">Непрочитаних повідомлень немає.</section>{% endfor %}
+</div>
+{% endblock %}

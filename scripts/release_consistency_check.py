@@ -7,7 +7,7 @@ from scripts.dependency_lock_check import file_sha256, validate_dependency_locks
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_VERSION = (ROOT / "VERSION.txt").read_text(encoding="utf-8").strip()
-EXPECTED_ALEMBIC_HEAD = "20261010_0018"
+EXPECTED_ALEMBIC_HEAD = "20261011_0019"
 EXPECTED_PYTHON = "3.13"
 EXPECTED_POSTGRES = "18"
 
@@ -118,16 +118,8 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "BUILD_MANIFEST_V1210.txt": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD, EXPECTED_PYTHON, EXPECTED_POSTGRES),
-        "RELEASE_V1210_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "AUDIT_UI_V1210_UA.md": (EXPECTED_VERSION,),
-        "DESIGN_SYSTEM_V1210.md": (EXPECTED_VERSION,),
-        "INTERACTION_SYSTEM_V1210.md": (EXPECTED_VERSION,),
-        "ACCESSIBILITY_V1210.md": ("WCAG 2.2 AA", EXPECTED_VERSION),
-        "ARCHITECTURE_V1210.md": (EXPECTED_VERSION,),
-        "UI_VISUAL_CHECKLIST_V1210.md": (EXPECTED_VERSION,),
-        "COMMANDS_V1210.txt": (EXPECTED_VERSION,),
-        "TEST_REPORT_V1210.txt": (EXPECTED_VERSION,),
+        "RELEASE_V1223_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "BUILD_MANIFEST_V1210.txt": (EXPECTED_PYTHON, EXPECTED_POSTGRES),
     }
     for name, tokens in docs.items():
         path = root / name

@@ -25,3 +25,5 @@ AMP XP v1.22.0 — retains historical v1.21.0 evidence and baseline.
 
 
 AMP XP v1.22.1 UI refinement candidate; see RELEASE_V1221_UA.md for scope and verification.
+
+AMP XP v1.22.2 CI hotfix candidate; see RELEASE_V1222_UA.md for status.

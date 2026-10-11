@@ -7,7 +7,7 @@ from .engagement import Quest, QuestParticipation, TeamQuestContribution, Idea, 
 from .donations import DonationJarState, DonationTransaction, DonationReport, SupportPageView
 from .ambassadors import AmbassadorReport, TeamTask
 from .operations import OperationalIssue
-from .communications import BroadcastTemplate, SystemSetting, BroadcastCampaign, BroadcastRecipient, ScheduledJob, NotificationDelivery, Notification
+from .communications import BroadcastTemplate, SystemSetting, BroadcastCampaign, BroadcastRecipient, ScheduledJob, NotificationDelivery, Notification, WebNotificationRead
 
 __all__ = [
     "Base",
@@ -80,5 +80,6 @@ __all__ = [
     "ScheduledJob",
     "NotificationDelivery",
     "Notification",
+    "WebNotificationRead",
     "OperationalIssue",
 ]
