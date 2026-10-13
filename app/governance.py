@@ -80,11 +80,10 @@ async def _upsert_issue(session: AsyncSession, *, fingerprint: str, issue_type: 
     now = clock.storage_utc()
     row = await session.scalar(select(OperationalIssue).where(OperationalIssue.fingerprint == fingerprint))
     if row:
-        if row.status == "resolved":
-            # An operator's decision is auditable, but it cannot suppress an
-            # independently detected, still-active problem on later scans.
-            _audit_transition(session, row, "operational_issue_auto_reopened",
-                f"{fingerprint}; попереднє вирішення: {row.resolution_note or '—'}")
+        if row.status == "resolved" and row.resolved_by in {"system:condition_cleared", "system:operational_scanner"}:
+            # Reopen only after the condition was observed to clear and then recurred.
+            # Operator-acknowledged persistent incidents stay in the resolved queue.
+            _audit_transition(session, row, "operational_issue_auto_reopened", fingerprint)
             row.status = "open"
             row.resolved_at = None
             row.resolved_by = None
@@ -138,8 +137,20 @@ async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours
             details=f"Учасник АМП-{user.id:04d}: {user.full_name}",
             action_url="/admin/registrations", entity_type="user", entity_id=user.id)
 
-    failed = int(await session.scalar(select(func.count(Notification.id)).where(
-        Notification.status == "failed")) or 0)
+    # Failed historical deliveries remain in the outbox for audit, but do not
+    # keep an active incident open after account deletion or indefinitely.
+    # A participant's currently active Telegram delivery failure is actionable.
+    failed = int(await session.scalar(
+        select(func.count(Notification.id))
+        .join(User, User.id == Notification.recipient_user_id)
+        .where(
+            Notification.status == "failed",
+            Notification.created_at >= now - timedelta(days=7),
+            User.status == "active",
+            User.deleted_at.is_(None),
+            User.permanent_deleted_at.is_(None),
+        )
+    ) or 0)
     if failed:
         await report(fingerprint="notifications_failed", issue_type="failed_notifications",
             severity="high", title="Є невідправлені повідомлення",
@@ -304,9 +315,20 @@ async def scan_operational_issues(session: AsyncSession, *, backup_max_age_hours
         if row.fingerprint not in observed:
             row.status = "resolved"
             row.resolved_at = now
-            row.resolved_by = "system:operational_scanner"
+            row.resolved_by = "system:condition_cleared"
             row.resolution_note = "Причина більше не виявляється під час повного сканування."
             _audit_transition(session, row, "operational_issue_auto_resolved", row.fingerprint)
+    # When a manually resolved condition genuinely clears, record that transition;
+    # only a later recurrence can open a new incident. Preserve operator history.
+    acknowledged = (await session.scalars(select(OperationalIssue).where(
+        OperationalIssue.status == "resolved",
+        OperationalIssue.resolved_by.is_not(None),
+        OperationalIssue.resolved_by.not_in(["system:condition_cleared", "system:operational_scanner"]),
+    ))).all()
+    for row in acknowledged:
+        if row.fingerprint not in observed:
+            _audit_transition(session, row, "operational_issue_condition_cleared", row.fingerprint)
+            row.resolved_by = "system:condition_cleared"
 
     marker = await session.get(SystemSetting, SCAN_SETTING_KEY)
     if marker:

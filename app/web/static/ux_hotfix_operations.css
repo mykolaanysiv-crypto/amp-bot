@@ -1,0 +1,24 @@
+/* Focused, reversible AMP XP UI repair for production screenshots. */
+.sidebar-collapse{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;min-width:44px!important;min-height:44px!important}
+.sidebar-collapse>.icon,.sidebar-collapse .sidebar-collapse-icon,.sidebar-collapse svg{display:inline-flex!important;align-items:center!important;justify-content:center!important;margin:0!important;flex:0 0 auto!important}
+body.sidebar-collapsed .sidebar-collapse .sidebar-collapse-icon{transform:rotate(180deg)}
+body.sidebar-collapsed .sidebar-header{display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:12px!important}
+body.sidebar-collapsed .sidebar-nav .nav-item{display:flex!important;align-items:center!important;justify-content:center!important;min-height:50px!important}
+body.sidebar-collapsed .sidebar-nav .nav-item>.icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;margin:0!important}
+/* Keep meaningful text separate from button decoration and prevent stretched full-width actions. */
+.content .form-actions-row:not(.amp-modal .form-actions-row),.content .card-actions{align-items:center!important;gap:12px!important}
+.content .form-actions-row>a,.content .form-actions-row>button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.content .ops-card .form-actions-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important}
+.content .ops-card .form-actions-row>a{grid-column:1/-1;width:100%!important;min-width:0;justify-content:center!important}
+.content .ops-card .form-actions-row>form{min-width:0!important;width:100%!important;display:flex!important;align-items:center!important;gap:8px!important}
+.content .ops-card .form-actions-row>form input{min-width:0!important;flex:1!important}
+.content .ops-card .form-actions-row>form button{flex:0 0 auto!important}
+.content .ops-card .form-actions-row>form:last-child{grid-column:1/-1}
+.content .ops-card .form-actions-row .icon{display:inline-flex;align-items:center;justify-content:center;flex:none}
+/* Keep small informative KPI chips aligned without empty icon bubbles. */
+.content .mini-facts,.content .chips,.content .survey-stats{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.content .mini-facts>span,.content .chips>span,.content .survey-stats>span{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px}
+/* Visible nav/action states; preserve accessible keyboard focus. */
+.content :is(.soft-button,.primary,.product-chip,.amp-tab):focus-visible,.sidebar-collapse:focus-visible{outline:3px solid #6460ff!important;outline-offset:3px!important}
+@media(max-width:700px){.content .ops-card .form-actions-row{grid-template-columns:minmax(0,1fr)!important}.content .ops-card .form-actions-row>form{grid-column:1/-1}.content .ops-card .form-actions-row>form button{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.sidebar-collapse .sidebar-collapse-icon{transition:none!important}}
