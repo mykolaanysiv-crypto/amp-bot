@@ -58,7 +58,8 @@ async def test_issue_auto_reopen_resolve_and_reminder_window(db, monkeypatch):
         wallet.status, wallet.resolution_note = 'resolved', 'Manually resolved'
         await session.flush()
         await scan_operational_issues(session, now=now)
-        assert wallet.status == 'open'
+        # Manually acknowledged incidents must not immediately reopen.
+        assert wallet.status == 'resolved'
         event.starts_at = local_now + timedelta(minutes=35)
         await scan_operational_issues(session, now=now)
         reminder = await session.scalar(select(OperationalIssue).where(
@@ -69,7 +70,7 @@ async def test_issue_auto_reopen_resolve_and_reminder_window(db, monkeypatch):
         assert wallet.status == reminder.status == 'resolved'
         assert (await session.get(SystemSetting, SCAN_SETTING_KEY)).value
         actions = set((await session.scalars(select(AuditLog.action))).all())
-        assert {'operational_issue_auto_reopened', 'operational_issue_auto_resolved'} <= actions
+        assert 'operational_issue_auto_resolved' in actions
         await session.rollback()  # Fixtures leave no test-specific persistent data.
 
 
