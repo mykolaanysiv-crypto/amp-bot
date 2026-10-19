@@ -53,5 +53,6 @@ def test_cache_token_and_release_number():
     assert (ROOT / 'VERSION.txt').read_text().strip() == CURRENT_VERSION
     assert (ROOT / 'VERSION_CHECK.txt').read_text().strip() == CURRENT_VERSION
     page = (TEMPLATES / 'base.html').read_text(encoding='utf-8')
-    assert f'ui_refinement_1221.css?v={CURRENT_VERSION}' in page
+    assert 'ui_refinement_1221.css' in (ROOT / 'scripts/build_admin_css.py').read_text(encoding='utf-8')
+    assert f'ui_refinement_1221.css?v={CURRENT_VERSION}' not in page
     assert f'data-app-version="{CURRENT_VERSION}"' in page

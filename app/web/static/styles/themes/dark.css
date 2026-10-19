@@ -1,0 +1,26 @@
+/* Dark Mode 2.0 — semantic palette, no universal inverted filters. */
+html[data-theme="dark"],body[data-theme="dark"]{
+ --color-background:#0b1220;--color-surface:#162235;--color-surface-secondary:#1c2b42;--color-surface-tertiary:#243650;
+ --color-text:#f1f5f9;--color-text-muted:#b6c5d7;--color-border:#30445c;--color-border-strong:#435b78;
+ --color-sidebar:#101b2d;--color-sidebar-strong:#0b1220;--color-sidebar-text:#f1f5f9;--color-sidebar-muted:#bccddf;
+ --color-primary:#67d5e1;--color-primary-hover:#8ce4ed;--color-primary-soft:#173e4a;--color-focus:#a6baff;
+ --ui-bg:var(--color-background);--ui-surface:var(--color-surface);--ui-raised:var(--color-surface-secondary);
+ --ui-text:var(--color-text);--ui-muted:var(--color-text-muted);--ui-border:var(--color-border);--ui-accent:var(--color-primary);
+ --bg:var(--color-background);--surface:var(--color-surface);--surface-2:var(--color-surface-secondary);
+ --ink:var(--color-text);--muted:var(--color-text-muted);--line:var(--color-border);
+ --shadow-sm:0 1px 4px rgb(0 0 0 / .15);--shadow-md:0 10px 30px rgb(0 0 0 / .23);--shadow-lg:0 20px 48px rgb(0 0 0 / .3);
+ color-scheme:dark;
+}
+html[data-theme="dark"]{background:var(--color-background)}
+body[data-theme="dark"] :where(.card,.panel,.stat-card,.product-panel,.content-card,.account-menu,.dropdown-menu,.amp-modal-shell,.audit-log-table tr){background-color:var(--color-surface);color:var(--color-text);border-color:var(--color-border)}
+body[data-theme="dark"] :where(input,select,textarea){color-scheme:dark;background-color:var(--color-surface-secondary);color:var(--color-text);border-color:var(--color-border-strong)}
+body[data-theme="dark"] :where(input,select,textarea)::placeholder{color:var(--color-text-muted);opacity:1}
+body[data-theme="dark"] :where(.soft-button,.ghost){color:var(--color-text);border-color:var(--color-border-strong)}
+body[data-theme="dark"] :where(.audit-log-table th,.audit-log-table td){border-color:var(--color-border)}
+body[data-theme="dark"] :where(.audit-log-table tr:hover,.account-menu a:hover){background-color:var(--color-surface-secondary)}
+body[data-theme="dark"] :where(.muted,small,.audit-action small){color:var(--color-text-muted)}
+body[data-theme="dark"] :where(.mobile-topbar,.admin-topbar){background-color:var(--color-surface);border-color:var(--color-border)}
+body[data-theme="dark"] :where(.amp-modal,.account-menu,.dropdown-menu){color:var(--color-text)}
+/* Replace the legacy fixed pastel body background in dark mode. */
+body[data-theme="dark"]{background:var(--color-background)!important;color:var(--color-text)}
+body[data-theme="dark"] .audit-pagination{color:var(--color-text)}

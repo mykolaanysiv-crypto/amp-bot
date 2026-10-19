@@ -1,0 +1,48 @@
+/* AMP XP 1.22.6 — central semantic design system and responsive refinements.
+   This file is a source module included in generated admin.css, not an extra HTTP override. */
+:root {
+  --control-height-sm:36px; --control-height-md:40px; --control-height-lg:44px;
+  --icon-size-md:20px; --control-gap:8px;
+  --motion-fast:150ms; --motion-normal:220ms; --motion-sidebar:260ms;
+  --ui-bg:#f6f8fc; --ui-surface:#fff; --ui-raised:#fff;
+  --ui-text:#162235; --ui-muted:#526176; --ui-border:#dbe3ed; --ui-accent:#0877b9;
+}
+html[data-theme="dark"], body[data-theme="dark"] {
+  --ui-bg:#0b1220;--ui-surface:#162235;--ui-raised:#1c2b42;
+  --ui-text:#f1f5f9;--ui-muted:#a9bacd;--ui-border:#2b3c53;--ui-accent:#38bdf8;
+  --bg:var(--ui-bg);--surface:var(--ui-surface);--surface-2:var(--ui-raised);
+  --ink:var(--ui-text);--muted:var(--ui-muted);--line:var(--ui-border);
+  --color-background:var(--ui-bg);--color-surface:var(--ui-surface);
+  --color-surface-secondary:var(--ui-raised);--color-text:var(--ui-text);
+  --color-text-muted:var(--ui-muted);--color-border:var(--ui-border);
+  --color-sidebar:#101b2d;--color-sidebar-strong:#0b1220;
+  color-scheme:dark;
+}
+body[data-theme="dark"] :is(.card,.panel,.stat-card,.modal-content,.account-menu,.dropdown-menu,.content-card){
+  background-color:var(--ui-surface); color:var(--ui-text); border-color:var(--ui-border);
+}
+body[data-theme="dark"] :is(input,select,textarea){color-scheme:dark;}
+:is(.content,.main-content,.page-content) {min-width:0;max-width:100%;}
+:is(.content,.main-content) :is(.card,.panel,.form-row,.filters,.form-grid){min-width:0;}
+:is(.form-actions-row,.card-actions,.filter-actions,.event-filter-actions){
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--control-gap);
+}
+:is(.form-actions-row,.card-actions,.filter-actions,.event-filter-actions) :is(button,a,.soft-button){
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--control-height-md);
+}
+:is(.form-actions-row,.card-actions,.filter-actions) :is(button,a)>.icon{display:inline-flex;flex:none;align-items:center;justify-content:center;}
+.sidebar-collapse{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;}
+.sidebar-collapse>.icon{display:flex;align-items:center;justify-content:center;}
+:where(.content,.main-content) :is(.card,.panel){max-width:100%;}
+@media(max-width:768px){
+  :is(.content,.main-content,.page-content){width:100%;min-width:0;max-width:100%;}
+  :is(.filter-actions,.event-filter-actions,.form-actions-row){gap:8px;}
+  :is(.content,.main-content) :is(input,select,textarea){max-width:100%;min-width:0;}
+  :is(.content,.main-content) :is(.card,.panel){min-width:0;}
+  .amp-modal,.modal-content,[role="dialog"]{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;}
+}
+@media(max-width:430px){
+  :is(.filter-actions,.event-filter-actions,.form-actions-row){display:grid;grid-template-columns:minmax(0,1fr);}
+  :is(.filter-actions,.event-filter-actions,.form-actions-row)>:is(a,button){width:100%;min-width:0;}
+}
+@media(prefers-reduced-motion:reduce){:where(*, *::before, *::after){scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;}}

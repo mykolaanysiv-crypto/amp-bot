@@ -118,7 +118,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "RELEASE_V1224_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "RELEASE_V1226_RC_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "BUILD_MANIFEST_V1210.txt": (EXPECTED_PYTHON, EXPECTED_POSTGRES),
     }
     for name, tokens in docs.items():

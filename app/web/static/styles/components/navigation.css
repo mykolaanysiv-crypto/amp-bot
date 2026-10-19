@@ -1,0 +1,18 @@
+/* Stable navigation alignment; mobile and desktop display only their own header. */
+.sidebar-collapse{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0}
+.sidebar-collapse>.sidebar-collapse-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin:0;transition:transform var(--motion-sidebar) ease}
+body.sidebar-collapsed .sidebar-collapse>.sidebar-collapse-icon{transform:rotate(180deg)}
+.sidebar .nav-item>.icon,.sidebar .nav-item svg{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+body.sidebar-collapsed .sidebar .nav-item{justify-content:center}
+.mobile-inbox-bell{position:relative;color:var(--color-text);text-decoration:none;flex:0 0 44px;width:44px;height:44px;border-radius:12px}
+.mobile-inbox-bell .web-inbox-badge{position:absolute;top:0;right:0}
+.mobile-inbox-bell:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+@media(min-width:1024px){.mobile-inbox-bell{display:none}}
+@media(max-width:1023px){
+  html.mobile-nav-open,body.nav-open{overflow:hidden;overscroll-behavior:none}
+  .mobile-topbar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px 44px;align-items:center;gap:6px;padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));box-sizing:border-box}
+  .mobile-topbar>.mobile-brand{min-width:0;overflow:hidden}
+  .mobile-topbar>.mobile-brand span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .sidebar.is-open{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100dvh - 60px)}
+}
+@media(max-width:359px){.mobile-topbar{gap:2px;padding-inline:6px}.mobile-brand small{display:none}}

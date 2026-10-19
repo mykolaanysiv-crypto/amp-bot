@@ -1,5 +1,28 @@
-{% extends "base.html" %}{% block title %}Журнал доступу • АМПасадори{% endblock %}{% block content %}
-<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Журнал дій</b></nav>
-<div class="page-head"><div><span class="eyebrow">ПРОЗОРІСТЬ</span><h1>Журнал доступу</h1><p>Історія переглядів повних карток, розширених експортів та важливих змін у системі.</p></div></div>
-<section class="card table-wrap"><table class="audit-log-table"><thead><tr><th>Дата</th><th>Хто</th><th>Що відбулося</th><th>Об’єкт</th><th></th></tr></thead><tbody>{% for r in rows %}<tr><td>{{r.created_at.strftime('%d.%m.%Y %H:%M')}}</td><td>{{r.actor_label}}</td><td><a class="audit-action" href="/admin/audit/{{r.id}}"><b>{{action_title(r.action)}}</b><small>{{action_description(r.action)}}</small></a></td><td>{{label(r.entity_type)}}{% if r.entity_id %} №{{r.entity_id}}{% endif %}</td><td><a class="soft-button" href="/admin/audit/{{r.id}}">Детально →</a></td></tr>{% else %}<tr><td colspan="5" class="muted">Записів ще немає.</td></tr>{% endfor %}</tbody></table></section>
+{% extends "base.html" %}
+{% block title %}Журнал аудиту • АМПасадори{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Журнал аудиту</b></nav>
+<div class="page-head"><div><span class="eyebrow">ПРОЗОРІСТЬ ТА БЕЗПЕКА</span><h1>Журнал аудиту</h1><p>Історія дій та важливих змін у системі. Записи не видаляються при фільтруванні.</p></div></div>
+<form class="card audit-toolbar" method="get" action="/admin/audit" role="search" data-autorestore="0">
+  <label for="audit-search">Знайти дію або виконавця</label>
+  <div class="audit-search-row"><input id="audit-search" name="q" value="{{ audit_query }}" maxlength="120" placeholder="ПІБ, назва дії, тип об’єкта" autocomplete="off"><button class="primary" type="submit">Знайти</button><a class="soft-button" href="/admin/audit">Очистити</a></div>
+  <p class="muted audit-count" aria-live="polite">Знайдено записів: {{ audit_total }}. Сторінка {{ audit_page }} з {{ audit_pages }}.</p>
+</form>
+<section class="card table-wrap audit-table-wrap" aria-label="Записи журналу">
+{% if rows %}
+<table class="audit-log-table"><thead><tr><th scope="col">Дата</th><th scope="col">Хто</th><th scope="col">Що відбулося</th><th scope="col">Об’єкт</th><th scope="col">Дія</th></tr></thead><tbody>
+{% for r in rows %}<tr>
+<td data-label="Дата"><time datetime="{{ r.created_at.isoformat() }}">{{r.created_at.strftime('%d.%m.%Y %H:%M')}}</time></td>
+<td data-label="Хто">{{r.actor_label}}</td>
+<td data-label="Подія"><a class="audit-action" href="/admin/audit/{{r.id}}"><b>{{action_title(r.action)}}</b><small>{{action_description(r.action)}}</small></a></td>
+<td data-label="Об’єкт">{{label(r.entity_type)}}{% if r.entity_id %} №{{r.entity_id}}{% endif %}</td>
+<td data-label="Деталі"><a class="soft-button" href="/admin/audit/{{r.id}}" aria-label="Переглянути запис {{r.id}}">Детально →</a></td>
+</tr>{% endfor %}</tbody></table>
+{% else %}<div class="audit-empty" role="status"><h2>Записів не знайдено</h2><p class="muted">{% if audit_query %}За цим пошуком нічого немає. Спробуйте інше формулювання або очистіть фільтр.{% else %}У журналі поки немає записів, доступних для відображення.{% endif %}</p></div>{% endif %}
+</section>
+{% if audit_pages > 1 %}<nav class="audit-pagination" aria-label="Сторінки журналу">
+{% if audit_page > 1 %}<a class="soft-button" href="/admin/audit?page={{ audit_page - 1 }}&amp;q={{ audit_query|urlencode }}" rel="prev">← Попередня</a>{% endif %}
+<span>Сторінка {{ audit_page }} / {{ audit_pages }}</span>
+{% if audit_page < audit_pages %}<a class="soft-button" href="/admin/audit?page={{ audit_page + 1 }}&amp;q={{ audit_query|urlencode }}" rel="next">Наступна →</a>{% endif %}
+</nav>{% endif %}
 {% endblock %}

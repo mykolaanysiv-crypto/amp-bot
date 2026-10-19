@@ -7,7 +7,13 @@ def read(path):
 
 def test_only_one_notification_bell_in_topbar():
     markup = read('app/web/templates/base.html')
-    assert markup.count('web-inbox-bell') == 1
+    # Two responsive links, one per viewport, share one unread-count fetch.
+    assert markup.count('web-inbox-bell') == 2
+    assert 'mobile-inbox-bell web-inbox-bell' in markup
+    assert 'topbar-icon web-inbox-bell' in markup
+    assert markup.count('data-web-unread') == 2
+    assert '@media(min-width:1024px){.mobile-inbox-bell{display:none}}' in read('app/web/static/styles/components/navigation.css')
+    assert "document.querySelectorAll('[data-web-unread]')" in read('app/web/static/web_inbox.js')
     assert 'href="/admin/notifications" aria-label="Відкрити центр сповіщень"' not in markup
 
 def test_existing_reset_not_duplicated_by_js():
@@ -31,4 +37,6 @@ def test_bulk_read_account_scoped_and_csrf_form():
     assert 'Позначити всі як прочитані' in template
 
 def test_release_styles_loaded():
-    assert f'/static/ux_release_1224.css?v={read("VERSION.txt").strip()}' in read('app/web/templates/base.html')
+    assert f'/static/admin.css?v={read("VERSION.txt").strip()}' in read('app/web/templates/base.html')
+    assert 'ux_release_1224.css' in read('scripts/build_admin_css.py')
+    assert '/static/ux_release_1224.css?v=' not in read('app/web/templates/base.html')
