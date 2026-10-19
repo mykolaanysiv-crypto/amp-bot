@@ -24,9 +24,9 @@ def test_v1185_full_release_contains_qr_quest_service_and_pg18_backup_verifier()
     assert quest_auto.exists() and quest_auto.stat().st_size > 1000
     events = read("app/domain_services/events.py")
     assert "from .quest_auto import" in events
-    assert "image: public.ecr.aws/docker/library/postgres:18" in read(".github/workflows/backup.yml")
+    assert "image: postgres:18" in read(".github/workflows/backup.yml")
     restore = read("scripts/verify_backup_restore.sh")
-    assert "public.ecr.aws/docker/library/postgres:18" in restore
+    assert "postgres:18" in restore
     assert "pg_restore --no-owner --no-acl" in restore
 
 

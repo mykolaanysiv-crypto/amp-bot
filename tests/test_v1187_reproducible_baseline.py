@@ -41,10 +41,10 @@ def test_v1187_ci_security_audit_is_blocking():
 
 def test_v1187_runtime_matrix_is_aligned():
     assert "FROM python:3.13-slim" in read("Dockerfile")
-    assert "public.ecr.aws/docker/library/postgres:18-alpine" in read("docker-compose.yml")
+    assert "postgres:18-alpine" in read("docker-compose.yml")
     assert read(".python-version").strip() == "3.13"
     workflow = read(".github/workflows/ci.yml")
-    assert workflow.count("image: public.ecr.aws/docker/library/postgres:18") >= 2
+    assert workflow.count("image: postgres:18") >= 2
 
 
 def test_v1187_static_cache_tokens_are_current():
