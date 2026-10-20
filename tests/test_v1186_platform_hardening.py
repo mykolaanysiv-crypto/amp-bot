@@ -33,7 +33,7 @@ def test_v1186_version_runtime_and_cache_tokens_are_synchronized():
 def test_v1186_ci_has_js_static_backup_and_postdeploy_gates():
     ci = read(".github/workflows/ci.yml")
     for token in (
-        "image: public.ecr.aws/docker/library/postgres:18",
+        "image: postgres:18",
         "node tests/js/test_admin_forms.js",
         "ruff check --select E9,F63,F7,F82",
         "pip-audit -r requirements.lock",

@@ -1,0 +1,11 @@
+/* Unified control geometry. Use tokenized component classes rather than per-release overrides. */
+:root{--control-height-sm:36px;--control-height-md:44px;--control-height-lg:48px;--control-gap:8px;--icon-size-md:20px;--motion-fast:150ms;--motion-normal:220ms;--motion-sidebar:260ms}
+:where(.primary,.soft-button,.danger-btn,.success-button,.ghost,.sidebar-collapse,.topbar-icon,.mobile-menu-button,.mobile-theme-button,.mobile-inbox-bell){box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:var(--control-gap);min-height:var(--control-height-md);vertical-align:middle;text-align:center}
+:where(.primary,.soft-button,.danger-btn,.success-button,.ghost)>.icon,.sidebar-collapse>.icon,.topbar-icon>.icon,.mobile-inbox-bell>.icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:1}
+:where(.primary,.soft-button,.danger-btn,.success-button,.ghost,.sidebar-collapse,.topbar-icon):focus-visible{outline:3px solid var(--color-focus);outline-offset:3px}
+:where(input:not([type=checkbox]):not([type=radio]),select,textarea){box-sizing:border-box;max-width:100%;min-width:0}
+:where(.form-actions-row,.card-actions,.filter-actions,.event-filter-actions){display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0}
+:where(.form-actions-row,.card-actions,.filter-actions,.event-filter-actions)>*{min-width:0;max-width:100%}
+:where(.form-grid,.filters,.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters)>*{min-width:0}
+:where(.form-grid,.filters,.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters) label{min-width:0}
+:where(.form-grid,.filters,.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters) :is(input,select,textarea){min-width:0;max-width:100%}

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from app.time_utils import clock
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 import os
+from sqlalchemy import or_
 from app.web.dependencies import (
     APP_VERSION, AuditLog, Bot, BroadcastCampaign, BroadcastRecipient, BytesIO, HTMLResponse, MediaAsset, Notification, RedirectResponse, Referral, Request, ScheduledJob, StreamingResponse, SystemSetting, User, asyncio, ctx, datetime, db, export_basic_excel, export_excel, func, guard, guard_permission, latest_local_backup, log_audit, reliability_counts, select, settings, templates, timedelta
 )
@@ -31,10 +32,35 @@ async def referrals(request:Request):
 
 
 @router.get("/admin/audit", response_class=HTMLResponse)
-async def audit(request:Request):
-    if r := guard_permission(request, "audit.view"): return r
+async def audit(request: Request, page: int = Query(default=1, ge=1, le=100000), q: str = Query(default="", max_length=120)):
+    """Read-only, permission-guarded and paginated audit history.
+
+    No rows are generated or modified by viewing this page.
+    """
+    if r := guard_permission(request, "audit.view"):
+        return r
+    search = q.strip()
+    statement = select(AuditLog)
+    if search:
+        pattern = "%" + search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        statement = statement.where(or_(
+            AuditLog.actor_label.ilike(pattern, escape="\\"),
+            AuditLog.action.ilike(pattern, escape="\\"),
+            AuditLog.entity_type.ilike(pattern, escape="\\"),
+        ))
+    page_size = 40
     async with db.session_factory() as session:
-        rows=(await session.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(500))).all(); return templates.TemplateResponse(request=request,name="audit.html",context=ctx(request,rows=rows))
+        filtered = statement.subquery()
+        total = int(await session.scalar(select(func.count()).select_from(filtered)) or 0)
+        rows = (await session.scalars(statement.order_by(
+            AuditLog.created_at.desc(), AuditLog.id.desc()
+        ).limit(page_size).offset((page - 1) * page_size))).all()
+    pages = max(1, (total + page_size - 1) // page_size)
+    return templates.TemplateResponse(
+        request=request, name="audit.html",
+        context=ctx(request, rows=rows, audit_page=page, audit_pages=pages,
+                    audit_total=total, audit_query=search),
+    )
 
 
 @router.get("/admin/audit/{log_id}", response_class=HTMLResponse)

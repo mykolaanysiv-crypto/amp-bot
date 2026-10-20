@@ -118,7 +118,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     docs = {
         "README.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "HEROKU_DEPLOY.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
-        "RELEASE_V1224_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
+        "RELEASE_V1226_RC_UA.md": (EXPECTED_VERSION, EXPECTED_ALEMBIC_HEAD),
         "BUILD_MANIFEST_V1210.txt": (EXPECTED_PYTHON, EXPECTED_POSTGRES),
     }
     for name, tokens in docs.items():
@@ -145,7 +145,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
     if "FROM python:3.13-slim" not in docker or "-r requirements.lock" not in docker:
         raise SystemExit("Docker runtime/lock installation is not reproducible")
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
-    if "public.ecr.aws/docker/library/postgres:18-alpine" not in compose:
+    if "postgres:18-alpine" not in compose:
         raise SystemExit("docker-compose PostgreSQL must match PostgreSQL 18 baseline")
 
     ci = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
@@ -164,7 +164,7 @@ def validate_release_consistency(root: Path = ROOT) -> None:
         "node --check app/web/static/page_behaviors.js",
         "pip-audit -r requirements.lock --progress-spinner=off",
         "pip check",
-        "image: public.ecr.aws/docker/library/postgres:18",
+        "image: postgres:18",
         "Post-deploy readiness and version smoke",
         "Restore-verify fresh pre-deploy backup",
     )

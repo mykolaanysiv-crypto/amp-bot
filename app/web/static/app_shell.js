@@ -15,17 +15,30 @@
   function safeGet(key) { try { return localStorage.getItem(key); } catch (_err) { return null; } }
   function safeSet(key, value) { try { localStorage.setItem(key, value); } catch (_err) {} }
 
-  function setTheme(theme) {
-    const resolved = theme === 'dark' ? 'dark' : 'light';
+  const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)');
+  function resolveTheme(preference) {
+    return preference === 'dark' || (preference === 'system' && systemDark?.matches) ? 'dark' : 'light';
+  }
+  function setTheme(preference, persist = true) {
+    const mode = ['light', 'dark', 'system'].includes(preference) ? preference : 'system';
+    const resolved = resolveTheme(mode);
     body.dataset.theme = resolved;
-    safeSet(THEME_KEY, resolved);
+    body.dataset.themePreference = mode;
+    document.documentElement.dataset.theme = resolved;
+    if (persist) safeSet(THEME_KEY, mode);
     themeButtons.forEach(button => {
-      button.setAttribute('aria-label', resolved === 'dark' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
-      button.setAttribute('title', resolved === 'dark' ? 'Світла тема' : 'Темна тема');
+      button.setAttribute('aria-label', `Тема: ${mode === 'system' ? 'системна' : mode === 'dark' ? 'темна' : 'світла'}. Змінити`);
+      button.setAttribute('title', `Тема: ${mode === 'system' ? 'системна' : mode === 'dark' ? 'темна' : 'світла'}`);
     });
   }
-  function toggleTheme() { setTheme(body.dataset.theme === 'dark' ? 'light' : 'dark'); }
-  window.toggleTheme = toggleTheme; // compatibility for old extensions; UI uses event listeners.
+  function toggleTheme() {
+    const current = body.dataset.themePreference || 'system';
+    setTheme(current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system');
+  }
+  window.toggleTheme = toggleTheme;
+  systemDark?.addEventListener?.('change', () => {
+    if ((body.dataset.themePreference || 'system') === 'system') setTheme('system', false);
+  });
 
   function setCollapsed(collapsed, persist = true) {
     body.classList.toggle('sidebar-collapsed', collapsed);
@@ -48,7 +61,9 @@
     mobileReturnFocus = trigger || document.activeElement;
     sidebar.classList.add('is-open');
     body.classList.add('nav-open');
+    document.documentElement.classList.add('mobile-nav-open');
     mobileMenu?.setAttribute('aria-expanded', 'true');
+    sidebar.setAttribute('role', 'dialog');
     sidebar.setAttribute('aria-modal', 'true');
     const items = focusableInSidebar();
     if (items[0]) items[0].focus({preventScroll: true});
@@ -59,8 +74,10 @@
     const wasOpen = sidebar.classList.contains('is-open');
     sidebar.classList.remove('is-open');
     body.classList.remove('nav-open');
+    document.documentElement.classList.remove('mobile-nav-open');
     mobileMenu?.setAttribute('aria-expanded', 'false');
     sidebar.removeAttribute('aria-modal');
+    sidebar.removeAttribute('role');
     if (restoreFocus && wasOpen && mobileReturnFocus instanceof HTMLElement) mobileReturnFocus.focus({preventScroll: true});
   }
 
@@ -74,8 +91,7 @@
   }
 
   const storedTheme = safeGet(THEME_KEY);
-  if (storedTheme) setTheme(storedTheme);
-  else setTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  setTheme(storedTheme || 'system', false);
   setCollapsed(safeGet(SIDEBAR_KEY) === '1', false);
 
   themeButtons.forEach(button => button.addEventListener('click', toggleTheme));

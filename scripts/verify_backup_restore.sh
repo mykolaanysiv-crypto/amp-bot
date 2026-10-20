@@ -34,7 +34,7 @@ echo "[3/5] Restoring into isolated PostgreSQL verification database..."
 # Guard above refuses hosted targets. On Linux GitHub-hosted runners `--network host`
 # makes 127.0.0.1 refer to the runner's local ephemeral PostgreSQL service.
 docker run --rm --network host --volume "$DUMP:/backup.dump:ro" \
-  public.ecr.aws/docker/library/postgres:18 \
+  postgres:18 \
   pg_restore --no-owner --no-acl --clean --if-exists --exit-on-error \
   -d "$TARGET_URL" /backup.dump
 

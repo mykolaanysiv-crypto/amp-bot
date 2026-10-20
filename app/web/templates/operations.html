@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}Операційний контроль • АМПасадори{% endblock %}{% block content %}
 {% from "_ui_macros.html" import icon %}
 <nav class="breadcrumb"><a href="/admin/dashboard">Огляд</a><span>›</span><b>Операційний контроль</b></nav>
-<div class="page-head"><div><span class="eyebrow">ОПЕРАЦІЙНИЙ КОНТРОЛЬ</span><h1><span class="icon ui-inline-icon">{{ icon('compass') }}</span> Що потребує дії</h1><p>Система лише знаходить проблеми. Виправлення запускає людина. Ручне закриття задачі не приховає проблему, якщо вона існуватиме під час наступної перевірки.</p></div></div>
+<div class="page-head"><div><span class="eyebrow">ОПЕРАЦІЙНИЙ КОНТРОЛЬ</span><h1><span class="icon ui-inline-icon">{{ icon('compass') }}</span> Що потребує дії</h1><p>Система лише знаходить проблеми. Виправлення запускає людина. Позначення проблеми як опрацьованої зберігає її історію. Якщо умова зникне, а згодом виникне знову, система повторно відкриє інцидент.</p></div></div>
 <p class="muted">Останнє повне сканування: {{last_scan or 'ще не виконувалося'}}{% if last_scan %} (час Києва){% endif %}. Перевірка виконується у фоновому worker приблизно кожні 15 хвилин.</p>
 {% if scan=='ok' %}<p class="tag"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Перевірку завершено.</p>{% elif scan=='busy' %}<p class="tag"><span class="icon ui-inline-icon">{{ icon('clock') }}</span> Перевірка вже виконується.</p>{% endif %}
 <form method="post" action="/admin/operations/scan"><input type="hidden" name="_csrf" value="{{csrf_token}}"><button class="soft-button" type="submit"><span class="icon ui-inline-icon">{{ icon('refresh') }}</span> Перевірити зараз</button></form>

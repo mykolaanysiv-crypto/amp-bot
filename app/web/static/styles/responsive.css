@@ -1,0 +1,21 @@
+/* Responsive layout primitives: prevent page-level overflow, not internal intended scroll. */
+:where(.content,.main-content,.page-content){max-width:100%;min-width:0}
+:where(.content,.main-content,.page-content) :where(.card,.panel,.grid,.form-grid,.filters,.page-head,.table-wrap){max-width:100%;min-width:0;box-sizing:border-box}
+:where(.card,.panel,.page-head,.product-panel) :where(h1,h2,h3,p,small){overflow-wrap:break-word}
+:where(.content,.main-content) img:not(.icon img){max-width:100%;height:auto}
+:where(.amp-modal-shell,.modal-content,[role="dialog"]){box-sizing:border-box;max-width:min(calc(100vw - 24px),100%)}
+@media(max-width:768px){
+  :where(.content,.main-content,.page-content){width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+  :where(.content,.main-content) :where(.card,.panel,.table-card,.table-wrap){width:100%;min-width:0;max-width:100%}
+  :where(.amp-modal-shell,.modal-content){max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+  :where(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters){grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:430px){
+  :where(.smart-filters,.product-filter-bar,.notification-filters,.broadcast-filters){grid-template-columns:minmax(0,1fr)}
+  :where(.form-actions-row,.filter-actions,.event-filter-actions){display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+  :where(.form-actions-row,.filter-actions,.event-filter-actions)>:where(button,a,form){width:100%;min-width:0}
+  :where(.form-actions-row,.filter-actions,.event-filter-actions)>form{display:flex;flex-wrap:wrap;gap:8px}
+  :where(.form-actions-row,.filter-actions,.event-filter-actions)>form :where(input,button){min-width:0;flex:1 1 140px}
+  :where(.card,.panel,.page-head){overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){:where(*, *::before, *::after){scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}

@@ -1,0 +1,33 @@
+/* Audit records use real table semantics on desktop and labelled cards on phones. */
+.audit-toolbar{min-width:0}
+.audit-search-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.audit-search-row>input{flex:1 1 240px;min-width:0}
+.audit-search-row>:is(button,a){flex:0 0 auto}
+.audit-count{margin-bottom:0}
+.audit-empty{padding:clamp(20px,4vw,48px);text-align:center;max-width:100%}
+.audit-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-block:16px}
+.audit-pagination>span{margin-inline:auto}
+.audit-log-table :is(th,td){vertical-align:middle;overflow-wrap:anywhere}
+.audit-log-table td .soft-button{white-space:nowrap}
+@media(max-width:700px){
+  .audit-search-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .audit-search-row input{grid-column:1/-1;width:100%}
+  .audit-search-row>:is(button,a){min-width:0;width:100%}
+  .audit-table-wrap{overflow:visible}
+  .audit-log-table,.audit-log-table tbody,.audit-log-table tr,.audit-log-table td{display:block;width:100%;box-sizing:border-box}
+  .audit-log-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .audit-log-table tr{border:1px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-md);padding:12px;margin-bottom:12px}
+  .audit-log-table td{display:grid;grid-template-columns:minmax(92px,35%) minmax(0,1fr);gap:8px;align-items:start;padding:8px 0!important;border:0!important;text-align:left}
+  .audit-log-table td::before{content:attr(data-label);font-weight:700;color:var(--color-text-muted)}
+  .audit-log-table td:last-child .soft-button{width:100%;white-space:normal}
+}
+/* Some historic table rules set min-width:720px; disable that on mobile audit cards. */
+@media(max-width:700px){
+  .content .audit-table-wrap{overflow:visible!important;min-width:0!important}
+  .content .audit-table-wrap .audit-log-table{min-width:0!important;width:100%!important;max-width:100%!important;table-layout:auto!important}
+  .content .audit-table-wrap .audit-log-table tbody,.content .audit-table-wrap .audit-log-table tbody tr,.content .audit-table-wrap .audit-log-table tbody td{min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important}
+  .content .audit-table-wrap .audit-log-table tbody tr{display:block!important}
+  .content .audit-table-wrap .audit-log-table tbody td{display:grid!important;grid-template-columns:minmax(78px,31%) minmax(0,1fr)!important;gap:8px}
+  .content .audit-table-wrap .audit-log-table tbody td :is(a,span,b,small){min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .content .audit-table-wrap .audit-log-table tbody td .soft-button{white-space:normal!important}
+}

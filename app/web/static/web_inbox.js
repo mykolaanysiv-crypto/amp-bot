@@ -1,8 +1,8 @@
 /* Optional enhancement. The inbox itself works without JavaScript. */
 (() => {
   'use strict';
-  const badge = document.querySelector('[data-web-unread]');
-  if (!badge) return;
+  const badges = Array.from(document.querySelectorAll('[data-web-unread]'));
+  if (!badges.length) return;
   let inFlight = false;
   let lastFetched = 0;
   const refresh = async () => {
@@ -14,9 +14,11 @@
       if (!response.ok) return;
       const result = await response.json();
       const count = Math.max(0, Number(result.unread) || 0);
-      badge.hidden = count === 0;
-      badge.textContent = count > 99 ? '99+' : String(count);
-      badge.parentElement?.setAttribute('aria-label', `Мої сповіщення, непрочитаних: ${count}`);
+      badges.forEach(badge => {
+        badge.hidden = count === 0;
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.parentElement?.setAttribute('aria-label', `Мої сповіщення, непрочитаних: ${count}`);
+      });
     } catch (_) { /* offline: accessible inbox link remains usable */ } finally { inFlight = false; }
   };
   refresh();

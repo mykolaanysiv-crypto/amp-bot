@@ -502,7 +502,7 @@ def main() -> None:
 
     ci_source = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     for token in (
-        "image: public.ecr.aws/docker/library/postgres:18",
+        "image: postgres:18",
         "node tests/js/test_admin_forms.js",
         "ruff check --select E9,F63,F7,F82",
         "Restore-verify fresh pre-deploy backup",
