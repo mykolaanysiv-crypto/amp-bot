@@ -225,11 +225,19 @@ def main() -> None:
 
     # v1.13.1 participant profile/badges/analytics UX guards.
     participant_home_source = (root / "app" / "handlers" / "participant_home.py").read_text(encoding="utf-8")
+    reward_history_source = (root / "app" / "reward_history.py").read_text(encoding="utf-8")
     gamification_source = (root / "app" / "domain_services" / "gamification.py").read_text(encoding="utf-8")
     analytics_template = (root / "app" / "web" / "templates" / "analytics.html").read_text(encoding="utf-8")
     analytics_detail_template = (root / "app" / "web" / "templates" / "analytics_detail.html").read_text(encoding="utf-8")
     admin_css = (root / "app" / "web" / "static" / "admin.css").read_text(encoding="utf-8")
-    if "row.description or row.category" not in participant_home_source or "row.reason or row.category" in participant_home_source:
+    canonical_profile_history = (
+        "row.description or row.category" in participant_home_source
+        or (
+            "reward_operations_for_user(session, user.id" in participant_home_source
+            and "tx.description or tx.category" in reward_history_source
+        )
+    )
+    if not canonical_profile_history or "row.reason or row.category" in participant_home_source:
         raise SystemExit("Profile XP preflight failed: XP history is not using canonical transaction.description")
     for token in ('callback_data="badges:all"', 'callback_data="badges:mine"', "TELEGRAM_FIRE_CUSTOM_EMOJI_ID"):
         if token not in participant_home_source:

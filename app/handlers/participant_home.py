@@ -4,6 +4,10 @@ from .participant_common import (
     AMBASSADOR_BADGE_ROLES, Badge, CallbackQuery, Database, Event, EventFeedback, EventRegistration, F, FSMContext, InlineKeyboardBuilder, InlineKeyboardButton, InlineKeyboardMarkup, LEVELS, Message, OpportunityMatch, Quest, QuestParticipation, RequestCase, RequestMessage, Reward, RewardClaim, StreakFreezeState, UserBadge, UserRole, UserStatus, XPTransaction, active_month_streak, create_streak_freeze, current_season, escape, func, get_level, get_registration_journey, get_runtime_int, get_user_by_tg, goals_for_user, join_hub_keyboard, label, league_for_xp, runtime_leagues, log_audit, log_extra, logging, main_menu, more_hub_keyboard, participant_first_name, profile_hub_keyboard, progress_text, refresh_user_streak, restore_super_streak, rewards_keyboard, router, season_xp, select, streak_freeze_summary, telegram_photo_input, timedelta, xp_total
 )
 from ..quick_xp import available_quick_challenges, challenge_reward, quick_xp_weekly_cap, weekly_quick_xp
+from ..reward_history import (
+    preserve_legacy_claim_before_reuse, record_reward_event,
+    reward_operations_for_user,
+)
 
 @router.message(F.text.in_({"🏠 Головна", "🏠 Огляд"}))
 async def overview(message: Message, db: Database) -> None:
@@ -377,20 +381,17 @@ async def xp_history(message: Message, db: Database) -> None:
             return
         total = await xp_total(session, user.id)
         wallet_xp = int(user.wallet_xp or 0)
-        rows = list((await session.scalars(
-            select(XPTransaction)
-            .where(XPTransaction.user_id == user.id)
-            .order_by(XPTransaction.created_at.desc())
-            .limit(10)
-        )).all())
+        rows = await reward_operations_for_user(session, user.id, limit=30)
     lines = ["⚡ <b>Мій XP</b>", progress_text(total), f"💳 Баланс винагород: <b>{wallet_xp} XP</b>"]
     if rows:
         lines.append("\n<b>Останні операції</b>")
-        for row in rows:
-            sign = "+" if int(row.amount or 0) >= 0 else ""
-            description = row.description or row.category or "Операція"
+        for row in rows[:10]:
+            delta = int(row["delta"])
+            sign = "+" if delta >= 0 else ""
+            description = row["detail"]
             lines.append(
-                f"• {row.created_at.strftime('%d.%m')} · <b>{sign}{int(row.amount or 0)} XP</b> · {escape(description)}"
+                f"• {row['at'].strftime('%d.%m')} · <b>{sign}{delta} XP</b> · {escape(description)}"
+                + (f" · залишок {row['balance_after']} XP" if row["balance_after"] is not None else "")
             )
     else:
         lines.append("\nПоки що XP-операцій немає.")
@@ -548,9 +549,9 @@ async def reward_claim(call: CallbackQuery, db: Database) -> None:
             user.wallet_xp -= reward.min_xp
             if reward.stock is not None:
                 reward.stock -= 1
-            await log_audit(
-                session, "telegram_streak_restore_reward", actor=user, entity_type="reward", entity_id=reward.id,
-                details=f"Відновлено суперсерію; списано {reward.min_xp} XP; серія={streak_row.event_streak}",
+            await record_reward_event(
+                session, "reward_streak_restored", user=user, reward=reward,
+                xp_delta=-reward.min_xp,
             )
             await session.commit()
             await call.message.answer(
@@ -567,6 +568,10 @@ async def reward_claim(call: CallbackQuery, db: Database) -> None:
         if existing and existing.status == "fulfilled" and getattr(reward, "reward_type", "item") != "service":
             await call.answer("Ти вже отримав/ла цю винагороду", show_alert=True)
             return
+        if existing:
+            await preserve_legacy_claim_before_reuse(
+                session, claim=existing, user=user, reward=reward,
+            )
         user.wallet_xp -= reward.min_xp
         if reward.stock is not None:
             reward.stock -= 1
@@ -576,7 +581,13 @@ async def reward_claim(call: CallbackQuery, db: Database) -> None:
             existing.requested_at = clock.storage_utc()
             existing.fulfilled_at = None
         else:
-            session.add(RewardClaim(reward_id=reward.id, user_id=user.id, xp_spent=reward.min_xp))
+            existing = RewardClaim(reward_id=reward.id, user_id=user.id, xp_spent=reward.min_xp)
+            session.add(existing)
+        await session.flush()
+        await record_reward_event(
+            session, "reward_spent", user=user, reward=reward,
+            claim_id=existing.id, xp_delta=-reward.min_xp,
+        )
         await session.commit()
         await call.message.answer(
             f"✅ Обмін підтверджено. Списано <b>{reward.min_xp} XP</b>.\n"

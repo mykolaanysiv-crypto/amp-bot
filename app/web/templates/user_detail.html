@@ -42,6 +42,7 @@
     <button type="button" data-tab="quests"><span class="icon ui-inline-icon">{{ icon('target') }}</span> Квести</button>
     <button type="button" data-tab="activities"><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> Активності</button>
     <button type="button" data-tab="xp"><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> XP</button>
+    <button type="button" data-tab="rewards"><span class="icon ui-inline-icon">{{ icon('gift') }}</span> Винагороди</button>
     <button type="button" data-tab="events"><span class="icon ui-inline-icon">{{ icon('calendar') }}</span> Події</button>
     <button type="button" data-tab="volunteer"><span class="icon ui-inline-icon">{{ icon('check') }}</span> Волонтерство</button>
     <button type="button" data-tab="ideas"><span class="icon ui-inline-icon">{{ icon('idea') }}</span> Ідеї</button>
@@ -59,7 +60,36 @@
     <h3 class="p360-panel-title"><span class="icon ui-inline-icon">{{ icon('bolt') }}</span> Активності</h3>
     <div class="table-wrap p360-table-wrap"><table class="p360-data-table"><thead><tr><th>Активність</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in activity_rows360 %}<tr><td>{{r.activity_type.title if r.activity_type else ('#' ~ r.activity_type_id)}}</td><td>{{activity_status_label(r.status)}}</td><td>{{(r.completed_at or r.requested_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Немає заявок</td></tr>{% endfor %}</tbody></table></div>
   </div>
-  <div class="p360-panel" data-panel="xp"><div class="table-wrap"><table><thead><tr><th>Дата</th><th>XP</th><th>Категорія</th><th>Причина</th></tr></thead><tbody>{% for x in txs %}<tr><td>{{x.created_at.strftime('%d.%m.%Y %H:%M')}}</td><td>{{'%+d'|format(x.amount)}}</td><td>{{label(x.category)}}</td><td>{{x.description}}</td></tr>{% else %}<tr><td colspan="4" class="muted">Транзакцій XP ще немає</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="p360-panel" data-panel="xp">
+    <p class="muted">Показано нарахування, витрати на винагороди та повернення XP. Покупки зменшують баланс для обміну, але не загальний досвід і рівень.</p>
+    <div class="table-wrap"><table><thead><tr><th>Дата</th><th>XP</th><th>Тип операції</th><th>Причина</th><th>Баланс після</th></tr></thead>
+      <tbody>{% for x in xp_operations %}
+      <tr>
+        <td>{{ x.at.strftime('%d.%m.%Y %H:%M') }}</td>
+        <td><b>{{ '%+d'|format(x.delta) }} XP</b></td>
+        <td>{{ x.category }}</td>
+        <td>{{ x.detail }}</td>
+        <td>{{ x.balance_after ~ ' XP' if x.balance_after is not none else '—' }}</td>
+      </tr>
+      {% else %}<tr><td colspan="5" class="muted">Операцій XP ще немає.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="muted">Для старих операцій залишок після списання може бути невідомий — ці дані раніше не зберігалися.</p>
+  </div>
+  <div class="p360-panel" data-panel="rewards">
+    <h3 class="p360-panel-title"><span class="icon ui-inline-icon">{{ icon('gift') }}</span> Історія винагород учасника</h3>
+    <div class="table-wrap"><table><thead><tr><th>Винагорода</th><th>Замовлено</th><th>Видано</th><th>XP</th><th>Статус</th></tr></thead>
+      <tbody>{% for claim, reward in reward_claims360 %}
+      <tr>
+        <td>{{ reward.title }}</td>
+        <td>{{ claim.requested_at.strftime('%d.%m.%Y') if claim.requested_at else '—' }}</td>
+        <td>{{ claim.fulfilled_at.strftime('%d.%m.%Y') if claim.fulfilled_at else '—' }}</td>
+        <td>-{{ claim.xp_spent }} XP{% if claim.status == 'rejected' %} · повернуто{% endif %}</td>
+        <td>{% if claim.status == 'fulfilled' %}Видано{% elif claim.status == 'requested' %}Очікує{% elif claim.status == 'rejected' %}Відхилено{% else %}{{ claim.status }}{% endif %}</td>
+      </tr>
+      {% else %}<tr><td colspan="5" class="muted">Немає замовлених винагород.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="muted">Повторні обміни на послуги після оновлення додатково фіксуються в журналі на сторінці «Винагороди».</p>
+  </div>
   <div class="p360-panel" data-panel="events"><div class="table-wrap"><table><thead><tr><th>Подія</th><th>Статус</th><th>Дата</th><th>Підтвердження</th></tr></thead><tbody>{% for r in event_regs360 %}<tr><td>{{r.event.title if r.event else ('#' ~ r.event_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.confirmed_at or r.registered_at).strftime('%d.%m.%Y')}}</td><td>{% if r.attendance_signature %}<code>{{r.attendance_signature[:10]}}…</code>{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="4" class="muted">Подій ще немає</td></tr>{% endfor %}</tbody></table></div></div>
   <div class="p360-panel" data-panel="volunteer"><div class="table-wrap"><table><thead><tr><th>Задача</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for r in task_rows360 %}<tr><td>{{r.task.title if r.task else ('#' ~ r.task_id)}}</td><td>{{label(r.status)}}</td><td>{{(r.approved_at or r.submitted_at or r.joined_at).strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Волонтерських задач ще немає</td></tr>{% endfor %}</tbody></table></div><p class="muted">Загалом підтверджено: <b>{{kpi360.tasks}}</b> задач · <b>{{user.volunteer_hours}}</b> волонтерських годин.</p></div>
   <div class="p360-panel" data-panel="ideas"><div class="table-wrap"><table><thead><tr><th>Ідея</th><th>Статус</th><th>Дата</th></tr></thead><tbody>{% for i in idea_rows360 %}<tr><td>{{i.title}}</td><td>{{idea_status_label(i.status)}}</td><td>{{i.created_at.strftime('%d.%m.%Y')}}</td></tr>{% else %}<tr><td colspan="3" class="muted">Ідей ще немає</td></tr>{% endfor %}</tbody></table></div></div>

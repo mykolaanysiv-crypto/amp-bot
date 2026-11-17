@@ -18,7 +18,9 @@ def test_version_and_schema_stay_compatible():
 
 def test_profile_xp_uses_canonical_transaction_description():
     source = read("app/handlers/participant_home.py")
-    assert "row.description or row.category" in source
+    helper = read("app/reward_history.py")
+    assert "reward_operations_for_user(session, user.id" in source
+    assert "tx.description or tx.category" in helper
     assert "row.reason or row.category" not in source
     assert '"ux:mine:xp": lambda: participant.xp_history' in read("app/bot_runtime.py")
 

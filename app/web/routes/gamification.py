@@ -16,6 +16,11 @@ from app.web.broadcast_runtime import (
 )
 
 from app.governance import record_field_changes, record_rule_change
+from app.model_domains import AuditLog
+from app.reward_history import (
+    REWARD_VISIBLE_ACTIONS, decode_reward_event, record_reward_event,
+)
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -466,12 +471,52 @@ async def badge_award_batch(request: Request):
 
 
 @router.get("/admin/rewards", response_class=HTMLResponse)
-async def rewards(request:Request, notice: str = ""):
+async def rewards(request:Request, notice: str = "", history_status: str = "", history_q: str = "", history_page: int = 1):
     if r := guard(request): return r
     async with db.session_factory() as session:
         rows=(await session.scalars(select(Reward).order_by(Reward.active.desc(),Reward.min_xp))).all()
         claims=(await session.execute(select(RewardClaim,User,Reward).join(User,User.id==RewardClaim.user_id).join(Reward,Reward.id==RewardClaim.reward_id).where(RewardClaim.status=="requested").order_by(RewardClaim.requested_at.asc()))).all()
-        return templates.TemplateResponse(request=request,name="rewards.html",context=ctx(request,rows=rows,claims=claims,notice=notice))
+        status_filter = history_status if history_status in {"requested", "fulfilled", "rejected"} else ""
+        search_term = history_q.strip()[:100]
+        conditions = []
+        if status_filter:
+            conditions.append(RewardClaim.status == status_filter)
+        if search_term:
+            like = f"%{search_term}%"
+            conditions.append(or_(User.full_name.ilike(like), Reward.title.ilike(like)))
+        history_base = select(RewardClaim, User, Reward).join(User, User.id == RewardClaim.user_id).join(Reward, Reward.id == RewardClaim.reward_id)
+        count_base = select(func.count(RewardClaim.id)).join(User, User.id == RewardClaim.user_id).join(Reward, Reward.id == RewardClaim.reward_id)
+        if conditions:
+            history_base = history_base.where(*conditions)
+            count_base = count_base.where(*conditions)
+        history_count = int(await session.scalar(count_base) or 0)
+        page_size = 50
+        max_page = max(1, (history_count + page_size - 1) // page_size)
+        page = max(1, min(history_page, max_page))
+        history_rows = list((await session.execute(
+            history_base.order_by(RewardClaim.requested_at.desc(), RewardClaim.id.desc())
+            .offset((page-1)*page_size).limit(page_size)
+        )).all())
+        stats = dict((await session.execute(
+            select(RewardClaim.status, func.count(RewardClaim.id)).group_by(RewardClaim.status)
+        )).all())
+        audit_rows = list((await session.execute(
+            select(AuditLog, User).join(User, User.id == AuditLog.actor_user_id)
+            .where(AuditLog.action.in_(REWARD_VISIBLE_ACTIONS))
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(100)
+        )).all())
+        recent_reward_events = [
+            (event, user)
+            for log, user in audit_rows
+            if (event := decode_reward_event(log)) is not None
+        ]
+        return templates.TemplateResponse(request=request,name="rewards.html",context=ctx(
+            request,rows=rows,claims=claims,notice=notice,
+            history_rows=history_rows,history_count=history_count,
+            history_status=status_filter,history_q=search_term,
+            history_page=page,history_pages=max_page,
+            reward_stats=stats,recent_reward_events=recent_reward_events,
+        ))
 
 
 @router.post("/admin/rewards/create")
@@ -530,16 +575,29 @@ async def reward_delete(request: Request, reward_id: int):
 @router.post("/admin/reward-claims/{claim_id}/{action}")
 async def reward_claim_action(request:Request,claim_id:int,action:str):
     if r := guard(request): return r
+    if action not in {"fulfill", "reject"}:
+        raise HTTPException(status_code=404, detail="Невідома дія з винагородою")
     async with db.session_factory() as session:
         c=await session.get(RewardClaim,claim_id)
         if c and c.status=="requested":
             u=await session.get(User,c.user_id); rw=await session.get(Reward,c.reward_id)
             if action=="fulfill":
                 c.status="fulfilled"; c.fulfilled_at=clock.storage_utc()
+                if u and rw:
+                    await record_reward_event(
+                        session,"reward_fulfilled",user=u,reward=rw,
+                        claim_id=c.id,processed_by=request.session.get("admin_name","web"),
+                    )
             elif action=="reject":
                 c.status="rejected"
                 if u: u.wallet_xp += int(c.xp_spent or 0)
                 if rw and rw.stock is not None: rw.stock += 1
+                if u and rw:
+                    await record_reward_event(
+                        session,"reward_refunded",user=u,reward=rw,
+                        claim_id=c.id,xp_delta=int(c.xp_spent or 0),
+                        processed_by=request.session.get("admin_name","web"),
+                    )
             await log_audit(session,f"web_reward_{action}",actor_label=request.session.get("admin_name","web"),entity_type="reward_claim",entity_id=c.id,details=f"xp={c.xp_spent}"); await session.commit()
     return RedirectResponse("/admin/rewards",303)
 

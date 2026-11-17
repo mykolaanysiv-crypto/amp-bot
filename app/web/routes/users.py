@@ -10,6 +10,8 @@ from sqlalchemy.orm import selectinload
 from app.domain_services import revoke_referral_reward_if_inactive
 from app.profile_data import split_display_name
 from app.season_history import user_season_history
+from app.model_domains import Reward, RewardClaim
+from app.reward_history import reward_operations_for_user
 from app.web.dependencies import (
     ActivityApplication, Badge, BanRecord, ConsentHistory, EventRegistration, File, Form, GENDER_OPTIONS, HTMLResponse, HTTPException, Idea, MEDIA_CONSENT_VERSION, MediaAsset, Path, QuestParticipation, RedirectResponse, Referral, Request, Response, SurveyResponse, UploadFile, User, UserBadge, UserRole, UserStatus, UserStatusChangeRequest, VULNERABILITY_OPTIONS, VolunteerTaskParticipation, XPTransaction, add_active_users_to_default_team, add_xp, age_on, ctx, current_season, datetime, db, delete_stored_image, dump_vulnerabilities, func, gender_label, get_level, guard, guard_permission, guard_superadmin, has_web_permission, html_escape, is_superadmin, label, league_for_xp, runtime_leagues, load_vulnerabilities, log_audit, mask_email, mask_phone, media_consent_label, normalize_manual_xp, notify_telegram, or_, process_expired_bans, queue_telegram_delivery, refresh_user_streak, reward_referral_if_ready, save_document, season_xp, select, settings, templates, timedelta, update, vulnerability_labels, xp_total
 )
@@ -149,7 +151,12 @@ async def user_detail(request: Request, user_id: int):
         total = await xp_total(session,user.id); sxp = await season_xp(session,user.id)
         streak_row, _ = await refresh_user_streak(session, user)
         league = league_for_xp(sxp, await runtime_leagues(session))
-        txs = (await session.scalars(select(XPTransaction).where(XPTransaction.user_id==user.id).order_by(XPTransaction.created_at.desc()).limit(50))).all()
+        xp_operations = await reward_operations_for_user(session, user.id)
+        reward_claims360 = list((await session.execute(
+            select(RewardClaim, Reward).join(Reward, Reward.id == RewardClaim.reward_id)
+            .where(RewardClaim.user_id == user.id)
+            .order_by(RewardClaim.requested_at.desc(), RewardClaim.id.desc())
+        )).all())
         badges = (await session.execute(select(Badge).join(UserBadge,UserBadge.badge_id==Badge.id).where(UserBadge.user_id==user.id))).scalars().all()
         referrals = (await session.scalars(select(Referral).where(Referral.inviter_user_id==user.id).order_by(Referral.created_at.desc()))).all()
         consent_history = (await session.scalars(
@@ -189,8 +196,24 @@ async def user_detail(request: Request, user_id: int):
             "referrals": sum(1 for r in referrals if r.status=="rewarded"),
         }
         timeline=[]
-        for tx in txs:
-            timeline.append({"at":tx.created_at,"icon":"bolt","title":f"{int(tx.amount):+d} XP — {label(tx.category)}","detail":tx.description or ""})
+        for operation in xp_operations:
+            delta = int(operation["delta"])
+            if operation["event_type"] == "reward":
+                verb = "Витрачено" if delta < 0 else "Повернуто" if delta > 0 else "Обміняно"
+            else:
+                verb = "Списано" if delta < 0 else "Нараховано"
+            timeline.append({
+                "at": operation["at"], "icon": "gift" if operation["event_type"] == "reward" else "bolt",
+                "title": f"{verb} {abs(delta)} XP",
+                "detail": operation["detail"],
+            })
+        for claim, reward in reward_claims360:
+            if claim.status == "fulfilled" and claim.fulfilled_at:
+                timeline.append({
+                    "at": claim.fulfilled_at, "icon": "gift",
+                    "title": "Винагороду видано",
+                    "detail": reward.title,
+                })
         for r in event_regs:
             if r.status=="attended":
                 timeline.append({"at":r.confirmed_at or r.checkin_at or r.registered_at,"icon":"calendar","title":"Відвідав/ла подію","detail":r.event.title if r.event else f"Подія #{r.event_id}"})
@@ -213,7 +236,7 @@ async def user_detail(request: Request, user_id: int):
         return templates.TemplateResponse(
             request=request, name="user_detail.html",
             context=ctx(
-                request, user=user, total=total, sxp=sxp, level=get_level(total)[0], txs=txs, badges=badges, referrals=referrals, league=league, streak_row=streak_row,
+                request, user=user, total=total, sxp=sxp, level=get_level(total)[0], xp_operations=xp_operations, reward_claims360=reward_claims360, badges=badges, referrals=referrals, league=league, streak_row=streak_row,
                 kpi360=kpi360, timeline360=timeline, event_regs360=event_regs, quest_rows360=quest_rows, task_rows360=task_rows, activity_rows360=activity_rows, idea_rows360=idea_rows, survey_rows360=survey_rows, season_history360=season_history360, restoration_answers=restoration_answers,
                 last_name=last_name, first_name=first_name, age=age_on(user.birth_date) if user.birth_date else None, vulnerabilities=vulnerabilities,
                 vulnerability_options=VULNERABILITY_OPTIONS, vulnerability_codes=vulnerability_codes, vulnerability_other=vulnerability_other,
