@@ -4,7 +4,7 @@ Version: 1.21.0
 Alembic head: 20261010_0018
 Python: 3.13
 PostgreSQL: 18
-requirements.lock SHA256: a9be8f3185fad9bcbc26b03b59310233bf8ad6d20d8051d23f6433c15739ec62
+requirements.lock SHA256: e10203a36bccf1610235cfd4150b9f308b1006a9f766403d850c942ba7de1ee7
 requirements-dev.lock SHA256: 1b92b413f341cdd643a5cf0e1787b0b68e2938b0894fecf1eb93b4f95bb09351
 
 Critical runtime files:
