@@ -2,6 +2,7 @@ from ..time_utils import clock
 from .admin_common import (
     AdminBadgeAwardState, AdminQuestState, AdminRewardState, Badge, Bot, CallbackQuery, Database, F, FSMContext, Message, Quest, QuestParticipation, Reward, RewardClaim, User, UserBadge, _admin, _single_button, _two_buttons, _queue_new_entity_notice, _queue_user_notice, _require_admin, _require_permission, add_xp, datetime, evaluate_automatic_badges, normalize_quest_xp, router, select
 )
+from ..reward_history import record_reward_event
 
 @router.callback_query(F.data == "admin:create_quest")
 async def quest_create_start(call: CallbackQuery, state: FSMContext, db: Database) -> None:
@@ -333,6 +334,10 @@ async def fulfill_reward(call: CallbackQuery, db: Database, bot: Bot) -> None:
         claim.status = "fulfilled"
         claim.fulfilled_at = clock.storage_utc()
         if user and reward:
+            await record_reward_event(
+                session, "reward_fulfilled", user=user, reward=reward,
+                claim_id=claim.id, processed_by=admin.full_name,
+            )
             await _queue_user_notice(session, user, f"🎁 Винагороду <b>{reward.title}</b> позначено як видану. Дякуємо за активність!", source="reward", title="Винагороду видано", entity_type="reward_claim", entity_id=claim.id, dedupe_key=f"reward_fulfilled:{claim.id}")
         await session.commit()
         await call.answer("Видано")
@@ -355,6 +360,11 @@ async def reject_reward(call: CallbackQuery, db: Database, bot: Bot) -> None:
         if reward and reward.stock is not None:
             reward.stock += 1
         if user and reward:
+            await record_reward_event(
+                session, "reward_refunded", user=user, reward=reward,
+                claim_id=claim.id, xp_delta=int(claim.xp_spent or 0),
+                processed_by=admin.full_name,
+            )
             await _queue_user_notice(session, user, f"↩ Заявку на <b>{reward.title}</b> відхилено. {claim.xp_spent} XP повернуто у гаманець.", source="reward", title="Заявку на винагороду відхилено", entity_type="reward_claim", entity_id=claim.id, dedupe_key=f"reward_rejected:{claim.id}")
         await session.commit()
         await call.answer("XP повернуто")
